@@ -14,8 +14,8 @@ const PLUGIN_REGISTRY = [
   { name: "@elizaos/plugin-shell", description: "Shell command execution" },
   { name: "@elizaos/plugin-browser", description: "Browser automation" },
   { name: "@elizaos/plugin-sql", description: "SQL database integration" },
-  // { name: "@elizaos/plugin-cron", description: "Scheduled tasks" },     // DISABLED: 404 on npm
-  // { name: "@elizaos/plugin-cli", description: "CLI interface" },        // DISABLED: 404 on npm
+  { name: "@elizaos/plugin-cron", description: "Scheduled tasks" },
+  { name: "@elizaos/plugin-cli", description: "CLI interface" },
   { name: "@elizaos/plugin-code", description: "Code analysis and execution" },
   { name: "@elizaos/plugin-directives", description: "Response directives" },
   { name: "@elizaos/plugin-agent-skills", description: "Agent skills framework" },

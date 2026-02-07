@@ -52,7 +52,7 @@
     "generate:plugins": "node scripts/generate-plugin-index.js",
     "milaidy": "node scripts/run-node.mjs",
     "prepack": "bun run build",
-    "prepare": "command -v git >/dev/null 2>&1 && git config core.hooksPath git-hooks || exit 0",
+    "prepare": "node -e \"try{require('child_process').execSync('git config core.hooksPath git-hooks',{stdio:'ignore'})}catch{}\"",
     "release:check": "node --import tsx scripts/release-check.ts",
     "start": "node scripts/run-node.mjs start",
     "start:desktop": "cd apps/app && bun run build:electron && cd electron && bun run electron:start",
@@ -124,6 +124,11 @@
     "@elizaos/plugin-vision": "next",
     "@elizaos/plugin-whatsapp": "next",
     "@elizaos/plugin-xai": "next",
+    "@elizaos/plugin-cli": "next",
+    "@elizaos/plugin-cron": "next",
+    "@elizaos/plugin-local-embedding": "next",
+    "@elizaos/plugin-trust": "next",
+    "@elizaos/plugin-computeruse": "next",
     "@elizaos/skills": "next",
     "@elizaos/tui": "next",
     "chalk": "^5.6.2",
@@ -150,8 +155,7 @@
   "overrides": {
     "qs": "6.14.1",
     "tough-cookie": "4.1.3",
-    "drizzle-orm": "0.45.1",
-    "@elizaos/plugin-cli": "npm:@elizaos/core@next"
+    "drizzle-orm": "0.45.1"
   },
   "engines": {
     "node": ">=22.12.0"

@@ -1,69 +1,56 @@
 # Disabled Plugins — Re-enable When Fixed
 
-Disabled on 2026-02-06 to unblock `bun install`. These plugins failed to resolve
-from the npm registry or workspace. Add them back once the packages are published /
-the workspace is wired up correctly.
+## Re-enabled on 2026-02-07
+
+All 5 plugins that were disabled on 2026-02-06 have been **re-enabled**. They are now
+published to npm with the `next` dist-tag and proper `dist/` contents.
+
+| Plugin | npm Status | Action Taken |
+|--------|-----------|--------------|
+| `@elizaos/plugin-cli` | `2.0.0-alpha.3` (next) | Re-added to deps, CORE_PLUGINS, plugins-cli registry |
+| `@elizaos/plugin-cron` | `2.0.0-alpha.3` (next) | Re-added to deps, CORE_PLUGINS, plugins-cli registry, FEATURE_PLUGINS |
+| `@elizaos/plugin-local-embedding` | `2.0.0-alpha.3` (next) | Re-added to deps, CORE_PLUGINS |
+| `@elizaos/plugin-trust` | `2.0.0-alpha.3` (next) | Re-added to deps, CORE_PLUGINS |
+| `@elizaos/plugin-computeruse` | `2.0.0-alpha.4` (next) | Re-added to deps, CORE_PLUGINS |
 
 ---
 
-## What was removed
+## Remaining overrides
 
-### 1. `@elizaos/plugin-cli` — 404 on npm
-- **package.json**: removed `"@elizaos/plugin-cli": "next"`
-- **src/eliza.ts**: commented out in `CORE_PLUGINS`
-- **src/cli/plugins-cli.ts**: commented out from plugin list
-- **Error**: `GET https://registry.npmjs.org/@elizaos%2fplugin-cli - 404` + workspace dep not found
+### `@elizaos/plugin-cli` override (kept)
 
-### 2. `@elizaos/plugin-cron` — 404 on npm
-- **package.json**: removed `"@elizaos/plugin-cron": "next"`
-- **src/eliza.ts**: was already commented out (`// "@elizaos/plugin-cron"`)
-- **src/config/plugin-auto-enable.ts**: commented out `cron` entry in `FEATURE_PLUGINS`
-- **src/cli/plugins-cli.ts**: commented out from plugin list
-- **Error**: `GET https://registry.npmjs.org/@elizaos%2fplugin-cron - 404`
-
-### 3. `@elizaos/plugin-local-embedding` — 404 on npm
-- **package.json**: removed `"@elizaos/plugin-local-embedding": "next"`
-- **src/eliza.ts**: commented out in `CORE_PLUGINS`
-- **Error**: `GET https://registry.npmjs.org/@elizaos%2fplugin-local-embedding - 404`
-
-### 4. `@elizaos/plugin-trust` — tag "next" not found
-- **package.json**: removed `"@elizaos/plugin-trust": "next"`
-- **src/eliza.ts**: commented out in `CORE_PLUGINS`
-- **Error**: `Package "@elizaos/plugin-trust" with tag "next" not found, but package exists`
-- **Note**: The package exists on npm, just missing the `next` dist-tag. May only need a re-publish with the tag.
-
-### 5. `@elizaos/plugin-computeruse` — workspace dependency not found
-- **package.json**: removed `"@elizaos/plugin-computeruse": "next"`
-- **src/eliza.ts**: commented out in `CORE_PLUGINS`
-- **Error**: `Workspace dependency "@elizaos/computeruse" not found`
-- **Note**: The workspace resolver looked for `@elizaos/computeruse` (without `plugin-` prefix). May need the workspace package added or the dependency switched to a registry version.
-
----
-
-## How to re-enable
-
-1. Verify the package resolves: `bun info @elizaos/plugin-<name>@next`
-2. Add back to `dependencies` in `package.json`
-3. Uncomment in `src/eliza.ts` (`CORE_PLUGINS` array)
-4. Uncomment in any other files listed above
-5. Run `bun install` to confirm clean resolution
-
----
-
-## Overrides
-
-`@elizaos/plugin-cli` is also a **transitive dependency** of `@elizaos/plugin-browser`
-and `@elizaos/plugin-acp` (published to npm with `"@elizaos/plugin-cli": "2.0.0-alpha.3"`).
-Since plugin-cli is a 404, we added an override in `package.json`:
+`@elizaos/plugin-cli` is a transitive dependency of `@elizaos/plugin-browser` and
+`@elizaos/plugin-acp` (published with `"@elizaos/plugin-cli": "2.0.0-alpha.3"`).
+The override ensures all transitive references resolve to the `next` tag:
 
 ```json
-"@elizaos/plugin-cli": "npm:@elizaos/core@next"
+"@elizaos/plugin-cli": "next"
 ```
 
-This redirects the unresolvable transitive dep to `@elizaos/core` so the resolver
-is satisfied. Remove this override once `@elizaos/plugin-cli` is published to npm.
+### `@elizaos/computeruse` override (new)
 
-## plugins.json
+`@elizaos/computeruse` is an optional peer dependency of `@elizaos/plugin-computeruse`.
+It's a native Rust addon (napi-rs) that hasn't been published to npm yet. Since
+`plugin-computeruse` works in MCP mode without it, we redirect the unresolvable
+peer dep to `@elizaos/core` so the resolver is satisfied:
 
-The entries in `plugins.json` were **not** touched — they are metadata/registry
-entries and don't affect install resolution. No changes needed there.
+```json
+"@elizaos/computeruse": "npm:@elizaos/core@next"
+```
+
+Remove this override once `@elizaos/computeruse` is published to npm.
+
+---
+
+## Still disabled (other reasons — not in original list)
+
+These plugins remain commented out in `CORE_PLUGINS` for reasons unrelated to npm resolution:
+
+| Plugin | Reason |
+|--------|--------|
+| `@elizaos/plugin-form` | Published without `dist/` — npm package is empty |
+| `@elizaos/plugin-browser` | Stale `workspace:*` dep on `@elizaos/plugin-cli` causes missing export |
+| `@elizaos/plugin-code` | Spec name mismatch (`coderStatusProvider` vs `CODER_STATUS`) in published package |
+| `@elizaos/plugin-goals` | `actions.json` has placeholder data — missing CANCEL_GOAL, CREATE_GOAL, etc. |
+| `@elizaos/plugin-scheduling` | Published without `dist/` — npm package is empty |
+| `@elizaos/plugin-vision` | `@tensorflow/tfjs-node` native addon fails to build on macOS |

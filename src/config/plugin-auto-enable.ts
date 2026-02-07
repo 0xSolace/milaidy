@@ -68,7 +68,7 @@ export const AUTH_PROVIDER_PLUGINS: Record<string, string> = {
 
 const FEATURE_PLUGINS: Record<string, string> = {
   browser: "@elizaos/plugin-browser",
-  // cron: "@elizaos/plugin-cron",  // DISABLED: 404 on npm — see DISABLED-PLUGINS.md
+  cron: "@elizaos/plugin-cron",
   shell: "@elizaos/plugin-shell",
   imageGen: "@elizaos/plugin-image-generation",
   tts: "@elizaos/plugin-tts",

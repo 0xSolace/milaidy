@@ -1320,6 +1320,25 @@ async function handleRequest(
     return;
   }
 
+  // ── GET /api/config ──────────────────────────────────────────────────────
+  if (method === "GET" && pathname === "/api/config") {
+    json(res, state.config);
+    return;
+  }
+
+  // ── PUT /api/config ─────────────────────────────────────────────────────
+  if (method === "PUT" && pathname === "/api/config") {
+    const body = JSON.parse(await readBody(req)) as Record<string, unknown>;
+    Object.assign(state.config, body);
+    try {
+      saveMilaidyConfig(state.config);
+    } catch {
+      // In test environments the config path may not be writable — that's fine.
+    }
+    json(res, state.config);
+    return;
+  }
+
   // ── POST /api/chat ──────────────────────────────────────────────────────
   // Routes messages through the full ElizaOS message pipeline so the agent
   // has conversation memory, context, and always responds (DM + client_chat

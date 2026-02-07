@@ -101,7 +101,7 @@ const CHANNEL_ENV_MAP: Readonly<Record<string, Readonly<Record<string, string>>>
 /** Core plugins that should always be loaded. */
 const CORE_PLUGINS: readonly string[] = [
   "@elizaos/plugin-sql",
-  // "@elizaos/plugin-local-embedding", // DISABLED: 404 on npm — see DISABLED-PLUGINS.md
+  "@elizaos/plugin-local-embedding",
   "@elizaos/plugin-agent-skills",
   "@elizaos/plugin-agent-orchestrator",
   "@elizaos/plugin-directives",
@@ -111,9 +111,9 @@ const CORE_PLUGINS: readonly string[] = [
   "@elizaos/plugin-experience",
   // "@elizaos/plugin-form",            // DISABLED: published without dist/ — npm package is empty
   // "@elizaos/plugin-browser",         // DISABLED: stale workspace:* dep on @elizaos/plugin-cli causes missing export
-  // "@elizaos/plugin-cli",             // DISABLED: 404 on npm — see DISABLED-PLUGINS.md
+  "@elizaos/plugin-cli",
   // "@elizaos/plugin-code",            // DISABLED: spec name mismatch (coderStatusProvider vs CODER_STATUS) in published package
-  // "@elizaos/plugin-computeruse",     // DISABLED: workspace dep not found — see DISABLED-PLUGINS.md
+  "@elizaos/plugin-computeruse",
   "@elizaos/plugin-edge-tts",
   // "@elizaos/plugin-goals",           // DISABLED: actions.json has placeholder data — missing CANCEL_GOAL, CREATE_GOAL, etc.
   "@elizaos/plugin-knowledge",
@@ -123,9 +123,9 @@ const CORE_PLUGINS: readonly string[] = [
   "@elizaos/plugin-scratchpad",
   "@elizaos/plugin-secrets-manager",
   "@elizaos/plugin-todo",
-  // "@elizaos/plugin-trust",           // DISABLED: tag "next" not found — see DISABLED-PLUGINS.md
+  "@elizaos/plugin-trust",
   // "@elizaos/plugin-vision",          // DISABLED: @tensorflow/tfjs-node native addon fails to build on macOS
-  // "@elizaos/plugin-cron",            // Requires worldId; skip for dev
+  "@elizaos/plugin-cron",
 ];
 
 /** Maps Milaidy channel names to ElizaOS plugin package names. */
