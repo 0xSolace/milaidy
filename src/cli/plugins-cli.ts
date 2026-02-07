@@ -1,6 +1,25 @@
 import type { Command } from "commander";
 import chalk from "chalk";
 
+/**
+ * Normalize a user-provided plugin name to its fully-qualified form.
+ * Accepts `@scope/plugin-x`, `plugin-x`, or shorthand `x` (→ `@elizaos/plugin-x`).
+ */
+function normalizePluginName(name: string): string {
+  if (name.startsWith("@") || name.startsWith("plugin-")) {
+    return name;
+  }
+  return `@elizaos/plugin-${name}`;
+}
+
+function clampInt(raw: string, min: number, max: number, fallback: number): number {
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return Math.min(Math.max(parsed, min), max);
+}
+
 export function registerPluginsCli(program: Command): void {
   const pluginsCommand = program
     .command("plugins")
@@ -15,7 +34,7 @@ export function registerPluginsCli(program: Command): void {
     .action(async (opts: { query?: string; limit: string }) => {
       const { getRegistryPlugins, searchPlugins } = await import("../services/registry-client.js");
 
-      const limit = Math.min(Math.max(Number(opts.limit), 1), 500);
+      const limit = clampInt(opts.limit, 1, 500, 30);
 
       if (opts.query) {
         const results = await searchPlugins(opts.query, limit);
@@ -78,7 +97,7 @@ export function registerPluginsCli(program: Command): void {
     .option("-l, --limit <number>", "Max results", "15")
     .action(async (query: string, opts: { limit: string }) => {
       const { searchPlugins } = await import("../services/registry-client.js");
-      const limit = Math.min(Math.max(Number(opts.limit), 1), 50);
+      const limit = clampInt(opts.limit, 1, 50, 15);
 
       const results = await searchPlugins(query, limit);
 
@@ -109,9 +128,7 @@ export function registerPluginsCli(program: Command): void {
     .action(async (name: string) => {
       const { getPluginInfo } = await import("../services/registry-client.js");
 
-      const normalizedName = name.startsWith("@") || name.startsWith("plugin-")
-        ? name
-        : `@elizaos/plugin-${name}`;
+      const normalizedName = normalizePluginName(name);
 
       const info = await getPluginInfo(normalizedName);
 
@@ -167,9 +184,7 @@ export function registerPluginsCli(program: Command): void {
     .action(async (name: string, opts: { restart: boolean }) => {
       const { installPlugin, installAndRestart } = await import("../services/plugin-installer.js");
 
-      const normalizedName = name.startsWith("@") || name.startsWith("plugin-")
-        ? name
-        : `@elizaos/plugin-${name}`;
+      const normalizedName = normalizePluginName(name);
 
       console.log(`\nInstalling ${chalk.cyan(normalizedName)}...\n`);
 

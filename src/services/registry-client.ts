@@ -127,6 +127,7 @@ async function readFileCache(): Promise<Map<string, RegistryPluginInfo> | null> 
   try {
     const raw = await fs.readFile(cacheFilePath(), "utf-8");
     const parsed = JSON.parse(raw) as { fetchedAt: number; plugins: Array<[string, RegistryPluginInfo]> };
+    if (typeof parsed.fetchedAt !== "number" || !Array.isArray(parsed.plugins)) return null;
     if (Date.now() - parsed.fetchedAt > CACHE_TTL_MS) return null;
     return new Map(parsed.plugins);
   } catch {

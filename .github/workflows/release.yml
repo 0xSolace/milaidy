@@ -58,8 +58,9 @@ jobs:
       fail-fast: false
       matrix:
         platform:
+          # macos-13 is Intel; macos-14+ is Apple Silicon
           - name: macOS (Intel)
-            runner: macos-14
+            runner: macos-13
             electron-args: --mac --x64
             artifact-glob: "*.dmg"
             artifact-name: macos-x64
@@ -142,6 +143,23 @@ jobs:
         run: bun run build
         working-directory: apps/app/electron
 
+      # ── Code signing & notarization ────────────────────────────────────
+      # macOS: electron-builder auto-notarizes when hardenedRuntime is true
+      # and the APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD env vars are set.
+      #
+      # Required GitHub Secrets for Gatekeeper-clean macOS builds:
+      #   CSC_LINK                     – base64-encoded .p12 signing certificate
+      #   CSC_KEY_PASSWORD             – password for the .p12 certificate
+      #   APPLE_ID                     – Apple Developer account email
+      #   APPLE_APP_SPECIFIC_PASSWORD  – app-specific password (appleid.apple.com)
+      #   APPLE_TEAM_ID                – Apple Developer Team ID
+      #
+      # Required GitHub Secrets for signed Windows builds:
+      #   WIN_CSC_LINK                 – base64-encoded .pfx code signing cert
+      #   WIN_CSC_KEY_PASSWORD         – password for the .pfx certificate
+      #
+      # If secrets are not set, builds will still succeed but won't be
+      # signed/notarized (Gatekeeper will show warnings on macOS).
       - name: Package desktop app
         run: |
           # Unset empty signing env vars — electron-builder treats "" as an invalid file path

@@ -29,7 +29,7 @@ import { promisify } from "node:util";
 import { logger } from "@elizaos/core";
 import { getPluginInfo, type RegistryPluginInfo } from "./registry-client.js";
 import { loadMilaidyConfig, saveMilaidyConfig } from "../config/config.js";
-import { requestRestart } from "../restart.js";
+import { requestRestart } from "../runtime/restart.js";
 
 const execAsync = promisify(exec);
 
@@ -229,8 +229,10 @@ async function _installPlugin(
     // Read the actual installed version from node_modules
     const installedPkgPath = path.join(targetDir, "node_modules", ...canonicalName.split("/"), "package.json");
     try {
-      const pkg = JSON.parse(await fs.readFile(installedPkgPath, "utf-8")) as { version: string };
-      installedVersion = pkg.version;
+      const pkg = JSON.parse(await fs.readFile(installedPkgPath, "utf-8")) as { version?: string };
+      if (typeof pkg.version === "string" && pkg.version.length > 0) {
+        installedVersion = pkg.version;
+      }
     } catch { /* keep requested version */ }
   } catch (npmErr) {
     logger.warn(`[plugin-installer] npm failed for ${canonicalName}: ${npmErr instanceof Error ? npmErr.message : String(npmErr)}`);
@@ -478,7 +480,7 @@ async function resolveEntryPoint(
 function recordInstallation(
   pluginName: string,
   record: {
-    source: "npm" | "archive" | "path";
+    source: "npm" | "path";
     spec?: string;
     installPath: string;
     version: string;

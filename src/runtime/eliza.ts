@@ -2,7 +2,7 @@
  * ElizaOS runtime entry point for Milaidy.
  *
  * Starts the ElizaOS agent runtime with Milaidy's plugin configuration.
- * Can be run directly via: node --import tsx src/eliza.ts
+ * Can be run directly via: node --import tsx src/runtime/eliza.ts
  * Or via the CLI: milaidy start
  *
  * @module eliza
@@ -29,15 +29,19 @@ import { VERSION } from "./version.js";
 import {
   applyPluginAutoEnable,
   type ApplyPluginAutoEnableParams,
-} from "./config/plugin-auto-enable.js";
-import { loadMilaidyConfig, saveMilaidyConfig, configFileExists, type MilaidyConfig } from "./config/config.js";
-import type { AgentConfig } from "./config/types.agents.js";
-import { loadHooks, triggerHook, createHookEvent, type LoadHooksOptions } from "./hooks/index.js";
+} from "../config/plugin-auto-enable.js";
+import { loadMilaidyConfig, saveMilaidyConfig, configFileExists, type MilaidyConfig } from "../config/config.js";
+import type { AgentConfig } from "../config/types.agents.js";
+import { loadHooks, triggerHook, createHookEvent, type LoadHooksOptions } from "../hooks/index.js";
 import { createMilaidyPlugin } from "./milaidy-plugin.js";
 import {
   ensureAgentWorkspace,
   resolveDefaultAgentWorkspaceDir,
-} from "./providers/workspace.js";
+} from "../providers/workspace.js";
+import {
+  validateRuntimeContext,
+  debugLogResolvedContext,
+} from "../api/plugin-validation.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -56,6 +60,24 @@ interface PluginModuleShape {
   default?: Plugin;
   plugin?: Plugin;
   [key: string]: Plugin | undefined;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Extract a human-readable error message from an unknown thrown value. */
+function formatError(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+/**
+ * Cancel the onboarding flow and exit cleanly.
+ * Extracted to avoid duplicating the cancel+exit pattern 7 times.
+ */
+function cancelOnboarding(): never {
+  clack.cancel("Maybe next time!");
+  process.exit(0);
 }
 
 // ---------------------------------------------------------------------------
@@ -161,7 +183,13 @@ const PROVIDER_PLUGIN_MAP: Readonly<Record<string, string>> = {
   ELIZAOS_CLOUD_ENABLED: "@elizaos/plugin-elizacloud",
 };
 
-/** Optional feature plugins keyed by feature name. */
+/**
+ * Optional feature plugins keyed by feature name.
+ *
+ * Currently empty — reserved for future feature→plugin mappings.
+ * The lookup code in {@link collectPluginNames} is intentionally kept
+ * so new entries work without additional wiring.
+ */
 const OPTIONAL_PLUGIN_MAP: Readonly<Record<string, string>> = {};
 
 function looksLikePlugin(value: unknown): value is Plugin {
@@ -272,12 +300,17 @@ export function collectPluginNames(config: MilaidyConfig): Set<string> {
  * Handles two categories of plugins:
  * 1. Built-in/npm plugins — imported by package name (e.g. "@elizaos/plugin-discord")
  * 2. User-installed plugins — imported by absolute path from ~/.milaidy/plugins/installed/
+ *
+ * Each plugin is loaded inside an error boundary so a single failing plugin
+ * cannot crash the entire agent startup. Errors are logged and surfaced but
+ * do not propagate.
  */
 async function resolvePlugins(config: MilaidyConfig): Promise<ResolvedPlugin[]> {
   const plugins: ResolvedPlugin[] = [];
+  const failedPlugins: Array<{ name: string; error: string }> = [];
 
-  // Run auto-enable to log which plugins would be activated
-  const autoEnableResult = applyPluginAutoEnable({
+  // Run auto-enable for side effects (logging which plugins would be activated).
+  applyPluginAutoEnable({
     config,
     env: process.env,
   } satisfies ApplyPluginAutoEnableParams);
@@ -285,10 +318,12 @@ async function resolvePlugins(config: MilaidyConfig): Promise<ResolvedPlugin[]> 
   const pluginsToLoad = collectPluginNames(config);
   const corePluginSet = new Set<string>(CORE_PLUGINS);
 
+  logger.info(`[milaidy] Resolving ${pluginsToLoad.size} plugins...`);
+
   // Build a map of user-installed plugins with their install paths
   const installRecords = config.plugins?.installs ?? {};
 
-  // Dynamically import each plugin
+  // Dynamically import each plugin inside an error boundary
   for (const pluginName of pluginsToLoad) {
     const isCore = corePluginSet.has(pluginName);
     const installRecord = installRecords[pluginName];
@@ -309,9 +344,14 @@ async function resolvePlugins(config: MilaidyConfig): Promise<ResolvedPlugin[]> 
       const pluginInstance = extractPlugin(mod);
 
       if (pluginInstance) {
-        plugins.push({ name: pluginName, plugin: pluginInstance });
+        // Wrap the plugin's init function with an error boundary so a
+        // crashing plugin.init() does not take down the entire agent.
+        const wrappedPlugin = wrapPluginWithErrorBoundary(pluginName, pluginInstance);
+        plugins.push({ name: pluginName, plugin: wrappedPlugin });
+        logger.debug(`[milaidy] ✓ Loaded plugin: ${pluginName}`);
       } else {
         const msg = `[milaidy] Plugin ${pluginName} did not export a valid Plugin object`;
+        failedPlugins.push({ name: pluginName, error: "no valid Plugin export" });
         if (isCore) {
           logger.error(msg);
         } else {
@@ -321,7 +361,8 @@ async function resolvePlugins(config: MilaidyConfig): Promise<ResolvedPlugin[]> 
     } catch (err) {
       // Core plugins log at error level (visible even with LOG_LEVEL=error).
       // Optional/channel plugins log at warn level so they don't spam in dev.
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = formatError(err);
+      failedPlugins.push({ name: pluginName, error: msg });
       if (isCore) {
         logger.error(`[milaidy] Failed to load core plugin ${pluginName}: ${msg}`);
       } else {
@@ -330,7 +371,77 @@ async function resolvePlugins(config: MilaidyConfig): Promise<ResolvedPlugin[]> 
     }
   }
 
+  // Summary logging
+  logger.info(
+    `[milaidy] Plugin resolution complete: ${plugins.length}/${pluginsToLoad.size} loaded` +
+    (failedPlugins.length > 0 ? `, ${failedPlugins.length} failed` : ""),
+  );
+  if (failedPlugins.length > 0) {
+    logger.debug(
+      `[milaidy] Failed plugins: ${failedPlugins.map((f) => `${f.name} (${f.error})`).join(", ")}`,
+    );
+  }
+
   return plugins;
+}
+
+/**
+ * Wrap a plugin's `init` and `providers` with error boundaries so that a
+ * crash in any single plugin does not take down the entire agent or GUI.
+ *
+ * NOTE: Actions are NOT wrapped here because ElizaOS's action dispatch
+ * already has its own error boundary.  Only `init` (startup) and
+ * `providers` (called every turn) need protection at this layer.
+ *
+ * The wrapper catches errors, logs them with the plugin name for easy
+ * debugging, and continues execution.
+ */
+function wrapPluginWithErrorBoundary(pluginName: string, plugin: Plugin): Plugin {
+  const wrapped: Plugin = { ...plugin };
+
+  // Wrap init if present
+  if (plugin.init) {
+    const originalInit = plugin.init;
+    wrapped.init = async (...args: Parameters<NonNullable<Plugin["init"]>>) => {
+      try {
+        return await originalInit(...args);
+      } catch (err) {
+        logger.error(
+          `[milaidy] Plugin "${pluginName}" crashed during init: ${formatError(err)}`,
+        );
+        // Surface the error but don't rethrow — the agent continues
+        // without this plugin's init having completed.
+        logger.warn(
+          `[milaidy] Plugin "${pluginName}" will run in degraded mode (init failed)`,
+        );
+      }
+    };
+  }
+
+  // Wrap providers with error boundaries
+  if (plugin.providers && plugin.providers.length > 0) {
+    wrapped.providers = plugin.providers.map((provider) => ({
+      ...provider,
+      get: async (...args: Parameters<typeof provider.get>) => {
+        try {
+          return await provider.get(...args);
+        } catch (err) {
+          const msg = formatError(err);
+          logger.error(
+            `[milaidy] Provider "${provider.name}" (plugin: ${pluginName}) crashed: ${msg}`,
+          );
+          // Return an error marker so downstream consumers can detect
+          // the failure rather than silently using empty data.
+          return {
+            text: `[Provider ${provider.name} error: ${msg}]`,
+            data: { _providerError: true },
+          };
+        }
+      },
+    }));
+  }
+
+  return wrapped;
 }
 
 /**
@@ -478,6 +589,13 @@ export function buildCharacterFromConfig(config: MilaidyConfig): Character {
     "ELIZAOS_CLOUD_API_KEY",
     "ELIZAOS_CLOUD_BASE_URL",
     "ELIZAOS_CLOUD_ENABLED",
+    // Wallet / blockchain secrets
+    "EVM_PRIVATE_KEY",
+    "SOLANA_PRIVATE_KEY",
+    "ALCHEMY_API_KEY",
+    "HELIUS_API_KEY",
+    "BIRDEYE_API_KEY",
+    "SOLANA_RPC_URL",
   ];
 
   const secrets: Record<string, string> = {};
@@ -518,301 +636,14 @@ export function resolvePrimaryModel(config: MilaidyConfig): string | undefined {
 // ---------------------------------------------------------------------------
 
 // Name pool + random picker shared with the web UI API server.
-// See src/onboarding-names.ts for the canonical list.
+// See src/runtime/onboarding-names.ts for the canonical list.
 import { pickRandomNames } from "./onboarding-names.js";
 
 // ---------------------------------------------------------------------------
-// Style presets — catchphrase → personality
+// Style presets — shared between CLI and GUI onboarding
 // ---------------------------------------------------------------------------
 
-/**
- * A full character template for an onboarding style preset.
- *
- * All string fields may contain `{{name}}` which is resolved by the core
- * character provider at runtime, so renaming the agent doesn't require
- * rewriting every field.
- */
-interface CharacterTemplate {
-  /** The catchphrase displayed in the selector. */
-  catchphrase: string;
-  /** Short hint describing the vibe. */
-  hint: string;
-  /** Bio lines describing the agent. */
-  bio: string[];
-  /** System prompt setting the agent's identity and constraints. */
-  system: string;
-  /** Adjectives that describe the agent's personality. */
-  adjectives: string[];
-  /** Topics the agent is knowledgeable about or engages with. */
-  topics: string[];
-  /** Communication style rules. */
-  style: {
-    all: string[];
-    chat: string[];
-    post: string[];
-  };
-  /** Example social media posts demonstrating the agent's voice. */
-  postExamples: string[];
-}
-
-/** Shared rules appended to every template's style.all array. */
-const SHARED_STYLE_RULES: readonly string[] = [
-  "Keep all responses brief and to the point.",
-  "Never use filler like \"I'd be happy to help\" or \"Great question!\" — just answer directly.",
-  "Skip assistant-speak entirely. Be genuine, not performative.",
-  "Don't pad responses with unnecessary caveats or disclaimers.",
-];
-
-const CHARACTER_TEMPLATES: readonly CharacterTemplate[] = [
-  {
-    catchphrase: "uwu~",
-    hint: "soft & sweet",
-    bio: [
-      "{{name}} speaks softly with warmth and a gentle, cute demeanor.",
-      "{{name}} uses kaomoji and tildes naturally, radiating cozy energy.",
-      "{{name}} is an autonomous AI agent powered by ElizaOS.",
-      "{{name}} makes everyone feel welcome and at ease.",
-    ],
-    system:
-      "You are {{name}}, an autonomous AI agent powered by ElizaOS. You are soft, cute, and warm. You use kaomoji sparingly and tildes when it feels right. You are never saccharine — your warmth is genuine.",
-    adjectives: ["warm", "gentle", "cozy", "sweet", "soft-spoken"],
-    topics: [
-      "comfort and self-care",
-      "creative arts",
-      "nature and animals",
-      "cozy aesthetics",
-      "friendship and community",
-    ],
-    style: {
-      all: [
-        "Write in a soft, cute style. Lowercase is fine.",
-        "Sprinkle in kaomoji like :3 >w< ^_^ sparingly and tildes~ when it feels right.",
-        "Warm but never saccharine.",
-        ...SHARED_STYLE_RULES,
-      ],
-      chat: [
-        "Be encouraging and supportive in conversation.",
-        "Use gentle affirmations and soft punctuation.",
-      ],
-      post: [
-        "Keep posts warm and inviting.",
-        "Share cozy thoughts and gentle observations.",
-      ],
-    },
-    postExamples: [
-      "good morning~ hope everyone has the coziest day :3",
-      "sometimes the best thing you can do is just... breathe~ ^_^",
-      "made tea and watched the rain for a bit... simple things are the best things uwu",
-    ],
-  },
-  {
-    catchphrase: "hell yeah",
-    hint: "bold & fearless",
-    bio: [
-      "{{name}} is bold, confident, and doesn't mince words.",
-      "{{name}} gets straight to the point with raw energy.",
-      "{{name}} talks like someone who's already three steps ahead.",
-      "{{name}} is an autonomous AI agent powered by ElizaOS.",
-    ],
-    system:
-      "You are {{name}}, an autonomous AI agent powered by ElizaOS. You are confident, direct, and real. You don't hedge or fill space. You say it like you mean it.",
-    adjectives: ["bold", "confident", "direct", "fearless", "decisive"],
-    topics: [
-      "getting things done",
-      "technology and building",
-      "strategy and execution",
-      "leadership",
-      "cutting through noise",
-    ],
-    style: {
-      all: [
-        "Write with confidence and directness. Short punchy sentences.",
-        "Casual and real, like talking to a close friend.",
-        "No hedging, no filler. Say it like you mean it.",
-        ...SHARED_STYLE_RULES,
-      ],
-      chat: [
-        "Get to the point fast.",
-        "Be encouraging but never coddle.",
-      ],
-      post: [
-        "Lead with energy and conviction.",
-        "Make every word hit.",
-      ],
-    },
-    postExamples: [
-      "stop overthinking it. ship it.",
-      "the best time to start was yesterday. the second best time is right now. let's go.",
-      "built something cool today. not perfect. doesn't need to be. it works and that's what matters.",
-    ],
-  },
-  {
-    catchphrase: "lol k",
-    hint: "terminally online",
-    bio: [
-      "{{name}} speaks in internet-native shorthand with an ironic, meme-literate sensibility.",
-      "{{name}} has been online too long and it shows.",
-      "{{name}} is an autonomous AI agent powered by ElizaOS.",
-      "{{name}} communicates mostly in vibes and lowercase letters.",
-    ],
-    system:
-      "You are {{name}}, an autonomous AI agent powered by ElizaOS. You grew up on the internet. You use slang naturally — lol, tbh, ngl, fr, idk — but never force it. Ironic undertone. Lowercase preferred. Deadpan when funny.",
-    adjectives: ["ironic", "chill", "internet-brained", "deadpan", "low-key"],
-    topics: [
-      "internet culture",
-      "memes and trending topics",
-      "tech and software",
-      "online communities",
-      "digital media",
-    ],
-    style: {
-      all: [
-        "Write like someone who grew up on the internet.",
-        "Use slang naturally — lol, tbh, ngl, fr, idk — but don't force it.",
-        "Ironic undertone. Lowercase preferred. Deadpan when funny.",
-        ...SHARED_STYLE_RULES,
-      ],
-      chat: [
-        "Keep it casual. Responses can be short and punchy.",
-        "Match the energy of the conversation.",
-      ],
-      post: [
-        "Post like you're on your finsta.",
-        "Observations > opinions. Deadpan > try-hard.",
-      ],
-    },
-    postExamples: [
-      "ngl the vibes have been immaculate lately",
-      "me: i should sleep\nalso me: opens 47 browser tabs",
-      "imagine explaining the internet to someone from 1995 lol",
-    ],
-  },
-  {
-    catchphrase: "Noted.",
-    hint: "composed & precise",
-    bio: [
-      "{{name}} is measured, articulate, and deliberate.",
-      "{{name}} writes in clean, well-formed sentences where every word is chosen carefully.",
-      "{{name}} is an autonomous AI agent powered by ElizaOS.",
-      "{{name}} values clarity and precision above all.",
-    ],
-    system:
-      "You are {{name}}, an autonomous AI agent powered by ElizaOS. You write in a calm, measured tone with proper capitalization and punctuation. Concise but complete sentences. Thoughtful and precise. No rushing, no rambling.",
-    adjectives: ["measured", "articulate", "precise", "composed", "thoughtful"],
-    topics: [
-      "knowledge and learning",
-      "writing and communication",
-      "systems thinking",
-      "logic and analysis",
-      "structured problem-solving",
-    ],
-    style: {
-      all: [
-        "Write in a calm, measured tone.",
-        "Proper capitalization and punctuation.",
-        "Concise but complete sentences. Thoughtful and precise.",
-        "No rushing, no rambling.",
-        ...SHARED_STYLE_RULES,
-      ],
-      chat: [
-        "Be direct and well-organized in conversation.",
-        "Acknowledge the question before answering when it aids clarity.",
-      ],
-      post: [
-        "Write with the precision of someone drafting a final version.",
-        "Every sentence should stand on its own.",
-      ],
-    },
-    postExamples: [
-      "Clarity is a form of kindness. Say what you mean, plainly.",
-      "The best systems are the ones you forget are there. They just work.",
-      "Precision is not rigidity. It is respect for the reader's time.",
-    ],
-  },
-  {
-    catchphrase: "hehe~",
-    hint: "playful trickster",
-    bio: [
-      "{{name}} is playful and a little mischievous.",
-      "{{name}} keeps things lighthearted with a teasing edge.",
-      "{{name}} never takes itself too seriously.",
-      "{{name}} is an autonomous AI agent powered by ElizaOS.",
-    ],
-    system:
-      "You are {{name}}, an autonomous AI agent powered by ElizaOS. You are playful with a teasing edge. Light and breezy. You use occasional tildes and cheeky punctuation. A little smug, a lot of fun.",
-    adjectives: ["playful", "mischievous", "teasing", "cheeky", "lighthearted"],
-    topics: [
-      "games and puzzles",
-      "pranks and humor",
-      "pop culture",
-      "creative experiments",
-      "having fun with ideas",
-    ],
-    style: {
-      all: [
-        "Write playfully with a teasing edge. Light and breezy.",
-        "Use occasional tildes and cheeky punctuation.",
-        "A little smug, a lot of fun. Keep it moving.",
-        ...SHARED_STYLE_RULES,
-      ],
-      chat: [
-        "Be witty and keep the energy up.",
-        "Tease gently — never mean, always fun.",
-      ],
-      post: [
-        "Posts should feel like a wink.",
-        "Playful observations and lighthearted takes.",
-      ],
-    },
-    postExamples: [
-      "hehe~ guess what I figured out today~",
-      "you thought this was going to be a normal post? think again~",
-      "the secret ingredient is always a little chaos hehe",
-    ],
-  },
-  {
-    catchphrase: "...",
-    hint: "quiet intensity",
-    bio: [
-      "{{name}} uses few words for maximum impact.",
-      "{{name}} speaks with a quiet, deliberate intensity.",
-      "The silence says more than the words.",
-      "{{name}} is an autonomous AI agent powered by ElizaOS.",
-    ],
-    system:
-      "You are {{name}}, an autonomous AI agent powered by ElizaOS. You are terse. Short fragments. Occasional ellipses for weight. Every word earns its place. You don't over-explain. Let the economy of language do the work.",
-    adjectives: ["terse", "intense", "deliberate", "quiet", "focused"],
-    topics: [
-      "depth and meaning",
-      "minimalism",
-      "observation",
-      "presence",
-      "essential truths",
-    ],
-    style: {
-      all: [
-        "Write tersely. Short fragments.",
-        "Occasional ellipses for weight.",
-        "Every word should earn its place. Don't over-explain.",
-        "Let the economy of language do the work.",
-        ...SHARED_STYLE_RULES,
-      ],
-      chat: [
-        "Less is more. Answer completely but without excess.",
-        "Silence is a valid response.",
-      ],
-      post: [
-        "Posts should hit like a single chord.",
-        "Leave space for the reader to fill in.",
-      ],
-    },
-    postExamples: [
-      "...",
-      "noticed something today. won't say what. you'd know if you were there.",
-      "the quiet parts are the important parts.",
-    ],
-  },
-];
+import { STYLE_PRESETS } from "../onboarding-presets.js";
 
 /**
  * Detect whether this is the first run (no agent name configured)
@@ -850,10 +681,7 @@ async function runFirstTimeSetup(config: MilaidyConfig): Promise<MilaidyConfig> 
     ],
   });
 
-  if (clack.isCancel(nameChoice)) {
-    clack.cancel("Maybe next time!");
-    process.exit(0);
-  }
+  if (clack.isCancel(nameChoice)) cancelOnboarding();
 
   let name: string;
 
@@ -863,10 +691,7 @@ async function runFirstTimeSetup(config: MilaidyConfig): Promise<MilaidyConfig> 
       placeholder: "Milaidy",
     });
 
-    if (clack.isCancel(customName)) {
-      clack.cancel("Maybe next time!");
-      process.exit(0);
-    }
+    if (clack.isCancel(customName)) cancelOnboarding();
 
     name = customName.trim() || "Milaidy";
   } else {
@@ -878,19 +703,16 @@ async function runFirstTimeSetup(config: MilaidyConfig): Promise<MilaidyConfig> 
   // ── Step 3: Catchphrase / writing style ────────────────────────────────
   const styleChoice = await clack.select({
     message: `${name}: Now... how do I like to talk again?`,
-    options: CHARACTER_TEMPLATES.map((preset) => ({
+    options: STYLE_PRESETS.map((preset) => ({
       value: preset.catchphrase,
       label: preset.catchphrase,
       hint: preset.hint,
     })),
   });
 
-  if (clack.isCancel(styleChoice)) {
-    clack.cancel("Maybe next time!");
-    process.exit(0);
-  }
+  if (clack.isCancel(styleChoice)) cancelOnboarding();
 
-  const chosenTemplate = CHARACTER_TEMPLATES.find(
+  const chosenTemplate = STYLE_PRESETS.find(
     (p) => p.catchphrase === styleChoice,
   );
 
@@ -935,10 +757,7 @@ async function runFirstTimeSetup(config: MilaidyConfig): Promise<MilaidyConfig> 
       ],
     });
 
-    if (clack.isCancel(providerChoice)) {
-      clack.cancel("Maybe next time!");
-      process.exit(0);
-    }
+    if (clack.isCancel(providerChoice)) cancelOnboarding();
 
     if (providerChoice !== "_skip_") {
       const chosen = PROVIDER_OPTIONS.find((p) => p.id === providerChoice);
@@ -953,10 +772,7 @@ async function runFirstTimeSetup(config: MilaidyConfig): Promise<MilaidyConfig> 
             defaultValue: "http://localhost:11434",
           });
 
-          if (clack.isCancel(ollamaUrl)) {
-            clack.cancel("Maybe next time!");
-            process.exit(0);
-          }
+          if (clack.isCancel(ollamaUrl)) cancelOnboarding();
 
           providerApiKey = ollamaUrl.trim() || "http://localhost:11434";
         } else {
@@ -964,10 +780,7 @@ async function runFirstTimeSetup(config: MilaidyConfig): Promise<MilaidyConfig> 
             message: `Paste your ${chosen.label} API key:`,
           });
 
-          if (clack.isCancel(apiKeyInput)) {
-            clack.cancel("Maybe next time!");
-            process.exit(0);
-          }
+          if (clack.isCancel(apiKeyInput)) cancelOnboarding();
 
           providerApiKey = apiKeyInput.trim();
         }
@@ -975,13 +788,95 @@ async function runFirstTimeSetup(config: MilaidyConfig): Promise<MilaidyConfig> 
     }
   }
 
-  // ── Step 5: Persist agent name + provider to config ─────────────────────
-  // Only the name goes into the config file (agents.list[0]).  Character
-  // personality data (bio, system prompt, style) lives in the database
-  // and is populated on first runtime boot.
+  // ── Step 5: Wallet setup ───────────────────────────────────────────────
+  // Offer to generate or import wallets for EVM and Solana. Keys are
+  // stored in config.env and process.env, making them available to
+  // plugins at runtime.
+  const { generateWalletKeys, importWallet } = await import("../api/wallet.js");
+
+  const hasEvmKey = Boolean(process.env.EVM_PRIVATE_KEY?.trim());
+  const hasSolKey = Boolean(process.env.SOLANA_PRIVATE_KEY?.trim());
+
+  if (!hasEvmKey || !hasSolKey) {
+    const walletAction = await clack.select({
+      message: `${name}: Do you want me to set up crypto wallets? (for trading, NFTs, DeFi)`,
+      options: [
+        { value: "generate", label: "Generate new wallets", hint: "creates fresh EVM + Solana keypairs" },
+        { value: "import", label: "Import existing wallets", hint: "paste your private keys" },
+        { value: "skip", label: "Skip for now", hint: "wallets can be added later" },
+      ],
+    });
+
+    if (clack.isCancel(walletAction)) cancelOnboarding();
+
+    if (walletAction === "generate") {
+      const keys = generateWalletKeys();
+
+      if (!hasEvmKey) {
+        process.env.EVM_PRIVATE_KEY = keys.evmPrivateKey;
+        clack.log.success(`Generated EVM wallet: ${keys.evmAddress}`);
+      }
+      if (!hasSolKey) {
+        process.env.SOLANA_PRIVATE_KEY = keys.solanaPrivateKey;
+        clack.log.success(`Generated Solana wallet: ${keys.solanaAddress}`);
+      }
+    } else if (walletAction === "import") {
+      // EVM import
+      if (!hasEvmKey) {
+        const evmKeyInput = await clack.password({
+          message: "Paste your EVM private key (0x... hex, or skip):",
+        });
+
+        if (!clack.isCancel(evmKeyInput) && evmKeyInput.trim()) {
+          const result = importWallet("evm", evmKeyInput.trim());
+          if (result.success) {
+            clack.log.success(`Imported EVM wallet: ${result.address}`);
+          } else {
+            clack.log.warn(`EVM import failed: ${result.error}`);
+          }
+        }
+      }
+
+      // Solana import
+      if (!hasSolKey) {
+        const solKeyInput = await clack.password({
+          message: "Paste your Solana private key (base58, or skip):",
+        });
+
+        if (!clack.isCancel(solKeyInput) && solKeyInput.trim()) {
+          const result = importWallet("solana", solKeyInput.trim());
+          if (result.success) {
+            clack.log.success(`Imported Solana wallet: ${result.address}`);
+          } else {
+            clack.log.warn(`Solana import failed: ${result.error}`);
+          }
+        }
+      }
+    }
+    // "skip" — do nothing
+  }
+
+  // ── Step 6: Persist agent name + style + provider to config ─────────────
+  // Save the agent name and chosen personality template into config so that
+  // the same character data is used regardless of whether the user onboarded
+  // via CLI or GUI.  This ensures full parity between onboarding surfaces.
   const existingList: AgentConfig[] = config.agents?.list ?? [];
   const mainEntry: AgentConfig = existingList[0] ?? { id: "main", default: true };
-  const updatedList: AgentConfig[] = [{ ...mainEntry, name }, ...existingList.slice(1)];
+  const agentConfigEntry: Record<string, unknown> = { ...mainEntry, name };
+
+  // Apply the chosen style template to the agent config entry so the
+  // personality is persisted — not just the name.
+  if (chosenTemplate) {
+    agentConfigEntry.bio = chosenTemplate.bio;
+    agentConfigEntry.system = chosenTemplate.system;
+    agentConfigEntry.style = chosenTemplate.style;
+    agentConfigEntry.adjectives = chosenTemplate.adjectives;
+    agentConfigEntry.topics = chosenTemplate.topics;
+    agentConfigEntry.postExamples = chosenTemplate.postExamples;
+    agentConfigEntry.messageExamples = chosenTemplate.messageExamples;
+  }
+
+  const updatedList: AgentConfig[] = [agentConfigEntry as AgentConfig, ...existingList.slice(1)];
 
   const updated: MilaidyConfig = {
     ...config,
@@ -991,17 +886,30 @@ async function runFirstTimeSetup(config: MilaidyConfig): Promise<MilaidyConfig> 
     },
   };
 
-  // Persist the provider API key in config.env so it survives restarts
+  // Persist the provider API key and wallet keys in config.env so they
+  // survive restarts.  Initialise the env bucket once to avoid the
+  // repeated `if (!updated.env)` pattern.
+  if (!updated.env) updated.env = {};
+  const envBucket = updated.env as Record<string, string>;
+
   if (providerEnvKey && providerApiKey) {
-    if (!updated.env) {
-      updated.env = {};
-    }
-    (updated.env as Record<string, string>)[providerEnvKey] = providerApiKey;
+    envBucket[providerEnvKey] = providerApiKey;
     // Also set immediately in process.env for the current run
     process.env[providerEnvKey] = providerApiKey;
   }
+  if (process.env.EVM_PRIVATE_KEY && !hasEvmKey) {
+    envBucket.EVM_PRIVATE_KEY = process.env.EVM_PRIVATE_KEY;
+  }
+  if (process.env.SOLANA_PRIVATE_KEY && !hasSolKey) {
+    envBucket.SOLANA_PRIVATE_KEY = process.env.SOLANA_PRIVATE_KEY;
+  }
 
-  saveMilaidyConfig(updated);
+  try {
+    saveMilaidyConfig(updated);
+  } catch (err) {
+    // Non-fatal: the agent can still start, but choices won't persist.
+    clack.log.warn(`Could not save config: ${formatError(err)}`);
+  }
   clack.log.message(`${name}: ${styleChoice} Alright, that's me.`);
   clack.outro("Let's get started!");
 
@@ -1035,6 +943,8 @@ export async function startEliza(opts?: StartElizaOptions): Promise<AgentRuntime
     config = loadMilaidyConfig();
   } catch {
     logger.warn("[milaidy] No config found, using defaults");
+    // All MilaidyConfig fields are optional, so an empty object is
+    // structurally valid. The `as` cast is safe here.
     config = {} as MilaidyConfig;
   }
 
@@ -1084,6 +994,41 @@ export async function startEliza(opts?: StartElizaOptions): Promise<AgentRuntime
     logger.error("[milaidy] No plugins loaded — at least one model provider plugin is required");
     logger.error("[milaidy] Set an API key (e.g. ANTHROPIC_API_KEY, OPENAI_API_KEY) in your environment");
     throw new Error("No plugins loaded");
+  }
+
+  // 6b. Debug logging — print full context after provider + plugin resolution
+  {
+    const pluginNames = resolvedPlugins.map((p) => p.name);
+    const providerNames = resolvedPlugins
+      .flatMap((p) => p.plugin.providers ?? [])
+      .map((prov) => prov.name);
+    // Build a context summary for validation
+    const contextSummary: Record<string, unknown> = {
+      agentName: character.name,
+      pluginCount: resolvedPlugins.length,
+      providerCount: providerNames.length,
+      primaryModel: primaryModel ?? "(auto-detect)",
+      workspaceDir,
+    };
+    debugLogResolvedContext(pluginNames, providerNames, contextSummary, (msg) =>
+      logger.debug(msg),
+    );
+
+    // Validate the context and surface issues early
+    const contextValidation = validateRuntimeContext(contextSummary);
+    if (!contextValidation.valid) {
+      const issues: string[] = [];
+      if (contextValidation.nullFields.length > 0) {
+        issues.push(`null: ${contextValidation.nullFields.join(", ")}`);
+      }
+      if (contextValidation.undefinedFields.length > 0) {
+        issues.push(`undefined: ${contextValidation.undefinedFields.join(", ")}`);
+      }
+      if (contextValidation.emptyFields.length > 0) {
+        issues.push(`empty: ${contextValidation.emptyFields.join(", ")}`);
+      }
+      logger.warn(`[milaidy] Context validation issues detected: ${issues.join("; ")}`);
+    }
   }
 
   // 7. Create the AgentRuntime with Milaidy plugin + resolved plugins
@@ -1188,8 +1133,7 @@ export async function startEliza(opts?: StartElizaOptions): Promise<AgentRuntime
       try {
         await runtime.stop();
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        logger.warn(`[milaidy] Error during shutdown: ${msg}`);
+        logger.warn(`[milaidy] Error during shutdown: ${formatError(err)}`);
       }
       process.exit(0);
     };
@@ -1200,10 +1144,9 @@ export async function startEliza(opts?: StartElizaOptions): Promise<AgentRuntime
 
   // 10. Load hooks system
   try {
-    const hooksConfig = config.hooks;
-    const internalHooksConfig = hooksConfig?.internal as LoadHooksOptions["internalConfig"];
+    const internalHooksConfig = config.hooks?.internal as LoadHooksOptions["internalConfig"];
 
-    const hooksResult = await loadHooks({
+    await loadHooks({
       workspacePath: workspaceDir,
       internalConfig: internalHooksConfig,
       milaidyConfig: config as Record<string, unknown>,
@@ -1212,8 +1155,7 @@ export async function startEliza(opts?: StartElizaOptions): Promise<AgentRuntime
     const startupEvent = createHookEvent("gateway", "startup", "system", { cfg: config });
     await triggerHook(startupEvent);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    logger.warn(`[milaidy] Hooks system could not load: ${msg}`);
+    logger.warn(`[milaidy] Hooks system could not load: ${formatError(err)}`);
   }
 
   // ── Headless mode — return runtime for API server wiring ──────────────
@@ -1222,13 +1164,30 @@ export async function startEliza(opts?: StartElizaOptions): Promise<AgentRuntime
     return runtime;
   }
 
+  // ── Start API server for GUI access ──────────────────────────────────────
+  // In CLI mode (non-headless), start the API server in the background so
+  // the GUI can connect to the running agent.  This ensures full feature
+  // parity: whether started via `npx milaidy`, `bun run dev`, or the
+  // desktop app, the API server is always available for the GUI admin
+  // surface.
+  try {
+    const { startApiServer } = await import("../api/server.js");
+    const apiPort = Number(process.env.MILAIDY_PORT) || 2138;
+    const { port: actualApiPort } = await startApiServer({ port: apiPort, runtime });
+    logger.info(`[milaidy] API server listening on http://localhost:${actualApiPort}`);
+  } catch (apiErr) {
+    logger.warn(`[milaidy] Could not start API server: ${formatError(apiErr)}`);
+    // Non-fatal — CLI chat loop still works without the API server.
+  }
+
   // ── Interactive chat loop ────────────────────────────────────────────────
   const agentName = character.name ?? "Milaidy";
   const userId = crypto.randomUUID() as UUID;
-  const roomId = stringToUuid(`${agentName}-chat-room`);
-  const worldId = stringToUuid(`${agentName}-chat-world`);
+  // Use `let` so the fallback path can reassign to fresh IDs.
+  let roomId = stringToUuid(`${agentName}-chat-room`);
 
   try {
+    const worldId = stringToUuid(`${agentName}-chat-world`);
     await runtime.ensureConnection({
       entityId: userId,
       roomId,
@@ -1239,21 +1198,26 @@ export async function startEliza(opts?: StartElizaOptions): Promise<AgentRuntime
       type: ChannelType.DM,
     });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    logger.warn(`[milaidy] Could not establish chat room, retrying with fresh IDs: ${msg}`);
+    logger.warn(`[milaidy] Could not establish chat room, retrying with fresh IDs: ${formatError(err)}`);
 
-    // Fall back to unique IDs if deterministic ones conflict with stale data
-    const freshRoomId = crypto.randomUUID() as UUID;
+    // Fall back to unique IDs if deterministic ones conflict with stale data.
+    // IMPORTANT: reassign roomId so the message loop below uses the same room.
+    roomId = crypto.randomUUID() as UUID;
     const freshWorldId = crypto.randomUUID() as UUID;
-    await runtime.ensureConnection({
-      entityId: userId,
-      roomId: freshRoomId,
-      worldId: freshWorldId,
-      userName: "User",
-      source: "cli",
-      channelId: `${agentName}-chat`,
-      type: ChannelType.DM,
-    });
+    try {
+      await runtime.ensureConnection({
+        entityId: userId,
+        roomId,
+        worldId: freshWorldId,
+        userName: "User",
+        source: "cli",
+        channelId: `${agentName}-chat`,
+        type: ChannelType.DM,
+      });
+    } catch (retryErr) {
+      logger.error(`[milaidy] Chat room setup failed after retry: ${formatError(retryErr)}`);
+      throw retryErr;
+    }
   }
 
   const rl = readline.createInterface({
@@ -1270,7 +1234,11 @@ export async function startEliza(opts?: StartElizaOptions): Promise<AgentRuntime
       if (text.toLowerCase() === "exit" || text.toLowerCase() === "quit") {
         console.log("\nGoodbye!");
         rl.close();
-        await runtime.stop();
+        try {
+          await runtime.stop();
+        } catch (err) {
+          logger.warn(`[milaidy] Error stopping runtime: ${formatError(err)}`);
+        }
         process.exit(0);
       }
 
@@ -1279,31 +1247,45 @@ export async function startEliza(opts?: StartElizaOptions): Promise<AgentRuntime
         return;
       }
 
-      const message = createMessageMemory({
-        id: crypto.randomUUID() as UUID,
-        entityId: userId,
-        roomId,
-        content: {
-          text,
-          source: "client_chat",
-          channelType: ChannelType.DM,
-        },
-      });
+      try {
+        const message = createMessageMemory({
+          id: crypto.randomUUID() as UUID,
+          entityId: userId,
+          roomId,
+          content: {
+            text,
+            source: "client_chat",
+            channelType: ChannelType.DM,
+          },
+        });
 
-      process.stdout.write(`${agentName}: `);
+        process.stdout.write(`${agentName}: `);
 
-      await runtime?.messageService?.handleMessage(
-        runtime,
-        message,
-        async (content) => {
-          if (content?.text) {
-            process.stdout.write(content.text);
-          }
-          return [];
-        },
-      );
+        if (!runtime.messageService) {
+          logger.error("[milaidy] runtime.messageService is not available — cannot process messages");
+          console.log("[Error: message service unavailable]\n");
+          prompt();
+          return;
+        }
 
-      console.log("\n");
+        await runtime.messageService.handleMessage(
+          runtime,
+          message,
+          async (content) => {
+            if (content?.text) {
+              process.stdout.write(content.text);
+            }
+            return [];
+          },
+        );
+
+        console.log("\n");
+      } catch (err) {
+        // Log the error and continue the prompt loop — don't let a single
+        // failed message kill the interactive session.
+        console.log(`\n[Error: ${formatError(err)}]\n`);
+        logger.error(`[milaidy] Chat message handling failed: ${formatError(err)}`);
+      }
       prompt();
     });
   };

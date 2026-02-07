@@ -1,6 +1,6 @@
 {
   "name": "milaidy",
-  "version": "2.0.0-alpha.3",
+  "version": "2.0.0-alpha.5",
   "description": "cute agents for the acceleration",
   "keywords": [],
   "license": "MIT",
@@ -27,7 +27,7 @@
   "exports": {
     ".": "./dist/index.js",
     "./cli-entry": "./milaidy.mjs",
-    "./eliza": "./dist/eliza.js",
+    "./eliza": "./dist/runtime/eliza.js",
     "./plugins.json": "./plugins.json"
   },
   "scripts": {
@@ -56,7 +56,7 @@
     "release:check": "node --import tsx scripts/release-check.ts",
     "start": "node scripts/run-node.mjs start",
     "start:desktop": "cd apps/app && bun run build:electron && cd electron && bun run electron:start",
-    "start:eliza": "node --import tsx src/eliza.ts",
+    "start:eliza": "node --import tsx src/runtime/eliza.ts",
     "test": "node test/scripts/test-parallel.mjs",
     "test:coverage": "vitest run --coverage",
     "test:docker:all": "bun run test:docker:live-models && bun run test:docker:live-gateway && bun run test:docker:onboard && bun run test:docker:gateway-network && bun run test:docker:qr && bun run test:docker:doctor-switch && bun run test:docker:plugins && bun run test:docker:cleanup",
@@ -68,6 +68,9 @@
     "test:docker:onboard": "bash test/scripts/e2e/onboard-docker.sh",
     "test:docker:plugins": "bash test/scripts/e2e/plugins-docker.sh",
     "test:docker:qr": "bash test/scripts/e2e/qr-import-docker.sh",
+    "test:docker:fresh-install": "bash test/scripts/e2e/run-e2e-fresh-install.sh",
+    "test:docker:cli-boot": "bash test/scripts/e2e/run-e2e-cli-boot.sh",
+    "test:docker:stress": "bash test/scripts/e2e/run-e2e-stress-test.sh",
     "test:e2e": "vitest run --config vitest.e2e.config.ts",
     "test:force": "node --import tsx test/scripts/test-force.ts",
     "test:install:e2e": "bash test/scripts/test-install-sh-e2e-docker.sh",

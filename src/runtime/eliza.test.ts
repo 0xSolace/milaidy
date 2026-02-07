@@ -9,7 +9,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import os from "node:os";
 import path from "node:path";
 import fs from "node:fs/promises";
-import type { MilaidyConfig } from "./config/config.js";
+import type { MilaidyConfig } from "../config/config.js";
 import {
   collectPluginNames,
   applyChannelSecretsToEnv,

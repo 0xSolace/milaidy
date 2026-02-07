@@ -19,7 +19,7 @@
 import http from "node:http";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { startApiServer } from "../src/api/server.js";
-import { AGENT_NAME_POOL } from "../src/onboarding-names.js";
+import { AGENT_NAME_POOL } from "../src/runtime/onboarding-names.js";
 
 // ---------------------------------------------------------------------------
 // HTTP helper (identical to the one in agent-runtime.e2e.test.ts)

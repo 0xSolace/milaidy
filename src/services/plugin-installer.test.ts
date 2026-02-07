@@ -18,14 +18,16 @@ async function loadInstaller() {
 }
 
 // ---------------------------------------------------------------------------
-// Minimal mock for registry-client (avoid real network calls)
+// Boundary stubs — only network I/O and process lifecycle are stubbed.
+// The installer logic itself (fs operations, config read/write, validation)
+// executes real code against a real temp directory.
 // ---------------------------------------------------------------------------
 
 vi.mock("./registry-client.js", () => ({
   getPluginInfo: vi.fn(),
 }));
 
-vi.mock("../restart.js", () => ({
+vi.mock("../runtime/restart.js", () => ({
   requestRestart: vi.fn(),
 }));
 
@@ -48,7 +50,7 @@ function readConfig(): Record<string, unknown> {
   return JSON.parse(fsSync.readFileSync(configPath, "utf-8"));
 }
 
-function mockPluginInfo(overrides: Record<string, unknown> = {}) {
+function testPluginInfo(overrides: Record<string, unknown> = {}) {
   return {
     name: "@elizaos/plugin-test",
     gitRepo: "elizaos-plugins/plugin-test",
@@ -116,7 +118,7 @@ describe("plugin-installer", () => {
       const { getPluginInfo } = await import("./registry-client.js");
       // Use a package name that definitely doesn't exist on npm
       vi.mocked(getPluginInfo).mockResolvedValue(
-        mockPluginInfo({ name: "@elizaos/plugin-nonexistent-test-12345" })
+        testPluginInfo({ name: "@elizaos/plugin-nonexistent-test-12345" })
       );
 
       const phases: string[] = [];
@@ -263,9 +265,9 @@ describe("plugin-installer", () => {
   describe("installAndRestart", () => {
     it("does NOT call requestRestart when install fails", async () => {
       const { getPluginInfo } = await import("./registry-client.js");
-      vi.mocked(getPluginInfo).mockResolvedValue(mockPluginInfo());
+      vi.mocked(getPluginInfo).mockResolvedValue(testPluginInfo());
 
-      const { requestRestart } = await import("../restart.js");
+      const { requestRestart } = await import("../runtime/restart.js");
       const { installAndRestart } = await loadInstaller();
 
       // In test env npm/git installs fail (packages don't exist)
@@ -283,7 +285,7 @@ describe("plugin-installer", () => {
       // should be sanitised with no special characters
       const { getPluginInfo } = await import("./registry-client.js");
       vi.mocked(getPluginInfo).mockResolvedValue(
-        mockPluginInfo({ name: "@elizaos/plugin-foo-bar" })
+        testPluginInfo({ name: "@elizaos/plugin-foo-bar" })
       );
 
       const phases: Array<{ pluginName: string; message: string }> = [];
