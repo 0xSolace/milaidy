@@ -187,7 +187,11 @@ export class ElectronCapacitorApp {
     const isAllowedUrl = (raw: string): boolean => {
       try {
         const url = new URL(raw);
-        return url.protocol === `${this.customScheme}:`;
+        if (url.protocol === `${this.customScheme}:`) return true;
+        if (electronIsDev && (url.protocol === "http:" || url.protocol === "https:")) {
+          return url.hostname === "localhost" || url.hostname === "127.0.0.1";
+        }
+        return false;
       } catch {
         return false;
       }
@@ -195,7 +199,10 @@ export class ElectronCapacitorApp {
 
     const openExternal = (raw: string): void => {
       try {
-        void shell.openExternal(raw);
+        const url = new URL(raw);
+        if (url.protocol === "http:" || url.protocol === "https:") {
+          void shell.openExternal(raw);
+        }
       } catch {
         // ignore
       }
