@@ -1985,7 +1985,6 @@ async function handleRequest(
       const loadedNames = state.runtime.plugins.map((p) => p.name);
       for (const plugin of allPlugins) {
         const suffix = `plugin-${plugin.id}`;
-<<<<<<< HEAD
         const packageName = `@elizaos/plugin-${plugin.id}`;
         const isLoaded = loadedNames.some(
           (name) => {
@@ -1996,12 +1995,6 @@ async function handleRequest(
               || name.endsWith(`/${suffix}`)
               || name.includes(plugin.id);
           },
-=======
-        plugin.enabled = loadedNames.some(
-          (name) =>
-            name === plugin.id ||
-            name === suffix ||
-            name.endsWith(`/${suffix}`),
         );
         plugin.enabled = isLoaded;
         plugin.isActive = isLoaded; // Mark as active if currently loaded in runtime
