@@ -32,7 +32,7 @@ test.describe("Skills page", () => {
     await page.goto("/");
     await page.locator("a").filter({ hasText: "Skills" }).click();
     // Wait for both loaded skills and marketplace installed skills to render
-    await expect(page.locator(".plugin-status.enabled")).toHaveCount(3); // 2 loaded enabled + 1 installed marketplace skill
+    await expect(page.locator(".plugin-status.enabled")).toHaveCount(2); // 2 loaded enabled (Web Search + Code Review)
   });
 
   test("shows empty state when no skills", async ({ page }) => {
