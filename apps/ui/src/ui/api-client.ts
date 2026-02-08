@@ -127,7 +127,7 @@ export interface ExtensionStatus {
 
 export interface WalletAddresses { evmAddress: string | null; solanaAddress: string | null }
 export interface EvmTokenBalance { symbol: string; name: string; contractAddress: string; balance: string; decimals: number; valueUsd: string; logoUrl: string }
-export interface EvmChainBalance { chain: string; chainId: number; nativeBalance: string; nativeSymbol: string; nativeValueUsd: string; tokens: EvmTokenBalance[] }
+export interface EvmChainBalance { chain: string; chainId: number; nativeBalance: string; nativeSymbol: string; nativeValueUsd: string; tokens: EvmTokenBalance[]; error: string | null }
 export interface SolanaTokenBalance { symbol: string; name: string; mint: string; balance: string; decimals: number; valueUsd: string; logoUrl: string }
 export interface WalletBalancesResponse {
   evm: { address: string; chains: EvmChainBalance[] } | null;

@@ -311,42 +311,211 @@ describe("Wallet API E2E", () => {
     );
   });
 
-  // ── Onboarding key generation ──────────────────────────────────────────
+  // ── POST /api/wallet/import ──────────────────────────────────────────
 
-  describe("Wallet key generation during onboarding", () => {
-    it("generates keys when not present", async () => {
-      // Remove keys temporarily
+  describe("POST /api/wallet/import", () => {
+    it("imports a valid EVM key", async () => {
+      const { status, data } = await req(port, "POST", "/api/wallet/import", {
+        chain: "evm",
+        privateKey: "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+      });
+      expect(status).toBe(200);
+      expect(data.ok).toBe(true);
+      expect(data.address).toBeDefined();
+      expect((data.address as string).toLowerCase()).toBe(
+        "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+      );
+    });
+
+    it("imports a valid Solana key", async () => {
+      const { status, data } = await req(port, "POST", "/api/wallet/import", {
+        chain: "solana",
+        privateKey: process.env.SOLANA_PRIVATE_KEY,
+      });
+      expect(status).toBe(200);
+      expect(data.ok).toBe(true);
+      expect(data.address).toBeDefined();
+    });
+
+    it("rejects missing privateKey", async () => {
+      const { status } = await req(port, "POST", "/api/wallet/import", {
+        chain: "evm",
+      });
+      expect(status).toBe(400);
+    });
+
+    it("rejects invalid chain value", async () => {
+      const { status } = await req(port, "POST", "/api/wallet/import", {
+        chain: "bitcoin",
+        privateKey: "0xdead",
+      });
+      expect(status).toBe(400);
+    });
+
+    it("rejects an invalid EVM key format", async () => {
+      const { status } = await req(port, "POST", "/api/wallet/import", {
+        chain: "evm",
+        privateKey: "not-hex-at-all",
+      });
+      expect(status).toBe(422);
+    });
+
+    it("auto-detects chain when not specified (EVM)", async () => {
+      const { status, data } = await req(port, "POST", "/api/wallet/import", {
+        privateKey: "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+      });
+      expect(status).toBe(200);
+      expect(data.chain).toBe("evm");
+    });
+  });
+
+  // ── POST /api/wallet/generate ────────────────────────────────────────
+
+  describe("POST /api/wallet/generate", () => {
+    it("generates both wallets by default", async () => {
+      const { status, data } = await req(port, "POST", "/api/wallet/generate", {});
+      expect(status).toBe(200);
+      expect(data.ok).toBe(true);
+      const wallets = data.wallets as Array<{ chain: string; address: string }>;
+      expect(wallets.length).toBe(2);
+      expect(wallets.find((w) => w.chain === "evm")).toBeDefined();
+      expect(wallets.find((w) => w.chain === "solana")).toBeDefined();
+    });
+
+    it("generates only EVM when chain=evm", async () => {
+      const { status, data } = await req(port, "POST", "/api/wallet/generate", {
+        chain: "evm",
+      });
+      expect(status).toBe(200);
+      const wallets = data.wallets as Array<{ chain: string; address: string }>;
+      expect(wallets.length).toBe(1);
+      expect(wallets[0].chain).toBe("evm");
+      expect(wallets[0].address.startsWith("0x")).toBe(true);
+    });
+
+    it("generates only Solana when chain=solana", async () => {
+      const { status, data } = await req(port, "POST", "/api/wallet/generate", {
+        chain: "solana",
+      });
+      expect(status).toBe(200);
+      const wallets = data.wallets as Array<{ chain: string; address: string }>;
+      expect(wallets.length).toBe(1);
+      expect(wallets[0].chain).toBe("solana");
+    });
+
+    it("rejects unsupported chain", async () => {
+      const { status } = await req(port, "POST", "/api/wallet/generate", {
+        chain: "bitcoin",
+      });
+      expect(status).toBe(400);
+    });
+
+    it("new keys are accessible via /api/wallet/addresses", async () => {
+      await req(port, "POST", "/api/wallet/generate", { chain: "both" });
+      const { data } = await req(port, "GET", "/api/wallet/addresses");
+      expect(data.evmAddress).toBeDefined();
+      expect(data.solanaAddress).toBeDefined();
+    });
+  });
+
+  // ── Edge cases on existing routes ────────────────────────────────────
+
+  describe("Edge cases", () => {
+    it("GET /api/wallet/addresses with no keys returns nulls", async () => {
       const savedEvm = process.env.EVM_PRIVATE_KEY;
       const savedSol = process.env.SOLANA_PRIVATE_KEY;
       delete process.env.EVM_PRIVATE_KEY;
       delete process.env.SOLANA_PRIVATE_KEY;
 
-      // Start a fresh server
+      try {
+        const { status, data } = await req(port, "GET", "/api/wallet/addresses");
+        expect(status).toBe(200);
+        expect(data.evmAddress).toBeNull();
+        expect(data.solanaAddress).toBeNull();
+      } finally {
+        if (savedEvm) process.env.EVM_PRIVATE_KEY = savedEvm;
+        if (savedSol) process.env.SOLANA_PRIVATE_KEY = savedSol;
+      }
+    });
+
+    it("POST /api/wallet/export with no keys returns nulls", async () => {
+      const savedEvm = process.env.EVM_PRIVATE_KEY;
+      const savedSol = process.env.SOLANA_PRIVATE_KEY;
+      delete process.env.EVM_PRIVATE_KEY;
+      delete process.env.SOLANA_PRIVATE_KEY;
+
+      try {
+        const { status, data } = await req(port, "POST", "/api/wallet/export", {
+          confirm: true,
+        });
+        expect(status).toBe(200);
+        expect(data.evm).toBeNull();
+        expect(data.solana).toBeNull();
+      } finally {
+        if (savedEvm) process.env.EVM_PRIVATE_KEY = savedEvm;
+        if (savedSol) process.env.SOLANA_PRIVATE_KEY = savedSol;
+      }
+    });
+
+    it("PUT /api/wallet/config ignores blank string values", async () => {
+      delete process.env.ALCHEMY_API_KEY;
+      await req(port, "PUT", "/api/wallet/config", {
+        ALCHEMY_API_KEY: "   ",
+      });
+      // Blank strings should NOT be stored
+      expect(process.env.ALCHEMY_API_KEY).toBeUndefined();
+    });
+
+    it("GET /api/wallet/balances without API keys returns null for both", async () => {
+      delete process.env.ALCHEMY_API_KEY;
+      delete process.env.HELIUS_API_KEY;
+      const { status, data } = await req(port, "GET", "/api/wallet/balances");
+      expect(status).toBe(200);
+      expect(data.evm).toBeNull();
+      expect(data.solana).toBeNull();
+    });
+
+    it("concurrent requests to /api/wallet/addresses don't race", async () => {
+      const results = await Promise.all([
+        req(port, "GET", "/api/wallet/addresses"),
+        req(port, "GET", "/api/wallet/addresses"),
+        req(port, "GET", "/api/wallet/addresses"),
+      ]);
+      for (const { status, data } of results) {
+        expect(status).toBe(200);
+        // All should return the same addresses
+        expect(data.evmAddress).toBe(results[0].data.evmAddress);
+        expect(data.solanaAddress).toBe(results[0].data.solanaAddress);
+      }
+    });
+  });
+
+  // ── Onboarding key generation ──────────────────────────────────────────
+
+  describe("Wallet key generation during onboarding", () => {
+    it("generates keys when not present", async () => {
+      const savedEvm = process.env.EVM_PRIVATE_KEY;
+      const savedSol = process.env.SOLANA_PRIVATE_KEY;
+      delete process.env.EVM_PRIVATE_KEY;
+      delete process.env.SOLANA_PRIVATE_KEY;
+
       const freshServer = await startApiServer({ port: 0 });
 
       try {
-        // Trigger onboarding which should generate keys
         await req(freshServer.port, "POST", "/api/onboarding", {
           name: "TestAgent",
           bio: ["A test agent"],
           systemPrompt: "You are a test agent.",
         });
 
-        // After onboarding, keys should be set
         expect(process.env.EVM_PRIVATE_KEY).toBeDefined();
         expect(process.env.SOLANA_PRIVATE_KEY).toBeDefined();
 
-        // Verify addresses are derivable
-        const { data } = await req(
-          freshServer.port,
-          "GET",
-          "/api/wallet/addresses",
-        );
+        const { data } = await req(freshServer.port, "GET", "/api/wallet/addresses");
         expect(data.evmAddress).toBeDefined();
         expect(data.solanaAddress).toBeDefined();
       } finally {
         await freshServer.close();
-        // Restore keys
         if (savedEvm) process.env.EVM_PRIVATE_KEY = savedEvm;
         else delete process.env.EVM_PRIVATE_KEY;
         if (savedSol) process.env.SOLANA_PRIVATE_KEY = savedSol;
@@ -356,9 +525,7 @@ describe("Wallet API E2E", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Wallet module unit tests (address derivation)
-// ---------------------------------------------------------------------------
+// Wallet module unit tests (address derivation — kept for fast feedback)
 
 describe("Wallet module — address derivation", () => {
   it("generates valid wallet keys", async () => {

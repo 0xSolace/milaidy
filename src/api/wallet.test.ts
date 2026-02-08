@@ -22,7 +22,6 @@ import {
   validateEvmPrivateKey,
   validateSolanaPrivateKey,
   validatePrivateKey,
-  maskSecret,
   DEFAULT_EVM_CHAINS,
   type WalletKeys,
   type WalletChain,
@@ -261,7 +260,7 @@ describe("EVM key validation", () => {
     const badKey = `0x${"g".repeat(64)}`;
     const result = validateEvmPrivateKey(badKey);
     expect(result.valid).toBe(false);
-    expect(result.error).toContain("invalid hex characters");
+    expect(result.error).toContain("hex characters");
   });
 
   it("rejects an empty string", () => {
@@ -518,27 +517,144 @@ describe("Wallet availability for plugins", () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// maskSecret utility
+// Edge cases & boundary conditions
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe("maskSecret", () => {
-  it("masks the middle of a long string", () => {
-    const masked = maskSecret("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80");
-    expect(masked).toBe("0xac...ff80");
+describe("getWalletAddresses — edge cases", () => {
+  let envBackup: { restore: () => void };
+
+  beforeEach(() => {
+    envBackup = saveEnvKeys("EVM_PRIVATE_KEY", "SOLANA_PRIVATE_KEY");
   });
 
-  it("masks short strings entirely", () => {
-    expect(maskSecret("short")).toBe("****");
-    expect(maskSecret("12345678")).toBe("****");
+  afterEach(() => {
+    envBackup.restore();
   });
 
-  it("shows first 4 and last 4 for strings > 8 chars", () => {
-    const masked = maskSecret("123456789");
-    expect(masked).toBe("1234...6789");
+  it("returns null for both when env is empty", () => {
+    delete process.env.EVM_PRIVATE_KEY;
+    delete process.env.SOLANA_PRIVATE_KEY;
+    const addrs = getWalletAddresses();
+    expect(addrs.evmAddress).toBeNull();
+    expect(addrs.solanaAddress).toBeNull();
   });
 
-  it("handles empty string", () => {
-    expect(maskSecret("")).toBe("****");
+  it("returns null for EVM when key is garbage (doesn't crash)", () => {
+    process.env.EVM_PRIVATE_KEY = "not-a-hex-key-at-all";
+    const addrs = getWalletAddresses();
+    expect(addrs.evmAddress).toBeNull();
+  });
+
+  it("returns null for Solana when key is garbage (doesn't crash)", () => {
+    process.env.SOLANA_PRIVATE_KEY = "0000invalid!!!";
+    const addrs = getWalletAddresses();
+    expect(addrs.solanaAddress).toBeNull();
+  });
+
+  it("returns EVM address even when Solana key is missing", () => {
+    process.env.EVM_PRIVATE_KEY = HARDHAT_PRIVATE_KEY;
+    delete process.env.SOLANA_PRIVATE_KEY;
+    const addrs = getWalletAddresses();
+    expect(addrs.evmAddress).toBeTruthy();
+    expect(addrs.solanaAddress).toBeNull();
+  });
+
+  it("returns Solana address even when EVM key is missing", () => {
+    delete process.env.EVM_PRIVATE_KEY;
+    const keys = generateWalletKeys();
+    process.env.SOLANA_PRIVATE_KEY = keys.solanaPrivateKey;
+    const addrs = getWalletAddresses();
+    expect(addrs.evmAddress).toBeNull();
+    expect(addrs.solanaAddress).toBe(keys.solanaAddress);
+  });
+});
+
+describe("deriveEvmAddress — boundary inputs", () => {
+  it("throws on empty string", () => {
+    expect(() => deriveEvmAddress("")).toThrow();
+  });
+
+  it("does not crash on short hex (Node ECDH zero-pads)", () => {
+    // Node's ECDH accepts short buffers by zero-padding, so this won't throw.
+    // The address will be wrong, but derivation should not crash.
+    expect(() => deriveEvmAddress("0xdead")).not.toThrow();
+  });
+
+  it("works with uppercase hex", () => {
+    const upper = HARDHAT_PRIVATE_KEY.toUpperCase().replace("0X", "0x");
+    const addr = deriveEvmAddress(upper);
+    expect(addr.toLowerCase()).toBe(HARDHAT_ADDRESS.toLowerCase());
+  });
+
+  it("produces same address for Hardhat account #1", () => {
+    // Hardhat #1: 0x70997970C51812dc3A010C7d01b50e0d17dc79C8
+    const addr = deriveEvmAddress("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d");
+    expect(addr.toLowerCase()).toBe("0x70997970c51812dc3a010c7d01b50e0d17dc79c8");
+  });
+});
+
+describe("validateEvmPrivateKey — boundary inputs", () => {
+  it("rejects all-zero key (valid hex but may produce invalid EC point)", () => {
+    const allZero = `0x${"0".repeat(64)}`;
+    // All zeros is not a valid secp256k1 private key
+    const result = validateEvmPrivateKey(allZero);
+    expect(result.valid).toBe(false);
+  });
+
+  it("accepts max valid key (order - 1 of secp256k1 curve)", () => {
+    // secp256k1 order n = FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364140
+    // n-1 is valid
+    const maxKey = "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD036413F";
+    const result = validateEvmPrivateKey(maxKey);
+    expect(result.valid).toBe(true);
+    expect(result.address).toBeTruthy();
+  });
+});
+
+describe("Solana key edge cases", () => {
+  it("deriveSolanaAddress round-trips for 10 generated keys", () => {
+    for (let i = 0; i < 10; i++) {
+      const keys = generateWalletKeys();
+      expect(deriveSolanaAddress(keys.solanaPrivateKey)).toBe(keys.solanaAddress);
+    }
+  });
+
+  it("generateWalletForChain('solana') produces a derivable key", () => {
+    const result = generateWalletForChain("solana");
+    expect(deriveSolanaAddress(result.privateKey)).toBe(result.address);
+  });
+});
+
+describe("importWallet — edge cases", () => {
+  let envBackup: { restore: () => void };
+
+  beforeEach(() => {
+    envBackup = saveEnvKeys("EVM_PRIVATE_KEY", "SOLANA_PRIVATE_KEY");
+    delete process.env.EVM_PRIVATE_KEY;
+    delete process.env.SOLANA_PRIVATE_KEY;
+  });
+
+  afterEach(() => {
+    envBackup.restore();
+  });
+
+  it("importing twice overwrites the first key", () => {
+    const keys1 = generateWalletKeys();
+    const keys2 = generateWalletKeys();
+    importWallet("evm", keys1.evmPrivateKey);
+    expect(process.env.EVM_PRIVATE_KEY).toBe(keys1.evmPrivateKey);
+    importWallet("evm", keys2.evmPrivateKey);
+    expect(process.env.EVM_PRIVATE_KEY).toBe(keys2.evmPrivateKey);
+  });
+
+  it("rejects EVM key with only whitespace", () => {
+    const result = importWallet("evm", "   ");
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects Solana key with only whitespace", () => {
+    const result = importWallet("solana", "   ");
+    expect(result.success).toBe(false);
   });
 });
 

@@ -47,6 +47,8 @@ export interface EvmChainBalance {
   nativeSymbol: string;
   nativeValueUsd: string;
   tokens: EvmTokenBalance[];
+  /** Non-null when the chain fetch failed (e.g. "not enabled in Alchemy"). */
+  error: string | null;
 }
 
 export interface SolanaTokenBalance {
@@ -360,8 +362,19 @@ export function getWalletAddresses(): WalletAddresses {
 interface AlchemyTokenBalance { contractAddress: string; tokenBalance: string }
 interface AlchemyTokenMeta { name: string; symbol: string; decimals: number; logo: string | null }
 
+/** Parse JSON from a fetch response. If the body isn't JSON, throw with the raw text. */
+async function jsonOrThrow<T>(res: Response): Promise<T> {
+  const text = await res.text();
+  if (!res.ok) throw new Error(text.slice(0, 200) || `HTTP ${res.status}`);
+  try { return JSON.parse(text) as T; } catch { throw new Error(text.slice(0, 200) || "Invalid JSON"); }
+}
+
 export async function fetchEvmBalances(address: string, alchemyKey: string): Promise<EvmChainBalance[]> {
   return Promise.all(DEFAULT_EVM_CHAINS.map(async (chain): Promise<EvmChainBalance> => {
+    const fail = (msg: string): EvmChainBalance => ({
+      chain: chain.name, chainId: chain.chainId, nativeBalance: "0",
+      nativeSymbol: chain.nativeSymbol, nativeValueUsd: "0", tokens: [], error: msg,
+    });
     try {
       const url = `https://${chain.subdomain}.g.alchemy.com/v2/${alchemyKey}`;
       const rpc = (body: string): RequestInit => ({
@@ -369,17 +382,20 @@ export async function fetchEvmBalances(address: string, alchemyKey: string): Pro
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS), body,
       });
 
-      const nativeRes = await fetch(url, rpc(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_getBalance", params: [address, "latest"] })));
-      const nativeData = await nativeRes.json() as { result?: string };
+      const nativeData = await jsonOrThrow<{ result?: string }>(
+        await fetch(url, rpc(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_getBalance", params: [address, "latest"] }))),
+      );
       const nativeBalance = formatWei(nativeData.result ? BigInt(nativeData.result) : 0n, 18);
 
-      const tokenRes = await fetch(url, rpc(JSON.stringify({ jsonrpc: "2.0", id: 2, method: "alchemy_getTokenBalances", params: [address, "DEFAULT_TOKENS"] })));
-      const tokenData = await tokenRes.json() as { result?: { tokenBalances?: AlchemyTokenBalance[] } };
+      const tokenData = await jsonOrThrow<{ result?: { tokenBalances?: AlchemyTokenBalance[] } }>(
+        await fetch(url, rpc(JSON.stringify({ jsonrpc: "2.0", id: 2, method: "alchemy_getTokenBalances", params: [address, "DEFAULT_TOKENS"] }))),
+      );
       const nonZero = (tokenData.result?.tokenBalances ?? []).filter(t => t.tokenBalance && t.tokenBalance !== "0x0" && t.tokenBalance !== "0x");
 
       const metaResults = await Promise.allSettled(nonZero.slice(0, 50).map(async (tok): Promise<EvmTokenBalance> => {
-        const metaRes = await fetch(url, rpc(JSON.stringify({ jsonrpc: "2.0", id: 3, method: "alchemy_getTokenMetadata", params: [tok.contractAddress] })));
-        const meta = (await metaRes.json() as { result?: AlchemyTokenMeta }).result;
+        const meta = (await jsonOrThrow<{ result?: AlchemyTokenMeta }>(
+          await fetch(url, rpc(JSON.stringify({ jsonrpc: "2.0", id: 3, method: "alchemy_getTokenMetadata", params: [tok.contractAddress] }))),
+        )).result;
         const decimals = meta?.decimals ?? 18;
         return {
           symbol: meta?.symbol ?? "???", name: meta?.name ?? "Unknown Token",
@@ -389,10 +405,11 @@ export async function fetchEvmBalances(address: string, alchemyKey: string): Pro
       }));
       const tokens = metaResults.filter((r): r is PromiseFulfilledResult<EvmTokenBalance> => r.status === "fulfilled").map(r => r.value);
 
-      return { chain: chain.name, chainId: chain.chainId, nativeBalance, nativeSymbol: chain.nativeSymbol, nativeValueUsd: "0", tokens };
+      return { chain: chain.name, chainId: chain.chainId, nativeBalance, nativeSymbol: chain.nativeSymbol, nativeValueUsd: "0", tokens, error: null };
     } catch (err) {
-      logger.warn(`EVM balance fetch failed for ${chain.name}: ${err}`);
-      return { chain: chain.name, chainId: chain.chainId, nativeBalance: "0", nativeSymbol: chain.nativeSymbol, nativeValueUsd: "0", tokens: [] };
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.warn(`EVM balance fetch failed for ${chain.name}: ${msg}`);
+      return fail(msg);
     }
   }));
 }
@@ -404,14 +421,14 @@ export async function fetchEvmNfts(address: string, alchemyKey: string): Promise
         `https://${chain.subdomain}.g.alchemy.com/nft/v3/${alchemyKey}/getNFTsForOwner?owner=${address}&withMetadata=true&pageSize=50`,
         { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) },
       );
-      const data = await res.json() as {
+      const data = await jsonOrThrow<{
         ownedNfts?: Array<{
           contract?: { address?: string; name?: string; openSeaMetadata?: { collectionName?: string } };
           tokenId?: string; name?: string; description?: string;
           image?: { cachedUrl?: string; thumbnailUrl?: string; originalUrl?: string };
           tokenType?: string;
         }>;
-      };
+      }>(res);
       return {
         chain: chain.name,
         nfts: (data.ownedNfts ?? []).map(nft => ({
@@ -448,19 +465,23 @@ export async function fetchSolanaBalances(address: string, heliusKey: string): P
 
   let solBalance = "0";
   try {
-    const res = await fetch(url, rpc(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getBalance", params: [address] })));
-    const data = await res.json() as { result?: { value?: number } };
+    const data = await jsonOrThrow<{ result?: { value?: number }; error?: { message?: string } }>(
+      await fetch(url, rpc(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getBalance", params: [address] }))),
+    );
+    if (data.error?.message) throw new Error(data.error.message);
     solBalance = ((data.result?.value ?? 0) / 1e9).toFixed(9);
-  } catch (err) { logger.warn(`SOL balance fetch failed: ${err}`); }
+  } catch (err) { logger.warn(`SOL balance fetch failed: ${err instanceof Error ? err.message : err}`); }
 
   const tokens: SolanaTokenBalance[] = [];
   try {
-    const res = await fetch(url, rpc(JSON.stringify({
-      jsonrpc: "2.0", id: 2, method: "getAssetsByOwner",
-      params: { ownerAddress: address, displayOptions: { showFungible: true, showNativeBalance: true }, page: 1, limit: 100 },
-    })));
-    const items = ((await res.json()) as { result?: { items?: HeliusAsset[] } }).result?.items ?? [];
-    for (const item of items) {
+    const data = await jsonOrThrow<{ result?: { items?: HeliusAsset[] }; error?: { message?: string } }>(
+      await fetch(url, rpc(JSON.stringify({
+        jsonrpc: "2.0", id: 2, method: "getAssetsByOwner",
+        params: { ownerAddress: address, displayOptions: { showFungible: true, showNativeBalance: true }, page: 1, limit: 100 },
+      }))),
+    );
+    if (data.error?.message) throw new Error(data.error.message);
+    for (const item of data.result?.items ?? []) {
       if (item.interface !== "FungibleToken" && item.interface !== "FungibleAsset") continue;
       const dec = item.token_info?.decimals ?? 0;
       const raw = item.token_info?.balance ?? 0;
@@ -472,7 +493,7 @@ export async function fetchSolanaBalances(address: string, heliusKey: string): P
         logoUrl: item.content?.links?.image ?? "",
       });
     }
-  } catch (err) { logger.warn(`Solana token fetch failed: ${err}`); }
+  } catch (err) { logger.warn(`Solana token fetch failed: ${err instanceof Error ? err.message : err}`); }
 
   return { solBalance, solValueUsd: "0", tokens };
 }
@@ -480,15 +501,18 @@ export async function fetchSolanaBalances(address: string, heliusKey: string): P
 export async function fetchSolanaNfts(address: string, heliusKey: string): Promise<SolanaNft[]> {
   const url = `https://mainnet.helius-rpc.com/?api-key=${heliusKey}`;
   try {
-    const res = await fetch(url, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      body: JSON.stringify({
-        jsonrpc: "2.0", id: 1, method: "getAssetsByOwner",
-        params: { ownerAddress: address, displayOptions: { showFungible: false }, page: 1, limit: 100 },
+    const data = await jsonOrThrow<{ result?: { items?: HeliusAsset[] }; error?: { message?: string } }>(
+      await fetch(url, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+        body: JSON.stringify({
+          jsonrpc: "2.0", id: 1, method: "getAssetsByOwner",
+          params: { ownerAddress: address, displayOptions: { showFungible: false }, page: 1, limit: 100 },
+        }),
       }),
-    });
-    const items = ((await res.json()) as { result?: { items?: HeliusAsset[] } }).result?.items ?? [];
+    );
+    if (data.error?.message) throw new Error(data.error.message);
+    const items = data.result?.items ?? [];
     return items
       .filter(i => i.interface === "V1_NFT" || i.interface === "ProgrammableNFT" || i.interface === "V2_NFT")
       .map(i => ({

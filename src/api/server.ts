@@ -40,7 +40,6 @@ import {
   fetchEvmNfts,
   fetchSolanaBalances,
   fetchSolanaNfts,
-  maskSecret,
   type WalletBalancesResponse,
   type WalletNftsResponse,
   type WalletConfigStatus,

@@ -1848,7 +1848,7 @@ export class MilaidyApp extends LitElement {
           <p>Alchemy provides EVM chain data (Ethereum, Base, Arbitrum, Optimism, Polygon).</p>
           <ol>
             <li>Go to <a href="https://dashboard.alchemy.com/signup" target="_blank" rel="noopener">dashboard.alchemy.com</a> and create a free account</li>
-            <li>In your dashboard, click <strong>"Create new app"</strong></li>
+            <li>Create an app, then go to its <strong>Networks</strong> tab and enable: Ethereum, Base, Arbitrum, Optimism, Polygon</li>
             <li>Copy the <strong>API Key</strong> from your app settings</li>
             <li>Paste it below</li>
           </ol>
@@ -1971,7 +1971,7 @@ export class MilaidyApp extends LitElement {
 
     if (b.evm) {
       for (const chain of b.evm.chains) {
-        // Native token
+        if (chain.error) continue; // Skip errored chains — shown separately
         rows.push({
           chain: chain.chain,
           symbol: chain.nativeSymbol,
@@ -1980,7 +1980,6 @@ export class MilaidyApp extends LitElement {
           valueUsd: Number.parseFloat(chain.nativeValueUsd) || 0,
           balanceRaw: Number.parseFloat(chain.nativeBalance) || 0,
         });
-        // ERC-20s
         for (const t of chain.tokens) {
           rows.push({
             chain: chain.chain,
@@ -2050,6 +2049,9 @@ export class MilaidyApp extends LitElement {
       `;
     }
 
+    // Collect per-chain errors so the user knows why some chains are missing
+    const chainErrors = (this.walletBalances?.evm?.chains ?? []).filter(c => c.error);
+
     return html`
       <div class="token-table-wrap">
         <table class="token-table">
@@ -2085,6 +2087,16 @@ export class MilaidyApp extends LitElement {
           </tbody>
         </table>
       </div>
+      ${chainErrors.length > 0 ? html`
+        <div style="margin-top:8px;font-size:11px;color:var(--muted);">
+          ${chainErrors.map(c => html`
+            <div style="padding:2px 0;">
+              <span class="chain-icon ${this.chainIcon(c.chain).cls}" style="width:12px;height:12px;line-height:12px;font-size:7px;vertical-align:middle;">${this.chainIcon(c.chain).code}</span>
+              ${c.chain}: ${c.error?.includes("not enabled") ? html`Not enabled in Alchemy &mdash; <a href="https://dashboard.alchemy.com/" target="_blank" rel="noopener" style="color:var(--accent);">enable it</a>` : c.error}
+            </div>
+          `)}
+        </div>
+      ` : ""}
     `;
   }
 
