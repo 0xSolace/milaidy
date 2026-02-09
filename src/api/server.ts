@@ -87,6 +87,15 @@ function getAutonomySvc(
   return runtime.getService("AUTONOMY") as AutonomyServiceLike | null;
 }
 
+/** Metadata for a web-chat conversation. */
+interface ConversationMeta {
+  id: string;
+  title: string;
+  roomId: UUID;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface ServerState {
   runtime: AgentRuntime | null;
   config: MilaidyConfig;
@@ -105,6 +114,8 @@ interface ServerState {
   logBuffer: LogEntry[];
   chatRoomId: UUID | null;
   chatUserId: UUID | null;
+  /** Conversation metadata by conversation id. */
+  conversations: Map<string, ConversationMeta>;
   /** Cloud manager for ELIZA Cloud integration (null when cloud is disabled). */
   cloudManager: CloudManager | null;
   /** App manager for launching and managing ElizaOS apps. */
@@ -155,6 +166,8 @@ interface SkillEntry {
   name: string;
   description: string;
   enabled: boolean;
+  /** Set automatically when a scan report exists for this skill. */
+  scanStatus?: "clean" | "warning" | "critical" | "blocked" | null;
 }
 
 interface LogEntry {
@@ -234,8 +247,8 @@ function buildParamDefs(
       default: def.default as string | undefined,
       currentValue: isSet
         ? sensitive
-          ? maskValue(envValue!)
-          : envValue!
+          ? maskValue(envValue ?? "")
+          : (envValue ?? "")
         : null,
       isSet,
     };
@@ -592,19 +605,39 @@ async function discoverSkills(
               name: string;
               description: string;
               source: string;
+              path: string;
             }>;
+            getSkillScanStatus?: (slug: string) => "clean" | "warning" | "critical" | "blocked" | null;
           }
         | undefined;
       if (svc && typeof svc.getLoadedSkills === "function") {
         const loadedSkills = svc.getLoadedSkills();
 
         if (loadedSkills.length > 0) {
-          const skills: SkillEntry[] = loadedSkills.map((s) => ({
-            id: s.slug,
-            name: s.name || s.slug,
-            description: (s.description || "").slice(0, 200),
-            enabled: resolveSkillEnabled(s.slug, config, dbPrefs),
-          }));
+          const skills: SkillEntry[] = loadedSkills.map((s) => {
+            // Get scan status from in-memory map (fast) or from disk report
+            let scanStatus: SkillEntry["scanStatus"] = null;
+            if (svc.getSkillScanStatus) {
+              scanStatus = svc.getSkillScanStatus(s.slug);
+            }
+            if (!scanStatus) {
+              // Check for .scan-results.json on disk
+              const reportPath = path.join(s.path, ".scan-results.json");
+              if (fs.existsSync(reportPath)) {
+                const raw = fs.readFileSync(reportPath, "utf-8");
+                const parsed = JSON.parse(raw);
+                if (parsed?.status) scanStatus = parsed.status;
+              }
+            }
+
+            return {
+              id: s.slug,
+              name: s.name || s.slug,
+              description: (s.description || "").slice(0, 200),
+              enabled: resolveSkillEnabled(s.slug, config, dbPrefs),
+              scanStatus,
+            };
+          });
 
           return skills.sort((a, b) => a.name.localeCompare(b.name));
         }
@@ -2026,8 +2059,8 @@ async function handleRequest(
         param.isSet = Boolean(envValue?.trim());
         param.currentValue = param.isSet
           ? param.sensitive
-            ? maskValue(envValue!)
-            : envValue!
+            ? maskValue(envValue ?? "")
+            : (envValue ?? "")
           : null;
       }
       const paramInfos: PluginParamInfo[] = plugin.parameters.map((p) => ({
@@ -3051,7 +3084,7 @@ async function handleRequest(
     // Persist to config.env so it survives restarts
     if (!state.config.env) state.config.env = {};
     const envKey = chain === "evm" ? "EVM_PRIVATE_KEY" : "SOLANA_PRIVATE_KEY";
-    (state.config.env as Record<string, string>)[envKey] = process.env[envKey]!;
+    (state.config.env as Record<string, string>)[envKey] = process.env[envKey] ?? "";
 
     try {
       saveMilaidyConfig(state.config);
@@ -3202,6 +3235,56 @@ async function handleRequest(
     return;
   }
 
+  // ── GET /api/update/status ───────────────────────────────────────────────
+  if (method === "GET" && pathname === "/api/update/status") {
+    const { VERSION } = await import("../runtime/version.js");
+    const { resolveChannel, checkForUpdate, fetchAllChannelVersions, CHANNEL_DIST_TAGS } = await import("../services/update-checker.js");
+    const { detectInstallMethod } = await import("../services/self-updater.js");
+    const channel = resolveChannel(state.config.update);
+
+    const [check, versions] = await Promise.all([
+      checkForUpdate({ force: req.url?.includes("force=true") }),
+      fetchAllChannelVersions(),
+    ]);
+
+    json(res, {
+      currentVersion: VERSION,
+      channel,
+      installMethod: detectInstallMethod(),
+      updateAvailable: check.updateAvailable,
+      latestVersion: check.latestVersion,
+      channels: {
+        stable: versions.stable,
+        beta: versions.beta,
+        nightly: versions.nightly,
+      },
+      distTags: CHANNEL_DIST_TAGS,
+      lastCheckAt: state.config.update?.lastCheckAt ?? null,
+      error: check.error,
+    });
+    return;
+  }
+
+  // ── PUT /api/update/channel ────────────────────────────────────────────
+  if (method === "PUT" && pathname === "/api/update/channel") {
+    const body = await readJsonBody(req, res) as { channel?: string } | null;
+    if (!body) return;
+    const ch = body.channel;
+    if (ch !== "stable" && ch !== "beta" && ch !== "nightly") {
+      error(res, `Invalid channel "${ch}". Must be stable, beta, or nightly.`);
+      return;
+    }
+    state.config.update = {
+      ...state.config.update,
+      channel: ch,
+      lastCheckAt: undefined,
+      lastCheckVersion: undefined,
+    };
+    saveMilaidyConfig(state.config);
+    json(res, { channel: ch });
+    return;
+  }
+
   // ── GET /api/config ──────────────────────────────────────────────────────
   if (method === "GET" && pathname === "/api/config") {
     json(res, state.config);
@@ -3238,7 +3321,222 @@ async function handleRequest(
     if (handled) return;
   }
 
-  // ── POST /api/chat ──────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  // Conversation routes (/api/conversations/*)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  // Helper: ensure a persistent chat user exists.
+  const ensureChatUser = async (): Promise<UUID> => {
+    if (!state.chatUserId) {
+      state.chatUserId = crypto.randomUUID() as UUID;
+    }
+    return state.chatUserId;
+  };
+
+  // Helper: ensure the room for a conversation is set up.
+  const ensureConversationRoom = async (
+    conv: ConversationMeta,
+  ): Promise<void> => {
+    if (!state.runtime) return;
+    const runtime = state.runtime;
+    const agentName = runtime.character.name ?? "Milaidy";
+    const userId = await ensureChatUser();
+    const worldId = stringToUuid(`${agentName}-web-chat-world`);
+    const messageServerId = stringToUuid(`${agentName}-web-server`) as UUID;
+    await runtime.ensureConnection({
+      entityId: userId,
+      roomId: conv.roomId,
+      worldId,
+      userName: "User",
+      source: "client_chat",
+      channelId: `web-conv-${conv.id}`,
+      type: ChannelType.DM,
+      messageServerId,
+      metadata: { ownership: { ownerId: userId } },
+    });
+  };
+
+  // ── GET /api/conversations ──────────────────────────────────────────
+  if (method === "GET" && pathname === "/api/conversations") {
+    const convos = Array.from(state.conversations.values()).sort(
+      (a, b) =>
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    );
+    json(res, { conversations: convos });
+    return;
+  }
+
+  // ── POST /api/conversations ─────────────────────────────────────────
+  if (method === "POST" && pathname === "/api/conversations") {
+    const body = await readJsonBody<{ title?: string }>(req, res);
+    if (!body) return;
+    const id = crypto.randomUUID();
+    const now = new Date().toISOString();
+    const roomId = stringToUuid(`web-conv-${id}`);
+    const conv: ConversationMeta = {
+      id,
+      title: body.title?.trim() || "New Chat",
+      roomId,
+      createdAt: now,
+      updatedAt: now,
+    };
+    state.conversations.set(id, conv);
+    if (state.runtime) {
+      await ensureConversationRoom(conv);
+    }
+    json(res, { conversation: conv });
+    return;
+  }
+
+  // ── GET /api/conversations/:id/messages ─────────────────────────────
+  if (
+    method === "GET" &&
+    /^\/api\/conversations\/[^/]+\/messages$/.test(pathname)
+  ) {
+    const convId = decodeURIComponent(pathname.split("/")[3]);
+    const conv = state.conversations.get(convId);
+    if (!conv) {
+      error(res, "Conversation not found", 404);
+      return;
+    }
+    if (!state.runtime) {
+      json(res, { messages: [] });
+      return;
+    }
+    try {
+      const memories = await state.runtime.getMemories({
+        roomId: conv.roomId,
+        tableName: "messages",
+        count: 200,
+      });
+      // Sort by createdAt ascending
+      memories.sort(
+        (a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0),
+      );
+      const agentId = state.runtime.agentId;
+      const messages = memories.map((m) => ({
+        id: m.id ?? "",
+        role: m.entityId === agentId ? "assistant" : "user",
+        text: (m.content as { text?: string })?.text ?? "",
+        timestamp: m.createdAt ?? 0,
+      }));
+      json(res, { messages });
+    } catch (err) {
+      error(
+        res,
+        `Failed to fetch messages: ${err instanceof Error ? err.message : String(err)}`,
+        500,
+      );
+    }
+    return;
+  }
+
+  // ── POST /api/conversations/:id/messages ────────────────────────────
+  if (
+    method === "POST" &&
+    /^\/api\/conversations\/[^/]+\/messages$/.test(pathname)
+  ) {
+    const convId = decodeURIComponent(pathname.split("/")[3]);
+    const conv = state.conversations.get(convId);
+    if (!conv) {
+      error(res, "Conversation not found", 404);
+      return;
+    }
+    const body = await readJsonBody<{ text?: string }>(req, res);
+    if (!body) return;
+    if (!body.text?.trim()) {
+      error(res, "text is required");
+      return;
+    }
+    if (!state.runtime) {
+      error(res, "Agent is not running", 503);
+      return;
+    }
+
+    // Cloud proxy path
+    const proxy = state.cloudManager?.getProxy();
+    if (proxy) {
+      const responseText = await proxy.handleChatMessage(body.text.trim());
+      conv.updatedAt = new Date().toISOString();
+      json(res, { text: responseText, agentName: proxy.agentName });
+      return;
+    }
+
+    try {
+      const runtime = state.runtime;
+      const userId = await ensureChatUser();
+      await ensureConversationRoom(conv);
+
+      const message = createMessageMemory({
+        id: crypto.randomUUID() as UUID,
+        entityId: userId,
+        roomId: conv.roomId,
+        content: {
+          text: body.text.trim(),
+          source: "client_chat",
+          channelType: ChannelType.DM,
+        },
+      });
+
+      let responseText = "";
+      await runtime.messageService?.handleMessage(
+        runtime,
+        message,
+        async (content: Content) => {
+          if (content?.text) {
+            responseText += content.text;
+          }
+          return [];
+        },
+      );
+
+      conv.updatedAt = new Date().toISOString();
+      json(res, {
+        text: responseText || "(no response)",
+        agentName: state.agentName,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "generation failed";
+      error(res, msg, 500);
+    }
+    return;
+  }
+
+  // ── PATCH /api/conversations/:id ────────────────────────────────────
+  if (
+    method === "PATCH" &&
+    /^\/api\/conversations\/[^/]+$/.test(pathname) &&
+    !pathname.endsWith("/messages")
+  ) {
+    const convId = decodeURIComponent(pathname.split("/")[3]);
+    const conv = state.conversations.get(convId);
+    if (!conv) {
+      error(res, "Conversation not found", 404);
+      return;
+    }
+    const body = await readJsonBody<{ title?: string }>(req, res);
+    if (!body) return;
+    if (body.title?.trim()) {
+      conv.title = body.title.trim();
+      conv.updatedAt = new Date().toISOString();
+    }
+    json(res, { conversation: conv });
+    return;
+  }
+
+  // ── DELETE /api/conversations/:id ───────────────────────────────────
+  if (
+    method === "DELETE" &&
+    /^\/api\/conversations\/[^/]+$/.test(pathname) &&
+    !pathname.endsWith("/messages")
+  ) {
+    const convId = decodeURIComponent(pathname.split("/")[3]);
+    state.conversations.delete(convId);
+    json(res, { ok: true });
+    return;
+  }
+
+  // ── POST /api/chat (legacy — routes to default conversation) ───────
   // Routes messages through the full ElizaOS message pipeline so the agent
   // has conversation memory, context, and always responds (DM + client_chat
   // bypass the shouldRespond LLM evaluation).
@@ -3336,7 +3634,7 @@ async function handleRequest(
           if (
             !world.metadata.ownership ||
             typeof world.metadata.ownership !== "object" ||
-            (world.metadata.ownership as Record<string, string>).ownerId !==
+            (world.metadata.ownership as { ownerId: string }).ownerId !==
               state.chatUserId
           ) {
             world.metadata.ownership = {
@@ -3489,32 +3787,7 @@ async function handleRequest(
     return;
   }
 
-  if (method === "GET" && pathname === "/api/apps/running") {
-    json(res, state.appManager.listRunning());
-    return;
-  }
-
-  if (method === "POST" && pathname === "/api/apps/install") {
-    const body = await readJsonBody<{ name?: string }>(req, res);
-    if (!body) return;
-    if (!body.name?.trim()) {
-      error(res, "name is required");
-      return;
-    }
-    const result = await state.appManager.install(body.name.trim());
-    if (result.success) {
-      json(res, {
-        success: true,
-        name: result.pluginName,
-        version: result.version,
-        installPath: result.installPath,
-      });
-    } else {
-      json(res, { success: false, error: result.error }, 400);
-    }
-    return;
-  }
-
+  // Launch an app: install its plugin (if needed), return viewer config
   if (method === "POST" && pathname === "/api/apps/launch") {
     const body = await readJsonBody<{ name?: string }>(req, res);
     if (!body) return;
@@ -3524,18 +3797,6 @@ async function handleRequest(
     }
     const result = await state.appManager.launch(body.name.trim());
     json(res, result);
-    return;
-  }
-
-  if (method === "POST" && pathname === "/api/apps/stop") {
-    const body = await readJsonBody<{ name?: string }>(req, res);
-    if (!body) return;
-    if (!body.name?.trim()) {
-      error(res, "name is required");
-      return;
-    }
-    await state.appManager.stop(body.name.trim());
-    json(res, { success: true });
     return;
   }
 
@@ -4049,6 +4310,7 @@ export async function startApiServer(opts?: {
     logBuffer: [],
     chatRoomId: null,
     chatUserId: null,
+    conversations: new Map(),
     cloudManager: null,
     appManager: new AppManager(),
     shareIngestQueue: [],
@@ -4056,7 +4318,7 @@ export async function startApiServer(opts?: {
 
   // Wire the app manager to the runtime if already running
   if (state.runtime) {
-    state.appManager.setRuntime(state.runtime);
+    // AppManager doesn't need a runtime reference — it just installs plugins
   }
 
   const addLog = (level: string, message: string, source = "system") => {
@@ -4160,7 +4422,7 @@ export async function startApiServer(opts?: {
   /** Hot-swap the runtime reference (used after an in-process restart). */
   const updateRuntime = (rt: AgentRuntime): void => {
     state.runtime = rt;
-    state.appManager.setRuntime(rt);
+    // AppManager doesn't need a runtime reference
     state.agentState = "running";
     state.agentName = rt.character.name ?? "Milaidy";
     state.startedAt = Date.now();

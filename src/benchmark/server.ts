@@ -20,7 +20,7 @@ import {
   AgentRuntime,
   ChannelType,
   type Character,
-  createCharacter,
+  mergeCharacterDefaults,
   createMessageMemory,
   logger,
   type Plugin,
@@ -174,7 +174,7 @@ function buildBenchmarkCharacter(config: MilaidyConfig): Character {
     }
   }
 
-  return createCharacter({
+  return mergeCharacterDefaults({
     name,
     bio,
     system:

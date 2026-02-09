@@ -8,6 +8,7 @@
  * @module eliza
  */
 import crypto from "node:crypto";
+import type { Dirent } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
@@ -18,7 +19,7 @@ import {
   AgentRuntime,
   ChannelType,
   type Character,
-  createCharacter,
+  mergeCharacterDefaults,
   createMessageMemory,
   logger,
   type Plugin,
@@ -154,7 +155,7 @@ export const CORE_PLUGINS: readonly string[] = [
   "@elizaos/plugin-experience",
   "@elizaos/plugin-plugin-manager",
   "@elizaos/plugin-cli",
-  // "@elizaos/plugin-code", // disabled: Provider spec mismatch (coderStatusProvider)
+  "@elizaos/plugin-code",
   "@elizaos/plugin-edge-tts",
   "@elizaos/plugin-knowledge",
   "@elizaos/plugin-mcp",
@@ -163,9 +164,9 @@ export const CORE_PLUGINS: readonly string[] = [
   "@elizaos/plugin-secrets-manager",
   "@elizaos/plugin-todo",
   "@elizaos/plugin-trust",
-  // "@elizaos/plugin-form", // disabled: npm package missing compiled dist/index.js
-  // "@elizaos/plugin-goals", // disabled: Action spec mismatch (CANCEL_GOAL)
-  // "@elizaos/plugin-scheduling", // disabled: npm package missing compiled dist/index.js
+  "@elizaos/plugin-form",
+  "@elizaos/plugin-goals",
+  "@elizaos/plugin-scheduling",
 ];
 
 /**
@@ -365,7 +366,7 @@ export async function scanDropInPlugins(
 ): Promise<Record<string, PluginInstallRecord>> {
   const records: Record<string, PluginInstallRecord> = {};
 
-  let entries;
+  let entries: Dirent[];
   try {
     entries = await fs.readdir(dir, { withFileTypes: true });
   } catch {
@@ -882,7 +883,7 @@ export function buildCharacterFromConfig(config: MilaidyConfig): Character {
     }
   }
 
-  return createCharacter({
+  return mergeCharacterDefaults({
     name,
     bio,
     system: systemPrompt,
@@ -1807,7 +1808,7 @@ export async function startEliza(
       if (
         !world.metadata.ownership ||
         typeof world.metadata.ownership !== "object" ||
-        (world.metadata.ownership as Record<string, string>).ownerId !== userId
+        (world.metadata.ownership as { ownerId: string }).ownerId !== userId
       ) {
         world.metadata.ownership = { ownerId: userId };
         needsUpdate = true;
@@ -1849,7 +1850,7 @@ export async function startEliza(
         if (
           !fallbackWorld.metadata.ownership ||
           typeof fallbackWorld.metadata.ownership !== "object" ||
-          (fallbackWorld.metadata.ownership as Record<string, string>)
+          (fallbackWorld.metadata.ownership as { ownerId: string })
             .ownerId !== userId
         ) {
           fallbackWorld.metadata.ownership = { ownerId: userId };
