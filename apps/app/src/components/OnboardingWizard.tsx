@@ -131,10 +131,10 @@ export function OnboardingWizard() {
               {onboardingOptions?.names.map((name: string) => (
                 <button
                   key={name}
-                  className={`px-4 py-3 border cursor-pointer bg-card transition-colors text-left ${
+                  className={`px-4 py-3 border-2 cursor-pointer transition-colors text-left ${
                     onboardingName === name
-                      ? "border-accent bg-accent-subtle"
-                      : "border-border hover:border-accent"
+                      ? "border-accent bg-accent text-accent-fg"
+                      : "border-border bg-card hover:border-accent"
                   }`}
                   onClick={() => setState("onboardingName", name)}
                 >
@@ -145,10 +145,10 @@ export function OnboardingWizard() {
             <div className="max-w-[360px] mx-auto mt-4">
               <label className="text-xs text-muted block mb-2 text-left">Or enter custom name:</label>
               <div
-                className={`px-4 py-3 border cursor-pointer bg-card transition-colors ${
+                className={`px-4 py-3 border-2 cursor-pointer transition-colors ${
                   onboardingName && !onboardingOptions?.names.includes(onboardingName)
-                    ? "border-accent bg-accent-subtle"
-                    : "border-border hover:border-accent"
+                    ? "border-accent bg-accent text-accent-fg"
+                    : "border-border bg-card hover:border-accent"
                 }`}
               >
                 <input
@@ -198,10 +198,10 @@ export function OnboardingWizard() {
               {THEMES.map((theme) => (
                 <button
                   key={theme.id}
-                  className={`px-2 py-3.5 border cursor-pointer bg-card transition-colors text-center ${
+                  className={`px-2 py-3.5 border-2 cursor-pointer transition-colors text-center ${
                     onboardingTheme === theme.id
-                      ? "border-accent bg-accent-subtle"
-                      : "border-border hover:border-accent"
+                      ? "border-accent bg-accent text-accent-fg"
+                      : "border-border bg-card hover:border-accent"
                   }`}
                   onClick={() => handleThemeSelect(theme.id)}
                 >
@@ -220,26 +220,30 @@ export function OnboardingWizard() {
             </div>
             <div className="flex flex-col gap-2 text-left max-w-[360px] mx-auto">
               <button
-                className={`px-4 py-3 border cursor-pointer bg-card transition-colors ${
+                className={`px-4 py-3 border-2 cursor-pointer transition-colors ${
                   onboardingRunMode === "local"
-                    ? "border-accent bg-accent-subtle"
-                    : "border-border hover:border-accent"
+                    ? "border-accent bg-accent text-accent-fg"
+                    : "border-border bg-card hover:border-accent"
                 }`}
                 onClick={() => handleRunModeSelect("local")}
               >
                 <div className="font-bold text-sm">Local</div>
-                <div className="text-xs text-muted mt-0.5">Run on your machine with your own API keys</div>
+                <div className={`text-xs mt-0.5 ${onboardingRunMode === "local" ? "opacity-80" : "text-muted"}`}>
+                  Run on your machine with your own API keys
+                </div>
               </button>
               <button
-                className={`px-4 py-3 border cursor-pointer bg-card transition-colors ${
+                className={`px-4 py-3 border-2 cursor-pointer transition-colors ${
                   onboardingRunMode === "cloud"
-                    ? "border-accent bg-accent-subtle"
-                    : "border-border hover:border-accent"
+                    ? "border-accent bg-accent text-accent-fg"
+                    : "border-border bg-card hover:border-accent"
                 }`}
                 onClick={() => handleRunModeSelect("cloud")}
               >
                 <div className="font-bold text-sm">Cloud</div>
-                <div className="text-xs text-muted mt-0.5">Use Eliza Cloud managed services</div>
+                <div className={`text-xs mt-0.5 ${onboardingRunMode === "cloud" ? "opacity-80" : "text-muted"}`}>
+                  Use Eliza Cloud managed services
+                </div>
               </button>
             </div>
           </div>
@@ -255,15 +259,19 @@ export function OnboardingWizard() {
               {onboardingOptions?.cloudProviders.map((provider: CloudProviderOption) => (
                 <div
                   key={provider.id}
-                  className={`px-4 py-3 border cursor-pointer bg-card transition-colors ${
+                  className={`px-4 py-3 border-2 cursor-pointer transition-colors ${
                     onboardingCloudProvider === provider.id
-                      ? "border-accent bg-accent-subtle"
-                      : "border-border hover:border-accent"
+                      ? "border-accent bg-accent text-accent-fg"
+                      : "border-border bg-card hover:border-accent"
                   }`}
                   onClick={() => handleCloudProviderSelect(provider.id)}
                 >
                   <div className="font-bold text-sm">{provider.name}</div>
-                  {provider.description && <div className="text-xs text-muted mt-0.5">{provider.description}</div>}
+                  {provider.description && (
+                    <div className={`text-xs mt-0.5 ${onboardingCloudProvider === provider.id ? "opacity-80" : "text-muted"}`}>
+                      {provider.description}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -357,15 +365,19 @@ export function OnboardingWizard() {
               {onboardingOptions?.providers.map((provider: ProviderOption) => (
                 <div
                   key={provider.id}
-                  className={`px-4 py-3 border cursor-pointer bg-card transition-colors ${
+                  className={`px-4 py-3 border-2 cursor-pointer transition-colors ${
                     onboardingProvider === provider.id
-                      ? "border-accent bg-accent-subtle"
-                      : "border-border hover:border-accent"
+                      ? "border-accent bg-accent text-accent-fg"
+                      : "border-border bg-card hover:border-accent"
                   }`}
                   onClick={() => handleProviderSelect(provider.id)}
                 >
                   <div className="font-bold text-sm">{provider.name}</div>
-                  {provider.description && <div className="text-xs text-muted mt-0.5">{provider.description}</div>}
+                  {provider.description && (
+                    <div className={`text-xs mt-0.5 ${onboardingProvider === provider.id ? "opacity-80" : "text-muted"}`}>
+                      {provider.description}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -420,37 +432,43 @@ export function OnboardingWizard() {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-left max-w-[500px] mx-auto">
               <button
-                className={`px-4 py-3 border cursor-pointer bg-card transition-colors text-left ${
+                className={`px-4 py-3 border-2 cursor-pointer transition-colors text-left ${
                   onboardingChannelType === "telegram"
-                    ? "border-accent bg-accent-subtle"
-                    : "border-border hover:border-accent"
+                    ? "border-accent bg-accent text-accent-fg"
+                    : "border-border bg-card hover:border-accent"
                 }`}
                 onClick={() => handleChannelSelect("telegram")}
               >
                 <div className="font-bold text-sm">Telegram</div>
-                <div className="text-xs text-muted mt-0.5">Recommended · Easy setup</div>
+                <div className={`text-xs mt-0.5 ${onboardingChannelType === "telegram" ? "opacity-80" : "text-muted"}`}>
+                  Recommended · Easy setup
+                </div>
               </button>
               <button
-                className={`px-4 py-3 border cursor-pointer bg-card transition-colors text-left ${
+                className={`px-4 py-3 border-2 cursor-pointer transition-colors text-left ${
                   onboardingChannelType === "discord"
-                    ? "border-accent bg-accent-subtle"
-                    : "border-border hover:border-accent"
+                    ? "border-accent bg-accent text-accent-fg"
+                    : "border-border bg-card hover:border-accent"
                 }`}
                 onClick={() => handleChannelSelect("discord")}
               >
                 <div className="font-bold text-sm">Discord</div>
-                <div className="text-xs text-muted mt-0.5">Great for communities</div>
+                <div className={`text-xs mt-0.5 ${onboardingChannelType === "discord" ? "opacity-80" : "text-muted"}`}>
+                  Great for communities
+                </div>
               </button>
               <button
-                className={`px-4 py-3 border cursor-pointer bg-card transition-colors text-left ${
+                className={`px-4 py-3 border-2 cursor-pointer transition-colors text-left ${
                   onboardingChannelType === "slack"
-                    ? "border-accent bg-accent-subtle"
-                    : "border-border hover:border-accent"
+                    ? "border-accent bg-accent text-accent-fg"
+                    : "border-border bg-card hover:border-accent"
                 }`}
                 onClick={() => handleChannelSelect("slack")}
               >
                 <div className="font-bold text-sm">Slack</div>
-                <div className="text-xs text-muted mt-0.5">For teams</div>
+                <div className={`text-xs mt-0.5 ${onboardingChannelType === "slack" ? "opacity-80" : "text-muted"}`}>
+                  For teams
+                </div>
               </button>
             </div>
 
@@ -489,7 +507,14 @@ export function OnboardingWizard() {
             <div className="flex flex-col gap-3 text-left max-w-[360px] mx-auto">
               <h3 className="text-[13px] font-bold text-txt-strong block mb-2 text-left">Select Chains:</h3>
               {onboardingOptions?.inventoryProviders.map((provider: InventoryProviderOption) => (
-                <div key={provider.id} className="px-4 py-3 border border-border bg-card">
+                <div
+                  key={provider.id}
+                  className={`px-4 py-3 border-2 transition-colors ${
+                    onboardingSelectedChains.has(provider.id)
+                      ? "border-accent bg-accent text-accent-fg"
+                      : "border-border bg-card hover:border-accent"
+                  }`}
+                >
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
@@ -500,11 +525,13 @@ export function OnboardingWizard() {
                     <span className="font-bold text-sm">{provider.name}</span>
                   </label>
                   {provider.description && (
-                    <p className="text-xs text-muted mt-0.5 ml-6">{provider.description}</p>
+                    <p className={`text-xs mt-0.5 ml-6 ${onboardingSelectedChains.has(provider.id) ? "opacity-80" : "text-muted"}`}>
+                      {provider.description}
+                    </p>
                   )}
                   {onboardingSelectedChains.has(provider.id) && (
                     <div className="mt-3 ml-6">
-                      <label className="text-[13px] font-bold text-txt-strong block mb-2 text-left">
+                      <label className="text-[13px] font-bold block mb-2 text-left opacity-80">
                         RPC Provider:
                       </label>
                       <select
@@ -520,7 +547,7 @@ export function OnboardingWizard() {
                       </select>
                       {onboardingRpcSelections[provider.id] && (
                         <div className="mt-3">
-                          <label className="text-[13px] font-bold text-txt-strong block mb-2 text-left">
+                          <label className="text-[13px] font-bold block mb-2 text-left opacity-80">
                             RPC API Key (optional):
                           </label>
                           <input
