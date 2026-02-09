@@ -1441,6 +1441,14 @@ export async function startEliza(
   // 2d. Propagate database config into process.env for plugin-sql
   applyDatabaseConfigToEnv(config);
 
+  // 2e. Apply subscription-based credentials (Claude Max, Codex Max)
+  try {
+    const { applySubscriptionCredentials } = await import("../auth/index.js");
+    await applySubscriptionCredentials();
+  } catch (err) {
+    logger.warn(`[milaidy] Failed to apply subscription credentials: ${err}`);
+  }
+
   // 3. Build ElizaOS Character from Milaidy config
   const character = buildCharacterFromConfig(config);
 

@@ -1179,20 +1179,36 @@ function getProviderOptions(): Array<{
       description: "Free credits to start, but they run out.",
     },
     {
+      id: "anthropic-subscription",
+      name: "Anthropic (Claude Max/Pro Subscription)",
+      envKey: null,
+      pluginName: "@elizaos/plugin-anthropic",
+      keyPrefix: null,
+      description: "Use your existing Claude subscription ($20-200/mo). OAuth login via claude.ai.",
+    },
+    {
+      id: "openai-codex",
+      name: "OpenAI (ChatGPT Plus/Max Subscription)",
+      envKey: null,
+      pluginName: "@elizaos/plugin-openai",
+      keyPrefix: null,
+      description: "Use your existing ChatGPT subscription ($20-200/mo). OAuth login via openai.com.",
+    },
+    {
       id: "anthropic",
-      name: "Anthropic",
+      name: "Anthropic (API Key)",
       envKey: "ANTHROPIC_API_KEY",
       pluginName: "@elizaos/plugin-anthropic",
       keyPrefix: "sk-ant-",
-      description: "Claude models.",
+      description: "Claude models via API key.",
     },
     {
       id: "openai",
-      name: "OpenAI",
+      name: "OpenAI (API Key)",
       envKey: "OPENAI_API_KEY",
       pluginName: "@elizaos/plugin-openai",
       keyPrefix: "sk-",
-      description: "GPT models.",
+      description: "GPT models via API key.",
     },
     {
       id: "openrouter",
@@ -1767,6 +1783,163 @@ async function handleRequest(
     return;
   }
 
+  // ── GET /api/subscription/status ──────────────────────────────────────
+  // Returns the status of subscription-based auth providers
+  if (method === "GET" && pathname === "/api/subscription/status") {
+    try {
+      const { getSubscriptionStatus } = await import("../auth/index.js");
+      json(res, { providers: getSubscriptionStatus() });
+    } catch (err) {
+      error(res, `Failed to get subscription status: ${err}`, 500);
+    }
+    return;
+  }
+
+  // ── POST /api/subscription/anthropic/start ──────────────────────────────
+  // Start Anthropic OAuth flow — returns URL for user to visit
+  if (method === "POST" && pathname === "/api/subscription/anthropic/start") {
+    try {
+      const { startAnthropicLogin } = await import("../auth/index.js");
+      const { authUrl, verifier } = await startAnthropicLogin();
+      // Store verifier in server state for the exchange step
+      (state as Record<string, unknown>)._anthropicVerifier = verifier;
+      json(res, { authUrl, verifier });
+    } catch (err) {
+      error(res, `Failed to start Anthropic login: ${err}`, 500);
+    }
+    return;
+  }
+
+  // ── POST /api/subscription/anthropic/exchange ───────────────────────────
+  // Exchange Anthropic auth code for tokens
+  if (method === "POST" && pathname === "/api/subscription/anthropic/exchange") {
+    const body = await readJsonBody<{ code: string; verifier?: string }>(req, res);
+    if (!body) return;
+    if (!body.code) { error(res, "Missing code", 400); return; }
+    try {
+      const { exchangeAnthropicCode, saveCredentials, applySubscriptionCredentials } = await import("../auth/index.js");
+      const verifier = body.verifier || (state as Record<string, unknown>)._anthropicVerifier as string;
+      if (!verifier) { error(res, "Missing verifier — start the flow first", 400); return; }
+      const credentials = await exchangeAnthropicCode(body.code, verifier);
+      saveCredentials("anthropic-subscription", credentials);
+      await applySubscriptionCredentials();
+      delete (state as Record<string, unknown>)._anthropicVerifier;
+      json(res, { success: true, expiresAt: credentials.expires });
+    } catch (err) {
+      error(res, `Anthropic exchange failed: ${err}`, 500);
+    }
+    return;
+  }
+
+  // ── POST /api/subscription/anthropic/setup-token ────────────────────────
+  // Accept an Anthropic setup-token (sk-ant-oat01-...) directly
+  if (method === "POST" && pathname === "/api/subscription/anthropic/setup-token") {
+    const body = await readJsonBody<{ token: string }>(req, res);
+    if (!body) return;
+    if (!body.token || !body.token.startsWith("sk-ant-")) {
+      error(res, "Invalid token format — expected sk-ant-oat01-...", 400);
+      return;
+    }
+    try {
+      // Setup tokens are direct API keys — set in env immediately
+      process.env.ANTHROPIC_API_KEY = body.token.trim();
+      // Also save to config so it persists across restarts
+      if (!state.config.env) state.config.env = {};
+      (state.config.env as Record<string, string>).ANTHROPIC_API_KEY = body.token.trim();
+      saveMilaidyConfig(state.config);
+      json(res, { success: true });
+    } catch (err) {
+      error(res, `Failed to save setup token: ${err}`, 500);
+    }
+    return;
+  }
+
+  // ── POST /api/subscription/openai/start ─────────────────────────────────
+  // Start OpenAI Codex OAuth flow — returns URL and starts callback server
+  if (method === "POST" && pathname === "/api/subscription/openai/start") {
+    try {
+      const { loginCodexWithCallback } = await import("../auth/index.js");
+      const flow = await loginCodexWithCallback();
+      // Store flow state
+      (state as Record<string, unknown>)._codexFlow = flow;
+      json(res, {
+        authUrl: flow.authUrl,
+        state: flow.state,
+        verifier: flow.verifier,
+        // For VPS: user needs to paste callback URL manually
+        instructions: "Open the URL in your browser. After login, if auto-redirect doesn't work, paste the full redirect URL.",
+      });
+    } catch (err) {
+      error(res, `Failed to start OpenAI login: ${err}`, 500);
+    }
+    return;
+  }
+
+  // ── POST /api/subscription/openai/exchange ──────────────────────────────
+  // Exchange OpenAI auth code or wait for callback
+  if (method === "POST" && pathname === "/api/subscription/openai/exchange") {
+    const body = await readJsonBody<{ code?: string; verifier?: string; waitForCallback?: boolean }>(req, res);
+    if (!body) return;
+    try {
+      const { exchangeCodexCode, saveCredentials, applySubscriptionCredentials } = await import("../auth/index.js");
+      const flow = (state as Record<string, unknown>)._codexFlow as {
+        verifier: string;
+        state: string;
+        waitForCallback: () => Promise<import("../auth/types.js").OAuthCredentials | null>;
+        close: () => void;
+      } | undefined;
+
+      let credentials: import("../auth/types.js").OAuthCredentials;
+
+      if (body.waitForCallback && flow) {
+        // Wait for the callback server to receive the code
+        const result = await flow.waitForCallback();
+        if (!result) {
+          error(res, "Callback timed out — try pasting the redirect URL instead", 408);
+          return;
+        }
+        credentials = result;
+      } else if (body.code) {
+        // Manual code/URL paste
+        const verifier = body.verifier || flow?.verifier;
+        if (!verifier) { error(res, "Missing verifier — start the flow first", 400); return; }
+        credentials = await exchangeCodexCode(body.code, verifier, flow?.state);
+      } else {
+        error(res, "Provide either code or set waitForCallback: true", 400);
+        return;
+      }
+
+      saveCredentials("openai-codex", credentials);
+      await applySubscriptionCredentials();
+      if (flow) {
+        flow.close();
+        delete (state as Record<string, unknown>)._codexFlow;
+      }
+      json(res, { success: true, expiresAt: credentials.expires, accountId: credentials.accountId });
+    } catch (err) {
+      error(res, `OpenAI exchange failed: ${err}`, 500);
+    }
+    return;
+  }
+
+  // ── DELETE /api/subscription/:provider ───────────────────────────────────
+  // Remove subscription credentials
+  if (method === "DELETE" && pathname.startsWith("/api/subscription/")) {
+    const provider = pathname.split("/").pop();
+    if (provider === "anthropic-subscription" || provider === "openai-codex") {
+      try {
+        const { deleteCredentials } = await import("../auth/index.js");
+        deleteCredentials(provider);
+        json(res, { success: true });
+      } catch (err) {
+        error(res, `Failed to delete credentials: ${err}`, 500);
+      }
+    } else {
+      error(res, `Unknown provider: ${provider}`, 400);
+    }
+    return;
+  }
+
   // ── GET /api/status ─────────────────────────────────────────────────────
   if (method === "GET" && pathname === "/api/status") {
     const uptime = state.startedAt ? Date.now() - state.startedAt : undefined;
@@ -1891,6 +2064,17 @@ async function handleRequest(
           process.env[providerOpt.envKey] = body.providerApiKey as string;
         }
       }
+    }
+
+    // ── Subscription providers (no API key needed — uses OAuth) ──────────
+    // If the user selected a subscription provider during onboarding,
+    // note it in config. The actual OAuth flow happens via
+    // /api/subscription/{provider}/start + /exchange endpoints.
+    if (runMode === "local" && (body.provider === "anthropic-subscription" || body.provider === "openai-codex")) {
+      if (!config.agents) config.agents = {};
+      if (!config.agents.defaults) config.agents.defaults = {};
+      (config.agents.defaults as Record<string, unknown>).subscriptionProvider = body.provider;
+      logger.info(`[milaidy-api] Subscription provider selected: ${body.provider} — complete OAuth via /api/subscription/ endpoints`);
     }
 
     // ── Inventory / RPC providers ─────────────────────────────────────────

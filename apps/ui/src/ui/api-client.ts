@@ -691,7 +691,12 @@ export class MilaidyClient {
   }
 
   async getAuthStatus(): Promise<{ required: boolean; pairingEnabled: boolean; expiresAt: number | null }> {
-    return this.fetch("/api/auth/status");
+    try {
+      return await this.fetch("/api/auth/status");
+    } catch {
+      // npm-installed server doesn't have auth routes — treat as no auth required
+      return { required: false, pairingEnabled: false, expiresAt: null };
+    }
   }
 
   async pair(code: string): Promise<{ token: string }> {
