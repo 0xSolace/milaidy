@@ -1,6 +1,6 @@
 {
   "name": "milaidy",
-  "version": "2.0.0-alpha.8",
+  "version": "2.0.0-alpha.9",
   "description": "cute agents for the acceleration",
   "keywords": [],
   "license": "MIT",
@@ -119,8 +119,8 @@
     "@elizaos/plugin-mcp": "next",
     "@elizaos/plugin-msteams": "next",
     "@elizaos/plugin-ollama": "2.0.0-alpha.4",
-    "@elizaos/plugin-openai": "2.0.0-alpha.4",
-    "@elizaos/plugin-openrouter": "2.0.0-alpha.4",
+    "@elizaos/plugin-openai": "2.0.0-alpha.5",
+    "@elizaos/plugin-openrouter": "2.0.0-alpha.5",
     "@elizaos/plugin-pdf": "next",
     "@elizaos/plugin-personality": "next",
     "@elizaos/plugin-plugin-manager": "next",
