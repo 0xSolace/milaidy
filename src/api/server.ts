@@ -1171,6 +1171,30 @@ function getProviderOptions(): Array<{
 }> {
   return [
     {
+      id: "anthropic-subscription",
+      name: "Anthropic (Claude Max/Pro subscription)",
+      envKey: null,
+      pluginName: "@elizaos/plugin-anthropic",
+      keyPrefix: null,
+      description: "Use your $20-200/mo Claude subscription. No API key needed.",
+    },
+    {
+      id: "openai-codex",
+      name: "OpenAI (ChatGPT Plus/Max subscription)",
+      envKey: null,
+      pluginName: "@elizaos/plugin-openai",
+      keyPrefix: null,
+      description: "Use your $20-200/mo ChatGPT subscription via OAuth.",
+    },
+    {
+      id: "anthropic-setup-token",
+      name: "Anthropic (setup-token)",
+      envKey: "ANTHROPIC_API_KEY",
+      pluginName: "@elizaos/plugin-anthropic",
+      keyPrefix: "sk-ant-oat01-",
+      description: "Paste a token from 'claude setup-token' command.",
+    },
+    {
       id: "elizacloud",
       name: "Eliza Cloud",
       envKey: null,

@@ -3799,6 +3799,67 @@ export class MilaidyApp extends LitElement {
     return window.matchMedia("(max-width: 768px)").matches;
   }
 
+  private async handleProviderNext(): Promise<void> {
+    const provider = this.onboardingProvider;
+
+    // Subscription providers need OAuth flow
+    if (provider === "anthropic-subscription") {
+      try {
+        const result = await client.fetch<{ authUrl: string; verifier: string }>("/api/subscription/anthropic/start", { method: "POST" });
+        // Open auth URL in new window
+        window.open(result.authUrl, "_blank", "width=600,height=700");
+        // Prompt user for the code
+        const code = window.prompt("After signing in to claude.ai, paste the authorization code here (format: code#state):");
+        if (!code) return;
+        await client.fetch("/api/subscription/anthropic/exchange", {
+          method: "POST",
+          body: JSON.stringify({ code, verifier: result.verifier }),
+        });
+        // Success — continue onboarding
+        this.handleOnboardingNext();
+      } catch (err) {
+        window.alert(`Anthropic OAuth failed: ${err}`);
+      }
+      return;
+    }
+
+    if (provider === "openai-codex") {
+      try {
+        const result = await client.fetch<{ authUrl: string; verifier: string; state: string }>("/api/subscription/openai/start", { method: "POST" });
+        window.open(result.authUrl, "_blank", "width=600,height=700");
+        const code = window.prompt("After signing in to ChatGPT, paste the redirect URL or authorization code here:");
+        if (!code) return;
+        await client.fetch("/api/subscription/openai/exchange", {
+          method: "POST",
+          body: JSON.stringify({ code, verifier: result.verifier }),
+        });
+        this.handleOnboardingNext();
+      } catch (err) {
+        window.alert(`OpenAI Codex OAuth failed: ${err}`);
+      }
+      return;
+    }
+
+    if (provider === "anthropic-setup-token") {
+      if (!this.onboardingApiKey.trim()) return;
+      try {
+        await client.fetch("/api/subscription/anthropic/setup-token", {
+          method: "POST",
+          body: JSON.stringify({ token: this.onboardingApiKey.trim() }),
+        });
+        // Treat setup-token like anthropic API key for onboarding flow
+        this.onboardingProvider = "anthropic";
+        this.handleOnboardingNext();
+      } catch (err) {
+        window.alert(`Setup token failed: ${err}`);
+      }
+      return;
+    }
+
+    // Standard providers — just continue
+    this.handleOnboardingNext();
+  }
+
   private async handleOnboardingNext(): Promise<void> {
     const opts = this.onboardingOptions;
     switch (this.onboardingStep) {
@@ -6606,7 +6667,9 @@ export class MilaidyApp extends LitElement {
 
   private renderOnboardingLlmProvider(opts: OnboardingOptions) {
     const selected = opts.providers.find((p) => p.id === this.onboardingProvider);
-    const needsKey = selected && selected.envKey && selected.id !== "elizacloud" && selected.id !== "ollama";
+    const isSubscription = selected && (selected.id === "anthropic-subscription" || selected.id === "openai-codex");
+    const isSetupToken = selected && selected.id === "anthropic-setup-token";
+    const needsKey = selected && selected.envKey && selected.id !== "elizacloud" && selected.id !== "ollama" && !isSubscription;
 
     return html`
       <img class="onboarding-avatar" src="/pfp.jpg" alt="milAIdy" style="width:100px;height:100px;" />
@@ -6624,7 +6687,32 @@ export class MilaidyApp extends LitElement {
           `,
     )}
       </div>
-      ${needsKey
+      ${isSubscription
+        ? html`
+            <div style="margin-top: 12px; padding: 12px; border-radius: 8px; background: var(--surface-alt, #f5f5f5); font-size: 13px;">
+              <p style="margin: 0 0 8px 0; color: var(--muted-strong);">
+                ${selected.id === "anthropic-subscription"
+                  ? "Click Next to start the OAuth flow. You'll sign in to claude.ai in a new window, then paste the authorization code back here."
+                  : "Click Next to start the OAuth flow. You'll sign in to ChatGPT in a new window. The code will be captured automatically (or paste the redirect URL)."}
+              </p>
+            </div>
+          `
+        : ""}
+      ${isSetupToken
+        ? html`
+            <div style="margin-top: 12px; font-size: 13px; color: var(--muted-strong);">
+              Run <code style="background: var(--surface-alt, #eee); padding: 2px 6px; border-radius: 4px;">claude setup-token</code> in your terminal, then paste the token:
+            </div>
+            <input
+              class="onboarding-input"
+              type="password"
+              placeholder="sk-ant-oat01-..."
+              .value=${this.onboardingApiKey}
+              @input=${(e: Event) => { this.onboardingApiKey = (e.target as HTMLInputElement).value; }}
+            />
+          `
+        : ""}
+      ${needsKey && !isSetupToken
         ? html`
             <input
               class="onboarding-input"
@@ -6639,8 +6727,8 @@ export class MilaidyApp extends LitElement {
         <button class="btn btn-outline" @click=${() => this.handleOnboardingBack()}>Back</button>
         <button
           class="btn"
-          @click=${this.handleOnboardingNext}
-          ?disabled=${!this.onboardingProvider || (needsKey && !this.onboardingApiKey.trim())}
+          @click=${() => this.handleProviderNext()}
+          ?disabled=${!this.onboardingProvider || (needsKey && !this.onboardingApiKey.trim()) || (isSetupToken && !this.onboardingApiKey.trim())}
         >Next</button>
       </div>
     `;
