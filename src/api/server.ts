@@ -1203,22 +1203,6 @@ function getProviderOptions(): Array<{
       description: "Free credits to start, but they run out.",
     },
     {
-      id: "anthropic-subscription",
-      name: "Anthropic (Claude Max/Pro Subscription)",
-      envKey: null,
-      pluginName: "@elizaos/plugin-anthropic",
-      keyPrefix: null,
-      description: "Use your existing Claude subscription ($20-200/mo). OAuth login via claude.ai.",
-    },
-    {
-      id: "openai-codex",
-      name: "OpenAI (ChatGPT Plus/Max Subscription)",
-      envKey: null,
-      pluginName: "@elizaos/plugin-openai",
-      keyPrefix: null,
-      description: "Use your existing ChatGPT subscription ($20-200/mo). OAuth login via openai.com.",
-    },
-    {
       id: "anthropic",
       name: "Anthropic (API Key)",
       envKey: "ANTHROPIC_API_KEY",
