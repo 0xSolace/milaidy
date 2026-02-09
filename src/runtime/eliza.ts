@@ -1422,6 +1422,11 @@ async function runFirstTimeSetup(
     if (agentList && agentList.length > 0) {
       (agentList[0] as Record<string, unknown>).model = selectedOpenRouterModel;
     }
+    // Also persist in config.agent.model (OpenRouter format)
+    (updated as Record<string, unknown>).agent = {
+      ...((updated as Record<string, unknown>).agent as Record<string, unknown> || {}),
+      model: `openrouter/${selectedOpenRouterModel}`,
+    };
   }
 
   if (process.env.EVM_PRIVATE_KEY && !hasEvmKey) {

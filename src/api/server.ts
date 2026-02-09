@@ -2001,6 +2001,11 @@ async function handleRequest(
         if (agentEntry) {
           agentEntry.model = body.openrouterModel as string;
         }
+        // Also persist in config.agent.model (OpenRouter format)
+        (config as Record<string, unknown>).agent = {
+          ...((config as Record<string, unknown>).agent as Record<string, unknown> || {}),
+          model: `openrouter/${body.openrouterModel}`,
+        };
       }
     }
 
