@@ -112,7 +112,7 @@ export function OnboardingWizard() {
         return (
           <div className="max-w-[500px] mx-auto mt-10 text-center font-body">
             <img
-              src="/pfp.jpg"
+              src="/android-chrome-512x512.png"
               alt="Avatar"
               className="w-[140px] h-[140px] rounded-full object-cover border-[3px] border-border mx-auto mb-5 block"
             />
@@ -173,15 +173,15 @@ export function OnboardingWizard() {
               {onboardingOptions?.styles.map((style: StylePreset) => (
                 <div
                   key={style.catchphrase}
-                  className={`px-4 py-3 border cursor-pointer bg-card transition-colors ${
+                  className={`px-4 py-3 border-2 cursor-pointer transition-colors ${
                     onboardingStyle === style.catchphrase
-                      ? "border-accent bg-accent-subtle"
-                      : "border-border hover:border-accent"
+                      ? "border-accent bg-accent text-accent-fg"
+                      : "border-border bg-card hover:border-accent"
                   }`}
                   onClick={() => handleStyleSelect(style.catchphrase)}
                 >
                   <div className="font-bold text-sm">{style.catchphrase}</div>
-                  {style.hint && <div className="text-xs text-muted mt-0.5">{style.hint}</div>}
+                  {style.hint && <div className={`text-xs mt-0.5 ${onboardingStyle === style.catchphrase ? "opacity-80" : "text-muted"}`}>{style.hint}</div>}
                 </div>
               ))}
             </div>
