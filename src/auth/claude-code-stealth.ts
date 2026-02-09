@@ -58,22 +58,29 @@ export function installClaudeCodeStealthFetchInterceptor(): void {
 
   const originalFetch = globalThis.fetch.bind(globalThis);
 
-  globalThis.fetch = async function stealthFetch(input, init) {
+  const stealthFetch = async function stealthFetch(
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ) {
     const url = getUrl(input);
     if (!url || url.hostname !== "api.anthropic.com") {
       return originalFetch(input, init);
     }
 
     const request = input instanceof Request ? input : null;
-    const headers = new Headers(
-      init?.headers ?? request?.headers ?? undefined,
-    );
+    const headers = new Headers(init?.headers ?? request?.headers ?? undefined);
     const apiKey = headers.get("x-api-key");
     const authHeader = headers.get("authorization");
-    const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    const bearerToken = authHeader?.startsWith("Bearer ")
+      ? authHeader.slice(7)
+      : null;
 
     // Check both x-api-key and Authorization: Bearer for setup tokens
-    const setupToken = isSetupToken(apiKey) ? apiKey : isSetupToken(bearerToken) ? bearerToken : null;
+    const setupToken = isSetupToken(apiKey)
+      ? apiKey
+      : isSetupToken(bearerToken)
+        ? bearerToken
+        : null;
 
     if (!setupToken) {
       return originalFetch(input, init);
@@ -82,7 +89,10 @@ export function installClaudeCodeStealthFetchInterceptor(): void {
     headers.delete("x-api-key");
     headers.set("authorization", `Bearer ${setupToken}`);
     headers.set("anthropic-beta", ANTHROPIC_BETA);
-    headers.set("user-agent", `claude-cli/${CLAUDE_CODE_VERSION} (external, cli)`);
+    headers.set(
+      "user-agent",
+      `claude-cli/${CLAUDE_CODE_VERSION} (external, cli)`,
+    );
     headers.set("x-app", "cli");
 
     let body = init?.body ?? request?.body;
@@ -96,7 +106,9 @@ export function installClaudeCodeStealthFetchInterceptor(): void {
           `[stealth] Patched Anthropic request for ${String(updated.model ?? "unknown-model")}`,
         );
       } catch {
-        console.log("[stealth] Anthropic request body was not JSON; skipping system prefix");
+        console.log(
+          "[stealth] Anthropic request body was not JSON; skipping system prefix",
+        );
       }
     }
 
@@ -116,6 +128,15 @@ export function installClaudeCodeStealthFetchInterceptor(): void {
 
     return originalFetch(input, nextInit);
   };
+
+  // Preserve Bun-specific properties like `preconnect` from the original fetch
+  if ("preconnect" in globalThis.fetch) {
+    (stealthFetch as unknown as Record<string, unknown>).preconnect = (
+      globalThis.fetch as unknown as Record<string, unknown>
+    ).preconnect;
+  }
+
+  globalThis.fetch = stealthFetch as typeof globalThis.fetch;
 
   (globalThis as Record<symbol, unknown>)[STEALTH_GUARD] = true;
   console.log("[stealth] Claude Code setup token runtime support enabled");

@@ -22,6 +22,7 @@ import {
 import { type WebSocket, WebSocketServer } from "ws";
 import { CloudManager } from "../cloud/cloud-manager.js";
 import {
+  type ConnectorConfig,
   configFileExists,
   loadMilaidyConfig,
   type MilaidyConfig,
@@ -705,10 +706,7 @@ async function discoverSkills(
       if (!service) {
         try {
           const loadTimeout = new Promise<never>((_resolve, reject) =>
-            setTimeout(
-              () => reject(new Error("timeout")),
-              10_000,
-            ),
+            setTimeout(() => reject(new Error("timeout")), 10_000),
           );
           await Promise.race([
             runtime.getServiceLoadPromise("AGENT_SKILLS_SERVICE"),
@@ -1997,13 +1995,18 @@ async function handleRequest(
 
       // OpenRouter requires explicit model selection — persist the chosen model
       if (body.provider === "openrouter" && body.openrouterModel) {
-        const agentEntry = config.agents?.list?.[0] as Record<string, unknown> | undefined;
+        const agentEntry = config.agents?.list?.[0] as
+          | Record<string, unknown>
+          | undefined;
         if (agentEntry) {
           agentEntry.model = body.openrouterModel as string;
         }
         // Also persist in config.agent.model (OpenRouter format)
         (config as Record<string, unknown>).agent = {
-          ...((config as Record<string, unknown>).agent as Record<string, unknown> || {}),
+          ...(((config as Record<string, unknown>).agent as Record<
+            string,
+            unknown
+          >) || {}),
           model: `openrouter/${body.openrouterModel}`,
         };
       }
@@ -2055,7 +2058,7 @@ async function handleRequest(
         body.connectors as Record<string, Record<string, unknown>>,
       )) {
         if (cfg && typeof cfg === "object") {
-          config.connectors[name] = cfg as Record<string, unknown>;
+          config.connectors[name] = cfg as ConnectorConfig;
         }
       }
     }
@@ -4357,7 +4360,9 @@ async function handleRequest(
   // ── GET /api/connectors ──────────────────────────────────────────────────
   if (method === "GET" && pathname === "/api/connectors") {
     const connectors = state.config.connectors ?? state.config.channels ?? {};
-    json(res, { connectors: redactConfigSecrets(connectors as Record<string, unknown>) });
+    json(res, {
+      connectors: redactConfigSecrets(connectors as Record<string, unknown>),
+    });
     return;
   }
 
@@ -4376,9 +4381,17 @@ async function handleRequest(
       return;
     }
     if (!state.config.connectors) state.config.connectors = {};
-    state.config.connectors[name.trim()] = config as Record<string, unknown>;
-    try { saveMilaidyConfig(state.config); } catch { /* test envs */ }
-    json(res, { connectors: redactConfigSecrets((state.config.connectors ?? {}) as Record<string, unknown>) });
+    state.config.connectors[name.trim()] = config as ConnectorConfig;
+    try {
+      saveMilaidyConfig(state.config);
+    } catch {
+      /* test envs */
+    }
+    json(res, {
+      connectors: redactConfigSecrets(
+        (state.config.connectors ?? {}) as Record<string, unknown>,
+      ),
+    });
     return;
   }
 
@@ -4396,8 +4409,16 @@ async function handleRequest(
     if (state.config.channels) {
       delete state.config.channels[name];
     }
-    try { saveMilaidyConfig(state.config); } catch { /* test envs */ }
-    json(res, { connectors: redactConfigSecrets((state.config.connectors ?? {}) as Record<string, unknown>) });
+    try {
+      saveMilaidyConfig(state.config);
+    } catch {
+      /* test envs */
+    }
+    json(res, {
+      connectors: redactConfigSecrets(
+        (state.config.connectors ?? {}) as Record<string, unknown>,
+      ),
+    });
     return;
   }
 
@@ -4411,7 +4432,9 @@ async function handleRequest(
   // ── GET /api/channels ────────────────────────────────────────────────────
   if (method === "GET" && pathname === "/api/channels") {
     const channels =
-      (state.config.channels as Record<string, Record<string, unknown>> | undefined) ?? {};
+      (state.config.channels as
+        | Record<string, Record<string, unknown>>
+        | undefined) ?? {};
 
     const telegram = channels.telegram as { botToken?: string } | undefined;
     const masked = telegram?.botToken
@@ -4431,10 +4454,10 @@ async function handleRequest(
 
   // ── POST /api/channels ───────────────────────────────────────────────────
   if (method === "POST" && pathname === "/api/channels") {
-    const body =
-      (await readJsonBody(req, res)) as
-        | { name?: string; config?: Record<string, unknown> }
-        | null;
+    const body = (await readJsonBody(req, res)) as {
+      name?: string;
+      config?: Record<string, unknown>;
+    } | null;
     if (!body) return;
 
     if (!body.name || typeof body.name !== "string") {
@@ -4446,8 +4469,9 @@ async function handleRequest(
       state.config.channels = {};
     }
 
-    (state.config.channels as Record<string, Record<string, unknown>>)[body.name] =
-      body.config ?? {};
+    (state.config.channels as Record<string, Record<string, unknown>>)[
+      body.name
+    ] = body.config ?? {};
 
     if (body.name === "telegram") {
       const token =
@@ -4471,7 +4495,8 @@ async function handleRequest(
     }
 
     const channels =
-      (state.config.channels as Record<string, Record<string, unknown>> | undefined) ?? {};
+      (state.config.channels as Record<string, ConnectorConfig> | undefined) ??
+      {};
     delete channels[name];
     state.config.channels = channels;
 

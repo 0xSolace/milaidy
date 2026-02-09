@@ -19,9 +19,9 @@ import {
   AgentRuntime,
   ChannelType,
   type Character,
-  mergeCharacterDefaults,
   createMessageMemory,
   logger,
+  mergeCharacterDefaults,
   type Plugin,
   stringToUuid,
   type UUID,
@@ -1424,7 +1424,10 @@ async function runFirstTimeSetup(
     }
     // Also persist in config.agent.model (OpenRouter format)
     (updated as Record<string, unknown>).agent = {
-      ...((updated as Record<string, unknown>).agent as Record<string, unknown> || {}),
+      ...(((updated as Record<string, unknown>).agent as Record<
+        string,
+        unknown
+      >) || {}),
       model: `openrouter/${selectedOpenRouterModel}`,
     };
   }
@@ -1916,14 +1919,12 @@ export async function startEliza(
                 : {}),
               ...(freshConfig.skills?.allowBundled
                 ? {
-                    SKILLS_ALLOWLIST:
-                      freshConfig.skills.allowBundled.join(","),
+                    SKILLS_ALLOWLIST: freshConfig.skills.allowBundled.join(","),
                   }
                 : {}),
               ...(freshConfig.skills?.denyBundled
                 ? {
-                    SKILLS_DENYLIST:
-                      freshConfig.skills.denyBundled.join(","),
+                    SKILLS_DENYLIST: freshConfig.skills.denyBundled.join(","),
                   }
                 : {}),
               ...(freshConfig.skills?.load?.extraDirs?.length
@@ -1938,10 +1939,7 @@ export async function startEliza(
           // Pre-register plugin-sql so DB is ready before other plugins init
           if (freshSqlPlugin) {
             await newRuntime.registerPlugin(freshSqlPlugin.plugin);
-            if (
-              newRuntime.adapter &&
-              !(await newRuntime.adapter.isReady())
-            ) {
+            if (newRuntime.adapter && !(await newRuntime.adapter.isReady())) {
               await newRuntime.adapter.init();
             }
           }
@@ -1954,10 +1952,7 @@ export async function startEliza(
               "AGENT_SKILLS_SERVICE",
             );
             const svcTimeout = new Promise<never>((_r, rej) =>
-              setTimeout(
-                () => rej(new Error("timeout")),
-                30_000,
-              ),
+              setTimeout(() => rej(new Error("timeout")), 30_000),
             );
             await Promise.race([svcPromise, svcTimeout]);
           } catch {
