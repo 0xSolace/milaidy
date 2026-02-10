@@ -1631,7 +1631,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     // Try to fetch archetype character data if an archetype was selected
     let archetypeChar: any = null;
-    if (onboardingStyle && onboardingStyle !== "custom") {
+    if (onboardingStyle === "__blended" && (window as any).__blendedCharacter) {
+      // Use blended character from multi-select blend
+      archetypeChar = (window as any).__blendedCharacter;
+      delete (window as any).__blendedCharacter;
+    } else if (onboardingStyle && onboardingStyle !== "custom") {
       try {
         const res = await fetch(`/api/archetypes/${onboardingStyle}`);
         if (res.ok) {

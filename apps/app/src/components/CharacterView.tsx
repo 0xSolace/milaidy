@@ -56,38 +56,104 @@ export function CharacterView() {
       .catch(() => {});
   }, []);
 
+  const [selectedSouls, setSelectedSouls] = useState<string[]>([]);
+  const [blending, setBlending] = useState(false);
+  const [blendError, setBlendError] = useState("");
+
+  const applyCharacterData = useCallback((c: any) => {
+    if (c.bio) handleCharacterFieldInput("bio", Array.isArray(c.bio) ? c.bio.join("\n") : c.bio);
+    if (c.system) handleCharacterFieldInput("system", c.system);
+    if (c.adjectives) handleCharacterFieldInput("adjectives" as any, c.adjectives);
+    if (c.topics) handleCharacterFieldInput("topics" as any, c.topics);
+    if (c.style) {
+      if (c.style.all) handleCharacterStyleInput("all", Array.isArray(c.style.all) ? c.style.all.join("\n") : c.style.all);
+      if (c.style.chat) handleCharacterStyleInput("chat", Array.isArray(c.style.chat) ? c.style.chat.join("\n") : c.style.chat);
+      if (c.style.post) handleCharacterStyleInput("post", Array.isArray(c.style.post) ? c.style.post.join("\n") : c.style.post);
+    }
+    if (c.messageExamples) {
+      const formatted = c.messageExamples.map((convo: any[]) => ({
+        examples: convo.map((msg: any) => ({ name: msg.user, content: { text: msg.content?.text ?? "" } })),
+      }));
+      handleCharacterFieldInput("messageExamples" as any, formatted);
+    }
+  }, [handleCharacterFieldInput, handleCharacterStyleInput]);
+
+  const toggleSoul = useCallback((id: string) => {
+    setBlendError("");
+    setSelectedSouls((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
+  }, []);
+
   const applyArchetype = useCallback(async (id: string) => {
     if (id === "custom") {
       setActiveArchetype("custom");
+      setSelectedSouls([]);
       return;
     }
     setLoadingArchetype(id);
+    setSelectedSouls([id]);
     try {
       const res = await fetch(`/api/archetypes/${id}`);
       if (!res.ok) return;
       const data = await res.json();
-      const c = data.character;
-      if (!c) return;
-
-      if (c.bio) handleCharacterFieldInput("bio", Array.isArray(c.bio) ? c.bio.join("\n") : c.bio);
-      if (c.system) handleCharacterFieldInput("system", c.system);
-      if (c.adjectives) handleCharacterFieldInput("adjectives" as any, c.adjectives);
-      if (c.topics) handleCharacterFieldInput("topics" as any, c.topics);
-      if (c.style) {
-        if (c.style.all) handleCharacterStyleInput("all", c.style.all.join("\n"));
-        if (c.style.chat) handleCharacterStyleInput("chat", c.style.chat.join("\n"));
-        if (c.style.post) handleCharacterStyleInput("post", c.style.post.join("\n"));
+      if (data.character) {
+        applyCharacterData(data.character);
+        setActiveArchetype(id);
       }
-      if (c.messageExamples) {
-        const formatted = c.messageExamples.map((convo: any[]) => ({
-          examples: convo.map((msg: any) => ({ name: msg.user, content: { text: msg.content.text } })),
-        }));
-        handleCharacterFieldInput("messageExamples" as any, formatted);
-      }
-      setActiveArchetype(id);
     } catch { /* ignore */ }
     setLoadingArchetype(null);
-  }, [handleCharacterFieldInput, handleCharacterStyleInput]);
+  }, [applyCharacterData]);
+
+  const handleBlend = useCallback(async () => {
+    if (selectedSouls.length < 2) return;
+    setBlending(true);
+    setBlendError("");
+    try {
+      const res = await fetch("/api/archetypes/blend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: selectedSouls, name: characterDraft.name || "{{name}}" }),
+      });
+      if (!res.ok) throw new Error("blend failed");
+      const data = await res.json();
+      if (data.character) {
+        applyCharacterData(data.character);
+        setActiveArchetype("blended");
+      } else {
+        setBlendError("blend returned unexpected format");
+      }
+    } catch {
+      setBlendError("failed to blend. make sure your LLM provider is set up.");
+    }
+    setBlending(false);
+  }, [selectedSouls, characterDraft.name, applyCharacterData]);
+
+  const handleRandomize = useCallback(async () => {
+    setBlending(true);
+    setBlendError("");
+    const nonCustom = archetypes.filter((a) => a.id !== "custom");
+    const shuffled = [...nonCustom].sort(() => Math.random() - 0.5);
+    const count = Math.random() > 0.5 ? 3 : 2;
+    const picked = shuffled.slice(0, count);
+    setSelectedSouls(picked.map((a) => a.id));
+    try {
+      const res = await fetch("/api/archetypes/blend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: picked.map((a) => a.id), name: characterDraft.name || "{{name}}" }),
+      });
+      if (!res.ok) throw new Error("random blend failed");
+      const data = await res.json();
+      if (data.character) {
+        applyCharacterData(data.character);
+        setActiveArchetype("blended");
+      } else {
+        setBlendError("random generation failed");
+      }
+    } catch {
+      setBlendError("failed to generate. make sure your LLM provider is set up.");
+    }
+    setBlending(false);
+  }, [archetypes, characterDraft.name, applyCharacterData]);
 
   // Any manual edit switches to "custom"
   const handleFieldEdit = useCallback((field: string, value: any) => {
@@ -292,26 +358,35 @@ export function CharacterView() {
         <div className="p-4 border border-[var(--border)] bg-[var(--card)]">
           <div className="font-bold text-sm mb-1">Archetype</div>
           <div className={hintCls + " mb-3"}>
-            apply a preset soul. editing any field below switches to custom.
+            pick one to apply, or select multiple and blend. editing fields below switches to custom.
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {archetypes.filter((a) => a.id !== "custom").map((arch) => (
-              <button
-                key={arch.id}
-                className={`text-left px-3 py-2 border cursor-pointer transition-all ${
-                  activeArchetype === arch.id
-                    ? "border-accent !bg-accent !text-accent-fg"
-                    : "border-[var(--border)] bg-[var(--card)] hover:border-[var(--accent)]"
-                } disabled:opacity-40`}
-                onClick={() => void applyArchetype(arch.id)}
-                disabled={loadingArchetype !== null}
-                type="button"
-              >
-                <div className="font-bold text-[11px] tracking-wide uppercase">
-                  {loadingArchetype === arch.id ? "applying..." : arch.name}
-                </div>
-              </button>
-            ))}
+            {archetypes.filter((a) => a.id !== "custom").map((arch) => {
+              const isSelected = selectedSouls.includes(arch.id);
+              return (
+                <button
+                  key={arch.id}
+                  className={`text-left px-3 py-2 border cursor-pointer transition-all ${
+                    isSelected
+                      ? "border-accent !bg-accent !text-accent-fg"
+                      : "border-[var(--border)] bg-[var(--card)] hover:border-[var(--accent)]"
+                  } disabled:opacity-40`}
+                  onClick={() => {
+                    toggleSoul(arch.id);
+                    // Single click = apply directly
+                    if (!isSelected && selectedSouls.length === 0) {
+                      void applyArchetype(arch.id);
+                    }
+                  }}
+                  disabled={loadingArchetype !== null || blending}
+                  type="button"
+                >
+                  <div className="font-bold text-[11px] tracking-wide uppercase">
+                    {loadingArchetype === arch.id ? "applying..." : arch.name}
+                  </div>
+                </button>
+              );
+            })}
             <div
               className={`px-3 py-2 border ${
                 activeArchetype === "custom"
@@ -322,9 +397,37 @@ export function CharacterView() {
               <div className="font-bold text-[11px] tracking-wide uppercase">custom</div>
             </div>
           </div>
-          {activeArchetype !== "custom" && (
+
+          {/* Blend + Dice buttons */}
+          <div className="flex gap-2 mt-2">
+            {selectedSouls.length >= 2 && (
+              <button
+                className={`${tinyBtnCls} flex items-center gap-1.5`}
+                onClick={() => void handleBlend()}
+                disabled={blending}
+                type="button"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v10m0 0l-4-4m4 4l4-4" /><path d="M5 16c0 2.2 3.1 4 7 4s7-1.8 7-4" /><path d="M5 12c0 2.2 3.1 4 7 4s7-1.8 7-4" /></svg>
+                {blending ? "blending..." : "blend selected"}
+              </button>
+            )}
+            <button
+              className={`${tinyBtnCls} flex items-center gap-1.5`}
+              onClick={() => void handleRandomize()}
+              disabled={blending}
+              type="button"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.5" /><circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none" /><circle cx="16" cy="8" r="1.5" fill="currentColor" stroke="none" /><circle cx="8" cy="16" r="1.5" fill="currentColor" stroke="none" /><circle cx="16" cy="16" r="1.5" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" /></svg>
+              {blending ? "generating..." : "random"}
+            </button>
+          </div>
+
+          {blendError && (
+            <div className="text-xs text-[var(--danger,#e74c3c)] mt-2">{blendError}</div>
+          )}
+          {activeArchetype === "blended" && (
             <div className={hintCls + " mt-2"}>
-              {archetypes.find((a) => a.id === activeArchetype)?.tagline}
+              blended from {selectedSouls.map((id) => archetypes.find((a) => a.id === id)?.name).filter(Boolean).join(" + ")}
             </div>
           )}
         </div>

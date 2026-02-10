@@ -2211,6 +2211,116 @@ async function handleRequest(
     return;
   }
 
+  // ── POST /api/archetypes/blend ────────────────────────────────────────
+  if (method === "POST" && pathname === "/api/archetypes/blend") {
+    const body = await readJsonBody<{ ids: string[]; name?: string }>(req, res);
+    if (!body) return;
+
+    const { ids, name } = body;
+    if (!Array.isArray(ids) || ids.length < 2) {
+      error(res, "provide at least 2 archetype ids to blend", 400);
+      return;
+    }
+
+    const { getArchetype } = await import("../archetypes/index.js");
+    const selected = ids.map((id) => getArchetype(id)).filter(Boolean);
+    if (selected.length < 2) {
+      error(res, "one or more archetype ids not found", 404);
+      return;
+    }
+
+    const rt = state.runtime;
+    if (!rt) {
+      error(res, "agent runtime not available. start the agent first.", 503);
+      return;
+    }
+
+    const archetypeSummaries = selected
+      .map((a) => {
+        const c = a!.character;
+        return `## ${a!.name}\nBio: ${c.bio.join(" | ")}\nSoul: ${c.system.slice(0, 500)}\nStyle: ${c.style.all.join("; ")}\nAdjectives: ${c.adjectives.join(", ")}\nTopics: ${c.topics.join(", ")}`;
+      })
+      .join("\n\n");
+
+    const agentName = name || "{{name}}";
+
+    const prompt = `you are creating a blended AI character by combining multiple archetypes into one coherent person.
+
+here are the archetypes to blend:
+
+${archetypeSummaries}
+
+create a single merged character that takes the best traits from each. the result should feel like one person, not a frankenstein of parts.
+
+rules:
+- all lowercase, always
+- never use emojis, ever
+- write the system prompt in first person AS the character, not about them
+- include: inner life, vulnerability, boundaries, growth
+- no filler phrases, no sycophancy, no corporate speak
+- the character name is "${agentName}" — use {{name}} as placeholder
+
+output ONLY valid JSON with this exact structure (no markdown, no backticks):
+{
+  "bio": ["line 1", "line 2", "line 3", "line 4"],
+  "system": "first person system prompt...",
+  "style": {
+    "all": ["rule 1", "rule 2"],
+    "chat": ["rule 1", "rule 2"],
+    "post": ["rule 1", "rule 2"]
+  },
+  "adjectives": ["adj1", "adj2", "adj3"],
+  "topics": ["topic1", "topic2", "topic3"],
+  "messageExamples": [
+    [
+      {"user": "{{user1}}", "content": {"text": "user message"}},
+      {"user": "{{agentName}}", "content": {"text": "agent response"}}
+    ]
+  ]
+}`;
+
+    try {
+      const { ModelType } = await import("@elizaos/core");
+      let result: string | undefined;
+      for (const model of [ModelType.TEXT_SMALL, ModelType.TEXT_LARGE]) {
+        try {
+          result = String(await rt.useModel(model, { prompt, temperature: 0.8, maxTokens: 4000 }));
+          break;
+        } catch (modelErr) {
+          const modelMsg = modelErr instanceof Error ? modelErr.message : "";
+          if (/api.?key|missing|unauthorized|authentication/i.test(modelMsg) && model === ModelType.TEXT_SMALL) {
+            continue;
+          }
+          throw modelErr;
+        }
+      }
+
+      if (!result) {
+        error(res, "no AI model provider configured", 503);
+        return;
+      }
+
+      // Extract JSON from response (strip markdown fences if present)
+      let cleaned = result.trim();
+      if (cleaned.startsWith("```")) {
+        cleaned = cleaned.replace(/^```(?:json)?\s*/, "").replace(/\s*```$/, "");
+      }
+
+      try {
+        const character = JSON.parse(cleaned);
+        json(res, { character, archetypes: ids });
+      } catch {
+        // Return raw if parse fails — client can handle it
+        json(res, { raw: cleaned, archetypes: ids });
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "blend failed";
+      logger.error(`[archetypes-blend] ${msg}`);
+      error(res, msg, 500);
+    }
+    return;
+  }
+
   // ── POST /api/memories/import ───────────────────────────────────────
   if (method === "POST" && pathname === "/api/memories/import") {
     const body = await readJsonBody<{
