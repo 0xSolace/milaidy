@@ -476,14 +476,14 @@ export function InventoryView() {
         <div className="text-center py-10 text-muted italic mt-6">
           No wallet data available. Make sure API keys are configured in{" "}
           <a
-            href="/config"
+            href="/admin"
             onClick={(e) => {
               e.preventDefault();
-              setTab("config");
+              setTab("admin");
             }}
             className="text-accent"
           >
-            Config
+            Admin
           </a>
           .
         </div>

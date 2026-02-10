@@ -124,6 +124,8 @@ interface ServerState {
   appManager: AppManager;
   /** In-memory queue for share ingest items. */
   shareIngestQueue: ShareIngestItem[];
+  /** Broadcast current agent status to all WebSocket clients. Set by startApiServer. */
+  broadcastStatus: (() => void) | null;
   /** Transient OAuth flow state for subscription auth. */
   _anthropicFlow?: import("../auth/anthropic.js").AnthropicFlow;
   _codexFlow?: import("../auth/openai-codex.js").CodexFlow;
@@ -2864,12 +2866,31 @@ async function handleRequest(
 
     try {
       const { ModelType } = await import("@elizaos/core");
-      const result = await rt.useModel(ModelType.TEXT_SMALL, {
-        prompt,
-        temperature: 0.8,
-        maxTokens: 1500,
-      });
-      json(res, { generated: String(result) });
+      const modelParams = { prompt, temperature: 0.8, maxTokens: 1500 };
+
+      // Try TEXT_SMALL first, fall back to TEXT_LARGE if that provider
+      // isn't configured (e.g. missing API key for the small-model provider).
+      let result: string | undefined;
+      for (const model of [ModelType.TEXT_SMALL, ModelType.TEXT_LARGE]) {
+        try {
+          result = String(await rt.useModel(model, modelParams));
+          break;
+        } catch (modelErr) {
+          const modelMsg = modelErr instanceof Error ? modelErr.message : "";
+          const isKeyMissing = /api.?key|missing|unauthorized|authentication/i.test(modelMsg);
+          if (isKeyMissing && model === ModelType.TEXT_SMALL) {
+            logger.warn(`[character-generate] TEXT_SMALL failed (${modelMsg}), trying TEXT_LARGE…`);
+            continue;
+          }
+          throw modelErr;
+        }
+      }
+
+      if (result === undefined) {
+        error(res, "No AI model provider is configured with a valid API key. Set one up in Settings → Model Provider.", 503);
+        return;
+      }
+      json(res, { generated: result });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "generation failed";
       logger.error(`[character-generate] ${msg}`);
@@ -3145,7 +3166,10 @@ async function handleRequest(
 
       // Trigger runtime restart if available
       if (ctx?.onRestart) {
-        logger.info("[milaidy-api] Triggering runtime restart...");
+        const previousState = state.agentState;
+        state.agentState = "restarting";
+        state.broadcastStatus?.();
+        logger.info("[milaidy-api] Triggering runtime restart for plugin toggle...");
         ctx
           .onRestart()
           .then((newRuntime) => {
@@ -3154,12 +3178,17 @@ async function handleRequest(
               state.agentState = "running";
               state.agentName = newRuntime.character.name ?? "Milaidy";
               state.startedAt = Date.now();
-              logger.info("[milaidy-api] Runtime restarted successfully");
+              state.broadcastStatus?.();
+              logger.info("[milaidy-api] Runtime restarted successfully after plugin toggle");
             } else {
+              state.agentState = previousState;
+              state.broadcastStatus?.();
               logger.warn("[milaidy-api] Runtime restart returned null");
             }
           })
           .catch((err) => {
+            state.agentState = previousState;
+            state.broadcastStatus?.();
             logger.error(
               `[milaidy-api] Runtime restart failed: ${err instanceof Error ? err.message : err}`,
             );
@@ -3167,7 +3196,8 @@ async function handleRequest(
       }
     }
 
-    json(res, { ok: true, plugin });
+    const restarting = body.enabled !== undefined && Boolean(ctx?.onRestart);
+    json(res, { ok: true, plugin, restarting });
     return;
   }
 
@@ -6023,6 +6053,7 @@ export async function startApiServer(opts?: {
     cloudManager: null,
     appManager: new AppManager(),
     shareIngestQueue: [],
+    broadcastStatus: null,
   };
 
   // Wire the app manager to the runtime if already running
@@ -6322,6 +6353,9 @@ export async function startApiServer(opts?: {
       }
     }
   };
+
+  // Make broadcastStatus accessible to route handlers via state
+  state.broadcastStatus = broadcastStatus;
 
   // Broadcast status every 5 seconds
   const statusInterval = setInterval(broadcastStatus, 5000);

@@ -97,6 +97,7 @@ function applyTheme(name: ThemeName) {
 export type OnboardingStep =
   | "welcome"
   | "name"
+  | "avatar"
   | "style"
   | "theme"
   | "runMode"
@@ -106,6 +107,19 @@ export type OnboardingStep =
   | "llmProvider"
   | "inventorySetup"
   | "connectors";
+
+/** Total number of built-in VRM character options */
+export const VRM_COUNT = 8;
+
+/** Get the URL for a built-in VRM by its 1-based index */
+export function getVrmUrl(index: number): string {
+  return `/vrms/${index}.vrm`;
+}
+
+/** Get the preview image URL for a built-in VRM */
+export function getVrmPreviewUrl(index: number): string {
+  return `/vrms/previews/milady-${index}.png`;
+}
 
 // ── Action notice ──────────────────────────────────────────────────────
 
@@ -279,6 +293,7 @@ export interface AppState {
   onboardingSelectedChains: Set<string>;
   onboardingRpcSelections: Record<string, string>;
   onboardingRpcKeys: Record<string, string>;
+  onboardingAvatar: number; // 1-8 built-in, 0 for custom upload
   onboardingRestarting: boolean;
 
   // Command palette
@@ -297,6 +312,10 @@ export interface AppState {
   mcpAddingResult: McpMarketplaceResult | null;
   mcpEnvInputs: Record<string, string>;
   mcpHeaderInputs: Record<string, string>;
+
+  // Avatar / Character VRM
+  selectedVrmIndex: number; // 1-8 for built-in, 0 for custom
+  customVrmUrl: string | null; // Object URL for user-uploaded VRM
 
   // Share ingest
   droppedFiles: string[];
@@ -585,7 +604,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [onboardingSelectedChains, setOnboardingSelectedChains] = useState<Set<string>>(new Set(["evm", "solana"]));
   const [onboardingRpcSelections, setOnboardingRpcSelections] = useState<Record<string, string>>({});
   const [onboardingRpcKeys, setOnboardingRpcKeys] = useState<Record<string, string>>({});
+  const [onboardingAvatar, setOnboardingAvatar] = useState(1);
   const [onboardingRestarting, setOnboardingRestarting] = useState(false);
+
+  // --- Avatar ---
+  const AVATAR_STORAGE_KEY = "milaidy:selectedVrm";
+  const [selectedVrmIndex, setSelectedVrmIndex] = useState(() => {
+    try {
+      const stored = localStorage.getItem(AVATAR_STORAGE_KEY);
+      if (stored) { const n = Number(stored); if (n >= 0 && n <= VRM_COUNT) return n; }
+    } catch { /* ignore */ }
+    return 1;
+  });
+  const [customVrmUrl, setCustomVrmUrl] = useState<string | null>(null);
 
   // --- Command palette ---
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -623,6 +654,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const actionNoticeTimer = useRef<number | null>(null);
   const cloudPollInterval = useRef<number | null>(null);
   const cloudLoginPollTimer = useRef<number | null>(null);
+  const prevAgentStateRef = useRef<string | null>(null);
 
   // ── Action notice ──────────────────────────────────────────────────
 
@@ -1067,15 +1099,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setPluginSettingsOpen((prev) => new Set([...prev, pluginId]));
       }
       try {
-        await client.updatePlugin(pluginId, { enabled });
+        const result = await client.updatePlugin(pluginId, { enabled });
+        // Optimistically update the toggle in the UI
         setPlugins((prev: PluginInfo[]) =>
           prev.map((p: PluginInfo) => (p.id === pluginId ? { ...p, enabled } : p)),
         );
+
+        if (result.restarting) {
+          setActionNotice(
+            `${enabled ? "Enabling" : "Disabling"} plugin — restarting agent...`,
+            "info",
+            10000,
+          );
+          // Wait for the agent to finish restarting, then refresh data
+          const maxWaitMs = 20000;
+          const pollIntervalMs = 1000;
+          const start = Date.now();
+          // Initial grace period for the restart to begin
+          await new Promise((r) => setTimeout(r, 2000));
+          while (Date.now() - start < maxWaitMs) {
+            try {
+              const status = await client.getStatus();
+              if (status.state === "running") {
+                setAgentStatus(status);
+                break;
+              }
+            } catch {
+              // Server may be down during restart — keep polling
+            }
+            await new Promise((r) => setTimeout(r, pollIntervalMs));
+          }
+          // Refresh plugin list and workbench from the newly restarted runtime
+          await loadPlugins();
+          await loadWorkbench();
+          setActionNotice(
+            `Plugin ${enabled ? "enabled" : "disabled"} successfully.`,
+            "success",
+          );
+        }
       } catch {
         /* ignore */
       }
     },
-    [plugins, setActionNotice],
+    [plugins, setActionNotice, loadPlugins, loadWorkbench],
   );
 
   const handlePluginConfigSave = useCallback(
@@ -1450,6 +1516,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setOnboardingStep("name");
         break;
       case "name":
+        setOnboardingStep("avatar");
+        break;
+      case "avatar":
+        // Save selected avatar to localStorage
+        try { localStorage.setItem(AVATAR_STORAGE_KEY, String(onboardingAvatar)); } catch { /* ignore */ }
+        setSelectedVrmIndex(onboardingAvatar);
         setOnboardingStep("style");
         break;
       case "style":
@@ -1498,8 +1570,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       case "name":
         setOnboardingStep("welcome");
         break;
-      case "style":
+      case "avatar":
         setOnboardingStep("name");
+        break;
+      case "style":
+        setOnboardingStep("avatar");
         break;
       case "theme":
         setOnboardingStep("style");
@@ -1783,7 +1858,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       onboardingSelectedChains: setOnboardingSelectedChains as (v: never) => void,
       onboardingRpcSelections: setOnboardingRpcSelections as (v: never) => void,
       onboardingRpcKeys: setOnboardingRpcKeys as (v: never) => void,
+      onboardingAvatar: setOnboardingAvatar as (v: never) => void,
       onboardingRestarting: setOnboardingRestarting as (v: never) => void,
+      selectedVrmIndex: ((v: number) => { setSelectedVrmIndex(v); try { localStorage.setItem("milaidy:selectedVrm", String(v)); } catch { /* ignore */ } }) as unknown as (v: never) => void,
+      customVrmUrl: setCustomVrmUrl as (v: never) => void,
       commandQuery: setCommandQuery as (v: never) => void,
       commandActiveIndex: setCommandActiveIndex as (v: never) => void,
       storeSearch: setStoreSearch as (v: never) => void,
@@ -1920,20 +1998,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
       pollCloudCredits();
       cloudPollInterval.current = window.setInterval(() => pollCloudCredits(), 60_000);
 
-      // Load tab from URL
+      // Load tab from URL (tabFromPath handles legacy /config, /database, /logs redirects)
       const urlTab = tabFromPath(window.location.pathname);
       if (urlTab) {
         setTabRaw(urlTab);
+        // Rewrite URL if we landed on a legacy path
+        const canonicalPath = pathForTab(urlTab);
+        if (window.location.pathname !== canonicalPath) {
+          window.history.replaceState(null, "", canonicalPath);
+        }
         if (urlTab === "plugins") void loadPlugins();
         if (urlTab === "skills") void loadSkills();
-        if (urlTab === "config") {
+        if (urlTab === "character") void loadCharacter();
+        if (urlTab === "admin") {
           void checkExtensionStatus();
           void loadWalletConfig();
-          void loadCharacter();
           void loadUpdateStatus();
           void loadPlugins();
+          void loadLogs();
         }
-        if (urlTab === "logs") void loadLogs();
         if (urlTab === "inventory") void loadInventory();
       }
     };
@@ -1955,6 +2038,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Reload workbench when agent transitions to "running" (e.g. after restart)
+  useEffect(() => {
+    const current = agentStatus?.state ?? null;
+    const prev = prevAgentStateRef.current;
+    prevAgentStateRef.current = current;
+
+    if (current === "running" && prev !== null && prev !== "running") {
+      void loadWorkbench();
+    }
+  }, [agentStatus?.state, loadWorkbench]);
 
   // ── Context value ──────────────────────────────────────────────────
 
@@ -1992,11 +2086,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     onboardingRunMode, onboardingCloudProvider, onboardingSmallModel, onboardingLargeModel,
     onboardingProvider, onboardingApiKey, onboardingOpenRouterModel,
     onboardingTelegramToken,
-    onboardingSelectedChains, onboardingRpcSelections, onboardingRpcKeys, onboardingRestarting,
+    onboardingSelectedChains, onboardingRpcSelections, onboardingRpcKeys, onboardingAvatar, onboardingRestarting,
     commandPaletteOpen, commandQuery, commandActiveIndex,
     mcpConfiguredServers, mcpServerStatuses, mcpMarketplaceQuery, mcpMarketplaceResults,
     mcpMarketplaceLoading, mcpAction, mcpAddingServer, mcpAddingResult,
     mcpEnvInputs, mcpHeaderInputs,
+    selectedVrmIndex, customVrmUrl,
     droppedFiles, shareIngestNotice,
     activeGameApp, activeGameDisplayName, activeGameViewerUrl, activeGameSandbox,
     activeGamePostMessageAuth,

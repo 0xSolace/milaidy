@@ -14,24 +14,20 @@ import { WidgetSidebar } from "./components/WidgetSidebar.js";
 import { PluginsView } from "./components/PluginsView.js";
 import { SkillsView } from "./components/SkillsView.js";
 import { InventoryView } from "./components/InventoryView.js";
-import { ConfigView } from "./components/ConfigView.js";
-import { LogsView } from "./components/LogsView.js";
+import { CharacterView } from "./components/CharacterView.js";
+import { AdminView } from "./components/AdminView.js";
 import { AppsView } from "./components/AppsView.js";
-import { GameView } from "./components/GameView.js";
-import { DatabaseView } from "./components/DatabaseView.js";
 
 function ViewRouter() {
   const { tab } = useApp();
   switch (tab) {
     case "chat": return <ChatView />;
     case "apps": return <AppsView />;
-    case "game": return <GameView />;
     case "inventory": return <InventoryView />;
     case "plugins": return <PluginsView />;
     case "skills": return <SkillsView />;
-    case "database": return <DatabaseView />;
-    case "config": return <ConfigView />;
-    case "logs": return <LogsView />;
+    case "character": return <CharacterView />;
+    case "admin": return <AdminView />;
     default: return <ChatView />;
   }
 }

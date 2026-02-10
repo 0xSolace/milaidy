@@ -2,25 +2,31 @@
  * Navigation — tabs + onboarding.
  */
 
-export type Tab = "chat" | "apps" | "game" | "inventory" | "plugins" | "skills" | "database" | "config" | "logs";
+export type Tab = "chat" | "apps" | "inventory" | "plugins" | "skills" | "character" | "admin";
 
 export const TAB_GROUPS = [
   { label: "Chat", tabs: ["chat"] as Tab[] },
   { label: "Play", tabs: ["apps"] as Tab[] },
-  { label: "Manage", tabs: ["inventory", "plugins", "skills", "database"] as Tab[] },
-  { label: "Settings", tabs: ["config", "logs"] as Tab[] },
+  { label: "Manage", tabs: ["inventory", "plugins", "skills"] as Tab[] },
+  { label: "Settings", tabs: ["character", "admin"] as Tab[] },
 ] as const;
 
 const TAB_PATHS: Record<Tab, string> = {
   chat: "/chat",
   apps: "/apps",
-  game: "/game",
   inventory: "/inventory",
   plugins: "/plugins",
   skills: "/skills",
-  database: "/database",
-  config: "/config",
-  logs: "/logs",
+  character: "/character",
+  admin: "/admin",
+};
+
+/** Legacy path redirects — old paths that now map to new tabs. */
+const LEGACY_PATHS: Record<string, Tab> = {
+  "/config": "character",
+  "/database": "admin",
+  "/logs": "admin",
+  "/game": "apps",
 };
 
 const PATH_TO_TAB = new Map(
@@ -43,7 +49,8 @@ export function tabFromPath(pathname: string, basePath = ""): Tab | null {
   let normalized = normalizePath(p).toLowerCase();
   if (normalized.endsWith("/index.html")) normalized = "/";
   if (normalized === "/") return "chat";
-  return PATH_TO_TAB.get(normalized) ?? null;
+  // Check current paths first, then legacy redirects
+  return PATH_TO_TAB.get(normalized) ?? LEGACY_PATHS[normalized] ?? null;
 }
 
 export function normalizeBasePath(basePath: string): string {
@@ -67,28 +74,18 @@ export function titleForTab(tab: Tab): string {
   switch (tab) {
     case "chat": return "Chat";
     case "apps": return "Apps";
-    case "game": return "Game";
     case "inventory": return "Inventory";
     case "plugins": return "Plugins";
     case "skills": return "Skills";
-    case "database": return "Database";
-    case "config": return "Config";
-    case "logs": return "Logs";
+    case "character": return "Character";
+    case "admin": return "Admin";
     default: return "Milaidy";
   }
 }
 
 export function subtitleForTab(tab: Tab): string {
   switch (tab) {
-    case "chat": return "";
-    case "apps": return "";
-    case "game": return "";
     case "inventory": return "Tokens and NFTs across all wallets.";
-    case "plugins": return "";
-    case "skills": return "";
-    case "database": return "";
-    case "config": return "";
-    case "logs": return "";
     default: return "";
   }
 }

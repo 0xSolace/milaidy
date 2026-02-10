@@ -800,8 +800,8 @@ export class MilaidyClient {
     return this.fetch("/api/plugins");
   }
 
-  async updatePlugin(id: string, config: Record<string, unknown>): Promise<void> {
-    await this.fetch(`/api/plugins/${id}`, {
+  async updatePlugin(id: string, config: Record<string, unknown>): Promise<{ ok: boolean; restarting?: boolean }> {
+    return this.fetch(`/api/plugins/${id}`, {
       method: "PUT",
       body: JSON.stringify(config),
     });

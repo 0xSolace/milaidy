@@ -45,11 +45,19 @@ export function WidgetSidebar() {
         <div className="flex items-center justify-center flex-1">
           <p className="text-muted">Agent not running</p>
         </div>
+      ) : agentStatus?.state === "restarting" ? (
+        <div className="flex items-center justify-center flex-1">
+          <p className="text-muted">Agent restarting&hellip;</p>
+        </div>
+      ) : workbenchLoading ? (
+        <div className="flex items-center justify-center flex-1">
+          <p className="text-muted">Loading&hellip;</p>
+        </div>
       ) : (
         <>
           {!workbenchGoalsAvailable && !workbenchTodosAvailable ? (
             <div className="flex items-center justify-center flex-1">
-              <p className="text-muted">Plugin not loaded</p>
+              <p className="text-muted">No workbench plugins active</p>
             </div>
           ) : (
             <>

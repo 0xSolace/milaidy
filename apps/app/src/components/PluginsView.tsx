@@ -419,15 +419,6 @@ export function PluginsView() {
                   allParamsSet ? "bg-ok" : "bg-destructive"
                 }`}
               />
-              <div
-                className="w-[52px] h-[5px] bg-surface border border-border overflow-hidden"
-                title={`${setCount}/${totalCount} configured`}
-              >
-                <div
-                  className="h-full bg-accent transition-[width] duration-300"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
             </div>
           )}
 

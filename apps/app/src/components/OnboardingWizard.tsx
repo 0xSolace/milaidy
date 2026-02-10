@@ -6,6 +6,7 @@ import { useEffect, useState, type ChangeEvent } from "react";
 import { useApp, THEMES, type OnboardingStep } from "../AppContext.js";
 import type { StylePreset, ProviderOption, CloudProviderOption, ModelOption, InventoryProviderOption, RpcProviderOption, OpenRouterModelOption } from "../api-client";
 import { getProviderLogo } from "../provider-logos.js";
+import { AvatarSelector } from "./AvatarSelector.js";
 
 export function OnboardingWizard() {
   const {
@@ -25,6 +26,7 @@ export function OnboardingWizard() {
     onboardingSelectedChains,
     onboardingRpcSelections,
     onboardingRpcKeys,
+    onboardingAvatar,
     onboardingRestarting,
     cloudConnected,
     cloudLoginBusy,
@@ -111,7 +113,7 @@ export function OnboardingWizard() {
         return (
           <div className="max-w-[500px] mx-auto mt-10 text-center font-body">
             <img
-              src="/pfp.jpg"
+              src="/android-chrome-512x512.png"
               alt="Avatar"
               className="w-[140px] h-[140px] rounded-full object-cover border-[3px] border-border mx-auto mb-5 block"
             />
@@ -158,6 +160,28 @@ export function OnboardingWizard() {
                   placeholder="Enter custom name"
                 />
               </div>
+            </div>
+          </div>
+        );
+
+      case "avatar":
+        return (
+          <div className="max-w-[500px] mx-auto mt-10 text-center font-body">
+            <div className="onboarding-speech bg-card border border-border rounded-xl px-5 py-4 mx-auto mb-6 max-w-[360px] relative text-[15px] text-txt leading-relaxed">
+              <h2 className="text-[28px] font-normal mb-1 text-txt-strong">Choose Your Avatar</h2>
+              <p className="text-xs text-muted mt-1">Pick a milady or upload your own .vrm</p>
+            </div>
+            <div className="max-w-[400px] mx-auto">
+              <AvatarSelector
+                selected={onboardingAvatar}
+                onSelect={(i) => setState("onboardingAvatar", i)}
+                onUpload={(file) => {
+                  const url = URL.createObjectURL(file);
+                  setState("customVrmUrl", url);
+                  setState("onboardingAvatar", 0);
+                }}
+                showUpload
+              />
             </div>
           </div>
         );
@@ -351,7 +375,7 @@ export function OnboardingWizard() {
         return (
           <div className="max-w-[500px] mx-auto mt-10 text-center font-body">
             <img
-              src="/pfp.jpg"
+              src="/android-chrome-512x512.png"
               alt="milAIdy"
               className="w-[80px] h-[80px] rounded-full object-cover border-2 border-border mx-auto mb-4 block"
             />
@@ -674,6 +698,8 @@ export function OnboardingWizard() {
         return true;
       case "name":
         return onboardingName.trim().length > 0;
+      case "avatar":
+        return true; // always valid — defaults to 1
       case "style":
         return onboardingStyle.length > 0;
       case "theme":
