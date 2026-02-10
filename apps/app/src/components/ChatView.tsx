@@ -10,6 +10,66 @@ import { useRef, useEffect, useCallback, useState } from "react";
 import { useApp } from "../AppContext.js";
 import { ChatAvatar } from "./ChatAvatar.js";
 import { useVoiceChat } from "../hooks/useVoiceChat.js";
+import { client, type VoiceConfig } from "../api-client.js";
+
+// ── Typewriter streaming component ────────────────────────────────────
+// Reveals text progressively using direct DOM manipulation (no React
+// re-renders per frame).  Speed auto-scales so streaming never takes
+// longer than ~3 seconds regardless of text length.
+
+interface StreamingTextProps {
+  text: string;
+  onComplete?: () => void;
+  /** Called every frame so the parent can auto-scroll. */
+  onProgress?: () => void;
+}
+
+function StreamingText({ text, onComplete, onProgress }: StreamingTextProps) {
+  const spanRef = useRef<HTMLSpanElement>(null);
+  const onCompleteRef = useRef(onComplete);
+  const onProgressRef = useRef(onProgress);
+  onCompleteRef.current = onComplete;
+  onProgressRef.current = onProgress;
+
+  useEffect(() => {
+    const span = spanRef.current;
+    if (!span) return;
+
+    let current = 0;
+    let cancelled = false;
+
+    // Auto-scale: at least 4 chars/frame, but cap total duration at ~3 s
+    const MAX_DURATION_MS = 3000;
+    const framesAtMax = MAX_DURATION_MS / 16.67; // ~180 frames
+    const charsPerFrame = Math.max(4, Math.ceil(text.length / framesAtMax));
+
+    const frame = () => {
+      if (cancelled) return;
+      current = Math.min(current + charsPerFrame, text.length);
+      span.textContent = text.slice(0, current);
+      onProgressRef.current?.();
+      if (current < text.length) {
+        requestAnimationFrame(frame);
+      } else {
+        onCompleteRef.current?.();
+      }
+    };
+    requestAnimationFrame(frame);
+
+    return () => {
+      cancelled = true;
+      // On unmount / text change, show full text immediately
+      if (span) span.textContent = text;
+    };
+  }, [text]);
+
+  return (
+    <>
+      <span ref={spanRef} />
+      <span className="inline-block w-[2px] h-[1em] bg-current ml-[1px] align-text-bottom opacity-70 animate-pulse" />
+    </>
+  );
+}
 
 export function ChatView() {
   const {
@@ -27,9 +87,49 @@ export function ChatView() {
   const messagesRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // ── Toggles ───────────────────────────────────────────────────────
-  const [avatarVisible, setAvatarVisible] = useState(true);
-  const [agentVoiceMuted, setAgentVoiceMuted] = useState(false);
+  // ── Toggles (persisted in localStorage) ──────────────────────────
+  const [avatarVisible, setAvatarVisible] = useState(() => {
+    try {
+      const v = localStorage.getItem("milaidy:chat:avatarVisible");
+      return v === null ? true : v === "true";
+    } catch { return true; }
+  });
+  const [agentVoiceMuted, setAgentVoiceMuted] = useState(() => {
+    try {
+      const v = localStorage.getItem("milaidy:chat:voiceMuted");
+      return v === null ? true : v === "true"; // muted by default
+    } catch { return true; }
+  });
+
+  // Persist toggle changes
+  useEffect(() => {
+    try { localStorage.setItem("milaidy:chat:avatarVisible", String(avatarVisible)); } catch { /* ignore */ }
+  }, [avatarVisible]);
+  useEffect(() => {
+    try { localStorage.setItem("milaidy:chat:voiceMuted", String(agentVoiceMuted)); } catch { /* ignore */ }
+  }, [agentVoiceMuted]);
+
+  // ── Streaming text reveal ──────────────────────────────────────────
+  // Tracks the ID of the message currently being "streamed in" via
+  // typewriter.  Set during render (React bail-out) so the very first
+  // frame already renders StreamingText — no flash.
+  const [streamingMsgId, setStreamingMsgId] = useState<string | null>(null);
+  const lastStreamedIdRef = useRef<string | null>(null);
+
+  // ── Voice config (ElevenLabs / browser TTS) ────────────────────────
+  const [voiceConfig, setVoiceConfig] = useState<VoiceConfig | null>(null);
+
+  // Load saved voice config on mount so the correct TTS provider is used
+  useEffect(() => {
+    void (async () => {
+      try {
+        const cfg = await client.getConfig();
+        const messages = cfg.messages as Record<string, Record<string, unknown>> | undefined;
+        const tts = messages?.tts as VoiceConfig | undefined;
+        if (tts) setVoiceConfig(tts);
+      } catch { /* ignore — will use browser TTS fallback */ }
+    })();
+  }, []);
 
   // ── Voice chat ────────────────────────────────────────────────────
   const handleVoiceTranscript = useCallback(
@@ -41,30 +141,55 @@ export function ChatView() {
     [chatSending, setState, handleChatSend],
   );
 
-  const voice = useVoiceChat({ onTranscript: handleVoiceTranscript });
+  const voice = useVoiceChat({ onTranscript: handleVoiceTranscript, voiceConfig });
 
-  // Auto-speak agent responses unless muted.
-  // Works for both typed and voice conversations — the mic toggle only
-  // controls user input (STT), not agent output.
+  // ── Detect new assistant messages ────────────────────────────────
   const lastMsg = conversationMessages.length > 0
     ? conversationMessages[conversationMessages.length - 1]
     : null;
 
-  // Initialise to the current last message so we don't replay old history on mount.
+  // Initialise refs to the current last assistant message so we don't
+  // replay old history or re-stream on mount.
   const lastSpokenIdRef = useRef<string | null>(
     lastMsg?.role === "assistant" ? lastMsg.id : null,
   );
+  if (lastStreamedIdRef.current === null && lastMsg?.role === "assistant") {
+    lastStreamedIdRef.current = lastMsg.id;
+  }
 
+  // When a new assistant message appears:
+  // 1. Start typewriter streaming (text appears progressively)
+  // 2. Start voice immediately in parallel (full text, non-blocking)
   if (
     lastMsg &&
     lastMsg.role === "assistant" &&
-    lastMsg.id !== lastSpokenIdRef.current &&
-    !agentVoiceMuted &&
+    lastMsg.id !== lastStreamedIdRef.current &&
     !chatSending
   ) {
-    lastSpokenIdRef.current = lastMsg.id;
-    voice.speak(lastMsg.text);
+    lastStreamedIdRef.current = lastMsg.id;
+
+    // Start typewriter — React bails out of this render and immediately
+    // re-renders with the new streamingMsgId, so the first visible frame
+    // already shows StreamingText (no flash of full text).
+    if (streamingMsgId !== lastMsg.id) {
+      setStreamingMsgId(lastMsg.id);
+    }
+
+    // Start voice (independently of typewriter)
+    if (lastMsg.id !== lastSpokenIdRef.current && !agentVoiceMuted) {
+      lastSpokenIdRef.current = lastMsg.id;
+      voice.speak(lastMsg.text);
+    }
   }
+
+  const handleStreamComplete = useCallback(() => {
+    setStreamingMsgId(null);
+  }, []);
+
+  const handleStreamProgress = useCallback(() => {
+    const el = messagesRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, []);
 
   const agentName = agentStatus?.agentName ?? "Agent";
   const agentState = agentStatus?.state ?? "not_started";
@@ -117,7 +242,15 @@ export function ChatView() {
   return (
     <div className="flex flex-col flex-1 min-h-0 px-5 relative">
       {/* 3D Avatar — behind chat on the right side */}
-      {avatarVisible && <ChatAvatar mouthOpen={voice.mouthOpen} isSpeaking={voice.isSpeaking} />}
+      {/* When using ElevenLabs audio analysis, mouthOpen carries real volume
+          data — don't pass isSpeaking so the engine uses the external values
+          instead of its own sine waves. */}
+      {avatarVisible && (
+        <ChatAvatar
+          mouthOpen={voice.mouthOpen}
+          isSpeaking={voice.isSpeaking && !voice.usingAudioAnalysis}
+        />
+      )}
 
       {/* ── Messages ───────────────────────────────────────────────── */}
       <div ref={messagesRef} className="flex-1 overflow-y-auto py-2 relative" style={{ zIndex: 1 }}>
@@ -140,7 +273,17 @@ export function ChatView() {
               >
                 {msg.role === "user" ? "You" : agentName}
               </div>
-              <div className="text-txt">{msg.text}</div>
+              <div className="text-txt">
+                {msg.id === streamingMsgId ? (
+                  <StreamingText
+                    text={msg.text}
+                    onComplete={handleStreamComplete}
+                    onProgress={handleStreamProgress}
+                  />
+                ) : (
+                  msg.text
+                )}
+              </div>
             </div>
           ))
         )}
@@ -175,9 +318,9 @@ export function ChatView() {
       <div className="flex justify-end gap-1.5 pb-1.5 relative" style={{ zIndex: 1 }}>
         {/* Show / hide avatar */}
         <button
-          className={`w-7 h-7 flex items-center justify-center border rounded cursor-pointer transition-all ${
+          className={`w-7 h-7 flex items-center justify-center border rounded cursor-pointer transition-all bg-card ${
             avatarVisible
-              ? "border-accent text-accent bg-accent/10"
+              ? "border-accent text-accent"
               : "border-border text-muted hover:border-accent hover:text-accent"
           }`}
           onClick={() => setAvatarVisible((v) => !v)}
@@ -192,10 +335,10 @@ export function ChatView() {
 
         {/* Mute / unmute agent voice */}
         <button
-          className={`w-7 h-7 flex items-center justify-center border rounded cursor-pointer transition-all ${
+          className={`w-7 h-7 flex items-center justify-center border rounded cursor-pointer transition-all bg-card ${
             agentVoiceMuted
               ? "border-border text-muted hover:border-accent hover:text-accent"
-              : "border-accent text-accent bg-accent/10"
+              : "border-accent text-accent"
           }`}
           onClick={() => {
             const muting = !agentVoiceMuted;

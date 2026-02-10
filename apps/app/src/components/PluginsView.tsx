@@ -809,10 +809,3 @@ export function ConnectorsView() {
   return <PluginListView category="connector" label="Connectors" />;
 }
 
-/**
- * @deprecated Use FeaturesView or ConnectorsView instead.
- * Kept temporarily for backwards compatibility.
- */
-export function PluginsView() {
-  return <FeaturesView />;
-}

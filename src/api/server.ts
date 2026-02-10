@@ -1968,15 +1968,24 @@ async function handleRequest(
     if (config.agents.list.length === 0) {
       config.agents.list.push({ id: "main", default: true });
     }
-    const agent = config.agents.list[0] as Record<string, unknown>;
+    const agent = config.agents.list[0];
     agent.name = (body.name as string).trim();
     agent.workspace = resolveDefaultAgentWorkspaceDir();
-    if (body.bio) agent.bio = body.bio;
-    if (body.systemPrompt) agent.system = body.systemPrompt;
-    if (body.style) agent.style = body.style;
-    if (body.adjectives) agent.adjectives = body.adjectives;
-    if (body.topics) agent.topics = body.topics;
-    if (body.messageExamples) agent.messageExamples = body.messageExamples;
+    if (body.bio) agent.bio = body.bio as string[];
+    if (body.systemPrompt) agent.system = body.systemPrompt as string;
+    if (body.style)
+      agent.style = body.style as {
+        all?: string[];
+        chat?: string[];
+        post?: string[];
+      };
+    if (body.adjectives) agent.adjectives = body.adjectives as string[];
+    if (body.topics) agent.topics = body.topics as string[];
+    if (body.postExamples) agent.postExamples = body.postExamples as string[];
+    if (body.messageExamples)
+      agent.messageExamples = body.messageExamples as Array<
+        Array<{ user: string; content: { text: string } }>
+      >;
 
     // ── Theme preference ──────────────────────────────────────────────────
     if (body.theme) {
@@ -4801,8 +4810,10 @@ async function handleRequest(
   }
 
   // ── POST /api/conversations/:id/greeting ───────────────────────────
-  // Ask the agent to generate an opening greeting message for a conversation.
-  // If the LLM is not configured or fails, returns a fallback message.
+  // Kick off a new conversation by sending a greeting trigger through the
+  // SAME message pipeline as regular user messages.  This means the
+  // greeting gets full context, memory, character voice, and is persisted
+  // to the DB — so it's remembered on refresh and voice/TTS works.
   if (
     method === "POST" &&
     /^\/api\/conversations\/[^/]+\/greeting$/.test(pathname)
@@ -4814,13 +4825,15 @@ async function handleRequest(
       return;
     }
 
-    const FALLBACK_MSG = "please configure your models so we can chat";
-
     const runtime = state.runtime;
+    const charName =
+      runtime?.character.name ?? state.agentName ?? "Milaidy";
+    const FALLBACK_MSG = `Hey! I'm ${charName}. What's on your mind?`;
+
     if (!runtime || state.agentState !== "running") {
       json(res, {
         text: FALLBACK_MSG,
-        agentName: state.agentName,
+        agentName: charName,
         generated: false,
       });
       return;
@@ -4831,7 +4844,7 @@ async function handleRequest(
     if (proxy) {
       try {
         const responseText = await proxy.handleChatMessage(
-          "[system: send a short greeting to open the conversation. introduce yourself briefly in your own style.]",
+          "[A new user has opened a conversation. Send a short, in-character greeting to kick things off.]",
         );
         conv.updatedAt = new Date().toISOString();
         json(res, {
@@ -4849,99 +4862,53 @@ async function handleRequest(
       return;
     }
 
-    // Local LLM path — build a prompt from the agent's character
+    // Route through the full message pipeline — same as regular chat.
+    // This gives the greeting full context, memory, and DB persistence.
     try {
-      const { ModelType } = await import("@elizaos/core");
-      const char = runtime.character;
-      const charName = char.name ?? state.agentName ?? "Milaidy";
-      const bio = Array.isArray(char.bio)
-        ? char.bio.join(" ")
-        : typeof char.bio === "string"
-          ? char.bio
-          : "";
-      const chatStyle = Array.isArray(char.style?.chat)
-        ? char.style.chat.join("; ")
-        : "";
-      const allStyle = Array.isArray(char.style?.all)
-        ? char.style.all.join("; ")
-        : "";
+      const userId = await ensureChatUser();
+      await ensureConversationRoom(conv);
 
-      const prompt = [
-        `You are ${charName}.`,
-        bio ? `About you: ${bio}` : "",
-        char.system ? `${char.system}` : "",
-        chatStyle ? `Your chat style: ${chatStyle}` : "",
-        allStyle ? `General style rules: ${allStyle}` : "",
-        "",
-        "Write a short, natural opening message to greet someone who just started a conversation with you.",
-        "Be yourself — use your own voice, personality, and style.",
-        "Keep it brief (1-2 sentences). Do not use quotation marks around your message.",
-        "Just output the greeting, nothing else.",
-      ]
-        .filter(Boolean)
-        .join("\n");
+      // Send a system-style trigger message that the agent responds to
+      const triggerMessage = createMessageMemory({
+        id: crypto.randomUUID() as UUID,
+        entityId: userId,
+        roomId: conv.roomId,
+        content: {
+          text: "[A new user has opened a conversation. Send a short, in-character greeting to kick things off. Be yourself — use your own voice, personality, and style. Keep it brief (1-2 sentences).]",
+          source: "client_chat",
+          channelType: ChannelType.DM,
+        },
+      });
 
-      let result: string | undefined;
-      for (const model of [ModelType.TEXT_SMALL, ModelType.TEXT_LARGE]) {
-        try {
-          result = String(
-            await runtime.useModel(model, {
-              prompt,
-              temperature: 0.9,
-              maxTokens: 200,
-            }),
-          );
-          break;
-        } catch (modelErr) {
-          const modelMsg = modelErr instanceof Error ? modelErr.message : "";
-          if (
-            /api.?key|missing|unauthorized|authentication/i.test(modelMsg) &&
-            model === ModelType.TEXT_SMALL
-          ) {
-            continue;
+      let responseText = "";
+      const result = await runtime.messageService?.handleMessage(
+        runtime,
+        triggerMessage,
+        async (content: Content) => {
+          if (content?.text) {
+            responseText += content.text;
           }
-          throw modelErr;
-        }
-      }
+          return [];
+        },
+      );
 
-      if (!result?.trim()) {
-        json(res, {
-          text: FALLBACK_MSG,
-          agentName: charName,
-          generated: false,
-        });
-        return;
-      }
-
-      // Store the greeting as a message memory in the conversation room
-      try {
-        await ensureConversationRoom(conv);
-        const agentMemory = createMessageMemory({
-          id: crypto.randomUUID() as UUID,
-          entityId: runtime.agentId,
-          roomId: conv.roomId,
-          content: {
-            text: result.trim(),
-            source: "agent_greeting",
-            channelType: ChannelType.DM,
-          },
-        });
-        await runtime.createMemory(agentMemory, "messages");
-      } catch (memErr) {
-        logger.warn(
-          `[greeting] Failed to store greeting memory: ${memErr instanceof Error ? memErr.message : String(memErr)}`,
-        );
+      if (!responseText && result?.responseContent?.text) {
+        responseText = result.responseContent.text;
       }
 
       conv.updatedAt = new Date().toISOString();
-      json(res, { text: result.trim(), agentName: charName, generated: true });
+      json(res, {
+        text: responseText?.trim() || FALLBACK_MSG,
+        agentName: charName,
+        generated: Boolean(responseText?.trim()),
+      });
     } catch (greetErr) {
       logger.error(
-        `[greeting] Model call failed: ${greetErr instanceof Error ? greetErr.message : String(greetErr)}`,
+        `[greeting] Pipeline failed: ${greetErr instanceof Error ? greetErr.message : String(greetErr)}`,
       );
       json(res, {
         text: FALLBACK_MSG,
-        agentName: state.agentName,
+        agentName: charName,
         generated: false,
       });
     }
@@ -5215,17 +5182,22 @@ async function handleRequest(
     let balance: number;
     const client = cloudAuth.getClient();
     try {
-      const creditResponse = await client.get<{
-        success: boolean;
-        data: { balance: number; currency: string };
-      }>("/credits/balance");
-      // Defensive: the cloud client may return an unexpected shape (e.g.
-      // undefined or missing `.data`) when the API is unreachable or the
-      // auth token has expired.
-      const rawBalance = creditResponse?.data?.balance;
+      // The cloud API returns either { balance: number } (direct)
+      // or { success: true, data: { balance: number } } (wrapped).
+      // Handle both formats gracefully.
+      const creditResponse = await client.get<Record<string, unknown>>(
+        "/credits/balance",
+      );
+      const rawBalance =
+        typeof creditResponse?.balance === "number"
+          ? creditResponse.balance
+          : typeof (creditResponse?.data as Record<string, unknown>)?.balance ===
+              "number"
+            ? (creditResponse.data as Record<string, unknown>).balance as number
+            : undefined;
       if (typeof rawBalance !== "number") {
         logger.debug(
-          "[cloud/credits] Unexpected response shape from cloud API",
+          `[cloud/credits] Unexpected response shape: ${JSON.stringify(creditResponse)}`,
         );
         json(res, {
           balance: null,

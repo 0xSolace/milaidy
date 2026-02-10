@@ -1669,6 +1669,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         style: style?.style,
         adjectives: style?.adjectives,
         topics: style?.topics,
+        postExamples: style?.postExamples,
         messageExamples: style?.messageExamples,
         cloudProvider: onboardingRunMode === "cloud" ? onboardingCloudProvider : undefined,
         smallModel: onboardingRunMode === "cloud" ? onboardingSmallModel : undefined,

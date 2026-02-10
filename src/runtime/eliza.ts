@@ -979,9 +979,21 @@ export function buildCharacterFromConfig(config: MilaidyConfig): Character {
   const agentEntry = config.agents?.list?.[0];
   const name = agentEntry?.name ?? config.ui?.assistant?.name ?? "Milaidy";
 
-  const bio = ["{{name}} is an AI assistant powered by Milaidy and ElizaOS."];
+  // Read personality fields from the agent config entry (set during
+  // onboarding from the chosen style preset).  Fall back to generic
+  // defaults when the preset data is not present (e.g. pre-onboarding
+  // bootstrap or configs created before this change).
+  const bio = agentEntry?.bio ?? [
+    "{{name}} is an AI assistant powered by Milaidy and ElizaOS.",
+  ];
   const systemPrompt =
+    agentEntry?.system ??
     "You are {{name}}, an autonomous AI agent powered by ElizaOS.";
+  const style = agentEntry?.style;
+  const adjectives = agentEntry?.adjectives;
+  const topics = agentEntry?.topics;
+  const postExamples = agentEntry?.postExamples;
+  const messageExamples = agentEntry?.messageExamples;
 
   // Collect secrets from process.env (API keys the plugins need)
   const secretKeys = [
@@ -1041,10 +1053,22 @@ export function buildCharacterFromConfig(config: MilaidyConfig): Character {
     }
   }
 
+  // The messageExamples stored in config use the loose preset format
+  // ({ user, content: { text } }).  The core Character type requires a
+  // `name` field on each example, so we map `user` → `name` here.
+  const mappedExamples = messageExamples?.map((convo) =>
+    convo.map((msg) => ({ ...msg, name: msg.user })),
+  );
+
   return mergeCharacterDefaults({
     name,
     bio,
     system: systemPrompt,
+    ...(style ? { style } : {}),
+    ...(adjectives ? { adjectives } : {}),
+    ...(topics ? { topics } : {}),
+    ...(postExamples ? { postExamples } : {}),
+    ...(mappedExamples ? { messageExamples: mappedExamples } : {}),
     secrets,
   });
 }
@@ -1499,7 +1523,7 @@ async function runFirstTimeSetup(
     id: "main",
     default: true,
   };
-  const agentConfigEntry: Record<string, unknown> = { ...mainEntry, name };
+  const agentConfigEntry: AgentConfig = { ...mainEntry, name };
 
   // Apply the chosen style template to the agent config entry so the
   // personality is persisted — not just the name.
@@ -1514,7 +1538,7 @@ async function runFirstTimeSetup(
   }
 
   const updatedList: AgentConfig[] = [
-    agentConfigEntry as AgentConfig,
+    agentConfigEntry,
     ...existingList.slice(1),
   ];
 

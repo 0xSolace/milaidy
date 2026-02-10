@@ -9,7 +9,7 @@
       "name": "Acp",
       "npmName": "@elizaos/plugin-acp",
       "description": "",
-      "category": "feature",
+      "category": "connector",
       "envKey": "ACP_GATEWAY_TOKEN",
       "configKeys": [
         "ACP_GATEWAY_URL",
@@ -411,7 +411,7 @@
       "name": "Babylon",
       "npmName": "@elizaos/plugin-babylon",
       "description": "Babylon prediction market platform integration for ElizaOS with autonomous trading, social features, and A2A protocol support",
-      "category": "feature",
+      "category": "app",
       "envKey": null,
       "configKeys": [
         "BABYLON_API_URL",
@@ -533,7 +533,7 @@
       "name": "Blooio",
       "npmName": "@elizaos/plugin-blooio",
       "description": "Blooio plugin for iMessage/SMS messaging integration",
-      "category": "feature",
+      "category": "connector",
       "envKey": "BLOOIO_API_KEY",
       "configKeys": [
         "BLOOIO_API_KEY",
@@ -1929,7 +1929,7 @@
       "name": "Github",
       "npmName": "@elizaos/plugin-github",
       "description": "",
-      "category": "feature",
+      "category": "connector",
       "envKey": "GITHUB_API_TOKEN",
       "configKeys": [
         "GITHUB_API_TOKEN",
@@ -2000,7 +2000,7 @@
       "name": "Gmail Watch",
       "npmName": "@elizaos/plugin-gmail-watch",
       "description": "Gmail Pub/Sub watcher – spawns gog gmail watch serve and auto-renews",
-      "category": "feature",
+      "category": "connector",
       "envKey": null,
       "configKeys": [],
       "version": "2.0.0-alpha.4"
@@ -2400,7 +2400,7 @@
       "name": "Iq",
       "npmName": "@elizaos/plugin-iq",
       "description": "IQ on-chain chat plugin for Eliza agents on Solana",
-      "category": "feature",
+      "category": "connector",
       "envKey": null,
       "configKeys": [
         "IQ_AGENT_NAME",
@@ -3174,7 +3174,7 @@
       "name": "Mcp",
       "npmName": "@elizaos/plugin-mcp",
       "description": "elizaOS plugin to integrate with MCP (Model Context Protocol) servers",
-      "category": "feature",
+      "category": "connector",
       "envKey": null,
       "configKeys": ["PATH", "mcp"],
       "version": "2.0.0-alpha.4",
@@ -3210,7 +3210,7 @@
       "name": "Minecraft",
       "npmName": "@elizaos/plugin-minecraft",
       "description": "Minecraft automation plugin for ElizaOS (Mineflayer bridge)",
-      "category": "feature",
+      "category": "app",
       "envKey": null,
       "configKeys": [
         "MC_HOST",
@@ -4115,7 +4115,7 @@
       "name": "Roblox",
       "npmName": "@elizaos/plugin-roblox",
       "description": "",
-      "category": "feature",
+      "category": "app",
       "envKey": "ROBLOX_API_KEY",
       "configKeys": [
         "ROBLOX_API_KEY",
@@ -4995,7 +4995,7 @@
       "name": "Twilio",
       "npmName": "@elizaos/plugin-twilio",
       "description": "Twilio plugin for bidirectional voice and text messaging integration",
-      "category": "feature",
+      "category": "connector",
       "envKey": "TWILIO_AUTH_TOKEN",
       "configKeys": [
         "TWILIO_ACCOUNT_SID",

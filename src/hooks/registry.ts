@@ -51,7 +51,9 @@ export async function triggerHook(event: HookEvent): Promise<void> {
     }
   }
   if (errors.length > 0) {
-    throw new AggregateError(errors, `${errors.length} hook handler(s) failed`);
+    logger.warn(
+      `[hooks] ${errors.length} hook handler(s) failed — errors were logged above`,
+    );
   }
 }
 
