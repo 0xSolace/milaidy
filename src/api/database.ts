@@ -15,6 +15,7 @@
 
 import dns from "node:dns";
 import type http from "node:http";
+import net from "node:net";
 import { promisify } from "node:util";
 import { type AgentRuntime, logger } from "@elizaos/core";
 import { loadMilaidyConfig, saveMilaidyConfig } from "../config/config.js";
@@ -158,6 +159,30 @@ function buildConnectionString(creds: PostgresCredentials): string {
   return `postgresql://${auth}@${host}:${port}/${database}${sslParam}`;
 }
 
+/**
+ * Return a copy of credentials with host pinned to a validated IP address.
+ * For connection strings, rewrites URL hostname to avoid re-resolution later.
+ */
+function withPinnedHost(
+  creds: PostgresCredentials,
+  pinnedHost: string,
+): PostgresCredentials {
+  const normalizedPinned = pinnedHost.replace(/^::ffff:/i, "");
+  const next: PostgresCredentials = { ...creds, host: normalizedPinned };
+  if (next.connectionString) {
+    try {
+      const parsed = new URL(next.connectionString);
+      parsed.hostname = normalizedPinned;
+      next.connectionString = parsed.toString();
+    } catch {
+      // Validation has already parsed this once, but if URL rewriting fails,
+      // force builder path to use the pinned host.
+      delete next.connectionString;
+    }
+  }
+  return next;
+}
+
 // ---------------------------------------------------------------------------
 // Host validation — prevent SSRF via database connection endpoints
 // ---------------------------------------------------------------------------
@@ -237,25 +262,39 @@ function isBlockedIp(ip: string): boolean {
  * or `169.254.169.254.nip.io` that resolve to link-local / cloud metadata
  * IPs.  Also handles IPv6-mapped IPv4 addresses (e.g. `::ffff:169.254.x.y`).
  *
- * Returns an error message if blocked, or `null` if allowed.
+ * Returns a validation result including a pinned host IP when successful.
  */
 async function validateDbHost(
   creds: PostgresCredentials,
-): Promise<string | null> {
+): Promise<{ error: string | null; pinnedHost: string | null }> {
   const host = extractHost(creds);
   if (!host) {
-    return "Could not determine target host from the provided credentials.";
+    return {
+      error: "Could not determine target host from the provided credentials.",
+      pinnedHost: null,
+    };
   }
 
+  const literalNormalized = host.replace(/^::ffff:/i, "");
+
   // First check the literal host string (catches raw IPs without DNS lookup)
-  if (isBlockedIp(host)) {
-    return `Connection to "${host}" is blocked: link-local and metadata addresses are not allowed.`;
+  if (isBlockedIp(literalNormalized)) {
+    return {
+      error: `Connection to "${host}" is blocked: link-local and metadata addresses are not allowed.`,
+      pinnedHost: null,
+    };
+  }
+
+  // Literal IPs are already pinned and do not require DNS.
+  if (net.isIP(literalNormalized)) {
+    return { error: null, pinnedHost: literalNormalized };
   }
 
   // Resolve DNS and check all resulting IPs
   try {
     const results = await dnsLookupAll(host, { all: true });
     const addresses = Array.isArray(results) ? results : [results];
+    let pinnedHost: string | null = null;
     for (const entry of addresses) {
       const ip =
         typeof entry === "string"
@@ -264,19 +303,32 @@ async function validateDbHost(
       // Strip IPv6-mapped IPv4 prefix (::ffff:169.254.x.y → 169.254.x.y)
       const normalized = ip.replace(/^::ffff:/i, "");
       if (isBlockedIp(normalized)) {
-        return (
-          `Connection to "${host}" is blocked: it resolves to ${ip} ` +
-          `which is a link-local or metadata address.`
-        );
+        return {
+          error:
+            `Connection to "${host}" is blocked: it resolves to ${ip} ` +
+            `which is a link-local or metadata address.`,
+          pinnedHost: null,
+        };
       }
+      if (!pinnedHost) pinnedHost = normalized;
     }
+    if (!pinnedHost) {
+      return {
+        error: `Connection to "${host}" could not be validated to a concrete IP address.`,
+        pinnedHost: null,
+      };
+    }
+    return { error: null, pinnedHost };
   } catch {
-    // DNS resolution failed — let the Postgres client handle the error
-    // rather than blocking legitimate hostnames that may be temporarily
-    // unresolvable from this context
+    // Reject unresolved hostnames so we can always pin the final target IP.
+    // Allowing unresolved hostnames would re-introduce a DNS-rebinding gap.
+    return {
+      error:
+        `Connection to "${host}" failed DNS resolution during validation. ` +
+        "Use a resolvable hostname or a literal IP address.",
+      pinnedHost: null,
+    };
   }
-
-  return null;
 }
 
 /** Convert a JS value to a SQL literal for use in raw queries. */
@@ -488,7 +540,14 @@ async function handlePutConfig(
     return;
   }
 
-  if (body.provider === "postgres" && body.postgres) {
+  // Load current config so validation can account for unchanged provider.
+  const config = loadMilaidyConfig();
+  const existingDb = config.database ?? {};
+  const effectiveProvider =
+    body.provider ?? existingDb.provider ?? ("pglite" as DatabaseProviderType);
+  let validatedPostgres: PostgresCredentials | null = null;
+
+  if (effectiveProvider === "postgres" && body.postgres) {
     const pg = body.postgres;
     if (!pg.connectionString && !pg.host) {
       errorResponse(
@@ -498,16 +557,15 @@ async function handlePutConfig(
       return;
     }
 
-    const hostError = await validateDbHost(pg);
-    if (hostError) {
-      errorResponse(res, hostError);
+    const validation = await validateDbHost(pg);
+    if (validation.error) {
+      errorResponse(res, validation.error);
       return;
     }
+    validatedPostgres = validation.pinnedHost
+      ? withPinnedHost(pg, validation.pinnedHost)
+      : pg;
   }
-
-  // Load current config, merge database section, save
-  const config = loadMilaidyConfig();
-  const existingDb = config.database ?? {};
 
   // Merge: keep existing postgres/pglite sub-configs unless explicitly provided
   const merged: DatabaseConfig = {
@@ -517,7 +575,10 @@ async function handlePutConfig(
 
   // If switching to postgres, ensure postgres config is present
   if (merged.provider === "postgres" && body.postgres) {
-    merged.postgres = { ...existingDb.postgres, ...body.postgres };
+    merged.postgres = {
+      ...existingDb.postgres,
+      ...(validatedPostgres ?? body.postgres),
+    };
   }
   // If switching to pglite, ensure pglite config is present
   if (merged.provider === "pglite" && body.pglite) {
@@ -551,13 +612,16 @@ async function handleTestConnection(
   const body = await readJsonBody<PostgresCredentials>(req, res);
   if (!body) return;
 
-  const hostError = await validateDbHost(body);
-  if (hostError) {
-    errorResponse(res, hostError);
+  const validation = await validateDbHost(body);
+  if (validation.error) {
+    errorResponse(res, validation.error);
     return;
   }
 
-  const connectionString = buildConnectionString(body);
+  const pinnedCreds = validation.pinnedHost
+    ? withPinnedHost(body, validation.pinnedHost)
+    : body;
+  const connectionString = buildConnectionString(pinnedCreds);
   const start = Date.now();
 
   // Dynamically import pg to avoid hard-coupling (it is a peer dep via plugin-sql)
