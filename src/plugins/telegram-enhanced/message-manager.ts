@@ -118,8 +118,8 @@ export class EnhancedTelegramMessageManager extends MessageManager {
     const streamer = new DraftStreamer({
       chatId: ctx.chat.id,
       telegram: {
-        sendMessage: ctx.telegram.sendMessage,
-        editMessageText: ctx.telegram.editMessageText,
+        sendMessage: ctx.telegram.sendMessage.bind(ctx.telegram),
+        editMessageText: ctx.telegram.editMessageText.bind(ctx.telegram),
       },
       replyToMessageId,
     });
