@@ -104,7 +104,14 @@ describe("COMPONENT_CATALOG", () => {
   });
 
   test("components with children have slots defined", () => {
-    const componentsWithSlots = ["Stack", "Grid", "Card", "Collapsible", "Dialog", "Drawer"];
+    const componentsWithSlots = [
+      "Stack",
+      "Grid",
+      "Card",
+      "Collapsible",
+      "Dialog",
+      "Drawer",
+    ];
     for (const name of componentsWithSlots) {
       const meta = COMPONENT_CATALOG[name] as ComponentMeta;
       expect(meta.slots).toBeDefined();
@@ -227,7 +234,9 @@ describe("generateCatalogPrompt", () => {
 
   test("includes example when requested", () => {
     const promptWithExample = generateCatalogPrompt({ includeExamples: true });
-    const promptWithoutExample = generateCatalogPrompt({ includeExamples: false });
+    const promptWithoutExample = generateCatalogPrompt({
+      includeExamples: false,
+    });
 
     expect(promptWithExample).toContain("Example");
     expect(promptWithExample).toContain('"root": "main"');

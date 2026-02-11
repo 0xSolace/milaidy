@@ -207,7 +207,8 @@ describe("AppsView", () => {
     expect(setState).toHaveBeenCalledWith("activeGameDisplayName", app.displayName);
     expect(setState).toHaveBeenCalledWith("activeGameViewerUrl", "http://localhost:5175");
     expect(setState).toHaveBeenCalledWith("activeGamePostMessageAuth", true);
-    expect(setState).toHaveBeenCalledWith("tab", "game");
+    expect(setState).toHaveBeenCalledWith("tab", "apps");
+    expect(setState).toHaveBeenCalledWith("appsSubTab", "games");
     expect(
       setActionNotice.mock.calls.some((call) =>
         String(call[0]).includes("requires iframe auth"),
@@ -247,7 +248,8 @@ describe("AppsView", () => {
       "error",
       4800,
     );
-    expect(setState).toHaveBeenCalledWith("tab", "game");
+    expect(setState).toHaveBeenCalledWith("tab", "apps");
+    expect(setState).toHaveBeenCalledWith("appsSubTab", "games");
   });
 
   it("opens non-viewer launches in a new tab and resets active game state", async () => {

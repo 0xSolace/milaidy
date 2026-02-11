@@ -1,28 +1,41 @@
 import { describe, expect, test } from "vitest";
 import { TAB_GROUPS, pathForTab, tabFromPath, titleForTab } from "../../src/navigation";
 
-describe("triggers navigation", () => {
-  test("resolves path and title for triggers tab", () => {
-    expect(pathForTab("triggers")).toBe("/triggers");
-    expect(tabFromPath("/triggers")).toBe("triggers");
-    expect(titleForTab("triggers")).toBe("Triggers");
+describe("navigation", () => {
+  test("resolves path and title for advanced tabs", () => {
+    expect(pathForTab("advanced")).toBe("/advanced");
+    expect(tabFromPath("/advanced")).toBe("advanced");
+    expect(titleForTab("advanced")).toBe("Advanced");
+
+    expect(pathForTab("trajectories")).toBe("/trajectories");
+    expect(tabFromPath("/trajectories")).toBe("trajectories");
+    expect(titleForTab("trajectories")).toBe("Trajectories");
+
+    expect(pathForTab("voice")).toBe("/voice");
+    expect(tabFromPath("/voice")).toBe("voice");
+    expect(titleForTab("voice")).toBe("Voice");
+
+    expect(pathForTab("runtime")).toBe("/runtime");
+    expect(tabFromPath("/runtime")).toBe("runtime");
+    expect(titleForTab("runtime")).toBe("Runtime");
   });
 
-  test("includes triggers in Manage group", () => {
-    const manage = TAB_GROUPS.find((group) => group.label === "Manage");
-    expect(manage).toBeDefined();
-    expect(manage?.tabs.includes("triggers")).toBe(true);
+  test("includes advanced tabs in Advanced group", () => {
+    const advanced = TAB_GROUPS.find((group) => group.label === "Advanced");
+    expect(advanced).toBeDefined();
+    expect(advanced?.tabs.includes("advanced")).toBe(true);
+    expect(advanced?.tabs.includes("trajectories")).toBe(true);
+    expect(advanced?.tabs.includes("voice")).toBe(true);
+    expect(advanced?.tabs.includes("runtime")).toBe(true);
   });
 
-  test("resolves path and title for fine-tuning tab", () => {
-    expect(pathForTab("fine_tuning")).toBe("/fine-tuning");
-    expect(tabFromPath("/fine-tuning")).toBe("fine_tuning");
-    expect(titleForTab("fine_tuning")).toBe("Fine-Tuning");
+  test("keeps /game as a legacy redirect to apps", () => {
+    expect(tabFromPath("/game")).toBe("apps");
   });
 
-  test("includes fine-tuning in Manage group", () => {
-    const manage = TAB_GROUPS.find((group) => group.label === "Manage");
-    expect(manage).toBeDefined();
-    expect(manage?.tabs.includes("fine_tuning")).toBe(true);
+  test("does not expose game as a top-level apps tab", () => {
+    const apps = TAB_GROUPS.find((group) => group.label === "Apps");
+    expect(apps).toBeDefined();
+    expect(apps?.tabs).toEqual(["apps"]);
   });
 });

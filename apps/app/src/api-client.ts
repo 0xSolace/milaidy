@@ -89,6 +89,58 @@ export interface AgentStatus {
   startedAt: number | undefined;
 }
 
+export interface RuntimeOrderItem {
+  index: number;
+  name: string;
+  className: string;
+  id: string | null;
+}
+
+export interface RuntimeServiceOrderItem {
+  index: number;
+  serviceType: string;
+  count: number;
+  instances: RuntimeOrderItem[];
+}
+
+export interface RuntimeDebugSnapshot {
+  runtimeAvailable: boolean;
+  generatedAt: number;
+  settings: {
+    maxDepth: number;
+    maxArrayLength: number;
+    maxObjectEntries: number;
+    maxStringLength: number;
+  };
+  meta: {
+    agentId?: string;
+    agentState: AgentState;
+    agentName: string;
+    model: string | null;
+    pluginCount: number;
+    actionCount: number;
+    providerCount: number;
+    evaluatorCount: number;
+    serviceTypeCount: number;
+    serviceCount: number;
+  };
+  order: {
+    plugins: RuntimeOrderItem[];
+    actions: RuntimeOrderItem[];
+    providers: RuntimeOrderItem[];
+    evaluators: RuntimeOrderItem[];
+    services: RuntimeServiceOrderItem[];
+  };
+  sections: {
+    runtime: unknown;
+    plugins: unknown;
+    actions: unknown;
+    providers: unknown;
+    evaluators: unknown;
+    services: unknown;
+  };
+}
+
 export type TriggerType = "interval" | "once" | "cron";
 export type TriggerWakeMode = "inject_now" | "next_autonomy_cycle";
 export type TriggerLastStatus = "success" | "error" | "skipped";
@@ -858,6 +910,59 @@ export interface VoiceConfig {
   };
 }
 
+// Media Generation Config
+export type MediaMode = "cloud" | "own-key";
+export type ImageProvider = "cloud" | "fal" | "openai" | "google" | "xai";
+export type VideoProvider = "cloud" | "fal" | "openai" | "google";
+export type AudioGenProvider = "cloud" | "suno" | "elevenlabs";
+export type VisionProvider = "cloud" | "openai" | "google" | "anthropic" | "xai";
+
+export interface ImageConfig {
+  enabled?: boolean;
+  mode?: MediaMode;
+  provider?: ImageProvider;
+  defaultSize?: string;
+  fal?: { apiKey?: string; model?: string; baseUrl?: string };
+  openai?: { apiKey?: string; model?: string; quality?: "standard" | "hd"; style?: "natural" | "vivid" };
+  google?: { apiKey?: string; model?: string; aspectRatio?: string };
+  xai?: { apiKey?: string; model?: string };
+}
+
+export interface VideoConfig {
+  enabled?: boolean;
+  mode?: MediaMode;
+  provider?: VideoProvider;
+  defaultDuration?: number;
+  fal?: { apiKey?: string; model?: string; baseUrl?: string };
+  openai?: { apiKey?: string; model?: string };
+  google?: { apiKey?: string; model?: string };
+}
+
+export interface AudioGenConfig {
+  enabled?: boolean;
+  mode?: MediaMode;
+  provider?: AudioGenProvider;
+  suno?: { apiKey?: string; model?: string; baseUrl?: string };
+  elevenlabs?: { apiKey?: string; duration?: number };
+}
+
+export interface VisionConfig {
+  enabled?: boolean;
+  mode?: MediaMode;
+  provider?: VisionProvider;
+  openai?: { apiKey?: string; model?: string; maxTokens?: number };
+  google?: { apiKey?: string; model?: string };
+  anthropic?: { apiKey?: string; model?: string };
+  xai?: { apiKey?: string; model?: string };
+}
+
+export interface MediaConfig {
+  image?: ImageConfig;
+  video?: VideoConfig;
+  audio?: AudioGenConfig;
+  vision?: VisionConfig;
+}
+
 // Character
 export interface CharacterData {
   name?: string;
@@ -1065,9 +1170,243 @@ export interface HyperscapeQuickActionsResponse {
   error?: string;
 }
 
+// Trajectories
+export interface TrajectoryRecord {
+  id: string;
+  agentId: string;
+  roomId: string | null;
+  entityId: string | null;
+  conversationId: string | null;
+  source: string;
+  status: "active" | "completed" | "error";
+  startTime: number;
+  endTime: number | null;
+  durationMs: number | null;
+  llmCallCount: number;
+  providerAccessCount: number;
+  totalPromptTokens: number;
+  totalCompletionTokens: number;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TrajectoryLlmCall {
+  id: string;
+  trajectoryId: string;
+  stepId: string;
+  model: string;
+  systemPrompt: string;
+  userPrompt: string;
+  response: string;
+  temperature: number;
+  maxTokens: number;
+  purpose: string;
+  actionType: string;
+  latencyMs: number;
+  promptTokens?: number;
+  completionTokens?: number;
+  timestamp: number;
+  createdAt: string;
+}
+
+export interface TrajectoryProviderAccess {
+  id: string;
+  trajectoryId: string;
+  stepId: string;
+  providerName: string;
+  purpose: string;
+  data: Record<string, unknown>;
+  query?: Record<string, unknown>;
+  timestamp: number;
+  createdAt: string;
+}
+
+export interface TrajectoryListOptions {
+  limit?: number;
+  offset?: number;
+  source?: string;
+  status?: "active" | "completed" | "error";
+  startDate?: string;
+  endDate?: string;
+  search?: string;
+}
+
+export interface TrajectoryListResult {
+  trajectories: TrajectoryRecord[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+
+export interface TrajectoryDetailResult {
+  trajectory: TrajectoryRecord;
+  llmCalls: TrajectoryLlmCall[];
+  providerAccesses: TrajectoryProviderAccess[];
+}
+
+export interface TrajectoryStats {
+  totalTrajectories: number;
+  totalLlmCalls: number;
+  totalProviderAccesses: number;
+  totalPromptTokens: number;
+  totalCompletionTokens: number;
+  averageDurationMs: number;
+  bySource: Record<string, number>;
+  byModel: Record<string, number>;
+}
+
+export interface TrajectoryConfig {
+  enabled: boolean;
+}
+
+export type TrajectoryExportFormat = "json" | "csv";
+
+export interface TrajectoryExportOptions {
+  format: TrajectoryExportFormat;
+  includePrompts?: boolean;
+  trajectoryIds?: string[];
+  startDate?: string;
+  endDate?: string;
+}
+
+// Knowledge types
+export interface KnowledgeStats {
+  documentCount: number;
+  fragmentCount: number;
+  agentId: string;
+}
+
+export interface KnowledgeDocument {
+  id: string;
+  filename: string;
+  contentType: string;
+  fileSize: number;
+  createdAt: number;
+  fragmentCount: number;
+  source: string;
+  url?: string;
+  content?: { text?: string };
+}
+
+export interface KnowledgeDocumentDetail extends KnowledgeDocument {
+  content: { text?: string };
+}
+
+export interface KnowledgeDocumentsResponse {
+  documents: KnowledgeDocument[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface KnowledgeFragment {
+  id: string;
+  text: string;
+  position?: number;
+  createdAt: number;
+}
+
+export interface KnowledgeFragmentsResponse {
+  documentId: string;
+  fragments: KnowledgeFragment[];
+  count: number;
+}
+
+export interface KnowledgeSearchResult {
+  id: string;
+  text: string;
+  similarity: number;
+  documentId?: string;
+  documentTitle?: string;
+  position?: number;
+}
+
+export interface KnowledgeSearchResponse {
+  query: string;
+  threshold: number;
+  results: KnowledgeSearchResult[];
+  count: number;
+}
+
+export interface KnowledgeUploadResult {
+  ok: boolean;
+  documentId: string;
+  fragmentCount: number;
+  filename?: string;
+  contentType?: string;
+  isYouTubeTranscript?: boolean;
+}
+
 // WebSocket
 
 export type WsEventHandler = (data: Record<string, unknown>) => void;
+
+// ---------------------------------------------------------------------------
+// ERC-8004 Registry & Drop types
+// ---------------------------------------------------------------------------
+
+export interface RegistryStatus {
+  registered: boolean;
+  tokenId: number;
+  agentName: string;
+  agentEndpoint: string;
+  capabilitiesHash: string;
+  isActive: boolean;
+  tokenURI: string;
+  walletAddress: string;
+  totalAgents: number;
+  configured: boolean;
+}
+
+export interface RegistrationResult {
+  tokenId: number;
+  txHash: string;
+}
+
+export interface RegistryConfig {
+  configured: boolean;
+  chainId: number;
+  registryAddress: string | null;
+  collectionAddress: string | null;
+  explorerUrl: string;
+}
+
+export interface DropStatus {
+  dropEnabled: boolean;
+  publicMintOpen: boolean;
+  whitelistMintOpen: boolean;
+  mintedOut: boolean;
+  currentSupply: number;
+  maxSupply: number;
+  shinyPrice: string;
+  userHasMinted: boolean;
+}
+
+export interface MintResult {
+  agentId: number;
+  mintNumber: number;
+  txHash: string;
+  isShiny: boolean;
+}
+
+export interface WhitelistStatus {
+  eligible: boolean;
+  twitterVerified: boolean;
+  ogCode: string | null;
+  walletAddress: string;
+}
+
+export interface VerificationMessageResponse {
+  message: string;
+  walletAddress: string;
+}
+
+export interface VerificationResult {
+  verified: boolean;
+  error: string | null;
+  handle: string | null;
+}
 
 // ---------------------------------------------------------------------------
 // Client
@@ -1179,6 +1518,27 @@ export class MilaidyClient {
 
   async getStatus(): Promise<AgentStatus> {
     return this.fetch("/api/status");
+  }
+
+  async getRuntimeSnapshot(opts?: {
+    depth?: number;
+    maxArrayLength?: number;
+    maxObjectEntries?: number;
+    maxStringLength?: number;
+  }): Promise<RuntimeDebugSnapshot> {
+    const params = new URLSearchParams();
+    if (typeof opts?.depth === "number") params.set("depth", String(opts.depth));
+    if (typeof opts?.maxArrayLength === "number") {
+      params.set("maxArrayLength", String(opts.maxArrayLength));
+    }
+    if (typeof opts?.maxObjectEntries === "number") {
+      params.set("maxObjectEntries", String(opts.maxObjectEntries));
+    }
+    if (typeof opts?.maxStringLength === "number") {
+      params.set("maxStringLength", String(opts.maxStringLength));
+    }
+    const qs = params.toString();
+    return this.fetch(`/api/runtime${qs ? `?${qs}` : ""}`);
   }
 
   async playEmote(emoteId: string): Promise<{ ok: boolean }> {
@@ -2000,6 +2360,66 @@ export class MilaidyClient {
     await this.fetch("/api/apps/refresh", { method: "POST" });
   }
 
+  // Knowledge
+
+  async getKnowledgeStats(): Promise<KnowledgeStats> {
+    return this.fetch("/api/knowledge/stats");
+  }
+
+  async listKnowledgeDocuments(options?: {
+    limit?: number;
+    offset?: number;
+  }): Promise<KnowledgeDocumentsResponse> {
+    const params = new URLSearchParams();
+    if (options?.limit) params.set("limit", String(options.limit));
+    if (options?.offset) params.set("offset", String(options.offset));
+    const query = params.toString();
+    return this.fetch(`/api/knowledge/documents${query ? `?${query}` : ""}`);
+  }
+
+  async getKnowledgeDocument(documentId: string): Promise<{ document: KnowledgeDocumentDetail }> {
+    return this.fetch(`/api/knowledge/documents/${encodeURIComponent(documentId)}`);
+  }
+
+  async deleteKnowledgeDocument(documentId: string): Promise<{ ok: boolean; deletedFragments: number }> {
+    return this.fetch(`/api/knowledge/documents/${encodeURIComponent(documentId)}`, {
+      method: "DELETE",
+    });
+  }
+
+  async uploadKnowledgeDocument(data: {
+    content: string;
+    filename: string;
+    contentType?: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<KnowledgeUploadResult> {
+    return this.fetch("/api/knowledge/documents", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async uploadKnowledgeFromUrl(url: string, metadata?: Record<string, unknown>): Promise<KnowledgeUploadResult> {
+    return this.fetch("/api/knowledge/documents/url", {
+      method: "POST",
+      body: JSON.stringify({ url, metadata }),
+    });
+  }
+
+  async searchKnowledge(
+    query: string,
+    options?: { threshold?: number; limit?: number },
+  ): Promise<KnowledgeSearchResponse> {
+    const params = new URLSearchParams({ q: query });
+    if (options?.threshold !== undefined) params.set("threshold", String(options.threshold));
+    if (options?.limit !== undefined) params.set("limit", String(options.limit));
+    return this.fetch(`/api/knowledge/search?${params}`);
+  }
+
+  async getKnowledgeFragments(documentId: string): Promise<KnowledgeFragmentsResponse> {
+    return this.fetch(`/api/knowledge/fragments/${encodeURIComponent(documentId)}`);
+  }
+
   // MCP
 
   async getMcpConfig(): Promise<{ servers: Record<string, McpServerConfig> }> {
@@ -2449,6 +2869,74 @@ export class MilaidyClient {
     });
   }
 
+  // ── Trajectories ─────────────────────────────────────────────────────
+
+  async getTrajectories(options?: TrajectoryListOptions): Promise<TrajectoryListResult> {
+    const params = new URLSearchParams();
+    if (options?.limit) params.set("limit", String(options.limit));
+    if (options?.offset) params.set("offset", String(options.offset));
+    if (options?.source) params.set("source", options.source);
+    if (options?.status) params.set("status", options.status);
+    if (options?.startDate) params.set("startDate", options.startDate);
+    if (options?.endDate) params.set("endDate", options.endDate);
+    if (options?.search) params.set("search", options.search);
+    const query = params.toString();
+    return this.fetch(`/api/trajectories${query ? `?${query}` : ""}`);
+  }
+
+  async getTrajectoryDetail(trajectoryId: string): Promise<TrajectoryDetailResult> {
+    return this.fetch(`/api/trajectories/${encodeURIComponent(trajectoryId)}`);
+  }
+
+  async getTrajectoryStats(): Promise<TrajectoryStats> {
+    return this.fetch("/api/trajectories/stats");
+  }
+
+  async getTrajectoryConfig(): Promise<TrajectoryConfig> {
+    return this.fetch("/api/trajectories/config");
+  }
+
+  async updateTrajectoryConfig(config: Partial<TrajectoryConfig>): Promise<TrajectoryConfig> {
+    return this.fetch("/api/trajectories/config", {
+      method: "PUT",
+      body: JSON.stringify(config),
+    });
+  }
+
+  async exportTrajectories(options: TrajectoryExportOptions): Promise<Blob> {
+    if (!this.apiAvailable) {
+      throw new Error("API not available (no HTTP origin)");
+    }
+    const token = this.apiToken;
+    const res = await fetch(`${this.baseUrl}/api/trajectories/export`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(options),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ error: res.statusText })) as Record<string, string>;
+      throw new Error(body.error ?? `HTTP ${res.status}`);
+    }
+    return res.blob();
+  }
+
+  async deleteTrajectories(trajectoryIds: string[]): Promise<{ deleted: number }> {
+    return this.fetch("/api/trajectories", {
+      method: "DELETE",
+      body: JSON.stringify({ trajectoryIds }),
+    });
+  }
+
+  async clearAllTrajectories(): Promise<{ deleted: number }> {
+    return this.fetch("/api/trajectories", {
+      method: "DELETE",
+      body: JSON.stringify({ clearAll: true }),
+    });
+  }
+
   disconnectWs(): void {
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
@@ -2456,6 +2944,85 @@ export class MilaidyClient {
     }
     this.ws?.close();
     this.ws = null;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  ERC-8004 Registry
+  // ═══════════════════════════════════════════════════════════════════════
+
+  async getRegistryStatus(): Promise<RegistryStatus> {
+    return this.fetch("/api/registry/status");
+  }
+
+  async registerAgent(params?: {
+    name?: string;
+    endpoint?: string;
+    tokenURI?: string;
+  }): Promise<RegistrationResult> {
+    return this.fetch("/api/registry/register", {
+      method: "POST",
+      body: JSON.stringify(params ?? {}),
+    });
+  }
+
+  async updateRegistryTokenURI(tokenURI: string): Promise<{ ok: boolean; txHash: string }> {
+    return this.fetch("/api/registry/update-uri", {
+      method: "POST",
+      body: JSON.stringify({ tokenURI }),
+    });
+  }
+
+  async getRegistryConfig(): Promise<RegistryConfig> {
+    return this.fetch("/api/registry/config");
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  Drop / Mint
+  // ═══════════════════════════════════════════════════════════════════════
+
+  async getDropStatus(): Promise<DropStatus> {
+    return this.fetch("/api/drop/status");
+  }
+
+  async mintAgent(params?: {
+    name?: string;
+    endpoint?: string;
+    shiny?: boolean;
+  }): Promise<MintResult> {
+    return this.fetch("/api/drop/mint", {
+      method: "POST",
+      body: JSON.stringify(params ?? {}),
+    });
+  }
+
+  async mintAgentWhitelist(params: {
+    name?: string;
+    endpoint?: string;
+    proof: string[];
+  }): Promise<MintResult> {
+    return this.fetch("/api/drop/mint-whitelist", {
+      method: "POST",
+      body: JSON.stringify(params),
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  Whitelist
+  // ═══════════════════════════════════════════════════════════════════════
+
+  async getWhitelistStatus(): Promise<WhitelistStatus> {
+    return this.fetch("/api/whitelist/status");
+  }
+
+  async generateTwitterVerificationMessage(): Promise<VerificationMessageResponse> {
+    return this.fetch("/api/whitelist/twitter/message", { method: "POST" });
+  }
+
+  async verifyTwitter(tweetUrl: string): Promise<VerificationResult> {
+    return this.fetch("/api/whitelist/twitter/verify", {
+      method: "POST",
+      body: JSON.stringify({ tweetUrl }),
+    });
   }
 }
 

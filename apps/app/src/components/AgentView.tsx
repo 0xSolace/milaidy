@@ -1,14 +1,16 @@
 /**
- * Agent view — wrapper with Character / Inventory sub-tabs.
+ * Agent view — wrapper with Character / Inventory / Knowledge sub-tabs.
  */
 
 import { useApp } from "../AppContext";
 import { CharacterView } from "./CharacterView";
 import { InventoryView } from "./InventoryView";
+import { KnowledgeView } from "./KnowledgeView";
 
 const AGENT_TABS = [
   { id: "character" as const, label: "Character" },
   { id: "inventory" as const, label: "Inventory" },
+  { id: "knowledge" as const, label: "Knowledge" },
 ];
 
 export function AgentView() {
@@ -36,6 +38,7 @@ export function AgentView() {
       {/* Sub-tab content */}
       {agentSubTab === "character" && <CharacterView />}
       {agentSubTab === "inventory" && <InventoryView />}
+      {agentSubTab === "knowledge" && <KnowledgeView />}
     </div>
   );
 }

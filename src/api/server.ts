@@ -57,12 +57,14 @@ import {
 import { TrainingService } from "../services/training-service.js";
 import { type CloudRouteState, handleCloudRoute } from "./cloud-routes.js";
 import { handleDatabaseRoute } from "./database.js";
+import { handleKnowledgeRoutes } from "./knowledge-routes.js";
 import {
   type PluginParamInfo,
   validatePluginConfig,
 } from "./plugin-validation.js";
 import { handleSandboxRoute } from "./sandbox-routes.js";
 import { handleTrainingRoutes } from "./training-routes.js";
+import { handleTrajectoryRoute } from "./trajectory-routes.js";
 import { handleTriggerRoutes } from "./trigger-routes.js";
 import {
   fetchEvmBalances,
@@ -79,6 +81,16 @@ import {
   type WalletConfigStatus,
   type WalletNftsResponse,
 } from "./wallet.js";
+import { TxService } from "./tx-service.js";
+import { RegistryService } from "./registry-service.js";
+import { DropService } from "./drop-service.js";
+import { initializeOGCode, readOGCode } from "./og-tracker.js";
+import {
+  generateVerificationMessage,
+  verifyTweet,
+  markAddressVerified,
+  isAddressWhitelisted,
+} from "./twitter-verify.js";
 
 function resolveDefaultAgentWorkspaceDir(
   env: NodeJS.ProcessEnv = process.env,
@@ -2809,6 +2821,326 @@ function decodePathComponent(
   }
 }
 
+// ── Runtime debug serialization ─────────────────────────────────────
+
+const RUNTIME_DEBUG_DEFAULT_MAX_DEPTH = 10;
+const RUNTIME_DEBUG_MAX_DEPTH_CAP = 24;
+const RUNTIME_DEBUG_DEFAULT_MAX_ARRAY_LENGTH = 250;
+const RUNTIME_DEBUG_DEFAULT_MAX_OBJECT_ENTRIES = 250;
+const RUNTIME_DEBUG_DEFAULT_MAX_STRING_LENGTH = 4000;
+
+interface RuntimeDebugSerializeOptions {
+  maxDepth: number;
+  maxArrayLength: number;
+  maxObjectEntries: number;
+  maxStringLength: number;
+}
+
+interface RuntimeOrderItem {
+  index: number;
+  name: string;
+  className: string;
+  id: string | null;
+}
+
+interface RuntimeServiceOrderItem {
+  index: number;
+  serviceType: string;
+  count: number;
+  instances: RuntimeOrderItem[];
+}
+
+function parseDebugPositiveInt(
+  raw: string | null,
+  fallback: number,
+  min: number,
+  max: number,
+): number {
+  if (!raw) return fallback;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) return fallback;
+  const intValue = Math.floor(parsed);
+  if (intValue < min) return min;
+  if (intValue > max) return max;
+  return intValue;
+}
+
+function classNameFor(value: object): string {
+  const ctor = (value as { constructor?: { name?: string } }).constructor;
+  const maybeName = typeof ctor?.name === "string" ? ctor.name.trim() : "";
+  return maybeName || "Object";
+}
+
+function stringDataProperty(value: unknown, key: string): string | null {
+  if (!value || typeof value !== "object") return null;
+  const descriptor = Object.getOwnPropertyDescriptor(value, key);
+  if (!descriptor || !("value" in descriptor)) return null;
+  const maybeString = descriptor.value;
+  if (typeof maybeString !== "string") return null;
+  const trimmed = maybeString.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function describeRuntimeOrder(
+  values: unknown[],
+  fallbackLabel: string,
+): RuntimeOrderItem[] {
+  return values.map((value, index) => {
+    const className =
+      value && typeof value === "object"
+        ? classNameFor(value)
+        : typeof value;
+    const name =
+      stringDataProperty(value, "name") ??
+      stringDataProperty(value, "id") ??
+      stringDataProperty(value, "key") ??
+      stringDataProperty(value, "serviceType") ??
+      `${fallbackLabel} ${index + 1}`;
+    const id =
+      stringDataProperty(value, "id") ?? stringDataProperty(value, "name");
+    return { index, name, className, id };
+  });
+}
+
+function describeRuntimeServiceOrder(
+  servicesMap: Map<string, unknown[]>,
+): RuntimeServiceOrderItem[] {
+  return Array.from(servicesMap.entries()).map(([serviceType, instances], i) => {
+    const values = Array.isArray(instances) ? instances : [];
+    return {
+      index: i,
+      serviceType,
+      count: values.length,
+      instances: describeRuntimeOrder(values, serviceType),
+    };
+  });
+}
+
+function serializeForRuntimeDebug(
+  value: unknown,
+  options: RuntimeDebugSerializeOptions,
+): unknown {
+  const seen = new WeakMap<object, string>();
+
+  const visit = (current: unknown, path: string, depth: number): unknown => {
+    if (current === null) return null;
+
+    const kind = typeof current;
+
+    if (kind === "string") {
+      if ((current as string).length <= options.maxStringLength) return current;
+      return {
+        __type: "string",
+        length: (current as string).length,
+        preview: `${(current as string).slice(0, options.maxStringLength)}...`,
+        truncated: true,
+      };
+    }
+    if (kind === "number") {
+      const n = current as number;
+      if (Number.isFinite(n)) return n;
+      return { __type: "number", value: String(n) };
+    }
+    if (kind === "boolean") return current;
+    if (kind === "bigint")
+      return { __type: "bigint", value: String(current) };
+    if (kind === "undefined") return { __type: "undefined" };
+    if (kind === "symbol")
+      return { __type: "symbol", value: String(current) };
+    if (kind === "function") {
+      const fn = current as (...args: unknown[]) => unknown;
+      return {
+        __type: "function",
+        name: fn.name || "(anonymous)",
+        length: fn.length,
+      };
+    }
+
+    const obj = current as object;
+
+    if (obj instanceof Date) {
+      return { __type: "date", value: obj.toISOString() };
+    }
+    if (obj instanceof RegExp) {
+      return { __type: "regexp", value: String(obj) };
+    }
+    if (obj instanceof Error) {
+      const err = obj as Error & { cause?: unknown };
+      const out: Record<string, unknown> = {
+        __type: "error",
+        name: err.name,
+        message: err.message,
+      };
+      if (err.stack) {
+        out.stack =
+          err.stack.length > options.maxStringLength
+            ? `${err.stack.slice(0, options.maxStringLength)}...`
+            : err.stack;
+      }
+      if (err.cause !== undefined) {
+        out.cause = visit(err.cause, `${path}.cause`, depth + 1);
+      }
+      return out;
+    }
+    if (Buffer.isBuffer(obj)) {
+      const previewLength = Math.min(obj.length, 64);
+      return {
+        __type: "buffer",
+        length: obj.length,
+        previewHex: obj.subarray(0, previewLength).toString("hex"),
+        truncated: obj.length > previewLength,
+      };
+    }
+    if (ArrayBuffer.isView(obj)) {
+      const view = obj as ArrayBufferView;
+      const previewLength = Math.min(view.byteLength, 64);
+      const bytes = new Uint8Array(
+        view.buffer,
+        view.byteOffset,
+        previewLength,
+      );
+      return {
+        __type: classNameFor(obj),
+        byteLength: view.byteLength,
+        previewHex: Buffer.from(bytes).toString("hex"),
+        truncated: view.byteLength > previewLength,
+      };
+    }
+    if (obj instanceof ArrayBuffer) {
+      const previewLength = Math.min(obj.byteLength, 64);
+      const bytes = new Uint8Array(obj, 0, previewLength);
+      return {
+        __type: "array-buffer",
+        byteLength: obj.byteLength,
+        previewHex: Buffer.from(bytes).toString("hex"),
+        truncated: obj.byteLength > previewLength,
+      };
+    }
+
+    const seenPath = seen.get(obj);
+    if (seenPath) return { __type: "circular", ref: seenPath };
+    if (depth >= options.maxDepth) {
+      return {
+        __type: "max-depth",
+        className: classNameFor(obj),
+        path,
+      };
+    }
+    seen.set(obj, path);
+
+    if (Array.isArray(obj)) {
+      const arr = obj as unknown[];
+      const limit = Math.min(arr.length, options.maxArrayLength);
+      const items = new Array<unknown>(limit);
+      for (let i = 0; i < limit; i++) {
+        items[i] = visit(arr[i], `${path}[${i}]`, depth + 1);
+      }
+      const out: Record<string, unknown> = {
+        __type: "array",
+        length: arr.length,
+        items,
+      };
+      if (arr.length > limit) out.truncatedItems = arr.length - limit;
+      return out;
+    }
+
+    if (obj instanceof Map) {
+      const entries: Array<{ key: unknown; value: unknown }> = [];
+      let i = 0;
+      for (const [entryKey, entryValue] of obj.entries()) {
+        if (i >= options.maxObjectEntries) break;
+        entries.push({
+          key: visit(entryKey, `${path}.<key:${i}>`, depth + 1),
+          value: visit(entryValue, `${path}.<value:${i}>`, depth + 1),
+        });
+        i += 1;
+      }
+      const out: Record<string, unknown> = {
+        __type: "map",
+        size: obj.size,
+        entries,
+      };
+      if (obj.size > entries.length) {
+        out.truncatedEntries = obj.size - entries.length;
+      }
+      return out;
+    }
+
+    if (obj instanceof Set) {
+      const values: unknown[] = [];
+      let i = 0;
+      for (const entry of obj.values()) {
+        if (i >= options.maxArrayLength) break;
+        values.push(visit(entry, `${path}.<set:${i}>`, depth + 1));
+        i += 1;
+      }
+      const out: Record<string, unknown> = {
+        __type: "set",
+        size: obj.size,
+        values,
+      };
+      if (obj.size > values.length) out.truncatedEntries = obj.size - values.length;
+      return out;
+    }
+
+    if (obj instanceof WeakMap) {
+      return { __type: "weak-map" };
+    }
+    if (obj instanceof WeakSet) {
+      return { __type: "weak-set" };
+    }
+    if (obj instanceof Promise) {
+      return { __type: "promise" };
+    }
+
+    const ownNames = Object.getOwnPropertyNames(obj);
+    const ownSymbols = Object.getOwnPropertySymbols(obj);
+    const allKeys: Array<string | symbol> = [...ownNames, ...ownSymbols];
+    const limit = Math.min(allKeys.length, options.maxObjectEntries);
+    const properties: Record<string, unknown> = {};
+
+    for (let i = 0; i < limit; i++) {
+      const propertyKey = allKeys[i];
+      const keyLabel =
+        typeof propertyKey === "string"
+          ? propertyKey
+          : `[${String(propertyKey)}]`;
+      const descriptor = Object.getOwnPropertyDescriptor(obj, propertyKey);
+      if (!descriptor) continue;
+      if ("value" in descriptor) {
+        properties[keyLabel] = visit(
+          descriptor.value,
+          `${path}.${keyLabel}`,
+          depth + 1,
+        );
+      } else {
+        properties[keyLabel] = {
+          __type: "accessor",
+          hasGetter: typeof descriptor.get === "function",
+          hasSetter: typeof descriptor.set === "function",
+          enumerable: descriptor.enumerable,
+        };
+      }
+    }
+
+    if (allKeys.length > limit) {
+      properties.__truncatedKeys = allKeys.length - limit;
+    }
+
+    const prototype = Object.getPrototypeOf(obj);
+    const isPlainObject = prototype === Object.prototype || prototype === null;
+    if (isPlainObject) return properties;
+
+    return {
+      __type: "object",
+      className: classNameFor(obj),
+      properties,
+    };
+  };
+
+  return visit(value, "$", 0);
+}
+
 // ── Autonomy → User message routing ──────────────────────────────────
 
 /**
@@ -3407,6 +3739,139 @@ async function handleRequest(
     return;
   }
 
+  // ── GET /api/runtime ───────────────────────────────────────────────────
+  // Deep runtime introspection endpoint for advanced debugging UI.
+  if (method === "GET" && pathname === "/api/runtime") {
+    const maxDepth = parseDebugPositiveInt(
+      url.searchParams.get("depth"),
+      RUNTIME_DEBUG_DEFAULT_MAX_DEPTH,
+      1,
+      RUNTIME_DEBUG_MAX_DEPTH_CAP,
+    );
+    const maxArrayLength = parseDebugPositiveInt(
+      url.searchParams.get("maxArrayLength"),
+      RUNTIME_DEBUG_DEFAULT_MAX_ARRAY_LENGTH,
+      1,
+      5000,
+    );
+    const maxObjectEntries = parseDebugPositiveInt(
+      url.searchParams.get("maxObjectEntries"),
+      RUNTIME_DEBUG_DEFAULT_MAX_OBJECT_ENTRIES,
+      1,
+      5000,
+    );
+    const maxStringLength = parseDebugPositiveInt(
+      url.searchParams.get("maxStringLength"),
+      RUNTIME_DEBUG_DEFAULT_MAX_STRING_LENGTH,
+      64,
+      100_000,
+    );
+
+    const serializeOptions: RuntimeDebugSerializeOptions = {
+      maxDepth,
+      maxArrayLength,
+      maxObjectEntries,
+      maxStringLength,
+    };
+
+    const runtime = state.runtime;
+    const generatedAt = Date.now();
+
+    if (!runtime) {
+      json(res, {
+        runtimeAvailable: false,
+        generatedAt,
+        settings: serializeOptions,
+        meta: {
+          agentState: state.agentState,
+          agentName: state.agentName,
+          model: state.model ?? null,
+          pluginCount: 0,
+          actionCount: 0,
+          providerCount: 0,
+          evaluatorCount: 0,
+          serviceTypeCount: 0,
+          serviceCount: 0,
+        },
+        order: {
+          plugins: [],
+          actions: [],
+          providers: [],
+          evaluators: [],
+          services: [],
+        },
+        sections: {
+          runtime: null,
+          plugins: [],
+          actions: [],
+          providers: [],
+          evaluators: [],
+          services: {},
+        },
+      });
+      return;
+    }
+
+    try {
+      const servicesMap = runtime.services as unknown as Map<string, unknown[]>;
+      const serviceCount = Array.from(servicesMap.values()).reduce(
+        (sum, entries) => sum + (Array.isArray(entries) ? entries.length : 0),
+        0,
+      );
+      const orderServices = describeRuntimeServiceOrder(servicesMap);
+      const orderPlugins = describeRuntimeOrder(runtime.plugins, "plugin");
+      const orderActions = describeRuntimeOrder(runtime.actions, "action");
+      const orderProviders = describeRuntimeOrder(runtime.providers, "provider");
+      const orderEvaluators = describeRuntimeOrder(
+        runtime.evaluators,
+        "evaluator",
+      );
+
+      json(res, {
+        runtimeAvailable: true,
+        generatedAt,
+        settings: serializeOptions,
+        meta: {
+          agentId: runtime.agentId,
+          agentState: state.agentState,
+          agentName: runtime.character.name ?? state.agentName,
+          model: state.model ?? null,
+          pluginCount: runtime.plugins.length,
+          actionCount: runtime.actions.length,
+          providerCount: runtime.providers.length,
+          evaluatorCount: runtime.evaluators.length,
+          serviceTypeCount: servicesMap.size,
+          serviceCount,
+        },
+        order: {
+          plugins: orderPlugins,
+          actions: orderActions,
+          providers: orderProviders,
+          evaluators: orderEvaluators,
+          services: orderServices,
+        },
+        sections: {
+          runtime: serializeForRuntimeDebug(runtime, serializeOptions),
+          plugins: serializeForRuntimeDebug(runtime.plugins, serializeOptions),
+          actions: serializeForRuntimeDebug(runtime.actions, serializeOptions),
+          providers: serializeForRuntimeDebug(runtime.providers, serializeOptions),
+          evaluators: serializeForRuntimeDebug(
+            runtime.evaluators,
+            serializeOptions,
+          ),
+          services: serializeForRuntimeDebug(servicesMap, serializeOptions),
+        },
+      });
+    } catch (err) {
+      error(
+        res,
+        `Failed to build runtime debug snapshot: ${err instanceof Error ? err.message : String(err)}`,
+        500,
+      );
+    }
+    return;
+  }
+
   // ── GET /api/onboarding/status ──────────────────────────────────────────
   if (method === "GET" && pathname === "/api/onboarding/status") {
     const complete = configFileExists() && Boolean(state.config.agents);
@@ -3834,6 +4299,22 @@ async function handleRequest(
       error,
     });
     if (trainingHandled) return;
+  }
+
+  // ── Knowledge routes (/api/knowledge/*) ─────────────────────────────────
+  if (pathname.startsWith("/api/knowledge")) {
+    const knowledgeHandled = await handleKnowledgeRoutes({
+      req,
+      res,
+      method,
+      pathname,
+      url,
+      runtime: state.runtime,
+      readJsonBody,
+      json,
+      error,
+    });
+    if (knowledgeHandled) return;
   }
 
   // ── POST /api/agent/restart ────────────────────────────────────────────
@@ -6524,6 +7005,212 @@ async function handleRequest(
     return;
   }
 
+  // ═══════════════════════════════════════════════════════════════════════
+  //  ERC-8004 Registry Routes
+  // ═══════════════════════════════════════════════════════════════════════
+
+  if (method === "GET" && pathname === "/api/registry/status") {
+    if (!registryService) {
+      json(res, {
+        registered: false,
+        tokenId: 0,
+        agentName: "",
+        agentEndpoint: "",
+        capabilitiesHash: "",
+        isActive: false,
+        tokenURI: "",
+        walletAddress: "",
+        totalAgents: 0,
+        configured: false,
+      });
+      return;
+    }
+    const status = await registryService.getStatus();
+    json(res, { ...status, configured: true });
+    return;
+  }
+
+  if (method === "POST" && pathname === "/api/registry/register") {
+    if (!registryService) {
+      error(res, "Registry service not configured. Set registry config and EVM_PRIVATE_KEY.", 503);
+      return;
+    }
+    const body = await readJsonBody<{
+      name?: string;
+      endpoint?: string;
+      tokenURI?: string;
+    }>(req, res);
+    if (!body) return;
+
+    const agentName = body.name || state.agentName || "Milaidy Agent";
+    const endpoint = body.endpoint || "";
+    const tokenURI = body.tokenURI || "";
+
+    const result = await registryService.register({
+      name: agentName,
+      endpoint,
+      capabilitiesHash: RegistryService.defaultCapabilitiesHash(),
+      tokenURI,
+    });
+    json(res, result);
+    return;
+  }
+
+  if (method === "POST" && pathname === "/api/registry/update-uri") {
+    if (!registryService) {
+      error(res, "Registry service not configured.", 503);
+      return;
+    }
+    const body = await readJsonBody<{ tokenURI?: string }>(req, res);
+    if (!body || !body.tokenURI) {
+      error(res, "tokenURI is required");
+      return;
+    }
+    const txHash = await registryService.updateTokenURI(body.tokenURI);
+    json(res, { ok: true, txHash });
+    return;
+  }
+
+  if (method === "GET" && pathname === "/api/registry/config") {
+    const registryConfig = state.config.registry;
+    json(res, {
+      configured: Boolean(registryService),
+      chainId: 1,
+      registryAddress: registryConfig?.registryAddress ?? null,
+      collectionAddress: registryConfig?.collectionAddress ?? null,
+      explorerUrl: "https://etherscan.io",
+    });
+    return;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  Drop / Mint Routes
+  // ═══════════════════════════════════════════════════════════════════════
+
+  if (method === "GET" && pathname === "/api/drop/status") {
+    if (!dropService) {
+      json(res, {
+        dropEnabled: false,
+        publicMintOpen: false,
+        whitelistMintOpen: false,
+        mintedOut: false,
+        currentSupply: 0,
+        maxSupply: 2138,
+        shinyPrice: "0.1",
+        userHasMinted: false,
+      });
+      return;
+    }
+    const status = await dropService.getStatus();
+    json(res, status);
+    return;
+  }
+
+  if (method === "POST" && pathname === "/api/drop/mint") {
+    if (!dropService) {
+      error(res, "Drop service not configured.", 503);
+      return;
+    }
+    const body = await readJsonBody<{
+      name?: string;
+      endpoint?: string;
+      shiny?: boolean;
+    }>(req, res);
+    if (!body) return;
+
+    const agentName = body.name || state.agentName || "Milaidy Agent";
+    const endpoint = body.endpoint || "";
+
+    let result;
+    if (body.shiny) {
+      result = await dropService.mintShiny(agentName, endpoint);
+    } else {
+      result = await dropService.mint(agentName, endpoint);
+    }
+    json(res, result);
+    return;
+  }
+
+  if (method === "POST" && pathname === "/api/drop/mint-whitelist") {
+    if (!dropService) {
+      error(res, "Drop service not configured.", 503);
+      return;
+    }
+    const body = await readJsonBody<{
+      name?: string;
+      endpoint?: string;
+      proof?: string[];
+    }>(req, res);
+    if (!body || !body.proof) {
+      error(res, "proof array is required");
+      return;
+    }
+
+    const agentName = body.name || state.agentName || "Milaidy Agent";
+    const endpoint = body.endpoint || "";
+    const result = await dropService.mintWithWhitelist(
+      agentName,
+      endpoint,
+      body.proof,
+    );
+    json(res, result);
+    return;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  Whitelist Routes
+  // ═══════════════════════════════════════════════════════════════════════
+
+  if (method === "GET" && pathname === "/api/whitelist/status") {
+    const addrs = getWalletAddresses();
+    const walletAddress = addrs.evmAddress ?? "";
+    const twitterVerified = walletAddress ? isAddressWhitelisted(walletAddress) : false;
+    const ogCode = readOGCode();
+
+    json(res, {
+      eligible: twitterVerified,
+      twitterVerified,
+      ogCode: ogCode ?? null,
+      walletAddress,
+    });
+    return;
+  }
+
+  if (method === "POST" && pathname === "/api/whitelist/twitter/message") {
+    const addrs = getWalletAddresses();
+    const walletAddress = addrs.evmAddress ?? "";
+    if (!walletAddress) {
+      error(res, "EVM wallet not configured. Complete onboarding first.");
+      return;
+    }
+    const agentName = state.agentName || "Milaidy Agent";
+    const message = generateVerificationMessage(agentName, walletAddress);
+    json(res, { message, walletAddress });
+    return;
+  }
+
+  if (method === "POST" && pathname === "/api/whitelist/twitter/verify") {
+    const body = await readJsonBody<{ tweetUrl?: string }>(req, res);
+    if (!body || !body.tweetUrl) {
+      error(res, "tweetUrl is required");
+      return;
+    }
+
+    const addrs = getWalletAddresses();
+    const walletAddress = addrs.evmAddress ?? "";
+    if (!walletAddress) {
+      error(res, "EVM wallet not configured.");
+      return;
+    }
+
+    const result = await verifyTweet(body.tweetUrl, walletAddress);
+    if (result.verified && result.handle) {
+      markAddressVerified(walletAddress, body.tweetUrl, result.handle);
+    }
+    json(res, result);
+    return;
+  }
+
   // ── GET /api/update/status ───────────────────────────────────────────────
   if (method === "GET" && pathname === "/api/update/status") {
     const { VERSION } = await import("../runtime/version.js");
@@ -7540,6 +8227,17 @@ async function handleRequest(
   // ── Database management API ─────────────────────────────────────────────
   if (pathname.startsWith("/api/database/")) {
     const handled = await handleDatabaseRoute(
+      req,
+      res,
+      state.runtime,
+      pathname,
+    );
+    if (handled) return;
+  }
+
+  // ── Trajectory management API ──────────────────────────────────────────
+  if (pathname.startsWith("/api/trajectories")) {
+    const handled = await handleTrajectoryRoute(
       req,
       res,
       state.runtime,
@@ -8627,6 +9325,35 @@ export async function startApiServer(opts?: {
         ["server", "cloud"],
       );
     }
+  }
+
+  // ── ERC-8004 Registry & Drop service initialisation ────────────────────
+  initializeOGCode();
+
+  let registryService: RegistryService | null = null;
+  let dropService: DropService | null = null;
+
+  const evmKey = process.env.EVM_PRIVATE_KEY;
+  const registryConfig = config.registry;
+  if (evmKey && registryConfig?.registryAddress && registryConfig?.mainnetRpc) {
+    const txService = new TxService(registryConfig.mainnetRpc, evmKey);
+    registryService = new RegistryService(txService, registryConfig.registryAddress);
+
+    if (registryConfig.collectionAddress) {
+      const dropEnabled = config.features?.dropEnabled === true;
+      dropService = new DropService(
+        txService,
+        registryConfig.collectionAddress,
+        dropEnabled,
+      );
+    }
+
+    addLog(
+      "info",
+      `ERC-8004 registry service initialised (${registryConfig.registryAddress})`,
+      "system",
+      ["system"],
+    );
   }
 
   addLog(

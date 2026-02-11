@@ -2,14 +2,25 @@
  * Navigation — tabs + onboarding.
  */
 
-export type Tab = "chat" | "apps" | "game" | "agent" | "plugins" | "config" | "database" | "settings" | "logs";
+export type Tab =
+  | "chat"
+  | "apps"
+  | "agent"
+  | "plugins"
+  | "advanced"
+  | "trajectories"
+  | "voice"
+  | "runtime"
+  | "database"
+  | "settings"
+  | "logs";
 
 export const TAB_GROUPS = [
   { label: "Chat", tabs: ["chat"] as Tab[] },
-  { label: "Apps", tabs: ["apps", "game"] as Tab[] },
+  { label: "Apps", tabs: ["apps"] as Tab[] },
   { label: "Agent", tabs: ["agent"] as Tab[] },
   { label: "Plugins", tabs: ["plugins"] as Tab[] },
-  { label: "Config", tabs: ["config"] as Tab[] },
+  { label: "Advanced", tabs: ["advanced", "trajectories", "voice", "runtime"] as Tab[] },
   { label: "Databases", tabs: ["database"] as Tab[] },
   { label: "Settings", tabs: ["settings"] as Tab[] },
   { label: "Logs", tabs: ["logs"] as Tab[] },
@@ -18,10 +29,12 @@ export const TAB_GROUPS = [
 const TAB_PATHS: Record<Tab, string> = {
   chat: "/chat",
   apps: "/apps",
-  game: "/game",
   agent: "/agent",
   plugins: "/plugins",
-  config: "/config",
+  advanced: "/advanced",
+  trajectories: "/trajectories",
+  voice: "/voice",
+  runtime: "/runtime",
   database: "/database",
   settings: "/settings",
   logs: "/logs",
@@ -29,12 +42,14 @@ const TAB_PATHS: Record<Tab, string> = {
 
 /** Legacy path redirects — old paths that now map to new tabs. */
 const LEGACY_PATHS: Record<string, Tab> = {
+  "/game": "apps",
   "/character": "agent",
   "/inventory": "agent",
   "/features": "plugins",
   "/connectors": "plugins",
   "/skills": "plugins",
-  "/admin": "config",
+  "/admin": "advanced",
+  "/config": "advanced",
   "/fine-tuning": "agent",
   "/triggers": "agent",
 };
@@ -84,10 +99,12 @@ export function titleForTab(tab: Tab): string {
   switch (tab) {
     case "chat": return "Chat";
     case "apps": return "Apps";
-    case "game": return "Game";
     case "agent": return "Agent";
     case "plugins": return "Plugins";
-    case "config": return "Config";
+    case "advanced": return "Advanced";
+    case "trajectories": return "Trajectories";
+    case "voice": return "Voice";
+    case "runtime": return "Runtime";
     case "database": return "Databases";
     case "settings": return "Settings";
     case "logs": return "Logs";

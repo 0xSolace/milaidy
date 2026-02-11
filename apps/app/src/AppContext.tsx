@@ -48,6 +48,10 @@ import {
   type TriggerSummary,
   type UpdateTriggerRequest,
   type AppViewerAuthMessage,
+  type RegistryStatus,
+  type DropStatus,
+  type MintResult,
+  type WhitelistStatus,
 } from "./api-client";
 import { tabFromPath, pathForTab, type Tab } from "./navigation";
 import { SkillScanReportSummary } from "./api-client";
@@ -249,6 +253,27 @@ export interface AppState {
   inventorySort: "chain" | "symbol" | "value";
   walletError: string | null;
 
+  // ERC-8004 Registry
+  registryStatus: RegistryStatus | null;
+  registryLoading: boolean;
+  registryRegistering: boolean;
+  registryError: string | null;
+
+  // Drop / Mint
+  dropStatus: DropStatus | null;
+  dropLoading: boolean;
+  mintInProgress: boolean;
+  mintResult: MintResult | null;
+  mintError: string | null;
+  mintShiny: boolean;
+
+  // Whitelist
+  whitelistStatus: WhitelistStatus | null;
+  whitelistLoading: boolean;
+  twitterVerifyMessage: string | null;
+  twitterVerifyUrl: string;
+  twitterVerifying: boolean;
+
   // Character
   characterData: CharacterData | null;
   characterLoading: boolean;
@@ -384,7 +409,7 @@ export interface AppState {
 
   // Sub-tabs
   appsSubTab: "browse" | "games";
-  agentSubTab: "character" | "inventory";
+  agentSubTab: "character" | "inventory" | "knowledge";
   pluginsSubTab: "features" | "connectors" | "skills" | "plugins";
   databaseSubTab: "tables" | "media" | "vectors";
 
@@ -454,6 +479,13 @@ export interface AppActions {
   loadNfts: () => Promise<void>;
   handleWalletApiKeySave: (config: Record<string, string>) => Promise<void>;
   handleExportKeys: () => Promise<void>;
+
+  // Registry / Drop
+  loadRegistryStatus: () => Promise<void>;
+  registerOnChain: () => Promise<void>;
+  loadDropStatus: () => Promise<void>;
+  mintFromDrop: (shiny: boolean) => Promise<void>;
+  loadWhitelistStatus: () => Promise<void>;
 
   // Character
   loadCharacter: () => Promise<void>;
@@ -603,6 +635,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [inventorySort, setInventorySort] = useState<"chain" | "symbol" | "value">("value");
   const [walletError, setWalletError] = useState<string | null>(null);
 
+  // --- ERC-8004 Registry ---
+  const [registryStatus, setRegistryStatus] = useState<RegistryStatus | null>(null);
+  const [registryLoading, setRegistryLoading] = useState(false);
+  const [registryRegistering, setRegistryRegistering] = useState(false);
+  const [registryError, setRegistryError] = useState<string | null>(null);
+
+  // --- Drop / Mint ---
+  const [dropStatus, setDropStatus] = useState<DropStatus | null>(null);
+  const [dropLoading, setDropLoading] = useState(false);
+  const [mintInProgress, setMintInProgress] = useState(false);
+  const [mintResult, setMintResult] = useState<MintResult | null>(null);
+  const [mintError, setMintError] = useState<string | null>(null);
+  const [mintShiny, setMintShiny] = useState(false);
+
+  // --- Whitelist ---
+  const [whitelistStatus, setWhitelistStatus] = useState<WhitelistStatus | null>(null);
+  const [whitelistLoading, setWhitelistLoading] = useState(false);
+  const [twitterVerifyMessage, setTwitterVerifyMessage] = useState<string | null>(null);
+  const [twitterVerifyUrl, setTwitterVerifyUrl] = useState("");
+  const [twitterVerifying, setTwitterVerifying] = useState(false);
+
   // --- Character ---
   const [characterData, setCharacterData] = useState<CharacterData | null>(null);
   const [characterLoading, setCharacterLoading] = useState(false);
@@ -744,7 +797,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // --- Admin ---
   const [appsSubTab, setAppsSubTab] = useState<"browse" | "games">("browse");
-  const [agentSubTab, setAgentSubTab] = useState<"character" | "inventory">("character");
+  const [agentSubTab, setAgentSubTab] = useState<"character" | "inventory" | "knowledge">("character");
   const [pluginsSubTab, setPluginsSubTab] = useState<"features" | "connectors" | "skills" | "plugins">("features");
   const [databaseSubTab, setDatabaseSubTab] = useState<"tables" | "media" | "vectors">("tables");
 
@@ -806,10 +859,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setTab = useCallback(
     (newTab: Tab) => {
       setTabRaw(newTab);
+      if (newTab === "apps") {
+        setAppsSubTab(activeGameViewerUrl.trim() ? "games" : "browse");
+      }
       const path = pathForTab(newTab);
       window.history.pushState(null, "", path);
     },
-    [],
+    [activeGameViewerUrl],
   );
 
   const sortTriggersByNextRun = useCallback((items: TriggerSummary[]): TriggerSummary[] => {
@@ -1806,6 +1862,77 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [walletExportVisible]);
 
+  // ── Registry / Drop / Whitelist actions ─────────────────────────────
+
+  const loadRegistryStatus = useCallback(async () => {
+    setRegistryLoading(true);
+    setRegistryError(null);
+    try {
+      const status = await client.getRegistryStatus();
+      setRegistryStatus(status);
+    } catch (err) {
+      setRegistryError(err instanceof Error ? err.message : "Failed to load registry status");
+    } finally {
+      setRegistryLoading(false);
+    }
+  }, []);
+
+  const registerOnChain = useCallback(async () => {
+    setRegistryRegistering(true);
+    setRegistryError(null);
+    try {
+      await client.registerAgent({ name: characterDraft?.name || agentStatus?.name });
+      await loadRegistryStatus();
+    } catch (err) {
+      setRegistryError(err instanceof Error ? err.message : "Registration failed");
+    } finally {
+      setRegistryRegistering(false);
+    }
+  }, [characterDraft?.name, agentStatus?.name, loadRegistryStatus]);
+
+  const loadDropStatus = useCallback(async () => {
+    setDropLoading(true);
+    try {
+      const status = await client.getDropStatus();
+      setDropStatus(status);
+    } catch {
+      // Non-critical -- drop may not be configured
+    } finally {
+      setDropLoading(false);
+    }
+  }, []);
+
+  const mintFromDrop = useCallback(async (shiny: boolean) => {
+    setMintInProgress(true);
+    setMintError(null);
+    setMintResult(null);
+    try {
+      const result = await client.mintAgent({
+        name: characterDraft?.name || agentStatus?.name,
+        shiny,
+      });
+      setMintResult(result);
+      await loadRegistryStatus();
+      await loadDropStatus();
+    } catch (err) {
+      setMintError(err instanceof Error ? err.message : "Mint failed");
+    } finally {
+      setMintInProgress(false);
+    }
+  }, [characterDraft?.name, agentStatus?.name, loadRegistryStatus, loadDropStatus]);
+
+  const loadWhitelistStatus = useCallback(async () => {
+    setWhitelistLoading(true);
+    try {
+      const status = await client.getWhitelistStatus();
+      setWhitelistStatus(status);
+    } catch {
+      // Non-critical
+    } finally {
+      setWhitelistLoading(false);
+    }
+  }, []);
+
   // ── Character actions ──────────────────────────────────────────────
 
   const handleSaveCharacter = useCallback(async () => {
@@ -2687,6 +2814,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     walletAddresses, walletConfig, walletBalances, walletNfts, walletLoading,
     walletNftsLoading, inventoryView, walletExportData, walletExportVisible,
     walletApiKeySaving, inventorySort, walletError,
+    registryStatus, registryLoading, registryRegistering, registryError,
+    dropStatus, dropLoading, mintInProgress, mintResult, mintError, mintShiny,
+    whitelistStatus, whitelistLoading, twitterVerifyMessage, twitterVerifyUrl, twitterVerifying,
     characterData, characterLoading, characterSaving, characterSaveSuccess,
     characterSaveError, characterDraft, selectedVrmIndex, customVrmUrl,
     cloudEnabled, cloudConnected, cloudCredits, cloudCreditsLow, cloudCreditsCritical,
@@ -2734,6 +2864,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     searchSkillsMarketplace, installSkillFromMarketplace, uninstallMarketplaceSkill, installSkillFromGithubUrl,
     loadLogs,
     loadInventory, loadBalances, loadNfts, handleWalletApiKeySave, handleExportKeys,
+    loadRegistryStatus, registerOnChain, loadDropStatus, mintFromDrop, loadWhitelistStatus,
     loadCharacter, handleSaveCharacter, handleCharacterFieldInput,
     handleCharacterArrayInput, handleCharacterStyleInput, handleCharacterMessageExamplesInput,
     handleOnboardingNext, handleOnboardingBack,

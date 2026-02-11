@@ -6,15 +6,18 @@
  * Memory search/get actions are superseded by plugin-scratchpad.
  */
 
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import type {
+  AgentRuntime,
   IAgentRuntime,
   Memory,
   MessagePayload,
   Plugin,
   Provider,
   ProviderResult,
+  Service,
   State,
 } from "@elizaos/core";
 import {
@@ -25,6 +28,7 @@ import {
   resolveDefaultSessionStorePath,
 } from "@elizaos/core";
 import { emoteAction } from "../actions/emote.js";
+import { mediaActions } from "../actions/media.js";
 import { restartAction } from "../actions/restart.js";
 import { EMOTE_CATALOG } from "../emotes/catalog.js";
 import { createAdminTrustProvider } from "../providers/admin-trust.js";
@@ -39,6 +43,7 @@ import {
 import { createSimpleModeProvider } from "../providers/simple-mode.js";
 import { DEFAULT_AGENT_WORKSPACE_DIR } from "../providers/workspace.js";
 import { createWorkspaceProvider } from "../providers/workspace-provider.js";
+import { PersistentTrajectoryLoggerService } from "../services/trajectory-logger.js";
 import { generateCatalogPrompt } from "../shared/ui-catalog-prompt.js";
 import { createTriggerTaskAction } from "../triggers/action.js";
 import { registerTriggerTaskWorker } from "../triggers/runtime.js";
@@ -231,6 +236,77 @@ export function createMilaidyPlugin(config?: MilaidyPluginConfig): Plugin {
     },
   };
 
+  // Media provider — injects media generation capabilities into agent context
+  // so the LLM knows it can generate images, videos, audio, and analyze images.
+  const mediaProvider: Provider = {
+    name: "media",
+    description: "Media generation and analysis capabilities",
+
+    async get(
+      _runtime: IAgentRuntime,
+      _message: Memory,
+      _state: State,
+    ): Promise<ProviderResult> {
+      return {
+        text: [
+          "## Media Generation Capabilities",
+          "",
+          "You have access to the following media generation actions:",
+          "",
+          "### GENERATE_IMAGE",
+          "Create images from text descriptions. Parameters:",
+          "- prompt (required): Text description of the image",
+          "- size: Image dimensions (e.g., '1024x1024')",
+          "- quality: 'standard' or 'hd'",
+          "- style: 'natural' or 'vivid'",
+          "",
+          "### GENERATE_VIDEO",
+          "Create videos from text descriptions. Parameters:",
+          "- prompt (required): Text description of the video",
+          "- duration: Video length in seconds",
+          "- aspectRatio: e.g., '16:9', '9:16'",
+          "- imageUrl: Starting frame image (for image-to-video)",
+          "",
+          "### GENERATE_AUDIO",
+          "Create music or sound effects. Parameters:",
+          "- prompt (required): Description of the audio (lyrics, mood, style)",
+          "- duration: Length in seconds",
+          "- instrumental: true for no vocals",
+          "- genre: e.g., 'pop', 'rock', 'electronic'",
+          "",
+          "### ANALYZE_IMAGE",
+          "Analyze images using AI vision. Parameters:",
+          "- imageUrl or imageBase64 (required): The image to analyze",
+          "- prompt: Specific question about the image",
+          "",
+          "Use these actions when users request media creation or image analysis.",
+        ].join("\n"),
+      };
+    },
+  };
+
+  // Create a service class wrapper for the trajectory logger that matches ServiceClass interface
+  // This is a proper Service subclass that satisfies the ServiceClass interface
+  const TrajectoryLoggerServiceClass = {
+    serviceType: "trajectory_logger" as const,
+
+    async start(runtime: IAgentRuntime): Promise<Service> {
+      const service = new PersistentTrajectoryLoggerService(
+        runtime as AgentRuntime,
+        {
+          getRuntime: () => runtime as AgentRuntime,
+          enabled: true,
+        },
+      );
+      await service.initialize();
+      return service;
+    },
+  } as unknown as {
+    serviceType: string;
+    start: (runtime: IAgentRuntime) => Promise<Service>;
+    new (runtime?: IAgentRuntime): Service;
+  };
+
   return {
     name: "milaidy",
     description:
@@ -246,15 +322,18 @@ export function createMilaidyPlugin(config?: MilaidyPluginConfig): Plugin {
       ...bootstrapProviders,
       uiCatalogProvider,
       emoteProvider,
+      mediaProvider,
     ],
 
-    actions: [restartAction, createTriggerTaskAction, emoteAction],
+    actions: [restartAction, createTriggerTaskAction, emoteAction, ...mediaActions],
+
+    services: [TrajectoryLoggerServiceClass],
 
     events: {
-      // Inject Milaidy session keys into inbound messages before processing
+      // Inject Milaidy session keys and trajectory context into inbound messages
       MESSAGE_RECEIVED: [
         async (payload: MessagePayload) => {
-          const { runtime, message } = payload;
+          const { runtime, message, source } = payload;
           if (!message || !runtime) return;
 
           // Ensure metadata is initialized so we can read and write to it.
@@ -264,17 +343,62 @@ export function createMilaidyPlugin(config?: MilaidyPluginConfig): Plugin {
             } as unknown as typeof message.metadata;
           }
           const meta = message.metadata as Record<string, unknown>;
-          if (meta.sessionKey) return;
 
-          const room = await runtime.getRoom(message.roomId);
-          if (!room) return;
+          // Inject session key if not already set
+          if (!meta.sessionKey) {
+            const room = await runtime.getRoom(message.roomId);
+            if (room) {
+              const key = resolveSessionKeyFromRoom(agentId, room, {
+                threadId: meta.threadId as string | undefined,
+                groupId: meta.groupId as string | undefined,
+                channel: (meta.channel as string | undefined) ?? room.source,
+              });
+              meta.sessionKey = key;
+            }
+          }
 
-          const key = resolveSessionKeyFromRoom(agentId, room, {
-            threadId: meta.threadId as string | undefined,
-            groupId: meta.groupId as string | undefined,
-            channel: (meta.channel as string | undefined) ?? room.source,
-          });
-          meta.sessionKey = key;
+          // Create a trajectory for this message if logging is enabled
+          const trajectoryLogger = runtime.getService(
+            "trajectory_logger",
+          ) as PersistentTrajectoryLoggerService | null;
+
+          if (trajectoryLogger?.isEnabled()) {
+            const trajectoryStepId = crypto.randomUUID();
+            meta.trajectoryStepId = trajectoryStepId;
+
+            // Start the trajectory - this links the stepId to a new trajectory record
+            await trajectoryLogger.startTrajectory(trajectoryStepId, {
+              agentId: runtime.agentId,
+              roomId: message.roomId,
+              entityId: message.entityId,
+              conversationId: meta.sessionKey as string | undefined,
+              source: source ?? (meta.source as string) ?? "chat",
+              metadata: {
+                messageId: message.id,
+                channelType: meta.channelType ?? message.content?.channelType,
+              },
+            });
+          }
+        },
+      ],
+
+      // Complete the trajectory when message processing is done
+      MESSAGE_SENT: [
+        async (payload: MessagePayload) => {
+          const { runtime, message } = payload;
+          if (!message || !runtime) return;
+
+          const meta = message.metadata as Record<string, unknown> | undefined;
+          const trajectoryStepId = meta?.trajectoryStepId as string | undefined;
+          if (!trajectoryStepId) return;
+
+          const trajectoryLogger = runtime.getService(
+            "trajectory_logger",
+          ) as PersistentTrajectoryLoggerService | null;
+
+          if (trajectoryLogger) {
+            await trajectoryLogger.endTrajectory(trajectoryStepId, "completed");
+          }
         },
       ],
     },

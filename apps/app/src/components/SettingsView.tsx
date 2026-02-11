@@ -4,10 +4,9 @@
  * Sections:
  *   1. Appearance — theme picker
  *   2. AI Model — provider selection + config
- *   3. Wallet & RPC — EVM + Solana provider selection + keys
- *   4. Connectors — Telegram, Discord, WhatsApp setup
- *   5. Updates — software update channel + check
- *   6. Advanced (collapsible) — Logs, Core Plugins, Database, Secrets,
+ *   3. Media Generation — image, video, audio, vision provider selection
+ *   4. Updates — software update channel + check
+ *   5. Advanced (collapsible) — Logs, Core Plugins, Database, Secrets,
  *      Chrome Extension, Export/Import, Danger Zone
  */
 
@@ -15,6 +14,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useApp, THEMES } from "../AppContext";
 import { client, type PluginParamDef, type OnboardingOptions } from "../api-client";
 import { ConfigRenderer, defaultRegistry } from "./config-renderer";
+import { MediaSettingsSection } from "./MediaSettingsSection";
 import type { ConfigUiHint } from "../types";
 import type { JsonSchemaObject } from "./config-catalog";
 
@@ -650,7 +650,15 @@ export function SettingsView() {
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════
-          3. UPDATES
+          3. MEDIA GENERATION
+          ═══════════════════════════════════════════════════════════════ */}
+      <div className="mt-6 p-4 border border-[var(--border)] bg-[var(--card)]">
+        <div className="font-bold text-sm mb-4">Media Generation</div>
+        <MediaSettingsSection />
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════════
+          4. UPDATES
           ═══════════════════════════════════════════════════════════════ */}
       <div className="mt-6 p-4 border border-[var(--border)] bg-[var(--card)]">
         <div className="flex justify-between items-center mb-3">

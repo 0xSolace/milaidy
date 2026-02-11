@@ -74,7 +74,13 @@ function parseHyperscapeCommandData(
 }
 
 export function AppsView() {
-  const { setState, setActionNotice } = useApp();
+  const {
+    activeGameApp,
+    activeGameDisplayName,
+    activeGameViewerUrl,
+    setState,
+    setActionNotice,
+  } = useApp();
   const [apps, setApps] = useState<RegistryAppInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -102,6 +108,9 @@ export function AppsView() {
   >("chat");
   const [hyperscapeCommandDataInput, setHyperscapeCommandDataInput] =
     useState("{}");
+  const currentGameViewerUrl =
+    typeof activeGameViewerUrl === "string" ? activeGameViewerUrl : "";
+  const hasCurrentGame = currentGameViewerUrl.trim().length > 0;
 
   const loadApps = useCallback(async () => {
     setLoading(true);
@@ -147,7 +156,8 @@ export function AppsView() {
             4800,
           );
         }
-        setState("tab", "game");
+        setState("tab", "apps");
+        setState("appsSubTab", "games");
         return;
       }
       clearActiveGameState();
@@ -184,6 +194,22 @@ export function AppsView() {
       setBusyApp(null);
     }
   };
+
+  const handleOpenCurrentGame = useCallback(() => {
+    if (!hasCurrentGame) return;
+    setState("tab", "apps");
+    setState("appsSubTab", "games");
+  }, [hasCurrentGame, setState]);
+
+  const handleOpenCurrentGameInNewTab = useCallback(() => {
+    if (!hasCurrentGame) return;
+    const popup = window.open(currentGameViewerUrl, "_blank", "noopener,noreferrer");
+    if (popup) {
+      setActionNotice("Current game opened in a new tab.", "success", 2600);
+      return;
+    }
+    setActionNotice("Popup blocked. Allow popups and try again.", "error", 4200);
+  }, [currentGameViewerUrl, hasCurrentGame, setActionNotice]);
 
   const hyperscapeAppAvailable = useMemo(
     () => apps.some((app) => app.name === HYPERSCAPE_APP_NAME),
@@ -445,6 +471,30 @@ export function AppsView() {
           Refresh
         </button>
       </div>
+
+      {hasCurrentGame ? (
+        <div className="mb-4 border border-border bg-card p-3 flex flex-col gap-2">
+          <div className="font-bold text-xs">Current Playing Game</div>
+          <div className="text-sm">
+            {activeGameDisplayName || activeGameApp || "Current game"}
+          </div>
+          <div className="text-[11px] text-muted break-all">{currentGameViewerUrl}</div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={handleOpenCurrentGame}
+              className="px-3 py-1 text-xs bg-accent text-accent-fg border border-accent cursor-pointer hover:bg-accent-hover"
+            >
+              Open Current Game
+            </button>
+            <button
+              onClick={handleOpenCurrentGameInNewTab}
+              className="px-3 py-1 text-xs bg-accent text-accent-fg border border-accent cursor-pointer hover:bg-accent-hover"
+            >
+              Open in New Tab
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {hyperscapeAppAvailable ? (
         <div className="mb-4 border border-border bg-card">

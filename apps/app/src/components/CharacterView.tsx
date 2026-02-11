@@ -218,11 +218,29 @@ export function CharacterView() {
     cloudDisconnecting,
     handleCloudLogin,
     handleCloudDisconnect,
+    // Registry / Drop
+    registryStatus,
+    registryLoading,
+    registryRegistering,
+    registryError,
+    dropStatus,
+    dropLoading,
+    mintInProgress,
+    mintResult,
+    mintError,
+    mintShiny,
+    loadRegistryStatus,
+    registerOnChain,
+    loadDropStatus,
+    mintFromDrop,
+    walletConfig,
   } = useApp();
 
   useEffect(() => {
     void loadCharacter();
-  }, [loadCharacter]);
+    void loadRegistryStatus();
+    void loadDropStatus();
+  }, [loadCharacter, loadRegistryStatus, loadDropStatus]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 

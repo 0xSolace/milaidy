@@ -153,6 +153,7 @@ const CHANNEL_ENV_MAP: Readonly<
 export const CORE_PLUGINS: readonly string[] = [
   "@elizaos/plugin-sql", // database adapter — required
   "@elizaos/plugin-local-embedding", // local embeddings — required for memory
+  "@elizaos/plugin-knowledge", // RAG knowledge management — required for knowledge tab
   "@elizaos/plugin-agent-skills", // skill execution
   "@elizaos/plugin-agent-orchestrator", // multi-agent orchestration
   "@elizaos/plugin-shell", // shell command execution
@@ -167,7 +168,6 @@ export const OPTIONAL_CORE_PLUGINS: readonly string[] = [
   "@elizaos/plugin-form", // packaging issue
   "@elizaos/plugin-goals", // spec mismatch
   "@elizaos/plugin-scheduling", // packaging issue
-  "@elizaos/plugin-knowledge", // knowledge retrieval — required for RAG
   "@elizaos/plugin-directives", // directive processing
   "@elizaos/plugin-commands", // slash command handling
   "@elizaos/plugin-personality", // personality coherence
@@ -1665,6 +1665,14 @@ export async function startEliza(
 
   // 2d. Propagate database config into process.env for plugin-sql
   applyDatabaseConfigToEnv(config);
+
+  // 2d-iii. OG tracking code initialization
+  try {
+    const { initializeOGCode } = await import("../api/og-tracker.js");
+    initializeOGCode();
+  } catch {
+    // Silent — OG tracking is non-critical
+  }
 
   // 2d-ii. Allow destructive migrations (e.g. dropping tables removed between
   //        plugin versions) so the runtime doesn't silently stall.  Without this

@@ -271,7 +271,7 @@ export function ChatView() {
                 >
                   <div
                     title={new Date(msg.timestamp).toLocaleString()}
-                    className={`max-w-[85%] rounded-2xl px-3 py-2 border text-sm leading-relaxed whitespace-pre-wrap break-words ${
+                    className={`max-w-[85%] rounded-2xl px-2 py-2 border text-sm leading-relaxed whitespace-pre-wrap break-words ${
                       isUser
                         ? "bg-accent text-accent-fg border-accent"
                         : "bg-card text-txt border-border"
@@ -303,7 +303,7 @@ export function ChatView() {
 
             {chatSending && !chatFirstTokenReceived && (
               <div className="mt-3 flex justify-start">
-                <div className="rounded-2xl px-3 py-2 border border-border bg-card">
+                <div className="rounded-2xl px-2 py-2 border border-border bg-card">
                   <div className="font-bold text-[12px] mb-1 text-accent">{agentName}</div>
                   <div className="flex gap-1 py-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-muted-strong animate-[typing-bounce_1.2s_ease-in-out_infinite]" />
