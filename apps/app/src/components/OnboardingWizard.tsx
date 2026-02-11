@@ -36,6 +36,7 @@ export function OnboardingWizard() {
     onboardingProvider,
     onboardingApiKey,
     onboardingOpenRouterModel,
+    onboardingPrimaryModel,
     onboardingTelegramToken,
     onboardingDiscordToken,
     onboardingTwilioAccountSid,
@@ -548,6 +549,10 @@ export function OnboardingWizard() {
           grok: { name: "xAI (Grok)" },
           groq: { name: "Groq" },
           deepseek: { name: "DeepSeek" },
+          "pi-ai": {
+            name: "Pi Credentials (pi-ai)",
+            description: "Use pi auth (~/.pi/agent/auth.json) for API keys / OAuth",
+          },
         };
 
         const getProviderDisplay = (provider: ProviderOption) => {
@@ -561,6 +566,7 @@ export function OnboardingWizard() {
         const handleProviderSelect = (providerId: string) => {
           setState("onboardingProvider", providerId);
           setState("onboardingApiKey", "");
+          setState("onboardingPrimaryModel", "");
           if (providerId === "anthropic-subscription") {
             setState("onboardingSubscriptionTab", "token");
           }
@@ -610,6 +616,26 @@ export function OnboardingWizard() {
                 <h2 className="text-[28px] font-normal mb-1 text-txt-strong">what is my brain?</h2>
               </div>
               <div className="w-full mx-auto px-2">
+                {(onboardingOptions?.piModels?.length || onboardingOptions?.piDefaultModel) && (
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div className="text-left">
+                      <div className="text-xs font-semibold text-txt-strong">Use local credentials</div>
+                      <div className="text-xs text-muted">
+                        Pulls tokens/keys from <code className="px-1 py-0.5 bg-bg-muted rounded">~/.pi/agent</code>.
+                      </div>
+                    </div>
+                    <button
+                      className="px-3 py-2 border border-accent bg-accent text-accent-fg text-xs cursor-pointer rounded-full hover:bg-accent-hover"
+                      onClick={() => {
+                        handleProviderSelect("pi-ai");
+                        setState("onboardingPrimaryModel", onboardingOptions?.piDefaultModel ?? "");
+                      }}
+                    >
+                      use local creds
+                    </button>
+                  </div>
+                )}
+
                 <div className="mb-4 text-left">
                   <div className="grid grid-cols-4 gap-2">
                     {cloudProviders.map((p: ProviderOption) => renderProviderCard(p))}
@@ -648,6 +674,7 @@ export function OnboardingWizard() {
                 onClick={() => {
                   setState("onboardingProvider", "");
                   setState("onboardingApiKey", "");
+                  setState("onboardingPrimaryModel", "");
                 }}
               >
                 change
@@ -916,7 +943,8 @@ export function OnboardingWizard() {
               onboardingProvider !== "anthropic-subscription" &&
               onboardingProvider !== "openai-subscription" &&
               onboardingProvider !== "elizacloud" &&
-              onboardingProvider !== "ollama" && (
+              onboardingProvider !== "ollama" &&
+              onboardingProvider !== "pi-ai" && (
                 <div className="text-left">
                   <label className="text-[13px] font-bold text-txt-strong block mb-2">API Key:</label>
                   <input
@@ -928,6 +956,36 @@ export function OnboardingWizard() {
                   />
                 </div>
               )}
+
+            {/* pi-ai — optional model picker */}
+            {onboardingProvider === "pi-ai" && (
+              <div className="mt-4 text-left">
+                <label className="text-[13px] font-bold text-txt-strong block mb-2">
+                  Model (optional):
+                </label>
+                <input
+                  type="text"
+                  value={onboardingPrimaryModel}
+                  onChange={(e) => setState("onboardingPrimaryModel", e.target.value)}
+                  placeholder="Leave blank to use pi default (from ~/.pi/agent/settings.json)"
+                  list="pi-ai-models"
+                  className="w-full px-3 py-2 border border-border bg-card text-sm focus:border-accent focus:outline-none"
+                />
+                <datalist id="pi-ai-models">
+                  {(onboardingOptions?.piModels ?? []).slice(0, 400).map((m: ModelOption) => (
+                    <option key={m.id} value={m.id} />
+                  ))}
+                </datalist>
+                <p className="text-xs text-muted mt-2">
+                  Tip: type{" "}
+                  <code className="px-1 py-0.5 bg-bg-muted rounded">
+                    anthropic/claude-sonnet-4-20250514
+                  </code>
+                  {" "}
+                  (or pick from suggestions).
+                </p>
+              </div>
+            )}
 
             {/* Ollama — no config needed */}
             {onboardingProvider === "ollama" && (
@@ -1262,7 +1320,11 @@ export function OnboardingWizard() {
         if (onboardingProvider === "openai-subscription") {
           return openaiConnected;
         }
-        if (onboardingProvider === "elizacloud" || onboardingProvider === "ollama") {
+        if (
+          onboardingProvider === "elizacloud" ||
+          onboardingProvider === "ollama" ||
+          onboardingProvider === "pi-ai"
+        ) {
           return true;
         }
         return onboardingProvider.length > 0 && onboardingApiKey.length > 0;
@@ -1284,6 +1346,7 @@ export function OnboardingWizard() {
     if (onboardingStep === "llmProvider" && onboardingProvider) {
       setState("onboardingProvider", "");
       setState("onboardingApiKey", "");
+      setState("onboardingPrimaryModel", "");
     } else {
       handleOnboardingBack();
     }

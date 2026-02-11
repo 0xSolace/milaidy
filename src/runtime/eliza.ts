@@ -34,6 +34,7 @@ import {
 } from "../api/plugin-validation.js";
 import { cloudLogin } from "../cloud/auth.js";
 import {
+  configFileExists,
   loadMilaidyConfig,
   type MilaidyConfig,
   saveMilaidyConfig,
@@ -66,6 +67,7 @@ import {
   createPhettaCompanionPlugin,
   resolvePhettaCompanionOptionsFromEnv,
 } from "./phetta-companion-plugin.js";
+import { isPiAiEnabledFromEnv, registerPiAiRuntime } from "./pi-ai.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -706,7 +708,9 @@ async function resolvePlugins(
 
   // Diagnose version-skew issues when AI providers failed to load (#10)
   const loadedNames = plugins.map((p) => p.name);
-  const diagnostic = diagnoseNoAIProvider(loadedNames, failedPlugins);
+  const diagnostic = isPiAiEnabledFromEnv()
+    ? null
+    : diagnoseNoAIProvider(loadedNames, failedPlugins);
   if (diagnostic) {
     if (opts?.quiet) {
       // In headless/GUI mode before onboarding, this is expected — the user
@@ -1611,6 +1615,35 @@ export interface StartElizaOptions {
   headless?: boolean;
 }
 
+export interface BootElizaRuntimeOptions {
+  /**
+   * When true, require an existing ~/.milaidy/milaidy.json config file.
+   * This is used by non-CLI UIs (like the pi-tui interface) where interactive
+   * onboarding prompts would break the alternate screen.
+   */
+  requireConfig?: boolean;
+}
+
+/**
+ * Boot the ElizaOS runtime without starting the readline chat loop.
+ *
+ * This is a convenience wrapper around {@link startEliza} in headless mode,
+ * with optional config guards.
+ */
+export async function bootElizaRuntime(
+  opts: BootElizaRuntimeOptions = {},
+): Promise<AgentRuntime> {
+  if (opts.requireConfig && !configFileExists()) {
+    throw new Error("No config found. Run `milaidy start` first to set up.");
+  }
+
+  const runtime = await startEliza({ headless: true });
+  if (!runtime) {
+    throw new Error("Failed to boot runtime");
+  }
+  return runtime;
+}
+
 /**
  * Start the ElizaOS runtime with Milaidy's configuration.
  *
@@ -1970,6 +2003,37 @@ export async function startEliza(
     },
   });
 
+  // Optional: route all model calls through pi-ai using pi credentials
+  // (~/.pi/agent/auth.json). This is useful for OAuth-backed providers
+  // (e.g. Claude Max / Codex Max) without putting API keys in Milaidy config.
+  if (isPiAiEnabledFromEnv()) {
+    try {
+      const modelCfg = (config.models ?? {}) as unknown as Record<
+        string,
+        unknown
+      >;
+      const piAiSmall =
+        typeof modelCfg.piAiSmall === "string" ? modelCfg.piAiSmall : undefined;
+      const piAiLarge =
+        typeof modelCfg.piAiLarge === "string" ? modelCfg.piAiLarge : undefined;
+
+      const reg = await registerPiAiRuntime(runtime, {
+        // Prefer pi-ai specific small/large overrides when set.
+        // Fall back to Milaidy's primary model spec; otherwise pi settings.json decides.
+        smallModelSpec: piAiSmall,
+        largeModelSpec: piAiLarge,
+        modelSpec: primaryModel,
+      });
+      logger.info(
+        `[milaidy] pi-ai enabled (large: ${reg.modelSpec}${piAiSmall ? ", small override set" : ""})`,
+      );
+    } catch (err) {
+      logger.warn(
+        `[milaidy] pi-ai enabled but failed to register model handler: ${formatError(err)}`,
+      );
+    }
+  }
+
   // 7b. Pre-register plugin-sql so the adapter is ready before other plugins init.
   //     This is OPTIONAL — without it, some features (memory, todos) won't work.
   //     runtime.db is a getter that returns this.adapter.db and throws when
@@ -2253,6 +2317,37 @@ export async function startEliza(
                 : {}),
             },
           });
+
+          // Re-register pi-ai model handler on hot reload if enabled.
+          if (isPiAiEnabledFromEnv()) {
+            try {
+              const modelCfg = (freshConfig.models ?? {}) as unknown as Record<
+                string,
+                unknown
+              >;
+              const piAiSmall =
+                typeof modelCfg.piAiSmall === "string"
+                  ? modelCfg.piAiSmall
+                  : undefined;
+              const piAiLarge =
+                typeof modelCfg.piAiLarge === "string"
+                  ? modelCfg.piAiLarge
+                  : undefined;
+
+              const reg = await registerPiAiRuntime(newRuntime, {
+                smallModelSpec: piAiSmall,
+                largeModelSpec: piAiLarge,
+                modelSpec: freshPrimaryModel,
+              });
+              logger.info(
+                `[milaidy] Hot-reload: pi-ai enabled (large: ${reg.modelSpec}${piAiSmall ? ", small override set" : ""})`,
+              );
+            } catch (err) {
+              logger.warn(
+                `[milaidy] Hot-reload: pi-ai enabled but failed to register: ${formatError(err)}`,
+              );
+            }
+          }
 
           // Pre-register plugin-sql + local-embedding before initialize()
           // to avoid the same race condition as the initial startup.

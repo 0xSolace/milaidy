@@ -361,6 +361,7 @@ export interface AppState {
   onboardingProvider: string;
   onboardingApiKey: string;
   onboardingOpenRouterModel: string;
+  onboardingPrimaryModel: string;
   onboardingTelegramToken: string;
   onboardingDiscordToken: string;
   onboardingWhatsAppSessionPath: string;
@@ -750,6 +751,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [onboardingProvider, setOnboardingProvider] = useState("");
   const [onboardingApiKey, setOnboardingApiKey] = useState("");
   const [onboardingOpenRouterModel, setOnboardingOpenRouterModel] = useState("");
+  const [onboardingPrimaryModel, setOnboardingPrimaryModel] = useState("");
   const [onboardingTelegramToken, setOnboardingTelegramToken] = useState("");
   const [onboardingDiscordToken, setOnboardingDiscordToken] = useState("");
   const [onboardingWhatsAppSessionPath, setOnboardingWhatsAppSessionPath] = useState("");
@@ -2252,6 +2254,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     onboardingOptions, onboardingStyle, onboardingName, onboardingTheme,
     onboardingRunMode, onboardingCloudProvider, onboardingSmallModel,
     onboardingLargeModel, onboardingProvider, onboardingApiKey,
+    onboardingPrimaryModel,
     onboardingSelectedChains, onboardingRpcSelections, onboardingRpcKeys,
     onboardingTelegramToken, onboardingDiscordToken, onboardingWhatsAppSessionPath,
     onboardingTwilioAccountSid, onboardingTwilioAuthToken, onboardingTwilioPhoneNumber,
@@ -2458,6 +2461,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       onboardingSelectedChains: setOnboardingSelectedChains as (v: never) => void,
       onboardingRpcSelections: setOnboardingRpcSelections as (v: never) => void,
       onboardingOpenRouterModel: setOnboardingOpenRouterModel as (v: never) => void,
+      onboardingPrimaryModel: setOnboardingPrimaryModel as (v: never) => void,
       onboardingTelegramToken: setOnboardingTelegramToken as (v: never) => void,
       onboardingDiscordToken: setOnboardingDiscordToken as (v: never) => void,
       onboardingWhatsAppSessionPath: setOnboardingWhatsAppSessionPath as (v: never) => void,
@@ -2866,7 +2870,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     importBusy, importPassword, importFile, importError, importSuccess,
     onboardingStep, onboardingOptions, onboardingName, onboardingStyle, onboardingTheme,
     onboardingRunMode, onboardingCloudProvider, onboardingSmallModel, onboardingLargeModel,
-    onboardingProvider, onboardingApiKey, onboardingOpenRouterModel,
+    onboardingProvider, onboardingApiKey, onboardingOpenRouterModel, onboardingPrimaryModel,
     onboardingTelegramToken, onboardingDiscordToken, onboardingWhatsAppSessionPath,
     onboardingTwilioAccountSid, onboardingTwilioAuthToken, onboardingTwilioPhoneNumber,
     onboardingBlooioApiKey, onboardingBlooioPhoneNumber, onboardingSubscriptionTab,

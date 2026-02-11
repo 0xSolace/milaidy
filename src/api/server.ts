@@ -24,6 +24,7 @@ import {
   stringToUuid,
   type UUID,
 } from "@elizaos/core";
+import { getModels, getProviders } from "@mariozechner/pi-ai";
 import { type WebSocket, WebSocketServer } from "ws";
 import { CloudManager } from "../cloud/cloud-manager.js";
 import {
@@ -36,6 +37,8 @@ import { resolveModelsCacheDir, resolveStateDir } from "../config/paths.js";
 import type { ConnectorConfig } from "../config/types.milaidy.js";
 import { CharacterSchema } from "../config/zod-schema.js";
 import { EMOTE_BY_ID, EMOTE_CATALOG } from "../emotes/catalog.js";
+import { resolveDefaultAgentWorkspaceDir } from "../providers/workspace.js";
+import { createPiCredentialProvider } from "../runtime/pi-credentials.js";
 import {
   AgentExportError,
   estimateExportSize,
@@ -91,17 +94,6 @@ import {
   type WalletConfigStatus,
   type WalletNftsResponse,
 } from "./wallet.js";
-
-function resolveDefaultAgentWorkspaceDir(
-  env: NodeJS.ProcessEnv = process.env,
-  homedir: () => string = os.homedir,
-): string {
-  const profile = env.MILAIDY_PROFILE?.trim();
-  if (profile && profile.toLowerCase() !== "default") {
-    return path.join(homedir(), ".milaidy", `workspace-${profile}`);
-  }
-  return path.join(homedir(), ".milaidy", "workspace");
-}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1987,6 +1979,15 @@ function getProviderOptions(): Array<{
       description: "Use your $20-200/mo ChatGPT subscription via OAuth.",
     },
     {
+      id: "pi-ai",
+      name: "Pi Credentials (pi-ai)",
+      envKey: null,
+      pluginName: "@mariozechner/pi-ai",
+      keyPrefix: null,
+      description:
+        "Use pi auth (~/.pi/agent/auth.json) for API keys / OAuth (no Milaidy API key required).",
+    },
+    {
       id: "anthropic",
       name: "Anthropic (API Key)",
       envKey: "ANTHROPIC_API_KEY",
@@ -2645,6 +2646,45 @@ async function getOrFetchAllProviders(
 
   await Promise.all(fetches);
   return result;
+}
+
+function getPiModelOptions(): Array<{
+  id: string;
+  name: string;
+  provider: string;
+  description: string;
+}> {
+  const options: Array<{
+    id: string;
+    name: string;
+    provider: string;
+    description: string;
+  }> = [];
+
+  try {
+    for (const providerId of getProviders()) {
+      for (const model of getModels(providerId)) {
+        const id = `${model.provider}/${model.id}`;
+        options.push({
+          id,
+          name: model.id,
+          provider: model.provider,
+          description: model.api,
+        });
+
+        // Safety cap in case a provider returns an unexpectedly huge list.
+        if (options.length >= 2000) {
+          return options;
+        }
+      }
+    }
+  } catch (err) {
+    logger.warn(
+      `[milaidy-api] Failed to enumerate pi-ai models: ${String(err)}`,
+    );
+  }
+
+  return options;
 }
 
 function getInventoryProviderOptions(): Array<{
@@ -4024,12 +4064,17 @@ async function handleRequest(
 
   // ── GET /api/onboarding/options ─────────────────────────────────────────
   if (method === "GET" && pathname === "/api/onboarding/options") {
+    const piCreds = await createPiCredentialProvider();
+    const piDefaultModel = (await piCreds.getDefaultModelSpec()) ?? undefined;
+
     json(res, {
       names: pickRandomNames(5),
       styles: STYLE_PRESETS,
       providers: getProviderOptions(),
       cloudProviders: getCloudProviderOptions(),
       models: getModelOptions(),
+      piModels: getPiModelOptions(),
+      piDefaultModel,
       inventoryProviders: getInventoryProviderOptions(),
       sharedStyleRules: "Keep responses brief. Be helpful and concise.",
     });
@@ -4141,11 +4186,51 @@ async function handleRequest(
     }
 
     // ── Local LLM provider ────────────────────────────────────────────────
-    if (runMode === "local" && body.provider) {
-      if (body.providerApiKey) {
-        if (!config.env) config.env = {};
+    // Also supports pi-ai (reads credentials from ~/.pi/agent/auth.json).
+    {
+      // Ensure we don't keep stale pi-ai mode when the user switches providers.
+      if (!config.env) config.env = {};
+      const envCfg = config.env as Record<string, unknown>;
+      const vars = (envCfg.vars ?? {}) as Record<string, string>;
+
+      const providerId = typeof body.provider === "string" ? body.provider : "";
+      const wantsPiAi = runMode === "local" && providerId === "pi-ai";
+
+      if (wantsPiAi) {
+        vars.MILAIDY_USE_PI_AI = "1";
+        process.env.MILAIDY_USE_PI_AI = "1";
+
+        // Optional: persist chosen primary model spec for pi-ai.
+        // When omitted, the backend falls back to pi's default model from settings.json.
+        if (!config.agents) config.agents = {};
+        if (!config.agents.defaults) config.agents.defaults = {};
+        if (!config.agents.defaults.model) config.agents.defaults.model = {};
+
+        const primaryModel =
+          typeof body.primaryModel === "string" ? body.primaryModel.trim() : "";
+        if (primaryModel) {
+          config.agents.defaults.model.primary = primaryModel;
+        } else {
+          delete config.agents.defaults.model.primary;
+          if (
+            !config.agents.defaults.model.fallbacks ||
+            config.agents.defaults.model.fallbacks.length === 0
+          ) {
+            delete config.agents.defaults.model;
+          }
+        }
+      } else {
+        delete vars.MILAIDY_USE_PI_AI;
+        delete process.env.MILAIDY_USE_PI_AI;
+      }
+
+      // Persist vars back onto config.env
+      (envCfg as Record<string, unknown>).vars = vars;
+
+      // API-key providers (envKey backed)
+      if (runMode === "local" && providerId && body.providerApiKey) {
         const providerOpt = getProviderOptions().find(
-          (p) => p.id === body.provider,
+          (p) => p.id === providerId,
         );
         if (providerOpt?.envKey) {
           (config.env as Record<string, string>)[providerOpt.envKey] =
@@ -7614,6 +7699,56 @@ async function handleRequest(
     }
 
     safeMerge(state.config as Record<string, unknown>, filtered);
+
+    // If the client updated env vars, synchronise them into process.env so
+    // subsequent hot-restarts see the latest values (loadMilaidyConfig()
+    // only fills missing env vars and does not override existing ones).
+    if (
+      filtered.env &&
+      typeof filtered.env === "object" &&
+      !Array.isArray(filtered.env)
+    ) {
+      const envPatch = filtered.env as Record<string, unknown>;
+
+      // 1) env.vars.* (preferred)
+      const vars = envPatch.vars;
+      if (vars && typeof vars === "object" && !Array.isArray(vars)) {
+        for (const [k, v] of Object.entries(vars as Record<string, unknown>)) {
+          if (BLOCKED_KEYS.has(k)) continue;
+          const str = typeof v === "string" ? v : "";
+          if (str.trim()) {
+            process.env[k] = str;
+          } else {
+            delete process.env[k];
+          }
+        }
+      }
+
+      // 2) Direct env.* string keys (legacy)
+      for (const [k, v] of Object.entries(envPatch)) {
+        if (k === "vars" || k === "shellEnv") continue;
+        if (BLOCKED_KEYS.has(k)) continue;
+        if (typeof v !== "string") continue;
+        if (v.trim()) process.env[k] = v;
+        else delete process.env[k];
+      }
+
+      // Keep config clean: drop empty env.vars entries so we don't persist
+      // null/empty-string tombstones forever.
+      const cfgEnv = (state.config as Record<string, unknown>).env;
+      if (cfgEnv && typeof cfgEnv === "object" && !Array.isArray(cfgEnv)) {
+        const cfgVars = (cfgEnv as Record<string, unknown>).vars;
+        if (cfgVars && typeof cfgVars === "object" && !Array.isArray(cfgVars)) {
+          for (const [k, v] of Object.entries(
+            cfgVars as Record<string, unknown>,
+          )) {
+            if (typeof v !== "string" || !v.trim()) {
+              delete (cfgVars as Record<string, unknown>)[k];
+            }
+          }
+        }
+      }
+    }
 
     try {
       saveMilaidyConfig(state.config);
