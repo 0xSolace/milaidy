@@ -2,269 +2,286 @@
 
 > *your schizo AI waifu that actually respects your privacy*
 
-**Milaidy** is a personal AI assistant that runs on YOUR machine. Not some glowie datacenter. Not the cloud. YOUR computer. Built on [ElizaOS](https://github.com/elizaos) because we're not reinventing the wheel, we're making it based.
+**Milaidy** is a personal AI assistant that runs on YOUR machine. Not some glowie datacenter. Not the cloud. YOUR computer. Built on [elizaOS](https://github.com/elizaOS)
 
 manages your sessions, tools, and vibes through a Gateway control plane. Connects to Telegram, Discord, whatever normie platform you use. Has a cute WebChat UI too.
 
 tl;dr: local AI gf that's actually fast and doesn't phone home
 
-## Downloads (touch grass edition)
+---
 
-### Desktop App
+## Downloads
 
-Grab the latest from **[Releases](https://github.com/milady-ai/milaidy/releases/latest)**:
+### Desktop App (recommended for normies)
 
-| Platform | Link | Notes |
-|---|---|---|
+Grab from **[Releases](https://github.com/milady-ai/milaidy/releases/latest)**:
+
+| Platform | File | |
+|----------|------|---|
 | macOS (Apple Silicon) | [`Milaidy-arm64.dmg`](https://github.com/milady-ai/milaidy/releases/latest) | for your overpriced rectangle |
 | macOS (Intel) | [`Milaidy-x64.dmg`](https://github.com/milady-ai/milaidy/releases/latest) | boomer mac |
 | Windows | [`Milaidy-Setup.exe`](https://github.com/milady-ai/milaidy/releases/latest) | for the gamer anons |
 | Linux | [`Milaidy.AppImage`](https://github.com/milady-ai/milaidy/releases/latest) / [`.deb`](https://github.com/milady-ai/milaidy/releases/latest) | I use arch btw |
 
-macOS builds are signed and notarized. No scary Gatekeeper warnings. We're legit frfr.
+Signed and notarized. No Gatekeeper FUD. We're legit.
 
-### Verify checksums (for the paranoid kings)
-
-Every release has `SHA256SUMS.txt`. Trust but verify:
+### Verify (for the paranoid kings)
 
 ```bash
-# macOS / Linux
 cd ~/Downloads
 curl -fsSLO https://github.com/milady-ai/milaidy/releases/latest/download/SHA256SUMS.txt
 shasum -a 256 --check --ignore-missing SHA256SUMS.txt
 ```
 
-```powershell
-# Windows (PowerShell)
-cd ~\Downloads
-Invoke-WebRequest -Uri "https://github.com/milady-ai/milaidy/releases/latest/download/SHA256SUMS.txt" -OutFile SHA256SUMS.txt
-Get-FileHash .\Milaidy-Setup.exe -Algorithm SHA256
-Get-Content .\SHA256SUMS.txt
-# compare manually, you're smart enough
-```
+---
 
-## Quick Start (literally 1 command)
+## Getting Started
+
+### One command. That's it.
 
 ```bash
 npx milaidy
 ```
 
-First run walks you through:
-1. **Name your agent** (or get a random one if you're indecisive)
-2. **Pick a personality** (tsundere? helpful? unhinged?)
-3. **Connect a brain** (API key or local model)
+First run she walks you through setup:
 
-Dashboard spawns at `http://localhost:18789`. Go say hi.
+```
+┌  milaidy
+│
+◇  What should I call your agent?
+│  mila
+│
+◇  Pick a vibe
+│  ● Helpful & friendly
+│  ○ Tsundere
+│  ○ Unhinged
+│  ○ Custom...
+│
+◇  Connect a brain
+│  ● Anthropic (Claude) ← recommended, actually smart
+│  ○ OpenAI (GPT)
+│  ○ Ollama (local, free, full schizo mode)
+│  ○ Skip for now
+│
+◇  API key?
+│  sk-ant-•••••••••••••••••
+│
+└  Starting agent...
 
-## Install
+   Dashboard: http://localhost:18789
+   Gateway:   ws://localhost:18789/ws
 
-**Node >= 22** required. npm or bun, we don't judge.
+   she's alive. go say hi.
+```
 
-### One-liner (recommended)
+### Install globally (optional)
 
 macOS / Linux / WSL:
 ```bash
 curl -fsSL https://milady-ai.github.io/milaidy/install.sh | bash
 ```
 
-Windows (PowerShell):
+Windows:
 ```powershell
 irm https://milady-ai.github.io/milaidy/install.ps1 | iex
 ```
 
-Checks for Node, installs if missing, sets everything up. Easy mode.
-
-### Manual (for control freaks)
-
+Or just:
 ```bash
 npm install -g milaidy
-milaidy start
 ```
 
-### npx (commitment issues)
+---
+
+## Terminal Commands
 
 ```bash
-npx milaidy
-# or
-bunx milaidy
+milaidy                    # start (default)
+milaidy start              # same thing
+milaidy start --headless   # no browser popup
+milaidy start --verbose    # debug mode for when things break
 ```
 
-## Commands
+### Setup & Config
 
 ```bash
-milaidy start          # wake her up
-milaidy setup          # first-time setup / refresh workspace
-milaidy dashboard      # open the pretty UI
-milaidy configure      # config wizard
-milaidy config get <key>  # peek at config values
-milaidy models         # what brains are available
-milaidy plugins list   # list plugins
-milaidy --help         # help I'm lost
+milaidy setup              # first-time setup / refresh workspace after update
+milaidy configure          # interactive config wizard
+milaidy config get <key>   # read a config value
+milaidy config set <k> <v> # set a config value
 ```
 
-After updating, run `milaidy setup` to refresh. She likes a clean house.
-
-### Ports
-
-- **Gateway**: `http://localhost:18789` (the brain)
-- **Dashboard**: `http://localhost:2138` (the face)
-
-Override if you're special:
-```bash
-export MILAIDY_GATEWAY_PORT=19000
-export MILAIDY_PORT=3000
-```
-
-## Models (pick your fighter)
-
-Choose during onboarding or configure later. Multiple options because freedom.
-
-**Cloud (requires API key, costs money):**
-
-| Provider | Env Variable | Vibe |
-|---|---|---|
-| [Anthropic](https://www.anthropic.com/) | `ANTHROPIC_API_KEY` | **Recommended** — Claude is cracked |
-| [OpenAI](https://openai.com/) | `OPENAI_API_KEY` | GPT-4o, o1, the classics |
-| [OpenRouter](https://openrouter.ai/) | `OPENROUTER_API_KEY` | 100+ models, one API |
-| [Google Gemini](https://ai.google.dev/) | `GOOGLE_API_KEY` | big brain energy |
-| [xAI](https://x.ai/) | `XAI_API_KEY` | Grok-2, based and Elon-pilled |
-| [Groq](https://groq.com/) | `GROQ_API_KEY` | fast af boi |
-| [DeepSeek](https://deepseek.com/) | `DEEPSEEK_API_KEY` | chinese reasoning arc |
-
-**Local (free, no API key, no data leaving your machine):**
-
-| Provider | Setup |
-|---|---|
-| [Ollama](https://ollama.ai/) | Install Ollama, select during onboarding. Full schizo mode. |
-
-**Hot take:** Anthropic Pro/Max subscription + Opus 4.5 = god tier. Long context, resists jailbreaks, actually smart.
-
-## Wallets (we're so back)
-
-First-class EVM and Solana support. Wallets auto-generate on first run. Private keys stay LOCAL. We're not FTX.
-
-### Auto-generated
-
-Fresh keypairs for EVM (Ethereum/Base/Arbitrum/etc) and Solana. Keys stored in your config, never leaves your machine. Pinky promise.
-
-### Bring your own keys
-
-Set in `~/.milaidy/milaidy.json` or env vars:
+### Dashboard & UI
 
 ```bash
-# EVM (Ethereum, Base, Arbitrum, etc.)
-export EVM_PRIVATE_KEY="0x..."
-
-# Solana
-export SOLANA_PRIVATE_KEY="..."  # base58
+milaidy dashboard          # open web UI in browser
+milaidy dashboard --port 3000  # custom port
 ```
 
-### Check your bags
-
-For token balances and NFT viewing:
+### Models
 
 ```bash
-export ALCHEMY_API_KEY="..."   # EVM chains
-export HELIUS_API_KEY="..."    # Solana
+milaidy models             # list configured model providers
+milaidy models add         # add a new provider
+milaidy models test        # test if your API keys work
 ```
 
-Or configure in dashboard. She'll show you your portfolio.
+### Plugins
 
-### Supported chains
+```bash
+milaidy plugins list       # what's installed
+milaidy plugins add <name> # install a plugin
+milaidy plugins remove <name>
+```
 
-- **EVM:** Ethereum, Base, Arbitrum, Optimism, Polygon
-- **Solana:** Mainnet (SPL tokens + NFTs)
+### Misc
 
-## Configuration
+```bash
+milaidy --version          # version check
+milaidy --help             # help
+milaidy doctor             # diagnose issues
+```
 
-Config lives at `~/.milaidy/milaidy.json`
+---
 
-Minimal:
+## TUI (Terminal UI)
+
+When running, milaidy shows a live terminal interface:
+
+```
+╭─────────────────────────────────────────────────────────────╮
+│  milaidy v0.1.0                              ▲ running      │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Agent: mila                                                │
+│  Model: anthropic/claude-opus-4-5                           │
+│  Sessions: 2 active                                         │
+│                                                             │
+│  ┌─ Activity ──────────────────────────────────────────┐    │
+│  │ 12:34:02  [web] user: hey mila                      │    │
+│  │ 12:34:05  [web] mila: hi anon~ what's up?           │    │
+│  │ 12:35:11  [telegram] user joined                    │    │
+│  │ 12:35:15  [telegram] user: gm                       │    │
+│  │ 12:35:17  [telegram] mila: gm fren                  │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                             │
+│  Tokens: 12,847 in / 3,291 out   Cost: $0.42                │
+│                                                             │
+╰─────────────────────────────────────────────────────────────╯
+  [q] quit  [r] restart  [d] dashboard  [l] logs  [?] help
+```
+
+### TUI Hotkeys
+
+| Key | Action |
+|-----|--------|
+| `q` | quit gracefully |
+| `r` | restart gateway |
+| `d` | open dashboard in browser |
+| `l` | toggle log view |
+| `c` | compact/clear activity |
+| `?` | show help |
+| `↑/↓` | scroll activity |
+
+### Headless mode
+
+Don't want the TUI? Run headless:
+
+```bash
+milaidy start --headless
+```
+
+Logs go to `~/.milaidy/logs/`. Daemonize with your favorite process manager.
+
+---
+
+## Chat Commands (in any chat session)
+
+| Command | What it do |
+|---------|------------|
+| `/status` | session status, tokens, cost |
+| `/new` `/reset` | memory wipe, fresh start |
+| `/compact` | compress context (she summarizes) |
+| `/think <level>` | reasoning: off\|minimal\|low\|medium\|high\|max |
+| `/verbose on\|off` | toggle verbose responses |
+| `/usage off\|tokens\|full` | per-message token display |
+| `/model <id>` | switch model mid-session |
+| `/restart` | restart the gateway |
+| `/help` | list commands |
+
+---
+
+## Ports
+
+| Service | Default | Env Override |
+|---------|---------|--------------|
+| Gateway (API + WebSocket) | `18789` | `MILAIDY_GATEWAY_PORT` |
+| Dashboard (Web UI) | `2138` | `MILAIDY_PORT` |
+
+```bash
+# custom ports
+MILAIDY_GATEWAY_PORT=19000 MILAIDY_PORT=3000 milaidy start
+```
+
+---
+
+## Config
+
+Lives at `~/.milaidy/milaidy.json`
+
 ```json5
 {
   agent: {
+    name: "mila",
     model: "anthropic/claude-opus-4-5",
   },
-}
-```
-
-Secrets go in `~/.milaidy/.env` or the config's `env` section:
-```json5
-{
   env: {
     ANTHROPIC_API_KEY: "sk-ant-...",
   },
 }
 ```
 
-## Workspace & Skills
+Or use `~/.milaidy/.env` for secrets.
 
-- **Workspace:** `~/.milaidy/workspace`
-- **Prompt files:** `AGENTS.md`, `TOOLS.md`, `IDENTITY.md`, `USER.md`
-- **Skills:** `~/.milaidy/workspace/skills/<skill>/SKILL.md`
+---
 
-Customize her personality. Make her based. Make her cringe. Your call.
+## Model Providers
 
-## Security
+| Provider | Env Variable | Vibe |
+|----------|--------------|------|
+| [Anthropic](https://anthropic.com) | `ANTHROPIC_API_KEY` | **recommended** — claude is cracked |
+| [OpenAI](https://openai.com) | `OPENAI_API_KEY` | gpt-4o, o1, the classics |
+| [OpenRouter](https://openrouter.ai) | `OPENROUTER_API_KEY` | 100+ models one API |
+| [Ollama](https://ollama.ai) | — | local, free, no API key, full privacy |
+| [Groq](https://groq.com) | `GROQ_API_KEY` | fast af |
+| [xAI](https://x.ai) | `XAI_API_KEY` | grok, based |
+| [DeepSeek](https://deepseek.com) | `DEEPSEEK_API_KEY` | reasoning arc |
 
-- **Default:** tools run on host for main session. Full power for solo use.
-- **Multi-user:** set `agents.defaults.sandbox.mode: "non-main"` to sandbox non-main sessions in Docker. Keep the randos contained.
+---
 
-## Chat Commands
-
-| Command | What it do |
-|---|---|
-| `/status` | session status, token count, how much you've spent |
-| `/new` or `/reset` | memory wipe, fresh start |
-| `/compact` | compress context (she summarizes) |
-| `/think <level>` | off\|minimal\|low\|medium\|high\|xhigh |
-| `/verbose on\|off` | chatty or quiet |
-| `/usage off\|tokens\|full` | show token usage per message |
-| `/restart` | reboot the gateway |
-
-## Build from Source (gigachad mode)
-
-Requires **Bun**.
+## Build from Source
 
 ```bash
 git clone https://github.com/milady-ai/milaidy.git
 cd milaidy
-
 bun install
-bun run ui:build   # builds the pretty UI
 bun run build
-
 bun run milaidy start
+```
 
-# Dev mode (hot reload)
+Dev mode with hot reload:
+```bash
 bun run dev
 ```
 
-### Desktop app build
-
-```bash
-bun run build:desktop
-```
-
-### Release builds
-
-CI handles signing and notarization. See `.github/workflows/release.yml`.
-
-Required secrets for macOS:
-- `CSC_LINK` — base64 .p12 cert
-- `CSC_KEY_PASSWORD` — cert password
-- `APPLE_ID` — dev account email
-- `APPLE_APP_SPECIFIC_PASSWORD` — from [appleid.apple.com](https://appleid.apple.com)
-- `APPLE_TEAM_ID` — team ID
-
-No secrets = no release. We take signing seriously.
+---
 
 ## License
 
-MIT — do whatever, just don't be evil
+**Viral Public License**
+
+free to use, free to modify, free to distribute. if you build on this, keep it open. that's the deal.
 
 ---
 
 *made with love by anons who believe AI should be personal, private, and actually useful*
-
-*wagmi*
