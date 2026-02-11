@@ -66,6 +66,7 @@ export function CommandPalette() {
       { id: "nav-chat", label: "Open Chat", action: () => setTab("chat") },
       { id: "nav-apps", label: "Open Apps", action: () => setTab("apps") },
       { id: "nav-character", label: "Open Character", action: () => setTab("character") },
+      { id: "nav-triggers", label: "Open Triggers", action: () => setTab("triggers") },
       { id: "nav-inventory", label: "Open Inventory", action: () => setTab("inventory") },
       { id: "nav-knowledge", label: "Open Knowledge", action: () => setTab("knowledge") },
       { id: "nav-connectors", label: "Open Connectors", action: () => setTab("connectors") },

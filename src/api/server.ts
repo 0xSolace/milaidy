@@ -41,6 +41,10 @@ import { buildTestHandler, registerCustomActionLive } from "../runtime/custom-ac
 import { CharacterSchema } from "../config/zod-schema.js";
 import { EMOTE_BY_ID, EMOTE_CATALOG } from "../emotes/catalog.js";
 import { resolveDefaultAgentWorkspaceDir } from "../providers/workspace.js";
+import {
+  CORE_PLUGINS,
+  OPTIONAL_CORE_PLUGINS,
+} from "../runtime/core-plugins.js";
 import { createPiCredentialProvider } from "../runtime/pi-credentials.js";
 import {
   AgentExportError,
@@ -5791,10 +5795,6 @@ async function handleRequest(
   // ── GET /api/plugins/core ────────────────────────────────────────────
   // Returns all core and optional core plugins with their loaded/running status.
   if (method === "GET" && pathname === "/api/plugins/core") {
-    const { CORE_PLUGINS, OPTIONAL_CORE_PLUGINS } = await import(
-      "../runtime/eliza.js"
-    );
-
     // Build a set of loaded plugin names for robust matching.
     // Plugin internal names vary wildly (e.g. "local-ai" for plugin-local-embedding,
     // "eliza-coder" for plugin-code), so we check loaded names against multiple
@@ -5853,10 +5853,6 @@ async function handleRequest(
       res,
     );
     if (!body || !body.npmName) return;
-
-    const { CORE_PLUGINS, OPTIONAL_CORE_PLUGINS } = await import(
-      "../runtime/eliza.js"
-    );
 
     // Only allow toggling optional plugins, not core
     const isCorePlugin = (CORE_PLUGINS as readonly string[]).includes(

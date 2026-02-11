@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { TAB_GROUPS, pathForTab, tabFromPath, titleForTab } from "../../src/navigation";
 
 describe("navigation", () => {
-  test("resolves path and title for advanced tabs", () => {
+  test("resolves path and title for advanced tabs and triggers", () => {
     expect(pathForTab("advanced")).toBe("/advanced");
     expect(tabFromPath("/advanced")).toBe("advanced");
     expect(titleForTab("advanced")).toBe("Advanced");
@@ -22,6 +22,10 @@ describe("navigation", () => {
     expect(pathForTab("fine-tuning")).toBe("/fine-tuning");
     expect(tabFromPath("/fine-tuning")).toBe("fine-tuning");
     expect(titleForTab("fine-tuning")).toBe("Fine-Tuning");
+
+    expect(pathForTab("triggers")).toBe("/triggers");
+    expect(tabFromPath("/triggers")).toBe("triggers");
+    expect(titleForTab("triggers")).toBe("Triggers");
   });
 
   test("includes advanced tabs in Advanced group", () => {
@@ -62,12 +66,14 @@ describe("navigation", () => {
     expect(apps?.tabs).toEqual(["apps"]);
   });
 
-  test("moves character/inventory/knowledge/connectors to top-level groups", () => {
+  test("moves character/triggers/inventory/knowledge/connectors to top-level groups", () => {
     const labels = TAB_GROUPS.map((group) => group.label);
     expect(labels).toContain("Character");
+    expect(labels).toContain("Triggers");
     expect(labels).toContain("Inventory");
     expect(labels).toContain("Knowledge");
     expect(labels).toContain("Connectors");
+    expect(labels.indexOf("Connectors")).toBeLessThan(labels.indexOf("Triggers"));
     expect(labels).not.toContain("Agent");
   });
 });

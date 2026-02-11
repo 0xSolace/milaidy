@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useApp } from "../AppContext";
 import type {
   CreateTriggerRequest,
@@ -181,6 +181,11 @@ export function TriggersView() {
     return triggerRunsById[selectedRunsId] ?? [];
   }, [selectedRunsId, triggerRunsById]);
 
+  useEffect(() => {
+    void loadTriggerHealth();
+    void loadTriggers();
+  }, [loadTriggerHealth, loadTriggers]);
+
   const clearForm = () => { setForm(emptyForm); setEditingId(null); setFormError(null); };
 
   const onSubmit = async () => {
@@ -209,6 +214,12 @@ export function TriggersView() {
 
   return (
     <div className="space-y-4 max-w-4xl mx-auto">
+      <section className="border border-border bg-card p-4">
+        <p className="text-xs text-muted">
+          Triggers schedule autonomous instructions for the agent. Each trigger can run on an interval, a one-time timestamp, or a cron schedule; when it fires, the instruction is injected into autonomy and the run outcome is logged below.
+        </p>
+      </section>
+
       {/* ── Health stats ──────────────────────────────────────────── */}
       <section className="border border-border bg-card p-4">
         <div className="flex items-center justify-between gap-2 mb-3">
@@ -492,4 +503,3 @@ export function TriggersView() {
     </div>
   );
 }
-
