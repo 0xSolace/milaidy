@@ -9,6 +9,7 @@ export type Tab =
   | "inventory"
   | "knowledge"
   | "connectors"
+  | "triggers"
   | "plugins"
   | "skills"
   | "advanced"
@@ -26,6 +27,7 @@ export const TAB_GROUPS = [
   { label: "Inventory", tabs: ["inventory"] as Tab[] },
   { label: "Knowledge", tabs: ["knowledge"] as Tab[] },
   { label: "Connectors", tabs: ["connectors"] as Tab[] },
+  { label: "Triggers", tabs: ["triggers"] as Tab[] },
   { label: "Apps", tabs: ["apps"] as Tab[] },
   { label: "Settings", tabs: ["settings"] as Tab[] },
   {
@@ -47,6 +49,7 @@ const TAB_PATHS: Record<Tab, string> = {
   chat: "/chat",
   apps: "/apps",
   character: "/character",
+  triggers: "/triggers",
   inventory: "/inventory",
   knowledge: "/knowledge",
   connectors: "/connectors",
@@ -69,7 +72,7 @@ const LEGACY_PATHS: Record<string, Tab> = {
   "/features": "plugins",
   "/admin": "advanced",
   "/config": "settings",
-  "/triggers": "character",
+  "/triggers": "triggers",
 };
 
 const PATH_TO_TAB = new Map(
@@ -119,6 +122,7 @@ export function titleForTab(tab: Tab): string {
     case "chat": return "Chat";
     case "apps": return "Apps";
     case "character": return "Character";
+    case "triggers": return "Triggers";
     case "inventory": return "Inventory";
     case "knowledge": return "Knowledge";
     case "connectors": return "Connectors";
