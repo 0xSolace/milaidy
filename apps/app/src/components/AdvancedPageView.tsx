@@ -2,7 +2,8 @@
  * AdvancedPageView — container for advanced configuration sub-tabs.
  *
  * Sub-tabs:
- *   - Plugins: Feature/connector/skills plugin management
+ *   - Plugins: Feature/connector plugin management
+ *   - Skills: Custom agent skills
  *   - Trajectories: LLM call viewer and analysis
  *   - Runtime: Runtime object inspection
  *   - Databases: Tables/media/vector browser
@@ -12,6 +13,7 @@
 import { useState } from "react";
 import { useApp } from "../AppContext";
 import { PluginsPageView } from "./PluginsPageView";
+import { SkillsView } from "./SkillsView";
 import { TrajectoriesView } from "./TrajectoriesView";
 import { TrajectoryDetailView } from "./TrajectoryDetailView";
 import { RuntimeView } from "./RuntimeView";
@@ -19,10 +21,11 @@ import { DatabasePageView } from "./DatabasePageView";
 import { LogsPageView } from "./LogsPageView";
 import type { Tab } from "../navigation";
 
-type SubTab = "plugins" | "trajectories" | "runtime" | "database" | "logs";
+type SubTab = "plugins" | "skills" | "trajectories" | "runtime" | "database" | "logs";
 
 const SUB_TABS: Array<{ id: SubTab; label: string; description: string }> = [
-  { id: "plugins", label: "Plugins", description: "Features, connectors, and skills" },
+  { id: "plugins", label: "Plugins", description: "Features and connectors" },
+  { id: "skills", label: "Skills", description: "Custom agent skills" },
   { id: "trajectories", label: "Trajectories", description: "LLM call history and analysis" },
   { id: "runtime", label: "Runtime", description: "Deep runtime object introspection and load order" },
   { id: "database", label: "Databases", description: "Tables, media, and vector browser" },
@@ -32,6 +35,7 @@ const SUB_TABS: Array<{ id: SubTab; label: string; description: string }> = [
 function mapTabToSubTab(tab: Tab): SubTab {
   switch (tab) {
     case "plugins": return "plugins";
+    case "skills": return "skills";
     case "trajectories": return "trajectories";
     case "runtime": return "runtime";
     case "database": return "database";
@@ -51,6 +55,9 @@ export function AdvancedPageView() {
     switch (subTab) {
       case "plugins":
         setTab("plugins");
+        break;
+      case "skills":
+        setTab("skills");
         break;
       case "trajectories":
         setTab("trajectories");
@@ -73,6 +80,8 @@ export function AdvancedPageView() {
     switch (currentSubTab) {
       case "plugins":
         return <PluginsPageView />;
+      case "skills":
+        return <SkillsView />;
       case "trajectories":
         if (selectedTrajectoryId) {
           return (

@@ -1,16 +1,14 @@
 /**
- * Plugins view — wrapper with Features / Connectors / Plugins / Skills sub-tabs.
+ * Plugins view — wrapper with Features / Connectors / Plugins sub-tabs.
  */
 
 import { useApp } from "../AppContext";
 import { FeaturesView, ConnectorsView, BasePluginsView } from "./PluginsView";
-import { SkillsView } from "./SkillsView";
 
 const PLUGIN_TABS = [
   { id: "features" as const, label: "Features" },
   { id: "connectors" as const, label: "Connectors" },
   { id: "plugins" as const, label: "System" },
-  { id: "skills" as const, label: "Skills" },
 ];
 
 export function PluginsPageView() {
@@ -39,7 +37,6 @@ export function PluginsPageView() {
       {pluginsSubTab === "features" && <FeaturesView />}
       {pluginsSubTab === "connectors" && <ConnectorsView />}
       {pluginsSubTab === "plugins" && <BasePluginsView />}
-      {pluginsSubTab === "skills" && <SkillsView />}
     </div>
   );
 }

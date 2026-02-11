@@ -7,6 +7,7 @@ export type Tab =
   | "apps"
   | "agent"
   | "plugins"
+  | "skills"
   | "advanced"
   | "trajectories"
   | "voice"
@@ -24,6 +25,7 @@ export const TAB_GROUPS = [
     tabs: [
       "advanced",
       "plugins",
+      "skills",
       "trajectories",
       "runtime",
       "database",
@@ -38,6 +40,7 @@ const TAB_PATHS: Record<Tab, string> = {
   apps: "/apps",
   agent: "/agent",
   plugins: "/plugins",
+  skills: "/skills",
   advanced: "/advanced",
   trajectories: "/trajectories",
   voice: "/voice",
@@ -54,7 +57,6 @@ const LEGACY_PATHS: Record<string, Tab> = {
   "/inventory": "agent",
   "/features": "plugins",
   "/connectors": "plugins",
-  "/skills": "plugins",
   "/admin": "advanced",
   "/config": "settings",
   "/fine-tuning": "agent",
@@ -109,6 +111,7 @@ export function titleForTab(tab: Tab): string {
     case "apps": return "Apps";
     case "agent": return "Agent";
     case "plugins": return "Plugins";
+    case "skills": return "Skills";
     case "advanced": return "Advanced";
     case "trajectories": return "Trajectories";
     case "voice": return "Voice";

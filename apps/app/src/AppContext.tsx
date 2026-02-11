@@ -410,7 +410,7 @@ export interface AppState {
   // Sub-tabs
   appsSubTab: "browse" | "games";
   agentSubTab: "character" | "inventory" | "knowledge";
-  pluginsSubTab: "features" | "connectors" | "skills" | "plugins";
+  pluginsSubTab: "features" | "connectors" | "plugins";
   databaseSubTab: "tables" | "media" | "vectors";
 
   // Config text
@@ -798,7 +798,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // --- Admin ---
   const [appsSubTab, setAppsSubTab] = useState<"browse" | "games">("browse");
   const [agentSubTab, setAgentSubTab] = useState<"character" | "inventory" | "knowledge">("character");
-  const [pluginsSubTab, setPluginsSubTab] = useState<"features" | "connectors" | "skills" | "plugins">("features");
+  const [pluginsSubTab, setPluginsSubTab] = useState<"features" | "connectors" | "plugins">("features");
   const [databaseSubTab, setDatabaseSubTab] = useState<"tables" | "media" | "vectors">("tables");
 
   // --- Config ---

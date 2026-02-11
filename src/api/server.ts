@@ -194,6 +194,15 @@ interface ServerState {
   _anthropicFlow?: import("../auth/anthropic.js").AnthropicFlow;
   _codexFlow?: import("../auth/openai-codex.js").CodexFlow;
   _codexFlowTimer?: ReturnType<typeof setTimeout>;
+  /** System permission states (cached from Electron IPC). */
+  permissionStates?: Record<string, {
+    id: string;
+    status: string;
+    lastChecked: number;
+    canRequest: boolean;
+  }>;
+  /** Whether shell access is enabled (can be toggled in UI). */
+  shellEnabled?: boolean;
 }
 
 interface ShareIngestItem {
@@ -7463,6 +7472,130 @@ async function handleRequest(
     return;
   }
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // Permission routes (/api/permissions/*)
+  // System permissions for computer use, microphone, camera, etc.
+  // ═══════════════════════════════════════════════════════════════════════
+
+  // ── GET /api/permissions ───────────────────────────────────────────────
+  // Returns all system permission states
+  if (method === "GET" && pathname === "/api/permissions") {
+    const permStates = state.permissionStates ?? {};
+    json(res, {
+      permissions: permStates,
+      platform: process.platform,
+      shellEnabled: state.shellEnabled ?? true,
+    });
+    return;
+  }
+
+  // ── GET /api/permissions/:id ───────────────────────────────────────────
+  // Returns a single permission state
+  if (method === "GET" && pathname.startsWith("/api/permissions/")) {
+    const permId = pathname.slice("/api/permissions/".length);
+    if (!permId || permId.includes("/")) {
+      error(res, "Invalid permission ID", 400);
+      return;
+    }
+    const permStates = state.permissionStates ?? {};
+    const permState = permStates[permId];
+    if (!permState) {
+      json(res, {
+        id: permId,
+        status: "not-applicable",
+        lastChecked: Date.now(),
+        canRequest: false,
+      });
+      return;
+    }
+    json(res, permState);
+    return;
+  }
+
+  // ── POST /api/permissions/refresh ──────────────────────────────────────
+  // Force refresh all permission states (clears cache)
+  if (method === "POST" && pathname === "/api/permissions/refresh") {
+    // Signal to the client that they should refresh permissions via IPC
+    // The actual permission checking happens in the Electron main process
+    json(res, {
+      message: "Permission refresh requested",
+      action: "ipc:permissions:refresh",
+    });
+    return;
+  }
+
+  // ── POST /api/permissions/:id/request ──────────────────────────────────
+  // Request a specific permission (triggers system prompt or opens settings)
+  if (method === "POST" && pathname.match(/^\/api\/permissions\/[^/]+\/request$/)) {
+    const permId = pathname.split("/")[3];
+    json(res, {
+      message: `Permission request for ${permId}`,
+      action: `ipc:permissions:request:${permId}`,
+    });
+    return;
+  }
+
+  // ── POST /api/permissions/:id/open-settings ────────────────────────────
+  // Open system settings for a specific permission
+  if (method === "POST" && pathname.match(/^\/api\/permissions\/[^/]+\/open-settings$/)) {
+    const permId = pathname.split("/")[3];
+    json(res, {
+      message: `Opening settings for ${permId}`,
+      action: `ipc:permissions:openSettings:${permId}`,
+    });
+    return;
+  }
+
+  // ── PUT /api/permissions/shell ─────────────────────────────────────────
+  // Toggle shell access enabled/disabled
+  if (method === "PUT" && pathname === "/api/permissions/shell") {
+    const body = await readJsonBody(req, res);
+    if (!body) return;
+    const enabled = body.enabled === true;
+    state.shellEnabled = enabled;
+
+    // Update permission state
+    if (!state.permissionStates) {
+      state.permissionStates = {};
+    }
+    state.permissionStates.shell = {
+      id: "shell",
+      status: enabled ? "granted" : "denied",
+      lastChecked: Date.now(),
+      canRequest: false,
+    };
+
+    // Save to config
+    if (!state.config.features) {
+      state.config.features = {};
+    }
+    state.config.features.shellEnabled = enabled;
+    saveMilaidyConfig(state.config);
+
+    json(res, {
+      shellEnabled: enabled,
+      permission: state.permissionStates.shell,
+    });
+    return;
+  }
+
+  // ── PUT /api/permissions/state ─────────────────────────────────────────
+  // Update permission states from Electron (called by renderer after IPC)
+  if (method === "PUT" && pathname === "/api/permissions/state") {
+    const body = await readJsonBody(req, res);
+    if (!body) return;
+    if (body.permissions && typeof body.permissions === "object") {
+      state.permissionStates = body.permissions as Record<string, {
+        id: string;
+        status: string;
+        lastChecked: number;
+        canRequest: boolean;
+      }>;
+    }
+    json(res, { updated: true, permissions: state.permissionStates });
+    return;
+  }
+
   // ── Cloud routes (/api/cloud/*) ─────────────────────────────────────────
   if (pathname.startsWith("/api/cloud/")) {
     const cloudState: CloudRouteState = {
@@ -9223,6 +9356,8 @@ export async function startApiServer(opts?: {
     broadcastStatus: null,
     broadcastWs: null,
     activeConversationId: null,
+    permissionStates: {},
+    shellEnabled: config.features?.shellEnabled !== false,
   };
 
   const trainingService = new TrainingService({

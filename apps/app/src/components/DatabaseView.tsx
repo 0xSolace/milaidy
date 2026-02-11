@@ -256,12 +256,13 @@ export function DatabaseView() {
 
   const ROW_LIMIT = 50;
 
-  const loadStatus = useCallback(async () => {
+  const loadStatus = useCallback(async (): Promise<DatabaseStatus | null> => {
     try {
       const status = await client.getDatabaseStatus();
       setDbStatus(status);
+      return status;
     } catch {
-      /* ignore */
+      return null;
     }
   }, []);
 
@@ -272,7 +273,11 @@ export function DatabaseView() {
       const { tables: t } = await client.getDatabaseTables();
       setTables(t);
     } catch (err) {
-      setErrorMessage(`Failed to load tables: ${err instanceof Error ? err.message : "error"}`);
+      const msg = err instanceof Error ? err.message : "error";
+      // Don't show error if database is simply not connected (cloud mode, agent not running)
+      if (!msg.includes("Database not available")) {
+        setErrorMessage(`Failed to load tables: ${msg}`);
+      }
     }
     setLoading(false);
   }, []);
@@ -369,8 +374,13 @@ export function DatabaseView() {
   }, [queryText]);
 
   useEffect(() => {
-    loadStatus();
-    loadTables();
+    const init = async () => {
+      const status = await loadStatus();
+      if (status?.connected) {
+        await loadTables();
+      }
+    };
+    void init();
   }, [loadStatus, loadTables]);
 
   const filteredTables = tables.filter((t) =>
@@ -422,11 +432,23 @@ export function DatabaseView() {
 
         <button
           className="px-2.5 py-1 text-[11px] border border-[var(--border)] bg-[var(--card)] text-[var(--muted)] cursor-pointer hover:text-[var(--txt)] hover:bg-[var(--border)]/30"
-          onClick={loadTables}
+          onClick={async () => {
+            const status = await loadStatus();
+            if (status?.connected) {
+              await loadTables();
+            }
+          }}
         >
           Refresh
         </button>
       </div>
+
+      {dbStatus && !dbStatus.connected && (
+        <div className="p-3 border border-[var(--border)] bg-[var(--card)] text-[var(--muted)] text-xs mb-3">
+          <p className="m-0 mb-1 font-medium text-[var(--txt)]">Database not available</p>
+          <p className="m-0">The database viewer requires a local agent with a database connection. If you're running in cloud mode, the database is managed remotely.</p>
+        </div>
+      )}
 
       {errorMessage && (
         <div className="p-2.5 border border-[var(--danger)] text-[var(--danger)] text-xs mb-3 flex items-center justify-between">

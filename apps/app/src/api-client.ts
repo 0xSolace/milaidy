@@ -1409,6 +1409,42 @@ export interface VerificationResult {
 }
 
 // ---------------------------------------------------------------------------
+// System Permissions
+// ---------------------------------------------------------------------------
+
+export type SystemPermissionId =
+  | "accessibility"
+  | "screen-recording"
+  | "microphone"
+  | "camera"
+  | "shell";
+
+export type PermissionStatus =
+  | "granted"
+  | "denied"
+  | "not-determined"
+  | "restricted"
+  | "not-applicable";
+
+export interface PermissionState {
+  id: SystemPermissionId;
+  status: PermissionStatus;
+  lastChecked: number;
+  canRequest: boolean;
+}
+
+export type AllPermissionsState = Record<SystemPermissionId, PermissionState>;
+
+export interface PermissionDefinition {
+  id: SystemPermissionId;
+  name: string;
+  description: string;
+  icon: string;
+  platforms: Array<"darwin" | "win32" | "linux">;
+  requiredForFeatures: string[];
+}
+
+// ---------------------------------------------------------------------------
 // Client
 // ---------------------------------------------------------------------------
 
@@ -2935,6 +2971,63 @@ export class MilaidyClient {
       method: "DELETE",
       body: JSON.stringify({ clearAll: true }),
     });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  System Permissions
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * Get all system permission states.
+   */
+  async getPermissions(): Promise<AllPermissionsState> {
+    return this.fetch("/api/permissions");
+  }
+
+  /**
+   * Get a single permission state.
+   */
+  async getPermission(id: SystemPermissionId): Promise<PermissionState> {
+    return this.fetch(`/api/permissions/${id}`);
+  }
+
+  /**
+   * Request a specific permission (triggers OS prompt if applicable).
+   */
+  async requestPermission(id: SystemPermissionId): Promise<PermissionState> {
+    return this.fetch(`/api/permissions/${id}/request`, { method: "POST" });
+  }
+
+  /**
+   * Open system settings for a specific permission.
+   */
+  async openPermissionSettings(id: SystemPermissionId): Promise<void> {
+    await this.fetch(`/api/permissions/${id}/open-settings`, { method: "POST" });
+  }
+
+  /**
+   * Refresh all permission states from the OS.
+   */
+  async refreshPermissions(): Promise<AllPermissionsState> {
+    return this.fetch("/api/permissions/refresh", { method: "POST" });
+  }
+
+  /**
+   * Enable or disable shell access.
+   */
+  async setShellEnabled(enabled: boolean): Promise<PermissionState> {
+    return this.fetch("/api/permissions/shell", {
+      method: "PUT",
+      body: JSON.stringify({ enabled }),
+    });
+  }
+
+  /**
+   * Get shell enabled status.
+   */
+  async isShellEnabled(): Promise<boolean> {
+    const result = await this.fetch<{ enabled: boolean }>("/api/permissions/shell");
+    return result.enabled;
   }
 
   disconnectWs(): void {

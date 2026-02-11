@@ -26,6 +26,7 @@ function ViewRouter() {
     case "agent": return <AgentView />;
     case "advanced":
     case "plugins":
+    case "skills":
     case "trajectories":
     case "runtime":
     case "database":
