@@ -26,6 +26,8 @@ import {
 const DEFAULT_VIEWER_SANDBOX = "allow-scripts allow-same-origin allow-popups";
 const HYPERSCAPE_APP_NAME = "@elizaos/app-hyperscape";
 const HYPERSCAPE_AUTH_MESSAGE_TYPE = "HYPERSCAPE_AUTH";
+const RS_2004SCAPE_APP_NAME = "@elizaos/app-2004scape";
+const RS_2004SCAPE_AUTH_MESSAGE_TYPE = "RS_2004SCAPE_AUTH";
 
 export interface AppViewerAuthMessage {
   type: string;
@@ -129,20 +131,44 @@ function buildViewerAuthMessage(
   postMessageAuth: boolean | undefined,
 ): AppViewerAuthMessage | undefined {
   if (!postMessageAuth) return undefined;
-  if (appName !== HYPERSCAPE_APP_NAME) return undefined;
 
-  const authToken = process.env.HYPERSCAPE_AUTH_TOKEN?.trim();
-  if (!authToken) return undefined;
+  // Hyperscape auth
+  if (appName === HYPERSCAPE_APP_NAME) {
+    const authToken = process.env.HYPERSCAPE_AUTH_TOKEN?.trim();
+    if (!authToken) return undefined;
 
-  const sessionToken = process.env.HYPERSCAPE_SESSION_TOKEN?.trim();
-  const agentId = process.env.HYPERSCAPE_EMBED_AGENT_ID?.trim();
-  return {
-    type: HYPERSCAPE_AUTH_MESSAGE_TYPE,
-    authToken,
-    sessionToken:
-      sessionToken && sessionToken.length > 0 ? sessionToken : undefined,
-    agentId: agentId && agentId.length > 0 ? agentId : undefined,
-  };
+    const sessionToken = process.env.HYPERSCAPE_SESSION_TOKEN?.trim();
+    const agentId = process.env.HYPERSCAPE_EMBED_AGENT_ID?.trim();
+    return {
+      type: HYPERSCAPE_AUTH_MESSAGE_TYPE,
+      authToken,
+      sessionToken:
+        sessionToken && sessionToken.length > 0 ? sessionToken : undefined,
+      agentId: agentId && agentId.length > 0 ? agentId : undefined,
+    };
+  }
+
+  // 2004scape auth - uses bot name and password from environment
+  if (appName === RS_2004SCAPE_APP_NAME) {
+    // Get username from RS_SDK_BOT_NAME or BOT_NAME, fallback to testbot
+    const username =
+      process.env.RS_SDK_BOT_NAME?.trim() ||
+      process.env.BOT_NAME?.trim() ||
+      "testbot";
+    // Get password from RS_SDK_BOT_PASSWORD or BOT_PASSWORD
+    const password =
+      process.env.RS_SDK_BOT_PASSWORD?.trim() ||
+      process.env.BOT_PASSWORD?.trim() ||
+      "";
+
+    return {
+      type: RS_2004SCAPE_AUTH_MESSAGE_TYPE,
+      authToken: username, // Using authToken field for username
+      sessionToken: password, // Using sessionToken field for password
+    };
+  }
+
+  return undefined;
 }
 
 function buildViewerConfig(

@@ -100,10 +100,13 @@ describe("database API security hardening", () => {
     expect(saveMilaidyConfigMock).not.toHaveBeenCalled();
   });
 
-  it("rejects unresolved hostnames to prevent DNS rebinding TOCTOU", async () => {
+  it("allows unresolved hostnames when saving config for remote runtime networks", async () => {
     const req = createMockRequest("PUT", "/api/database/config", {
       provider: "postgres",
-      postgres: { host: "db.invalid" },
+      postgres: {
+        connectionString:
+          "postgresql://postgres:password@db.invalid:5432/postgres",
+      },
     });
     const { res, getStatus, getJson } = createMockResponse();
 
@@ -112,6 +115,25 @@ describe("database API security hardening", () => {
       res,
       null,
       "/api/database/config",
+    );
+
+    expect(handled).toBe(true);
+    expect(getStatus()).toBe(200);
+    expect(saveMilaidyConfigMock).toHaveBeenCalledTimes(1);
+    expect(getJson()).toMatchObject({ saved: true });
+  });
+
+  it("rejects unresolved hostnames during direct connection tests", async () => {
+    const req = createMockRequest("POST", "/api/database/test", {
+      host: "db.invalid",
+    });
+    const { res, getStatus, getJson } = createMockResponse();
+
+    const handled = await handleDatabaseRoute(
+      req,
+      res,
+      null,
+      "/api/database/test",
     );
 
     expect(handled).toBe(true);

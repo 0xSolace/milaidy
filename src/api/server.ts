@@ -2179,6 +2179,9 @@ async function handleRequest(
     } else if (outboundMethod === "POST") {
       try {
         rawBody = await readBody(req);
+        if (rawBody.trim().length === 0) {
+          rawBody = undefined;
+        }
       } catch (err) {
         error(
           res,

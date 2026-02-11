@@ -210,6 +210,7 @@ const LOCAL_APP_OVERRIDES: Readonly<Record<string, LocalAppOverride>> = {
     viewer: {
       url: "http://localhost:8880",
       embedParams: { bot: "{RS_SDK_BOT_NAME}" },
+      postMessageAuth: true,
       sandbox: "allow-scripts allow-same-origin allow-popups allow-forms",
     },
   },

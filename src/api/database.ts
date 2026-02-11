@@ -229,7 +229,10 @@ function isApiLoopbackOnly(): boolean {
 }
 
 function normalizeHostLike(value: string): string {
-  return value.trim().toLowerCase().replace(/^\[|\]$/g, "");
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/^\[|\]$/g, "");
 }
 
 /**
@@ -318,7 +321,10 @@ function extractHosts(creds: PostgresCredentials): string[] {
 function isBlockedIp(ip: string): boolean {
   const normalized = normalizeIpForPolicy(ip);
   if (ALWAYS_BLOCKED_IP_PATTERNS.some((p) => p.test(normalized))) return true;
-  if (!isApiLoopbackOnly() && PRIVATE_IP_PATTERNS.some((p) => p.test(normalized)))
+  if (
+    !isApiLoopbackOnly() &&
+    PRIVATE_IP_PATTERNS.some((p) => p.test(normalized))
+  )
     return true;
   return false;
 }
@@ -334,6 +340,7 @@ function isBlockedIp(ip: string): boolean {
  */
 async function validateDbHost(
   creds: PostgresCredentials,
+  opts: { allowUnresolvedHostnames?: boolean } = {},
 ): Promise<{ error: string | null; pinnedHost: string | null }> {
   const hosts = extractHosts(creds);
   if (hosts.length === 0) {
@@ -346,7 +353,7 @@ async function validateDbHost(
   let pinnedHost: string | null = null;
 
   for (const host of hosts) {
-    const literalNormalized = host.replace(/^::ffff:/i, "");
+    const literalNormalized = normalizeIpForPolicy(host);
 
     // First check the literal host string (catches raw IPs without DNS lookup)
     if (isBlockedIp(literalNormalized)) {
@@ -371,8 +378,7 @@ async function validateDbHost(
           typeof entry === "string"
             ? entry
             : (entry as { address: string }).address;
-        // Strip IPv6-mapped IPv4 prefix (::ffff:169.254.x.y → 169.254.x.y)
-        const normalized = ip.replace(/^::ffff:/i, "");
+        const normalized = normalizeIpForPolicy(ip);
         if (isBlockedIp(normalized)) {
           return {
             error:
@@ -384,18 +390,24 @@ async function validateDbHost(
         if (!pinnedHost) pinnedHost = normalized;
       }
     } catch {
-      // Reject unresolved hostnames so we can always pin the final target IP.
-      // Allowing unresolved hostnames would re-introduce a DNS-rebinding gap.
-      return {
-        error:
-          `Connection to "${host}" failed DNS resolution during validation. ` +
-          "Use a resolvable hostname or a literal IP address.",
-        pinnedHost: null,
-      };
+      // For "save config" flows we allow unresolved hostnames so users can
+      // persist remote endpoints that are only resolvable from their runtime
+      // network. For "test connection" flows we keep strict DNS requirements.
+      if (!opts.allowUnresolvedHostnames) {
+        return {
+          error:
+            `Connection to "${host}" failed DNS resolution during validation. ` +
+            "Use a resolvable hostname or a literal IP address.",
+          pinnedHost: null,
+        };
+      }
     }
   }
 
   if (!pinnedHost) {
+    if (opts.allowUnresolvedHostnames) {
+      return { error: null, pinnedHost: null };
+    }
     return {
       error: "Could not validate any host to a concrete IP address.",
       pinnedHost: null,
@@ -620,9 +632,9 @@ async function handlePutConfig(
     body.provider ?? existingDb.provider ?? ("pglite" as DatabaseProviderType);
   let validatedPostgres: PostgresCredentials | null = null;
 
-  if (effectiveProvider === "postgres" && body.postgres) {
+  if (body.postgres) {
     const pg = body.postgres;
-    if (!pg.connectionString && !pg.host) {
+    if (effectiveProvider === "postgres" && !pg.connectionString && !pg.host) {
       errorResponse(
         res,
         "Postgres configuration requires either a connectionString or at least a host.",
@@ -630,7 +642,9 @@ async function handlePutConfig(
       return;
     }
 
-    const validation = await validateDbHost(pg);
+    const validation = await validateDbHost(pg, {
+      allowUnresolvedHostnames: Boolean(pg.connectionString),
+    });
     if (validation.error) {
       errorResponse(res, validation.error);
       return;

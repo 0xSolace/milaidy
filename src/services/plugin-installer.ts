@@ -461,17 +461,7 @@ async function runPackageInstall(
   assertValidPackageName(packageName);
   assertValidVersion(version);
   const spec = `${packageName}@${version}`;
-
-  switch (pm) {
-    case "bun":
-      await execFileAsync("bun", ["add", spec], { cwd: targetDir });
-      break;
-    case "pnpm":
-      await execFileAsync("pnpm", ["add", spec, "--dir", targetDir]);
-      break;
-    default:
-      await execFileAsync("npm", ["install", spec, "--prefix", targetDir]);
-  }
+  await installSpecWithFallback(pm, spec, targetDir);
 }
 
 async function runLocalPathInstall(
@@ -485,6 +475,30 @@ async function runLocalPathInstall(
   const packageJsonPath = path.join(resolvedSourcePath, "package.json");
   await fs.access(packageJsonPath);
   const spec = `file:${resolvedSourcePath}`;
+  await installSpecWithFallback(pm, spec, targetDir);
+}
+
+async function installSpecWithFallback(
+  pm: "bun" | "pnpm" | "npm",
+  spec: string,
+  targetDir: string,
+): Promise<void> {
+  try {
+    await runInstallSpec(pm, spec, targetDir);
+  } catch (primaryErr) {
+    if (pm === "npm") throw primaryErr;
+    logger.warn(
+      `[plugin-installer] ${pm} install failed for ${spec}; retrying with npm: ${primaryErr instanceof Error ? primaryErr.message : String(primaryErr)}`,
+    );
+    await runInstallSpec("npm", spec, targetDir);
+  }
+}
+
+async function runInstallSpec(
+  pm: "bun" | "pnpm" | "npm",
+  spec: string,
+  targetDir: string,
+): Promise<void> {
   switch (pm) {
     case "bun":
       await execFileAsync("bun", ["add", spec], { cwd: targetDir });
