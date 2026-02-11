@@ -1989,24 +1989,14 @@ async function handleRequest(
     setTimeout(restart, delayMs);
   };
 
-  const resolveHyperscapeApiBaseUrl = async (): Promise<string | null> => {
+  const resolveHyperscapeApiBaseUrl = async (): Promise<string> => {
     const fromEnv = process.env.HYPERSCAPE_API_URL?.trim();
     if (fromEnv) {
-      return fromEnv;
+      return fromEnv.replace(/\/+$/, "");
     }
-
-    const info = await state.appManager.getInfo("@elizaos/app-hyperscape");
-    if (info?.launchType === "connect") {
-      const launchUrl = info.launchUrl?.trim();
-      if (launchUrl) {
-        return launchUrl;
-      }
-      const viewerUrl = info.viewer?.url?.trim();
-      if (viewerUrl) {
-        return viewerUrl;
-      }
-    }
-    return null;
+    // Default to the local Hyperscape API server. Viewer URLs can point at a
+    // client dev server (for example :3333) which does not expose API routes.
+    return "http://localhost:5555";
   };
 
   const resolveHyperscapeAuthorizationHeader = (): string | null => {
@@ -2030,14 +2020,6 @@ async function handleRequest(
     outboundPath: string,
   ): Promise<void> => {
     const baseUrl = await resolveHyperscapeApiBaseUrl();
-    if (!baseUrl) {
-      error(
-        res,
-        "Hyperscape API URL is not configured (set HYPERSCAPE_API_URL)",
-        503,
-      );
-      return;
-    }
 
     let upstreamUrl: URL;
     try {
