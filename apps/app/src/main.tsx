@@ -24,6 +24,10 @@ import { initializeStorageBridge } from "./bridge/storage-bridge.js";
 // Import the agent plugin
 import { Agent } from "@milaidy/capacitor-agent";
 import { Desktop } from "@milaidy/capacitor-desktop";
+import type {
+  GlobalShortcutEvent,
+  TrayMenuClickEvent,
+} from "@milaidy/capacitor-desktop";
 
 /**
  * Platform detection utilities
@@ -288,7 +292,7 @@ async function initializeElectron(): Promise<void> {
       accelerator: "CommandOrControl+E",
     });
 
-    await Desktop.addListener("shortcutPressed", (event) => {
+    await Desktop.addListener("shortcutPressed", (event: GlobalShortcutEvent) => {
       if (event.id === "command-palette") {
         document.dispatchEvent(new CustomEvent("milaidy:command-palette"));
       }
@@ -311,7 +315,7 @@ async function initializeElectron(): Promise<void> {
       ],
     });
 
-    await Desktop.addListener("trayMenuClick", (event) => {
+    await Desktop.addListener("trayMenuClick", (event: TrayMenuClickEvent) => {
       document.dispatchEvent(
         new CustomEvent("milaidy:tray-action", {
           detail: event,

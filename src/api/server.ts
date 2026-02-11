@@ -1896,7 +1896,6 @@ function rejectWebSocketUpgrade(
   );
   socket.destroy();
 }
-
 async function handleRequest(
   req: http.IncomingMessage,
   res: http.ServerResponse,
