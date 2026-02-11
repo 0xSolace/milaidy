@@ -252,6 +252,32 @@ describe("Database API E2E (no runtime)", () => {
       expect(data.error).toContain("connectionString");
     });
 
+    it("rejects unsafe postgres host even when provider is pglite", async () => {
+      const previousBind = process.env.MILAIDY_API_BIND;
+      process.env.MILAIDY_API_BIND = "0.0.0.0";
+      try {
+        const { status, data } = await req(
+          port,
+          "PUT",
+          "/api/database/config",
+          {
+            provider: "pglite",
+            postgres: {
+              host: "169.254.169.254",
+              port: 5432,
+              database: "postgres",
+              user: "postgres",
+            },
+          },
+        );
+        expect(status).toBe(400);
+        expect(String(data.error ?? "")).toContain("blocked");
+      } finally {
+        if (previousBind === undefined) delete process.env.MILAIDY_API_BIND;
+        else process.env.MILAIDY_API_BIND = previousBind;
+      }
+    });
+
     it("config round-trip preserves all fields", async () => {
       const pgConfig = {
         provider: "postgres",

@@ -488,23 +488,6 @@ async function handlePutConfig(
     return;
   }
 
-  if (body.provider === "postgres" && body.postgres) {
-    const pg = body.postgres;
-    if (!pg.connectionString && !pg.host) {
-      errorResponse(
-        res,
-        "Postgres configuration requires either a connectionString or at least a host.",
-      );
-      return;
-    }
-
-    const hostError = await validateDbHost(pg);
-    if (hostError) {
-      errorResponse(res, hostError);
-      return;
-    }
-  }
-
   // Load current config, merge database section, save
   const config = loadMilaidyConfig();
   const existingDb = config.database ?? {};
@@ -522,6 +505,58 @@ async function handlePutConfig(
   // If switching to pglite, ensure pglite config is present
   if (merged.provider === "pglite" && body.pglite) {
     merged.pglite = { ...existingDb.pglite, ...body.pglite };
+  }
+
+  const targetProvider = merged.provider ?? "pglite";
+  const mergedPostgres = merged.postgres;
+
+  if (
+    body.provider === "postgres" &&
+    body.postgres &&
+    !body.postgres.connectionString &&
+    !body.postgres.host
+  ) {
+    errorResponse(
+      res,
+      "Postgres configuration requires either a connectionString or at least a host.",
+    );
+    return;
+  }
+
+  // Always validate postgres credentials when they are provided in this
+  // request, even if postgres is not the active provider yet. This prevents
+  // staging unsafe hosts and later flipping provider without revalidation.
+  if (
+    body.postgres &&
+    (body.postgres.connectionString || body.postgres.host) &&
+    targetProvider !== "postgres"
+  ) {
+    const hostError = await validateDbHost(body.postgres);
+    if (hostError) {
+      errorResponse(res, hostError);
+      return;
+    }
+  }
+
+  // When the target provider is postgres, validate the final merged postgres
+  // config (including previously saved values) before persisting.
+  if (targetProvider === "postgres") {
+    if (
+      !mergedPostgres ||
+      (!mergedPostgres.connectionString && !mergedPostgres.host)
+    ) {
+      errorResponse(
+        res,
+        "Postgres configuration requires either a connectionString or at least a host.",
+      );
+      return;
+    }
+
+    const hostError = await validateDbHost(mergedPostgres);
+    if (hostError) {
+      errorResponse(res, hostError);
+      return;
+    }
   }
 
   config.database = merged;
