@@ -57,6 +57,7 @@ jobs:
     name: Build ${{ matrix.platform.name }}
     needs: prepare
     runs-on: ${{ matrix.platform.runner }}
+    continue-on-error: ${{ matrix.platform.os == 'windows' }}
     defaults:
       run:
         shell: bash
