@@ -62,7 +62,7 @@
     "prepare": "node -e \"try{require('child_process').execSync('git config core.hooksPath git-hooks',{stdio:'ignore'})}catch{}\"",
     "release:check": "node --import tsx scripts/release-check.ts",
     "start": "scripts/rt.sh scripts/run-node.mjs start",
-    "start:desktop": "cd apps/app && ../../scripts/rt.sh run build:electron && cd electron && ../../../scripts/rt.sh run electron:start",
+    "start:desktop": "cd apps/app && ../../scripts/rt.sh run build && cd electron && ../../../scripts/rt.sh run electron:start",
     "start:eliza": "node --import tsx src/runtime/eliza.ts",
     "test": "node test/scripts/test-parallel.mjs",
     "test:coverage": "vitest run --coverage",

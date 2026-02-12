@@ -1505,11 +1505,11 @@ export class MilaidyClient {
     if (typeof window === "undefined") return "";
     const proto = window.location.protocol;
     if (proto === "capacitor-electron:") {
-      return "http://127.0.0.1:2138";
+      return "http://localhost:2138";
     }
     // Legacy Electron file:// mode fallback.
     if (proto === "file:" && /\bElectron\b/i.test(window.navigator.userAgent)) {
-      return "http://127.0.0.1:2138";
+      return "http://localhost:2138";
     }
     return "";
   }

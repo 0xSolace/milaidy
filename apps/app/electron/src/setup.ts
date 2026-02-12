@@ -396,7 +396,7 @@ export function setupContentSecurityPolicy(customScheme: string): void {
       `default-src 'self' ${customScheme}://* https://*`,
       `script-src 'self' ${customScheme}://* 'unsafe-inline'${electronIsDev ? " 'unsafe-eval' devtools://*" : ''}`,
       `style-src 'self' ${customScheme}://* 'unsafe-inline'`,
-      `connect-src 'self' ${customScheme}://* blob: http://localhost:* ws://localhost:* wss://localhost:* https://* wss://*`,
+      `connect-src 'self' ${customScheme}://* blob: http://localhost:* ws://localhost:* wss://localhost:* http://127.0.0.1:* ws://127.0.0.1:* wss://127.0.0.1:* https://* wss://*`,
       `img-src 'self' ${customScheme}://* data: blob: https://*`,
       `media-src 'self' ${customScheme}://* blob: https://*`,
       `font-src 'self' ${customScheme}://* data:`,
