@@ -78,6 +78,9 @@ function createDeferred<T>() {
 }
 
 type ProbeApi = {
+  setState: (key: "onboardingRunMode", value: "cloud") => void;
+  handleOnboardingNext: () => Promise<void>;
+  handleOnboardingBack: () => void;
   handleCloudLogin: () => Promise<void>;
 };
 
@@ -86,7 +89,12 @@ function Probe(props: { onReady: (api: ProbeApi) => void }) {
   const app = useApp();
 
   useEffect(() => {
-    onReady({ handleCloudLogin: app.handleCloudLogin });
+    onReady({
+      setState: (key, value) => app.setState(key, value),
+      handleOnboardingNext: app.handleOnboardingNext,
+      handleOnboardingBack: app.handleOnboardingBack,
+      handleCloudLogin: app.handleCloudLogin,
+    });
   }, [app, onReady]);
 
   return null;
@@ -237,6 +245,63 @@ describe("cloud login locking", () => {
     });
 
     expect(mockClient.cloudLogin).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      tree!.unmount();
+    });
+  });
+
+  it("releases lock when onboarding backs out of cloud login step", async () => {
+    const firstAttempt = createDeferred<{ ok: boolean; browserUrl: string; sessionId: string }>();
+    mockClient.cloudLogin
+      .mockReturnValueOnce(firstAttempt.promise)
+      .mockResolvedValueOnce({ ok: false, browserUrl: "", sessionId: "" });
+
+    let api: ProbeApi | null = null;
+    let tree: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      tree = TestRenderer.create(
+        React.createElement(
+          AppProvider,
+          null,
+          React.createElement(Probe, {
+            onReady: (nextApi) => {
+              api = nextApi;
+            },
+          }),
+        ),
+      );
+    });
+
+    expect(api).not.toBeNull();
+
+    await act(async () => {
+      api!.setState("onboardingRunMode", "cloud");
+    });
+    for (let i = 0; i < 8; i += 1) {
+      await act(async () => {
+        await api!.handleOnboardingNext();
+      });
+    }
+
+    await act(async () => {
+      void api!.handleCloudLogin();
+    });
+    expect(mockClient.cloudLogin).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      api!.handleOnboardingBack();
+    });
+
+    await act(async () => {
+      await api!.handleCloudLogin();
+    });
+    expect(mockClient.cloudLogin).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      firstAttempt.resolve({ ok: false, browserUrl: "", sessionId: "" });
+      await firstAttempt.promise;
+    });
 
     await act(async () => {
       tree!.unmount();

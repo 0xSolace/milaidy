@@ -2662,6 +2662,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           clearInterval(cloudLoginPollTimer.current);
           cloudLoginPollTimer.current = null;
         }
+        cloudLoginBusyRef.current = false;
         setCloudLoginBusy(false);
         setCloudLoginError(null);
         break;
