@@ -1095,6 +1095,7 @@ function categorizePlugin(
     "telegram",
     "discord",
     "slack",
+    "twitter",
     "whatsapp",
     "signal",
     "imessage",
@@ -1530,6 +1531,8 @@ function scanSkillsDir(
 /** Maximum request body size (1 MB) — prevents memory-based DoS. */
 const MAX_BODY_BYTES = 1_048_576;
 const MAX_IMPORT_BYTES = 512 * 1_048_576; // 512 MB for agent imports
+const AGENT_TRANSFER_MIN_PASSWORD_LENGTH = 4;
+const AGENT_TRANSFER_MAX_PASSWORD_LENGTH = 1024;
 
 function readBody(req: http.IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -3162,6 +3165,42 @@ function isAuthorized(req: http.IncomingMessage): boolean {
   return tokenMatches(expected, provided);
 }
 
+export interface PluginConfigMutationRejection {
+  field: string;
+  message: string;
+}
+
+export function resolvePluginConfigMutationRejections(
+  pluginParams: Array<{ key: string }>,
+  config: Record<string, unknown>,
+): PluginConfigMutationRejection[] {
+  const allowedParamKeys = new Set(
+    pluginParams.map((p) => p.key.toUpperCase().trim()),
+  );
+  const rejections: PluginConfigMutationRejection[] = [];
+
+  for (const key of Object.keys(config)) {
+    const normalized = key.toUpperCase().trim();
+
+    if (!allowedParamKeys.has(normalized)) {
+      rejections.push({
+        field: key,
+        message: `${key} is not a declared config key for this plugin`,
+      });
+      continue;
+    }
+
+    if (BLOCKED_ENV_KEYS.has(normalized)) {
+      rejections.push({
+        field: key,
+        message: `${key} is blocked for security reasons`,
+      });
+    }
+  }
+
+  return rejections;
+}
+
 interface WalletExportRequestBody {
   confirm?: boolean;
   exportToken?: string;
@@ -3266,6 +3305,60 @@ export function resolveWebSocketUpgradeRejection(
   return null;
 }
 
+const RESET_STATE_ALLOWED_SEGMENTS = new Set([".milaidy", "milaidy"]);
+
+function hasAllowedResetSegment(resolvedState: string): boolean {
+  return resolvedState
+    .split(path.sep)
+    .some((segment) =>
+      RESET_STATE_ALLOWED_SEGMENTS.has(segment.trim().toLowerCase()),
+    );
+}
+
+export function isSafeResetStateDir(
+  resolvedState: string,
+  homeDir: string,
+): boolean {
+  const normalizedState = path.resolve(resolvedState);
+  const normalizedHome = path.resolve(homeDir);
+  const parsedRoot = path.parse(normalizedState).root;
+
+  if (normalizedState === parsedRoot) return false;
+  if (normalizedState === normalizedHome) return false;
+
+  const relativeToHome = path.relative(normalizedHome, normalizedState);
+  const isUnderHome =
+    relativeToHome.length > 0 &&
+    !relativeToHome.startsWith("..") &&
+    !path.isAbsolute(relativeToHome);
+  if (!isUnderHome) return false;
+
+  return hasAllowedResetSegment(normalizedState);
+}
+
+type ConversationRoomTitleRef = Pick<
+  ConversationMeta,
+  "id" | "title" | "roomId"
+>;
+
+export async function persistConversationRoomTitle(
+  runtime: Pick<AgentRuntime, "getRoom" | "adapter"> | null | undefined,
+  conversation: ConversationRoomTitleRef,
+): Promise<boolean> {
+  if (!runtime) return false;
+  const room = await runtime.getRoom(conversation.roomId);
+  if (!room) return false;
+  if (room.name === conversation.title) return false;
+
+  const adapter = runtime.adapter as {
+    updateRoom?: (nextRoom: typeof room) => Promise<void>;
+  };
+  if (typeof adapter.updateRoom !== "function") return false;
+
+  await adapter.updateRoom({ ...room, name: conversation.title });
+  return true;
+}
+
 function rejectWebSocketUpgrade(
   socket: import("node:stream").Duplex,
   statusCode: number,
@@ -3324,6 +3417,19 @@ interface WorkbenchTodoView {
   isUrgent: boolean;
   isCompleted: boolean;
   type: string;
+}
+
+interface TodoDataServiceLike {
+  createTodo: (input: Record<string, unknown>) => Promise<string>;
+  getTodos: (
+    filters?: Record<string, unknown>,
+  ) => Promise<Array<Record<string, unknown>>>;
+  getTodo: (todoId: string) => Promise<Record<string, unknown> | null>;
+  updateTodo: (
+    todoId: string,
+    updates: Record<string, unknown>,
+  ) => Promise<boolean>;
+  deleteTodo: (todoId: string) => Promise<boolean>;
 }
 
 function asObject(value: unknown): Record<string, unknown> | null {
@@ -3450,6 +3556,48 @@ function normalizeTags(value: unknown, required: string[] = []): string[] {
     ...required.map((tag) => tag.trim()).filter((tag) => tag.length > 0),
   ]);
   return [...next];
+}
+
+async function getTodoDataService(
+  runtime: AgentRuntime,
+): Promise<TodoDataServiceLike | null> {
+  try {
+    const todoModule = (await import("@elizaos/plugin-todo")) as Record<
+      string,
+      unknown
+    >;
+    const createTodoDataService = todoModule.createTodoDataService as
+      | ((rt: AgentRuntime) => TodoDataServiceLike)
+      | undefined;
+    if (!createTodoDataService) return null;
+    return createTodoDataService(runtime);
+  } catch {
+    return null;
+  }
+}
+
+function toWorkbenchTodoFromRecord(
+  todo: Record<string, unknown>,
+): WorkbenchTodoView | null {
+  const id =
+    typeof todo.id === "string" && todo.id.trim().length > 0 ? todo.id : null;
+  const name =
+    typeof todo.name === "string" && todo.name.trim().length > 0
+      ? todo.name
+      : null;
+  if (!id || !name) return null;
+  return {
+    id,
+    name,
+    description: typeof todo.description === "string" ? todo.description : "",
+    priority: parseNullableNumber(todo.priority),
+    isUrgent: todo.isUrgent === true,
+    isCompleted: todo.isCompleted === true,
+    type:
+      typeof todo.type === "string" && todo.type.trim().length > 0
+        ? todo.type
+        : "task",
+  };
 }
 
 // ── Runtime debug serialization ─────────────────────────────────────
@@ -5094,14 +5242,7 @@ async function handleRequest(
       // "/" or another sensitive path, rmSync would wipe the filesystem.
       const resolvedState = path.resolve(stateDir);
       const home = os.homedir();
-      const isRoot =
-        resolvedState === "/" || /^[A-Za-z]:\\?$/.test(resolvedState);
-      const isSafe =
-        !isRoot &&
-        resolvedState !== home &&
-        resolvedState.length > home.length &&
-        (resolvedState.includes(`${path.sep}.milaidy`) ||
-          resolvedState.includes(`${path.sep}milaidy`));
+      const isSafe = isSafeResetStateDir(resolvedState, home);
       if (!isSafe) {
         logger.warn(
           `[milaidy-api] Refusing to delete unsafe state dir: "${resolvedState}"`,
@@ -5151,12 +5292,21 @@ async function handleRequest(
     }>(req, res);
     if (!body) return;
 
-    if (
-      !body.password ||
-      typeof body.password !== "string" ||
-      body.password.length < 4
-    ) {
-      error(res, "A password of at least 4 characters is required.", 400);
+    if (!body.password || typeof body.password !== "string") {
+      error(
+        res,
+        `A password of at least ${AGENT_TRANSFER_MIN_PASSWORD_LENGTH} characters is required.`,
+        400,
+      );
+      return;
+    }
+
+    if (body.password.length < AGENT_TRANSFER_MIN_PASSWORD_LENGTH) {
+      error(
+        res,
+        `A password of at least ${AGENT_TRANSFER_MIN_PASSWORD_LENGTH} characters is required.`,
+        400,
+      );
       return;
     }
 
@@ -5239,8 +5389,20 @@ async function handleRequest(
 
     // Parse binary envelope: [4 bytes password length][password][file data]
     const passwordLength = rawBody.readUInt32BE(0);
-    if (passwordLength < 4 || passwordLength > 1024) {
-      error(res, "Invalid password length in request envelope.", 400);
+    if (passwordLength < AGENT_TRANSFER_MIN_PASSWORD_LENGTH) {
+      error(
+        res,
+        `Password must be at least ${AGENT_TRANSFER_MIN_PASSWORD_LENGTH} characters.`,
+        400,
+      );
+      return;
+    }
+    if (passwordLength > AGENT_TRANSFER_MAX_PASSWORD_LENGTH) {
+      error(
+        res,
+        `Password is too long (max ${AGENT_TRANSFER_MAX_PASSWORD_LENGTH} bytes).`,
+        400,
+      );
       return;
     }
     if (rawBody.length < 4 + passwordLength + 1) {
@@ -5693,6 +5855,19 @@ async function handleRequest(
       plugin.enabled = body.enabled;
     }
     if (body.config) {
+      const configRejections = resolvePluginConfigMutationRejections(
+        plugin.parameters,
+        body.config,
+      );
+      if (configRejections.length > 0) {
+        json(
+          res,
+          { ok: false, plugin, validationErrors: configRejections },
+          422,
+        );
+        return;
+      }
+
       // Only validate the fields actually being submitted — not all required
       // fields. Users may save partial config (e.g. just the API key) from
       // the Settings page; blocking the save because OTHER required fields
@@ -5726,9 +5901,6 @@ async function handleRequest(
         return;
       }
 
-      // Only allow env vars declared in the plugin's parameter definitions.
-      // This prevents attackers from injecting arbitrary env vars like
-      // NODE_OPTIONS, LD_PRELOAD, PATH, etc. via the config endpoint.
       const allowedParamKeys = new Set(plugin.parameters.map((p) => p.key));
 
       // Persist config values to state.config.env so they survive restarts
@@ -5738,6 +5910,7 @@ async function handleRequest(
       for (const [key, value] of Object.entries(body.config)) {
         if (
           allowedParamKeys.has(key) &&
+          !BLOCKED_ENV_KEYS.has(key.toUpperCase()) &&
           typeof value === "string" &&
           value.trim()
         ) {
@@ -8570,6 +8743,18 @@ async function handleRequest(
     await ensureWorldOwnershipAndRoles(runtime, worldId as UUID, userId);
   };
 
+  const syncConversationRoomTitle = async (
+    conv: ConversationMeta,
+  ): Promise<void> => {
+    try {
+      await persistConversationRoomTitle(state.runtime, conv);
+    } catch (err) {
+      logger.debug(
+        `[conversations] Failed to persist room title for ${conv.id}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  };
+
   const ensureLegacyChatConnection = async (
     runtime: AgentRuntime,
     agentName: string,
@@ -8651,6 +8836,7 @@ async function handleRequest(
     state.conversations.set(id, conv);
     if (state.runtime) {
       await ensureConversationRoom(conv);
+      await syncConversationRoomTitle(conv);
     }
     json(res, { conversation: conv });
     return;
@@ -9024,6 +9210,7 @@ async function handleRequest(
     if (body.title?.trim()) {
       conv.title = body.title.trim();
       conv.updatedAt = new Date().toISOString();
+      await syncConversationRoomTitle(conv);
     }
     json(res, { conversation: conv });
     return;
@@ -9748,6 +9935,7 @@ async function handleRequest(
     let triggersAvailable = false;
     let todosAvailable = false;
     let runtimeTasks: Task[] = [];
+    let todoData: TodoDataServiceLike | null = null;
 
     if (state.runtime) {
       try {
@@ -9772,6 +9960,24 @@ async function handleRequest(
       }
 
       try {
+        todoData = await getTodoDataService(state.runtime);
+        if (todoData) {
+          const dbTodos = await todoData.getTodos({
+            agentId: state.runtime.agentId,
+          });
+          todosAvailable = true;
+          for (const rawTodo of dbTodos) {
+            const mapped = toWorkbenchTodoFromRecord(rawTodo);
+            if (mapped) {
+              todos.push(mapped);
+            }
+          }
+        }
+      } catch {
+        // plugin todo unavailable or errored; keep fallback todos
+      }
+
+      try {
         const triggerTasks = await listTriggerTasks(state.runtime);
         triggersAvailable = true;
         for (const task of triggerTasks) {
@@ -9791,6 +9997,15 @@ async function handleRequest(
           }
         }
       }
+    }
+
+    if (todos.length > 1) {
+      const dedupedTodos = new Map<string, WorkbenchTodoView>();
+      for (const todo of todos) {
+        dedupedTodos.set(todo.id, todo);
+      }
+      todos.length = 0;
+      todos.push(...dedupedTodos.values());
     }
 
     tasks.sort((a, b) => a.name.localeCompare(b.name));
@@ -9951,6 +10166,30 @@ async function handleRequest(
       .map((task) => toWorkbenchTodo(task))
       .filter((todo): todo is WorkbenchTodoView => todo !== null)
       .sort((a, b) => a.name.localeCompare(b.name));
+    const todoData = await getTodoDataService(state.runtime);
+    if (todoData) {
+      try {
+        const dbTodos = await todoData.getTodos({
+          agentId: state.runtime.agentId,
+        });
+        for (const rawTodo of dbTodos) {
+          const mapped = toWorkbenchTodoFromRecord(rawTodo);
+          if (mapped) {
+            const existingIndex = todos.findIndex(
+              (todo) => todo.id === mapped.id,
+            );
+            if (existingIndex >= 0) {
+              todos[existingIndex] = mapped;
+            } else {
+              todos.push(mapped);
+            }
+          }
+        }
+        todos.sort((a, b) => a.name.localeCompare(b.name));
+      } catch {
+        // fallback to task-backed todos only
+      }
+    }
     json(res, { todos });
     return;
   }
@@ -9985,6 +10224,52 @@ async function handleRequest(
       typeof body.type === "string" && body.type.trim().length > 0
         ? body.type.trim()
         : "task";
+
+    const todoData = await getTodoDataService(state.runtime);
+    if (todoData) {
+      try {
+        const now = Date.now();
+        const roomId =
+          (
+            state.runtime.getService("AUTONOMY") as {
+              getAutonomousRoomId?: () => UUID;
+            } | null
+          )?.getAutonomousRoomId?.() ??
+          stringToUuid(`workbench-todo-room-${state.runtime.agentId}`);
+        const worldId = stringToUuid(
+          `workbench-todo-world-${state.runtime.agentId}`,
+        );
+        const entityId =
+          state.adminEntityId ?? stringToUuid(`workbench-todo-entity-${now}`);
+        const createdTodoId = await todoData.createTodo({
+          agentId: state.runtime.agentId,
+          worldId,
+          roomId,
+          entityId,
+          name,
+          description: description || name,
+          type,
+          priority: priority ?? undefined,
+          isUrgent,
+          metadata: {
+            createdAt: new Date(now).toISOString(),
+            source: "workbench-api",
+          },
+          tags: normalizeTags(body.tags, ["TODO"]),
+        });
+        const createdDbTodo = await todoData.getTodo(createdTodoId);
+        const mappedDbTodo = createdDbTodo
+          ? toWorkbenchTodoFromRecord(createdDbTodo)
+          : null;
+        if (mappedDbTodo) {
+          json(res, { todo: mappedDbTodo }, 201);
+          return;
+        }
+      } catch {
+        // fallback to task-backed todo creation
+      }
+    }
+
     const metadata = {
       isCompleted,
       workbenchTodo: {
@@ -10025,14 +10310,27 @@ async function handleRequest(
       "todo id",
     );
     if (!decodedTodoId) return;
+    const body = await readJsonBody<{ isCompleted?: boolean }>(req, res);
+    if (!body) return;
+    const isCompleted = body.isCompleted === true;
+    const todoData = await getTodoDataService(state.runtime);
+    if (todoData) {
+      try {
+        await todoData.updateTodo(decodedTodoId, {
+          isCompleted,
+          completedAt: isCompleted ? new Date() : null,
+        });
+        json(res, { ok: true });
+        return;
+      } catch {
+        // fallback to task-backed path
+      }
+    }
     const todoTask = await state.runtime.getTask(decodedTodoId as UUID);
     if (!todoTask || !todoTask.id || !toWorkbenchTodo(todoTask)) {
       error(res, "Todo not found", 404);
       return;
     }
-    const body = await readJsonBody<{ isCompleted?: boolean }>(req, res);
-    if (!body) return;
-    const isCompleted = body.isCompleted === true;
     const metadata = readTaskMetadata(todoTask);
     const todoMeta =
       asObject(metadata.workbenchTodo) ?? asObject(metadata.todo) ?? {};
@@ -10058,19 +10356,48 @@ async function handleRequest(
     }
     const decodedTodoId = decodePathComponent(todoItemMatch[1], res, "todo id");
     if (!decodedTodoId) return;
-    const todoTask = await state.runtime.getTask(decodedTodoId as UUID);
-    const todoView = todoTask ? toWorkbenchTodo(todoTask) : null;
-    if (!todoTask || !todoTask.id || !todoView) {
-      error(res, "Todo not found", 404);
-      return;
+    const todoData = await getTodoDataService(state.runtime);
+
+    if (method === "GET" && todoData) {
+      try {
+        const dbTodo = await todoData.getTodo(decodedTodoId);
+        const mapped = dbTodo ? toWorkbenchTodoFromRecord(dbTodo) : null;
+        if (mapped) {
+          json(res, { todo: mapped });
+          return;
+        }
+      } catch {
+        // fallback to task-backed path
+      }
     }
 
     if (method === "GET") {
+      const todoTask = await state.runtime.getTask(decodedTodoId as UUID);
+      const todoView = todoTask ? toWorkbenchTodo(todoTask) : null;
+      if (!todoTask || !todoTask.id || !todoView) {
+        error(res, "Todo not found", 404);
+        return;
+      }
       json(res, { todo: todoView });
       return;
     }
 
+    if (method === "DELETE" && todoData) {
+      try {
+        await todoData.deleteTodo(decodedTodoId);
+        json(res, { ok: true });
+        return;
+      } catch {
+        // fallback to task-backed path
+      }
+    }
+
     if (method === "DELETE") {
+      const todoTask = await state.runtime.getTask(decodedTodoId as UUID);
+      if (!todoTask?.id || !toWorkbenchTodo(todoTask)) {
+        error(res, "Todo not found", 404);
+        return;
+      }
       await state.runtime.deleteTask(todoTask.id);
       json(res, { ok: true });
       return;
@@ -10086,6 +10413,54 @@ async function handleRequest(
       tags?: string[];
     }>(req, res);
     if (!body) return;
+
+    if (todoData) {
+      try {
+        const updates: Record<string, unknown> = {};
+        if (typeof body.name === "string") {
+          const name = body.name.trim();
+          if (!name) {
+            error(res, "name cannot be empty", 400);
+            return;
+          }
+          updates.name = name;
+        }
+        if (typeof body.description === "string") {
+          updates.description = body.description;
+        }
+        if (body.priority !== undefined) {
+          updates.priority = parseNullableNumber(body.priority);
+        }
+        if (typeof body.isUrgent === "boolean") {
+          updates.isUrgent = body.isUrgent;
+        }
+        if (typeof body.type === "string" && body.type.trim().length > 0) {
+          updates.type = body.type.trim();
+        }
+        if (typeof body.isCompleted === "boolean") {
+          updates.isCompleted = body.isCompleted;
+          updates.completedAt = body.isCompleted ? new Date() : null;
+        }
+        await todoData.updateTodo(decodedTodoId, updates);
+        const refreshedDbTodo = await todoData.getTodo(decodedTodoId);
+        const refreshedMapped = refreshedDbTodo
+          ? toWorkbenchTodoFromRecord(refreshedDbTodo)
+          : null;
+        if (refreshedMapped) {
+          json(res, { todo: refreshedMapped });
+          return;
+        }
+      } catch {
+        // fallback to task-backed path
+      }
+    }
+
+    const todoTask = await state.runtime.getTask(decodedTodoId as UUID);
+    const todoView = todoTask ? toWorkbenchTodo(todoTask) : null;
+    if (!todoTask || !todoTask.id || !todoView) {
+      error(res, "Todo not found", 404);
+      return;
+    }
 
     const update: Partial<Task> = {};
     if (typeof body.name === "string") {
