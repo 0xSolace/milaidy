@@ -108,6 +108,35 @@ function formatError(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
+interface TrajectoryLoggerControl {
+  isEnabled?: () => boolean;
+  setEnabled?: (enabled: boolean) => void;
+}
+
+function ensureTrajectoryLoggerEnabled(
+  runtime: AgentRuntime,
+  context: string,
+): void {
+  const trajectoryLogger = runtime.getService(
+    "trajectory_logger",
+  ) as TrajectoryLoggerControl | null;
+  if (!trajectoryLogger) {
+    logger.warn(
+      `[milaidy] trajectory_logger service unavailable (${context}); trajectory capture disabled`,
+    );
+    return;
+  }
+
+  const isEnabled =
+    typeof trajectoryLogger.isEnabled === "function"
+      ? trajectoryLogger.isEnabled()
+      : true;
+  if (!isEnabled && typeof trajectoryLogger.setEnabled === "function") {
+    trajectoryLogger.setEnabled(true);
+    logger.info("[milaidy] trajectory_logger enabled by default");
+  }
+}
+
 /**
  * Cancel the onboarding flow and exit cleanly.
  * Extracted to avoid duplicating the cancel+exit pattern 7 times.
@@ -2243,6 +2272,7 @@ export async function startEliza(
 
   // 8. Initialize the runtime (registers remaining plugins, starts services)
   await runtime.initialize();
+  ensureTrajectoryLoggerEnabled(runtime, "runtime.initialize()");
 
   // 8b. Wait for AgentSkillsService to finish loading.
   //     runtime.initialize() resolves the internal initPromise which unblocks
@@ -2579,6 +2609,10 @@ export async function startEliza(
           embeddingManager = freshEmbeddingManager;
 
           await newRuntime.initialize();
+          ensureTrajectoryLoggerEnabled(
+            newRuntime,
+            "hot-reload runtime.initialize()",
+          );
           runtime = newRuntime;
           logger.info("[milaidy] Hot-reload: Runtime restarted successfully");
           return newRuntime;
