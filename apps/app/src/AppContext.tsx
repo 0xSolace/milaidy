@@ -97,6 +97,7 @@ export const THEMES: ReadonlyArray<{
 ];
 
 const VALID_THEMES = new Set<string>(THEMES.map((t) => t.id));
+const AGENT_TRANSFER_MIN_PASSWORD_LENGTH = 4;
 
 function loadTheme(): ThemeName {
   try {
@@ -166,6 +167,7 @@ type GamePostMessageAuthPayload = AppViewerAuthMessage;
 
 const AGENT_STATES: ReadonlySet<AgentStatus["state"]> = new Set([
   "not_started",
+  "starting",
   "running",
   "paused",
   "stopped",
@@ -238,6 +240,7 @@ function parseConversationMessageEvent(
   const role = value.role;
   const text = value.text;
   const timestamp = value.timestamp;
+  const source = value.source;
   if (
     typeof id !== "string" ||
     (role !== "user" && role !== "assistant") ||
@@ -246,7 +249,11 @@ function parseConversationMessageEvent(
   ) {
     return null;
   }
-  return { id, role, text, timestamp };
+  const parsed: ConversationMessage = { id, role, text, timestamp };
+  if (typeof source === "string" && source.length > 0) {
+    parsed.source = source;
+  }
+  return parsed;
 }
 
 function parseProactiveMessageEvent(
@@ -258,6 +265,10 @@ function parseProactiveMessageEvent(
   if (!message) return null;
   return { conversationId, message };
 }
+
+type LoadConversationMessagesResult =
+  | { ok: true }
+  | { ok: false; status?: number; message: string };
 
 // ── Context value type ─────────────────────────────────────────────────
 
@@ -428,7 +439,8 @@ export interface AppState {
   // Workbench
   workbenchLoading: boolean;
   workbench: WorkbenchOverview | null;
-  workbenchGoalsAvailable: boolean;
+  workbenchTasksAvailable: boolean;
+  workbenchTriggersAvailable: boolean;
   workbenchTodosAvailable: boolean;
 
   // Agent export/import
@@ -821,7 +833,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // --- Workbench ---
   const [workbenchLoading, setWorkbenchLoading] = useState(false);
   const [workbench, setWorkbench] = useState<WorkbenchOverview | null>(null);
-  const [workbenchGoalsAvailable, setWorkbenchGoalsAvailable] = useState(false);
+  const [workbenchTasksAvailable, setWorkbenchTasksAvailable] = useState(false);
+  const [workbenchTriggersAvailable, setWorkbenchTriggersAvailable] = useState(false);
   const [workbenchTodosAvailable, setWorkbenchTodosAvailable] = useState(false);
 
   // --- Agent export/import ---
@@ -1193,27 +1206,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setAutonomousLatestEventId(event.eventId);
   }, []);
 
-  const loadConversations = useCallback(async () => {
+  const loadConversations = useCallback(async (): Promise<Conversation[] | null> => {
     try {
       const { conversations: c } = await client.listConversations();
       setConversations(c);
+      return c;
     } catch {
-      setConversations([]);
+      return null;
     }
   }, []);
 
-  const loadConversationMessages = useCallback(async (convId: string) => {
+  const loadConversationMessages = useCallback(async (convId: string): Promise<LoadConversationMessagesResult> => {
     try {
       const { messages } = await client.getConversationMessages(convId);
       setConversationMessages(messages);
+      return { ok: true };
     } catch (err) {
-      // If the conversation no longer exists (server restarted), clear it
       const status = (err as { status?: number }).status;
       if (status === 404) {
-        setActiveConversationId(null);
-        setConversations([]);
+        const refreshed = await client.listConversations().catch(() => null);
+        if (refreshed) {
+          setConversations(refreshed.conversations);
+          if (activeConversationIdRef.current === convId) {
+            const fallbackId = refreshed.conversations[0]?.id ?? null;
+            setActiveConversationId(fallbackId);
+            activeConversationIdRef.current = fallbackId;
+          }
+        } else if (activeConversationIdRef.current === convId) {
+          setActiveConversationId(null);
+          activeConversationIdRef.current = null;
+        }
       }
       setConversationMessages([]);
+      return {
+        ok: false,
+        status,
+        message:
+          err instanceof Error ? err.message : "Failed to load conversation messages",
+      };
     }
   }, []);
 
@@ -1292,11 +1322,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const result = await client.getWorkbenchOverview();
       setWorkbench(result);
-      setWorkbenchGoalsAvailable(result.goalsAvailable ?? false);
+      setWorkbenchTasksAvailable(result.tasksAvailable ?? false);
+      setWorkbenchTriggersAvailable(result.triggersAvailable ?? false);
       setWorkbenchTodosAvailable(result.todosAvailable ?? false);
     } catch {
       setWorkbench(null);
-      setWorkbenchGoalsAvailable(false);
+      setWorkbenchTasksAvailable(false);
+      setWorkbenchTriggersAvailable(false);
       setWorkbenchTodosAvailable(false);
     } finally {
       setWorkbenchLoading(false);
@@ -1494,12 +1526,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setConversations((prev) => [conversation, ...prev]);
         setActiveConversationId(conversation.id);
         activeConversationIdRef.current = conversation.id;
-        client.sendWsMessage({ type: "active-conversation", conversationId: conversation.id });
         convId = conversation.id;
       } catch {
         return;
       }
     }
+
+    // Keep server-side active conversation in sync for proactive routing.
+    client.sendWsMessage({ type: "active-conversation", conversationId: convId });
 
     const now = Date.now();
     const userMsgId = `temp-${now}`;
@@ -1559,6 +1593,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const { conversation } = await client.createConversation();
           setConversations((prev) => [conversation, ...prev]);
           setActiveConversationId(conversation.id);
+          activeConversationIdRef.current = conversation.id;
+          client.sendWsMessage({ type: "active-conversation", conversationId: conversation.id });
 
           const retryData = await client.sendConversationMessage(
             conversation.id,
@@ -1599,18 +1635,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const handleChatClear = useCallback(async () => {
-    if (activeConversationId) {
-      await client.deleteConversation(activeConversationId);
+    const convId = activeConversationId;
+    if (!convId) {
+      setActionNotice("No active conversation to clear.", "info", 2200);
+      return;
+    }
+    try {
+      await client.deleteConversation(convId);
       setActiveConversationId(null);
       activeConversationIdRef.current = null;
       setConversationMessages([]);
+      setUnreadConversations((prev) => {
+        const next = new Set(prev);
+        next.delete(convId);
+        return next;
+      });
       await loadConversations();
+    } catch (err) {
+      const status = (err as { status?: number }).status;
+      if (status === 404) {
+        setActiveConversationId(null);
+        activeConversationIdRef.current = null;
+        setConversationMessages([]);
+        setUnreadConversations((prev) => {
+          const next = new Set(prev);
+          next.delete(convId);
+          return next;
+        });
+        await loadConversations();
+        setActionNotice("Conversation was already cleared.", "info", 2600);
+        return;
+      }
+      setActionNotice(
+        `Failed to clear conversation: ${err instanceof Error ? err.message : "network error"}`,
+        "error",
+        4200,
+      );
     }
-  }, [activeConversationId, loadConversations]);
+  }, [activeConversationId, loadConversations, setActionNotice]);
 
   const handleSelectConversation = useCallback(
     async (id: string) => {
       if (id === activeConversationId) return;
+      const previousActive = activeConversationId;
       setActiveConversationId(id);
       activeConversationIdRef.current = id;
       client.sendWsMessage({ type: "active-conversation", conversationId: id });
@@ -1619,30 +1686,168 @@ export function AppProvider({ children }: { children: ReactNode }) {
         next.delete(id);
         return next;
       });
-      await loadConversationMessages(id);
+      const loaded = await loadConversationMessages(id);
+      if (loaded.ok) return;
+
+      if (loaded.status === 404) {
+        const refreshed = await loadConversations();
+        const fallbackId = refreshed?.[0]?.id ?? null;
+        if (fallbackId) {
+          setActiveConversationId(fallbackId);
+          activeConversationIdRef.current = fallbackId;
+          client.sendWsMessage({
+            type: "active-conversation",
+            conversationId: fallbackId,
+          });
+          const fallbackLoaded = await loadConversationMessages(fallbackId);
+          if (!fallbackLoaded.ok) {
+            setActionNotice(
+              `Failed to load fallback conversation: ${fallbackLoaded.message}`,
+              "error",
+              4200,
+            );
+          }
+        } else {
+          setActiveConversationId(null);
+          activeConversationIdRef.current = null;
+          setConversationMessages([]);
+        }
+        setActionNotice(
+          "Conversation was not found. Refreshed the conversation list.",
+          "info",
+          3200,
+        );
+        return;
+      }
+
+      setActiveConversationId(previousActive);
+      activeConversationIdRef.current = previousActive;
+      if (previousActive) {
+        client.sendWsMessage({
+          type: "active-conversation",
+          conversationId: previousActive,
+        });
+        const restored = await loadConversationMessages(previousActive);
+        if (!restored.ok) {
+          setActionNotice(
+            `Failed to restore previous conversation: ${restored.message}`,
+            "error",
+            4200,
+          );
+        }
+      } else {
+        setConversationMessages([]);
+      }
+      setActionNotice(
+        `Failed to load conversation: ${loaded.message}`,
+        "error",
+        4200,
+      );
     },
-    [activeConversationId, loadConversationMessages],
+    [activeConversationId, loadConversationMessages, loadConversations, setActionNotice],
   );
 
   const handleDeleteConversation = useCallback(
     async (id: string) => {
-      await client.deleteConversation(id);
-      if (activeConversationId === id) {
-        setActiveConversationId(null);
-        activeConversationIdRef.current = null;
-        setConversationMessages([]);
+      const deletingActive = activeConversationId === id;
+      try {
+        await client.deleteConversation(id);
+        setConversations((prev) => prev.filter((conversation) => conversation.id !== id));
+        setUnreadConversations((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+        if (deletingActive) {
+          setActiveConversationId(null);
+          activeConversationIdRef.current = null;
+          setConversationMessages([]);
+        }
+        const refreshed = await loadConversations();
+        if (deletingActive) {
+          const fallbackId = refreshed?.[0]?.id ?? null;
+          if (fallbackId) {
+            setActiveConversationId(fallbackId);
+            activeConversationIdRef.current = fallbackId;
+            client.sendWsMessage({
+              type: "active-conversation",
+              conversationId: fallbackId,
+            });
+            const fallbackLoaded = await loadConversationMessages(fallbackId);
+            if (!fallbackLoaded.ok) {
+              setActionNotice(
+                `Failed to load fallback conversation: ${fallbackLoaded.message}`,
+                "error",
+                4200,
+              );
+            }
+          }
+        }
+      } catch (err) {
+        const status = (err as { status?: number }).status;
+        if (status === 404) {
+          setConversations((prev) => prev.filter((conversation) => conversation.id !== id));
+          setUnreadConversations((prev) => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+          });
+          if (deletingActive) {
+            setActiveConversationId(null);
+            activeConversationIdRef.current = null;
+            setConversationMessages([]);
+          }
+          await loadConversations();
+          setActionNotice(
+            "Conversation was already deleted. Refreshed the conversation list.",
+            "info",
+            3200,
+          );
+          return;
+        }
+        setActionNotice(
+          `Failed to delete conversation: ${err instanceof Error ? err.message : "network error"}`,
+          "error",
+          4200,
+        );
       }
-      await loadConversations();
     },
-    [activeConversationId, loadConversations],
+    [activeConversationId, loadConversationMessages, loadConversations, setActionNotice],
   );
 
   const handleRenameConversation = useCallback(
     async (id: string, title: string) => {
-      await client.renameConversation(id, title);
-      await loadConversations();
+      const trimmed = title.trim();
+      if (!trimmed) {
+        setActionNotice("Conversation title cannot be empty.", "error", 2800);
+        return;
+      }
+      try {
+        const { conversation } = await client.renameConversation(id, trimmed);
+        setConversations((prev) =>
+          prev.map((existing) =>
+            existing.id === id ? conversation : existing,
+          ),
+        );
+      } catch (err) {
+        const status = (err as { status?: number }).status;
+        if (status === 404) {
+          await loadConversations();
+          setActionNotice(
+            "Conversation was not found. Refreshed the conversation list.",
+            "info",
+            3200,
+          );
+          return;
+        }
+        setActionNotice(
+          `Failed to rename conversation: ${err instanceof Error ? err.message : "network error"}`,
+          "error",
+          4200,
+        );
+      }
     },
-    [loadConversations],
+    [loadConversations, setActionNotice],
   );
 
   // ── Pairing ────────────────────────────────────────────────────────
@@ -1674,19 +1879,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const handlePluginToggle = useCallback(
     async (pluginId: string, enabled: boolean) => {
       const plugin = plugins.find((p: PluginInfo) => p.id === pluginId);
+      const pluginName = plugin?.name ?? pluginId;
       if (enabled && plugin?.validationErrors && plugin.validationErrors.length > 0) {
         setPluginSettingsOpen((prev) => new Set([...prev, pluginId]));
+        setActionNotice(
+          `${pluginName} has required settings. Configure them after enabling.`,
+          "info",
+          3400,
+        );
       }
       try {
-        await client.updatePlugin(pluginId, { enabled });
-        setPlugins((prev: PluginInfo[]) =>
-          prev.map((p: PluginInfo) => (p.id === pluginId ? { ...p, enabled } : p)),
+        setActionNotice(
+          `${enabled ? "Enabling" : "Disabling"} ${pluginName}. Restarting agent...`,
+          "info",
+          4200,
         );
-      } catch {
-        /* ignore */
+        await client.updatePlugin(pluginId, { enabled });
+        // The server schedules a restart after toggle — wait for it then refresh
+        await client.restartAndWait();
+        await loadPlugins();
+        setActionNotice(
+          `${pluginName} ${enabled ? "enabled" : "disabled"}.`,
+          "success",
+          2800,
+        );
+      } catch (err) {
+        await loadPlugins().catch(() => {
+          /* ignore */
+        });
+        setActionNotice(
+          `Failed to ${enabled ? "enable" : "disable"} ${pluginName}: ${
+            err instanceof Error ? err.message : "unknown error"
+          }`,
+          "error",
+          4200,
+        );
       }
     },
-    [plugins, setActionNotice],
+    [plugins, loadPlugins, setActionNotice],
   );
 
   const handlePluginConfigSave = useCallback(
@@ -1702,15 +1932,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         // Restart agent if AI provider (API keys need restart to take effect)
         if (isAiProvider) {
-          await client.restartAgent();
+          setActionNotice(
+            "Saving provider settings. Restarting agent to apply changes...",
+            "info",
+            4200,
+          );
+          await client.restartAndWait();
         }
 
         await loadPlugins();
         setActionNotice(
           isAiProvider
-            ? "Plugin settings saved and agent restarted."
+            ? "Provider settings saved and agent restarted."
             : "Plugin settings saved.",
-          "success"
+          "success",
         );
         setPluginSaveSuccess((prev) => new Set([...prev, pluginId]));
         setTimeout(() => {
@@ -1965,8 +2200,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       "This will reveal your private keys.\n\nNEVER share your private keys with anyone.\nAnyone with your private keys can steal all funds in your wallets.\n\nContinue?",
     );
     if (!confirmed) return;
+    const exportToken = window.prompt(
+      "Enter your wallet export token (MILAIDY_WALLET_EXPORT_TOKEN):",
+      "",
+    );
+    if (exportToken === null) return;
+    if (!exportToken.trim()) {
+      setWalletError("Wallet export token is required.");
+      return;
+    }
     try {
-      const data = await client.exportWalletKeys();
+      const data = await client.exportWalletKeys(exportToken.trim());
       setWalletExportData(data);
       setWalletExportVisible(true);
       setTimeout(() => {
@@ -2445,7 +2689,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ── Agent export/import ────────────────────────────────────────────
 
   const handleAgentExport = useCallback(async () => {
-    if (exportBusy || exportPassword.length < 4) return;
+    if (exportBusy) return;
+    if (!exportPassword) {
+      setExportError("Password is required.");
+      setExportSuccess(null);
+      return;
+    }
+    if (exportPassword.length < AGENT_TRANSFER_MIN_PASSWORD_LENGTH) {
+      setExportError(
+        `Password must be at least ${AGENT_TRANSFER_MIN_PASSWORD_LENGTH} characters.`,
+      );
+      setExportSuccess(null);
+      return;
+    }
     setExportBusy(true);
     setExportError(null);
     setExportSuccess(null);
@@ -2473,7 +2729,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [exportBusy, exportPassword, exportIncludeLogs]);
 
   const handleAgentImport = useCallback(async () => {
-    if (importBusy || !importFile || importPassword.length < 4) return;
+    if (importBusy) return;
+    if (!importFile) {
+      setImportError("Select an export file before importing.");
+      setImportSuccess(null);
+      return;
+    }
+    if (!importPassword) {
+      setImportError("Password is required.");
+      setImportSuccess(null);
+      return;
+    }
+    if (importPassword.length < AGENT_TRANSFER_MIN_PASSWORD_LENGTH) {
+      setImportError(
+        `Password must be at least ${AGENT_TRANSFER_MIN_PASSWORD_LENGTH} characters.`,
+      );
+      setImportSuccess(null);
+      return;
+    }
     setImportBusy(true);
     setImportError(null);
     setImportSuccess(null);
@@ -2545,8 +2818,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       inventorySort: setInventorySort,
       exportPassword: setExportPassword,
       exportIncludeLogs: setExportIncludeLogs,
+      exportError: setExportError,
+      exportSuccess: setExportSuccess,
       importPassword: setImportPassword,
       importFile: setImportFile,
+      importError: setImportError,
+      importSuccess: setImportSuccess,
       onboardingName: setOnboardingName,
       onboardingStyle: setOnboardingStyle,
       onboardingTheme: setOnboardingTheme,
@@ -2638,10 +2915,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let unbindProactiveMessages: (() => void) | null = null;
 
     const initApp = async () => {
-      const MAX_RETRIES = 15;
-      const BASE_DELAY_MS = 1000;
-      const MAX_DELAY_MS = 5000;
+      const MAX_RETRIES = 20;
+      const BASE_DELAY_MS = 250;
+      const MAX_DELAY_MS = 1000;
       let serverReady = false;
+      let onboardingNeedsOptions = false;
+      let requiresAuth = false;
 
       for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
         try {
@@ -2650,14 +2929,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
             setAuthRequired(true);
             setPairingEnabled(auth.pairingEnabled);
             setPairingExpiresAt(auth.expiresAt);
+            requiresAuth = true;
             serverReady = true;
             break;
           }
           const { complete } = await client.getOnboardingStatus();
           setOnboardingComplete(complete);
           if (!complete) {
-            const options = await client.getOnboardingOptions();
-            setOnboardingOptions(options);
+            onboardingNeedsOptions = true;
           }
           serverReady = true;
           break;
@@ -2673,7 +2952,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       setOnboardingLoading(false);
 
-      if (authRequired) return;
+      if (requiresAuth) return;
+
+      // Fetch onboarding options in the background so we can render quickly.
+      if (onboardingNeedsOptions) {
+        void (async () => {
+          try {
+            const options = await client.getOnboardingOptions();
+            setOnboardingOptions(options);
+          } catch {
+            /* ignore */
+          }
+        })();
+      }
 
       // Load conversations — if none exist, create one and request a greeting
       let greetConvId: string | null = null;
@@ -2701,6 +2992,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const { conversation } = await client.createConversation();
             setConversations([conversation]);
             setActiveConversationId(conversation.id);
+            activeConversationIdRef.current = conversation.id;
+            client.sendWsMessage({ type: "active-conversation", conversationId: conversation.id });
             setConversationMessages([]);
             greetConvId = conversation.id;
           } catch {
@@ -2742,6 +3035,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const nextStatus = parseAgentStatusEvent(data);
         if (nextStatus) {
           setAgentStatus(nextStatus);
+          // Auto-refresh plugins when agent reports a restart
+          if (data.restarted) {
+            void loadPlugins();
+          }
         }
       });
       unbindAgentEvents = client.onWsEvent("agent_event", (data: Record<string, unknown>) => {
@@ -2806,7 +3103,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setConnected(true);
 
         // Keep runtime available by default when the app opens.
-        if (status.state === "not_started" || status.state === "stopped") {
+        const canAutoStartOverHttp =
+          window.location.protocol === "http:" || window.location.protocol === "https:";
+        if (
+          canAutoStartOverHttp &&
+          (status.state === "not_started" || status.state === "stopped")
+        ) {
           try {
             const started = await client.startAgent();
             setAgentStatus(started);
@@ -2944,7 +3246,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     catalogSkills, catalogTotal, catalogPage, catalogTotalPages, catalogSort,
     catalogSearch, catalogLoading, catalogError, catalogDetailSkill,
     catalogInstalling, catalogUninstalling,
-    workbenchLoading, workbench, workbenchGoalsAvailable, workbenchTodosAvailable,
+    workbenchLoading, workbench, workbenchTasksAvailable, workbenchTriggersAvailable, workbenchTodosAvailable,
     exportBusy, exportPassword, exportIncludeLogs, exportError, exportSuccess,
     importBusy, importPassword, importFile, importError, importSuccess,
     onboardingStep, onboardingOptions, onboardingName, onboardingStyle, onboardingTheme,

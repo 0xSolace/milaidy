@@ -17,15 +17,13 @@ import {
   ChannelType,
   type Content,
   createMessageMemory,
-  type IAgentRuntime,
   logger,
-  type Memory,
-  type MessageProcessingOptions,
-  type MessageProcessingResult,
+  ModelType,
   stringToUuid,
+  type Task,
   type UUID,
 } from "@elizaos/core";
-import { getModels, getProviders } from "@mariozechner/pi-ai";
+import * as piAi from "@mariozechner/pi-ai";
 import { type WebSocket, WebSocketServer } from "ws";
 import { CloudManager } from "../cloud/cloud-manager.js";
 import {
@@ -35,7 +33,10 @@ import {
   saveMilaidyConfig,
 } from "../config/config.js";
 import { resolveModelsCacheDir, resolveStateDir } from "../config/paths.js";
-import type { ConnectorConfig } from "../config/types.milaidy.js";
+import type {
+  ConnectorConfig,
+  CustomActionDef,
+} from "../config/types.milaidy.js";
 import { CharacterSchema } from "../config/zod-schema.js";
 import { EMOTE_BY_ID, EMOTE_CATALOG } from "../emotes/catalog.js";
 import { resolveDefaultAgentWorkspaceDir } from "../providers/workspace.js";
@@ -43,6 +44,10 @@ import {
   CORE_PLUGINS,
   OPTIONAL_CORE_PLUGINS,
 } from "../runtime/core-plugins.js";
+import {
+  buildTestHandler,
+  registerCustomActionLive,
+} from "../runtime/custom-actions.js";
 import { createPiCredentialProvider } from "../runtime/pi-credentials.js";
 import {
   AgentExportError,
@@ -63,6 +68,11 @@ import {
   uninstallMarketplaceSkill,
 } from "../services/skill-marketplace.js";
 import { TrainingService } from "../services/training-service.js";
+import {
+  listTriggerTasks,
+  readTriggerConfig,
+  taskToTriggerSummary,
+} from "../triggers/runtime.js";
 import { type CloudRouteState, handleCloudRoute } from "./cloud-routes.js";
 import { handleDatabaseRoute } from "./database.js";
 import { DropService } from "./drop-service.js";
@@ -169,6 +179,7 @@ interface ServerState {
   config: MilaidyConfig;
   agentState:
     | "not_started"
+    | "starting"
     | "running"
     | "paused"
     | "stopped"
@@ -270,6 +281,8 @@ interface PluginEntry {
   pluginDeps?: string[];
   /** Whether this plugin is currently active in the runtime. */
   isActive?: boolean;
+  /** Error message when plugin is enabled/installed but failed to load. */
+  loadError?: string;
   /** Server-provided UI hints for plugin configuration fields. */
   configUiHints?: Record<string, Record<string, unknown>>;
 }
@@ -735,6 +748,7 @@ const BLOCKED_ENV_KEYS = new Set([
   "HOME",
   "SHELL",
   "MILAIDY_API_TOKEN",
+  "MILAIDY_WALLET_EXPORT_TOKEN",
   "DATABASE_URL",
   "POSTGRES_URL",
 ]);
@@ -892,6 +906,8 @@ function discoverInstalledPlugins(
     // Try to read the plugin's package.json for metadata
     let name = packageName;
     let description = `Installed from registry (v${(record as Record<string, string>).version ?? "unknown"})`;
+    let pluginConfigKeys: string[] = [];
+    let pluginParameters: PluginParamDef[] = [];
 
     if (installPath) {
       // Check npm layout first, then direct layout
@@ -910,9 +926,32 @@ function discoverInstalledPlugins(
             const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8")) as {
               name?: string;
               description?: string;
+              elizaos?: {
+                displayName?: string;
+                configKeys?: string[];
+                configDefaults?: Record<string, string>;
+              };
             };
             if (pkg.name) name = pkg.name;
             if (pkg.description) description = pkg.description;
+            if (pkg.elizaos?.displayName) name = pkg.elizaos.displayName;
+            if (pkg.elizaos?.configKeys) {
+              pluginConfigKeys = pkg.elizaos.configKeys;
+              const defaults = pkg.elizaos.configDefaults ?? {};
+              pluginParameters = pluginConfigKeys.map((key) => ({
+                key,
+                label: key,
+                description: "",
+                required: false,
+                sensitive:
+                  key.toLowerCase().includes("key") ||
+                  key.toLowerCase().includes("secret"),
+                type: "string" as const,
+                default: defaults[key] ?? undefined,
+                isSet: Boolean(process.env[key]?.trim()),
+                currentValue: null,
+              }));
+            }
             break;
           }
         } catch {
@@ -926,12 +965,13 @@ function discoverInstalledPlugins(
       name,
       description,
       enabled: false, // Will be updated against the runtime below
-      configured: true,
-      envKey: null,
+      configured:
+        pluginConfigKeys.length === 0 || pluginParameters.some((p) => p.isSet),
+      envKey: pluginConfigKeys[0] ?? null,
       category,
       source: "store",
-      configKeys: [],
-      parameters: [],
+      configKeys: pluginConfigKeys,
+      parameters: pluginParameters,
       validationErrors: [],
       validationWarnings: [],
     });
@@ -946,7 +986,7 @@ function discoverInstalledPlugins(
  */
 function discoverPluginsFromManifest(): PluginEntry[] {
   const thisDir =
-    import.meta.dirname ?? path.dirname(new URL(import.meta.url).pathname);
+    import.meta.dirname ?? path.dirname(fileURLToPath(import.meta.url));
   const packageRoot = findOwnPackageRoot(thisDir);
   const manifestPath = path.join(packageRoot, "plugins.json");
 
@@ -1055,6 +1095,7 @@ function categorizePlugin(
     "telegram",
     "discord",
     "slack",
+    "twitter",
     "whatsapp",
     "signal",
     "imessage",
@@ -1490,6 +1531,8 @@ function scanSkillsDir(
 /** Maximum request body size (1 MB) — prevents memory-based DoS. */
 const MAX_BODY_BYTES = 1_048_576;
 const MAX_IMPORT_BYTES = 512 * 1_048_576; // 512 MB for agent imports
+const AGENT_TRANSFER_MIN_PASSWORD_LENGTH = 4;
+const AGENT_TRANSFER_MAX_PASSWORD_LENGTH = 1024;
 
 function readBody(req: http.IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -1633,6 +1676,8 @@ function error(res: http.ServerResponse, message: string, status = 400): void {
 // Static UI serving (production)
 // ---------------------------------------------------------------------------
 
+// Serves the built React dashboard from apps/app/dist/ in production mode.
+
 const STATIC_MIME: Record<string, string> = {
   ".css": "text/css; charset=utf-8",
   ".gif": "image/gif",
@@ -1660,7 +1705,6 @@ let uiIndexHtml: Buffer | null = null;
 
 function resolveUiDir(): string | null {
   if (uiDir !== undefined) return uiDir;
-
   if (process.env.NODE_ENV !== "production") {
     uiDir = null;
     return null;
@@ -2841,8 +2885,8 @@ function getPiModelOptions(): Array<{
   }> = [];
 
   try {
-    for (const providerId of getProviders()) {
-      for (const model of getModels(providerId)) {
+    for (const providerId of piAi.getProviders()) {
+      for (const model of piAi.getModels(providerId)) {
         const id = `${model.provider}/${model.id}`;
         options.push({
           id,
@@ -2991,7 +3035,7 @@ function applyCors(
     );
     res.setHeader(
       "Access-Control-Allow-Headers",
-      "Content-Type, Authorization, X-Milaidy-Token, X-Api-Key",
+      "Content-Type, Authorization, X-Milaidy-Token, X-Api-Key, X-Milaidy-Export-Token",
     );
   }
 
@@ -3121,6 +3165,96 @@ function isAuthorized(req: http.IncomingMessage): boolean {
   return tokenMatches(expected, provided);
 }
 
+export interface PluginConfigMutationRejection {
+  field: string;
+  message: string;
+}
+
+export function resolvePluginConfigMutationRejections(
+  pluginParams: Array<{ key: string }>,
+  config: Record<string, unknown>,
+): PluginConfigMutationRejection[] {
+  const allowedParamKeys = new Set(
+    pluginParams.map((p) => p.key.toUpperCase().trim()),
+  );
+  const rejections: PluginConfigMutationRejection[] = [];
+
+  for (const key of Object.keys(config)) {
+    const normalized = key.toUpperCase().trim();
+
+    if (!allowedParamKeys.has(normalized)) {
+      rejections.push({
+        field: key,
+        message: `${key} is not a declared config key for this plugin`,
+      });
+      continue;
+    }
+
+    if (BLOCKED_ENV_KEYS.has(normalized)) {
+      rejections.push({
+        field: key,
+        message: `${key} is blocked for security reasons`,
+      });
+    }
+  }
+
+  return rejections;
+}
+
+interface WalletExportRequestBody {
+  confirm?: boolean;
+  exportToken?: string;
+}
+
+export interface WalletExportRejection {
+  status: 401 | 403;
+  reason: string;
+}
+
+export function resolveWalletExportRejection(
+  req: http.IncomingMessage,
+  body: WalletExportRequestBody,
+): WalletExportRejection | null {
+  if (!body.confirm) {
+    return {
+      status: 403,
+      reason:
+        'Export requires explicit confirmation. Send { "confirm": true } in the request body.',
+    };
+  }
+
+  const expected = process.env.MILAIDY_WALLET_EXPORT_TOKEN?.trim();
+  if (!expected) {
+    return {
+      status: 403,
+      reason:
+        "Wallet export is disabled. Set MILAIDY_WALLET_EXPORT_TOKEN to enable secure exports.",
+    };
+  }
+
+  const headerToken =
+    typeof req.headers["x-milaidy-export-token"] === "string"
+      ? req.headers["x-milaidy-export-token"].trim()
+      : "";
+  const bodyToken =
+    typeof body.exportToken === "string" ? body.exportToken.trim() : "";
+  const provided = headerToken || bodyToken;
+
+  if (!provided) {
+    return {
+      status: 401,
+      reason:
+        "Missing export token. Provide X-Milaidy-Export-Token header or exportToken in request body.",
+    };
+  }
+
+  if (!tokenMatches(expected, provided)) {
+    return { status: 401, reason: "Invalid export token." };
+  }
+
+  return null;
+}
+
 function extractWsQueryToken(url: URL): string | null {
   const token =
     url.searchParams.get("token") ??
@@ -3171,6 +3305,60 @@ export function resolveWebSocketUpgradeRejection(
   return null;
 }
 
+const RESET_STATE_ALLOWED_SEGMENTS = new Set([".milaidy", "milaidy"]);
+
+function hasAllowedResetSegment(resolvedState: string): boolean {
+  return resolvedState
+    .split(path.sep)
+    .some((segment) =>
+      RESET_STATE_ALLOWED_SEGMENTS.has(segment.trim().toLowerCase()),
+    );
+}
+
+export function isSafeResetStateDir(
+  resolvedState: string,
+  homeDir: string,
+): boolean {
+  const normalizedState = path.resolve(resolvedState);
+  const normalizedHome = path.resolve(homeDir);
+  const parsedRoot = path.parse(normalizedState).root;
+
+  if (normalizedState === parsedRoot) return false;
+  if (normalizedState === normalizedHome) return false;
+
+  const relativeToHome = path.relative(normalizedHome, normalizedState);
+  const isUnderHome =
+    relativeToHome.length > 0 &&
+    !relativeToHome.startsWith("..") &&
+    !path.isAbsolute(relativeToHome);
+  if (!isUnderHome) return false;
+
+  return hasAllowedResetSegment(normalizedState);
+}
+
+type ConversationRoomTitleRef = Pick<
+  ConversationMeta,
+  "id" | "title" | "roomId"
+>;
+
+export async function persistConversationRoomTitle(
+  runtime: Pick<AgentRuntime, "getRoom" | "adapter"> | null | undefined,
+  conversation: ConversationRoomTitleRef,
+): Promise<boolean> {
+  if (!runtime) return false;
+  const room = await runtime.getRoom(conversation.roomId);
+  if (!room) return false;
+  if (room.name === conversation.title) return false;
+
+  const adapter = runtime.adapter as {
+    updateRoom?: (nextRoom: typeof room) => Promise<void>;
+  };
+  if (typeof adapter.updateRoom !== "function") return false;
+
+  await adapter.updateRoom({ ...room, name: conversation.title });
+  return true;
+}
+
 function rejectWebSocketUpgrade(
   socket: import("node:stream").Duplex,
   statusCode: number,
@@ -3207,6 +3395,209 @@ function decodePathComponent(
     error(res, `Invalid ${fieldName}: malformed URL encoding`, 400);
     return null;
   }
+}
+
+const WORKBENCH_TASK_TAG = "workbench-task";
+const WORKBENCH_TODO_TAG = "workbench-todo";
+
+interface WorkbenchTaskView {
+  id: string;
+  name: string;
+  description: string;
+  tags: string[];
+  isCompleted: boolean;
+  updatedAt?: number;
+}
+
+interface WorkbenchTodoView {
+  id: string;
+  name: string;
+  description: string;
+  priority: number | null;
+  isUrgent: boolean;
+  isCompleted: boolean;
+  type: string;
+}
+
+interface TodoDataServiceLike {
+  createTodo: (input: Record<string, unknown>) => Promise<string>;
+  getTodos: (
+    filters?: Record<string, unknown>,
+  ) => Promise<Array<Record<string, unknown>>>;
+  getTodo: (todoId: string) => Promise<Record<string, unknown> | null>;
+  updateTodo: (
+    todoId: string,
+    updates: Record<string, unknown>,
+  ) => Promise<boolean>;
+  deleteTodo: (todoId: string) => Promise<boolean>;
+}
+
+function asObject(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+}
+
+function normalizeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+}
+
+function normalizeTimestamp(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === "string") {
+    const asNumber = Number(value);
+    if (Number.isFinite(asNumber)) return asNumber;
+    const parsed = Date.parse(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return undefined;
+}
+
+function parseNullableNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function readTaskMetadata(task: Task): Record<string, unknown> {
+  return asObject(task.metadata) ?? {};
+}
+
+function normalizeTaskId(task: Task): string | null {
+  return typeof task.id === "string" && task.id.trim().length > 0
+    ? task.id
+    : null;
+}
+
+function readTaskCompleted(task: Task): boolean {
+  const metadata = readTaskMetadata(task);
+  if (typeof metadata.isCompleted === "boolean") return metadata.isCompleted;
+  const todoMeta =
+    asObject(metadata.workbenchTodo) ?? asObject(metadata.todo) ?? null;
+  if (todoMeta && typeof todoMeta.isCompleted === "boolean") {
+    return todoMeta.isCompleted;
+  }
+  return false;
+}
+
+function isWorkbenchTodoTask(task: Task): boolean {
+  if (readTriggerConfig(task)) return false;
+  const tags = new Set(normalizeStringArray(task.tags));
+  if (tags.has(WORKBENCH_TODO_TAG) || tags.has("todo")) return true;
+  const metadata = readTaskMetadata(task);
+  return (
+    asObject(metadata.workbenchTodo) !== null ||
+    asObject(metadata.todo) !== null
+  );
+}
+
+function toWorkbenchTask(task: Task): WorkbenchTaskView | null {
+  if (readTriggerConfig(task) || isWorkbenchTodoTask(task)) return null;
+  const id = normalizeTaskId(task);
+  if (!id) return null;
+  const metadata = readTaskMetadata(task);
+  const updatedAt =
+    normalizeTimestamp(
+      (task as unknown as Record<string, unknown>).updatedAt,
+    ) ?? normalizeTimestamp(metadata.updatedAt);
+  return {
+    id,
+    name:
+      typeof task.name === "string" && task.name.trim().length > 0
+        ? task.name
+        : "Task",
+    description: typeof task.description === "string" ? task.description : "",
+    tags: normalizeStringArray(task.tags),
+    isCompleted: readTaskCompleted(task),
+    ...(updatedAt !== undefined ? { updatedAt } : {}),
+  };
+}
+
+function toWorkbenchTodo(task: Task): WorkbenchTodoView | null {
+  if (!isWorkbenchTodoTask(task)) return null;
+  const id = normalizeTaskId(task);
+  if (!id) return null;
+  const metadata = readTaskMetadata(task);
+  const todoMeta =
+    asObject(metadata.workbenchTodo) ?? asObject(metadata.todo) ?? {};
+  return {
+    id,
+    name:
+      typeof task.name === "string" && task.name.trim().length > 0
+        ? task.name
+        : "Todo",
+    description:
+      typeof todoMeta.description === "string"
+        ? todoMeta.description
+        : typeof task.description === "string"
+          ? task.description
+          : "",
+    priority: parseNullableNumber(todoMeta.priority),
+    isUrgent: todoMeta.isUrgent === true,
+    isCompleted: readTaskCompleted(task),
+    type:
+      typeof todoMeta.type === "string" && todoMeta.type.trim().length > 0
+        ? todoMeta.type
+        : "task",
+  };
+}
+
+function normalizeTags(value: unknown, required: string[] = []): string[] {
+  const next = new Set<string>([
+    ...normalizeStringArray(value),
+    ...required.map((tag) => tag.trim()).filter((tag) => tag.length > 0),
+  ]);
+  return [...next];
+}
+
+async function getTodoDataService(
+  runtime: AgentRuntime,
+): Promise<TodoDataServiceLike | null> {
+  try {
+    const todoModule = (await import("@elizaos/plugin-todo")) as Record<
+      string,
+      unknown
+    >;
+    const createTodoDataService = todoModule.createTodoDataService as
+      | ((rt: AgentRuntime) => TodoDataServiceLike)
+      | undefined;
+    if (!createTodoDataService) return null;
+    return createTodoDataService(runtime);
+  } catch {
+    return null;
+  }
+}
+
+function toWorkbenchTodoFromRecord(
+  todo: Record<string, unknown>,
+): WorkbenchTodoView | null {
+  const id =
+    typeof todo.id === "string" && todo.id.trim().length > 0 ? todo.id : null;
+  const name =
+    typeof todo.name === "string" && todo.name.trim().length > 0
+      ? todo.name
+      : null;
+  if (!id || !name) return null;
+  return {
+    id,
+    name,
+    description: typeof todo.description === "string" ? todo.description : "",
+    priority: parseNullableNumber(todo.priority),
+    isUrgent: todo.isUrgent === true,
+    isCompleted: todo.isCompleted === true,
+    type:
+      typeof todo.type === "string" && todo.type.trim().length > 0
+        ? todo.type
+        : "task",
+  };
 }
 
 // ── Runtime debug serialization ─────────────────────────────────────
@@ -3535,7 +3926,7 @@ function serializeForRuntimeDebug(
  */
 async function routeAutonomyToUser(
   state: ServerState,
-  responseMessages: Memory[],
+  responseMessages: import("@elizaos/core").Memory[],
   source = "autonomy",
 ): Promise<void> {
   const runtime = state.runtime;
@@ -3603,11 +3994,13 @@ function patchMessageServiceForAutonomy(state: ServerState): void {
 
   const svc = runtime.messageService as unknown as {
     handleMessage: (
-      rt: IAgentRuntime,
-      message: Memory,
-      callback?: (content: Content) => Promise<Memory[]>,
-      options?: MessageProcessingOptions,
-    ) => Promise<MessageProcessingResult>;
+      rt: import("@elizaos/core").IAgentRuntime,
+      message: import("@elizaos/core").Memory,
+      callback?: (
+        content: Content,
+      ) => Promise<import("@elizaos/core").Memory[]>,
+      options?: import("@elizaos/core").MessageProcessingOptions,
+    ) => Promise<import("@elizaos/core").MessageProcessingResult>;
     __milaidyAutonomyPatched?: boolean;
   };
 
@@ -3617,11 +4010,11 @@ function patchMessageServiceForAutonomy(state: ServerState): void {
   const orig = svc.handleMessage.bind(svc);
 
   svc.handleMessage = async (
-    rt: IAgentRuntime,
-    message: Memory,
-    callback?: (content: Content) => Promise<Memory[]>,
-    options?: MessageProcessingOptions,
-  ): Promise<MessageProcessingResult> => {
+    rt: import("@elizaos/core").IAgentRuntime,
+    message: import("@elizaos/core").Memory,
+    callback?: (content: Content) => Promise<import("@elizaos/core").Memory[]>,
+    options?: import("@elizaos/core").MessageProcessingOptions,
+  ): Promise<import("@elizaos/core").MessageProcessingResult> => {
     const result = await orig(rt, message, callback, options);
 
     // Detect non-conversation messages (autonomy, background tasks, etc.)
@@ -3633,7 +4026,13 @@ function patchMessageServiceForAutonomy(state: ServerState): void {
       // Forward to user's active conversation (fire-and-forget)
       const rawSource = message.content?.source;
       const source = typeof rawSource === "string" ? rawSource : "autonomy";
-      void routeAutonomyToUser(state, result.responseMessages, source);
+      void routeAutonomyToUser(state, result.responseMessages, source).catch(
+        (err) => {
+          logger.warn(
+            `[autonomy-route] Failed to route proactive output: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        },
+      );
     }
 
     return result;
@@ -3676,6 +4075,14 @@ async function handleRequest(
             state.agentName = newRuntime.character.name ?? "Milaidy";
             state.startedAt = Date.now();
             logger.info("[milaidy-api] Runtime restarted successfully");
+            // Notify WebSocket clients so the UI can refresh
+            state.broadcastWs?.({
+              type: "status",
+              state: state.agentState,
+              agentName: state.agentName,
+              startedAt: state.startedAt,
+              restarted: true,
+            });
           })
           .catch((err) => {
             logger.error(
@@ -4835,14 +5242,7 @@ async function handleRequest(
       // "/" or another sensitive path, rmSync would wipe the filesystem.
       const resolvedState = path.resolve(stateDir);
       const home = os.homedir();
-      const isRoot =
-        resolvedState === "/" || /^[A-Za-z]:\\?$/.test(resolvedState);
-      const isSafe =
-        !isRoot &&
-        resolvedState !== home &&
-        resolvedState.length > home.length &&
-        (resolvedState.includes(`${path.sep}.milaidy`) ||
-          resolvedState.includes(`${path.sep}milaidy`));
+      const isSafe = isSafeResetStateDir(resolvedState, home);
       if (!isSafe) {
         logger.warn(
           `[milaidy-api] Refusing to delete unsafe state dir: "${resolvedState}"`,
@@ -4892,12 +5292,21 @@ async function handleRequest(
     }>(req, res);
     if (!body) return;
 
-    if (
-      !body.password ||
-      typeof body.password !== "string" ||
-      body.password.length < 4
-    ) {
-      error(res, "A password of at least 4 characters is required.", 400);
+    if (!body.password || typeof body.password !== "string") {
+      error(
+        res,
+        `A password of at least ${AGENT_TRANSFER_MIN_PASSWORD_LENGTH} characters is required.`,
+        400,
+      );
+      return;
+    }
+
+    if (body.password.length < AGENT_TRANSFER_MIN_PASSWORD_LENGTH) {
+      error(
+        res,
+        `A password of at least ${AGENT_TRANSFER_MIN_PASSWORD_LENGTH} characters is required.`,
+        400,
+      );
       return;
     }
 
@@ -4980,8 +5389,20 @@ async function handleRequest(
 
     // Parse binary envelope: [4 bytes password length][password][file data]
     const passwordLength = rawBody.readUInt32BE(0);
-    if (passwordLength < 4 || passwordLength > 1024) {
-      error(res, "Invalid password length in request envelope.", 400);
+    if (passwordLength < AGENT_TRANSFER_MIN_PASSWORD_LENGTH) {
+      error(
+        res,
+        `Password must be at least ${AGENT_TRANSFER_MIN_PASSWORD_LENGTH} characters.`,
+        400,
+      );
+      return;
+    }
+    if (passwordLength > AGENT_TRANSFER_MAX_PASSWORD_LENGTH) {
+      error(
+        res,
+        `Password is too long (max ${AGENT_TRANSFER_MAX_PASSWORD_LENGTH} bytes).`,
+        400,
+      );
       return;
     }
     if (rawBody.length < 4 + passwordLength + 1) {
@@ -5306,13 +5727,20 @@ async function handleRequest(
     const installedEntries = discoverInstalledPlugins(freshConfig, bundledIds);
     const allPlugins: PluginEntry[] = [...state.plugins, ...installedEntries];
 
-    // Update enabled status from runtime (if available)
-    if (state.runtime) {
-      const loadedNames = state.runtime.plugins.map((p) => p.name);
-      for (const plugin of allPlugins) {
-        const suffix = `plugin-${plugin.id}`;
-        const packageName = `@elizaos/plugin-${plugin.id}`;
-        const isLoaded = loadedNames.some((name) => {
+    // Resolve enabled state from config and loaded state from runtime.
+    // "enabled" = user wants it active (config). "isActive" = actually loaded.
+    const configEntries = (
+      freshConfig.plugins as Record<string, unknown> | undefined
+    )?.entries as Record<string, { enabled?: boolean }> | undefined;
+    const loadedNames = state.runtime
+      ? state.runtime.plugins.map((p) => p.name)
+      : [];
+    for (const plugin of allPlugins) {
+      const suffix = `plugin-${plugin.id}`;
+      const packageName = `@elizaos/plugin-${plugin.id}`;
+      const isLoaded =
+        loadedNames.length > 0 &&
+        loadedNames.some((name) => {
           return (
             name === plugin.id ||
             name === suffix ||
@@ -5321,8 +5749,27 @@ async function handleRequest(
             name.includes(plugin.id)
           );
         });
+      plugin.isActive = isLoaded;
+      // Set enabled from config if available, otherwise from runtime
+      const configEntry = configEntries?.[plugin.id];
+      if (configEntry && typeof configEntry.enabled === "boolean") {
+        plugin.enabled = configEntry.enabled;
+      } else {
         plugin.enabled = isLoaded;
-        plugin.isActive = isLoaded;
+      }
+      // Detect installed-but-failed-to-load plugins
+      plugin.loadError = undefined;
+      if (plugin.enabled && !isLoaded && state.runtime) {
+        const installs = freshConfig.plugins?.installs as
+          | Record<string, unknown>
+          | undefined;
+        const packageName = `@elizaos/plugin-${plugin.id}`;
+        const hasInstallRecord =
+          installs?.[packageName] || installs?.[plugin.id];
+        if (hasInstallRecord) {
+          plugin.loadError =
+            "Plugin installed but failed to load — the package may be missing compiled files.";
+        }
       }
     }
 
@@ -5408,6 +5855,19 @@ async function handleRequest(
       plugin.enabled = body.enabled;
     }
     if (body.config) {
+      const configRejections = resolvePluginConfigMutationRejections(
+        plugin.parameters,
+        body.config,
+      );
+      if (configRejections.length > 0) {
+        json(
+          res,
+          { ok: false, plugin, validationErrors: configRejections },
+          422,
+        );
+        return;
+      }
+
       // Only validate the fields actually being submitted — not all required
       // fields. Users may save partial config (e.g. just the API key) from
       // the Settings page; blocking the save because OTHER required fields
@@ -5441,9 +5901,6 @@ async function handleRequest(
         return;
       }
 
-      // Only allow env vars declared in the plugin's parameter definitions.
-      // This prevents attackers from injecting arbitrary env vars like
-      // NODE_OPTIONS, LD_PRELOAD, PATH, etc. via the config endpoint.
       const allowedParamKeys = new Set(plugin.parameters.map((p) => p.key));
 
       // Persist config values to state.config.env so they survive restarts
@@ -5453,6 +5910,7 @@ async function handleRequest(
       for (const [key, value] of Object.entries(body.config)) {
         if (
           allowedParamKeys.has(key) &&
+          !BLOCKED_ENV_KEYS.has(key.toUpperCase()) &&
           typeof value === "string" &&
           value.trim()
         ) {
@@ -5836,6 +6294,12 @@ async function handleRequest(
     try {
       const result = await installPlugin(pluginName, (progress) => {
         logger.info(`[install] ${progress.phase}: ${progress.message}`);
+        state.broadcastWs?.({
+          type: "install-progress",
+          pluginName: progress.pluginName,
+          phase: progress.phase,
+          message: progress.message,
+        });
       });
 
       if (!result.success) {
@@ -5997,21 +6461,6 @@ async function handleRequest(
       res,
     );
     if (!body || !body.npmName) return;
-
-    if (body.enabled) {
-      const { getSecurityBlockedPluginReason } = await import(
-        "../runtime/eliza.js"
-      );
-      const blockedReason = getSecurityBlockedPluginReason(body.npmName);
-      if (blockedReason) {
-        error(
-          res,
-          `Plugin is temporarily disabled for security reasons: ${blockedReason}`,
-          409,
-        );
-        return;
-      }
-    }
 
     // Only allow toggling optional plugins, not core
     const isCorePlugin = (CORE_PLUGINS as readonly string[]).includes(
@@ -7163,7 +7612,7 @@ async function handleRequest(
     // Resolve the extension source path (always available in the repo)
     let extensionPath: string | null = null;
     try {
-      const serverDir = path.dirname(new URL(import.meta.url).pathname);
+      const serverDir = path.dirname(fileURLToPath(import.meta.url));
       extensionPath = path.resolve(
         serverDir,
         "..",
@@ -7425,18 +7874,14 @@ async function handleRequest(
   }
 
   // ── POST /api/wallet/export ────────────────────────────────────────────
-  // SECURITY: Requires { confirm: true } in the request body to prevent
-  // accidental exposure of private keys.
+  // SECURITY: Requires explicit confirmation + a dedicated export token.
   if (method === "POST" && pathname === "/api/wallet/export") {
-    const body = await readJsonBody<{ confirm?: boolean }>(req, res);
+    const body = await readJsonBody<WalletExportRequestBody>(req, res);
     if (!body) return;
 
-    if (!body.confirm) {
-      error(
-        res,
-        'Export requires explicit confirmation. Send { "confirm": true } in the request body.',
-        403,
-      );
+    const rejection = resolveWalletExportRejection(req, body);
+    if (rejection) {
+      error(res, rejection.reason, rejection.status);
       return;
     }
 
@@ -7765,10 +8210,7 @@ async function handleRequest(
       error(res, "Missing connector name", 400);
       return;
     }
-    if (!config || typeof config !== "object") {
-      error(res, "Missing connector config", 400);
-      return;
-    }
+    // Prevent prototype pollution via special keys
     const connectorName = name.trim();
     if (isBlockedObjectKey(connectorName)) {
       error(
@@ -7776,6 +8218,10 @@ async function handleRequest(
         'Invalid connector name: "__proto__", "constructor", and "prototype" are reserved',
         400,
       );
+      return;
+    }
+    if (!config || typeof config !== "object") {
+      error(res, "Missing connector config", 400);
       return;
     }
     if (!state.config.connectors) state.config.connectors = {};
@@ -7932,6 +8378,31 @@ async function handleRequest(
       }
     }
 
+    // Security: keep auth/step-up secrets out of API-driven config writes so
+    // secret rotation remains an out-of-band operation.
+    if (
+      filtered.env &&
+      typeof filtered.env === "object" &&
+      !Array.isArray(filtered.env)
+    ) {
+      const envPatch = filtered.env as Record<string, unknown>;
+      // Defense-in-depth: strip step-up secrets from persisted config before
+      // merge, even though BLOCKED_ENV_KEYS also blocks them during process.env
+      // sync below. Keeping both guards prevents accidental persistence if one
+      // path changes in future refactors.
+      delete envPatch.MILAIDY_API_TOKEN;
+      delete envPatch.MILAIDY_WALLET_EXPORT_TOKEN;
+      if (
+        envPatch.vars &&
+        typeof envPatch.vars === "object" &&
+        !Array.isArray(envPatch.vars)
+      ) {
+        delete (envPatch.vars as Record<string, unknown>).MILAIDY_API_TOKEN;
+        delete (envPatch.vars as Record<string, unknown>)
+          .MILAIDY_WALLET_EXPORT_TOKEN;
+      }
+    }
+
     safeMerge(state.config as Record<string, unknown>, filtered);
 
     // If the client updated env vars, synchronise them into process.env so
@@ -8008,6 +8479,33 @@ async function handleRequest(
       permissions: permStates,
       platform: process.platform,
       shellEnabled: state.shellEnabled ?? true,
+    });
+    return;
+  }
+
+  // ── GET /api/permissions/shell ─────────────────────────────────────────
+  // Return shell toggle status in a stable shape for UI clients.
+  if (method === "GET" && pathname === "/api/permissions/shell") {
+    const enabled = state.shellEnabled ?? true;
+    if (!state.permissionStates) {
+      state.permissionStates = {};
+    }
+    const shellState = state.permissionStates.shell;
+    const permission = {
+      id: "shell",
+      status: enabled ? "granted" : "denied",
+      lastChecked: shellState?.lastChecked ?? Date.now(),
+      canRequest: false,
+    };
+    state.permissionStates.shell = permission;
+
+    // Keep the legacy top-level permission fields for compatibility with
+    // callers that previously treated /api/permissions/shell as a generic
+    // /api/permissions/:id response.
+    json(res, {
+      enabled,
+      ...permission,
+      permission,
     });
     return;
   }
@@ -8100,6 +8598,14 @@ async function handleRequest(
     }
     state.config.features.shellEnabled = enabled;
     saveMilaidyConfig(state.config);
+
+    // If a runtime is active, restart so plugin loading honors the new
+    // shellEnabled flag and shell tools are loaded/unloaded consistently.
+    if (state.runtime && ctx?.onRestart) {
+      scheduleRuntimeRestart(
+        `Shell access ${enabled ? "enabled" : "disabled"}`,
+      );
+    }
 
     json(res, {
       shellEnabled: enabled,
@@ -8237,6 +8743,18 @@ async function handleRequest(
     await ensureWorldOwnershipAndRoles(runtime, worldId as UUID, userId);
   };
 
+  const syncConversationRoomTitle = async (
+    conv: ConversationMeta,
+  ): Promise<void> => {
+    try {
+      await persistConversationRoomTitle(state.runtime, conv);
+    } catch (err) {
+      logger.debug(
+        `[conversations] Failed to persist room title for ${conv.id}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  };
+
   const ensureLegacyChatConnection = async (
     runtime: AgentRuntime,
     agentName: string,
@@ -8318,6 +8836,7 @@ async function handleRequest(
     state.conversations.set(id, conv);
     if (state.runtime) {
       await ensureConversationRoom(conv);
+      await syncConversationRoomTitle(conv);
     }
     json(res, { conversation: conv });
     return;
@@ -8691,6 +9210,7 @@ async function handleRequest(
     if (body.title?.trim()) {
       conv.title = body.title.trim();
       conv.updatedAt = new Date().toISOString();
+      await syncConversationRoomTitle(conv);
     }
     json(res, { conversation: conv });
     return;
@@ -9383,11 +9903,16 @@ async function handleRequest(
 
   // ── GET /api/workbench/overview ──────────────────────────────────────
   if (method === "GET" && pathname === "/api/workbench/overview") {
-    const goals: unknown[] = [];
-    const todos: unknown[] = [];
+    const tasks: WorkbenchTaskView[] = [];
+    const triggers: Array<
+      NonNullable<ReturnType<typeof taskToTriggerSummary>>
+    > = [];
+    const todos: WorkbenchTodoView[] = [];
     const summary = {
-      totalGoals: 0,
-      completedGoals: 0,
+      totalTasks: 0,
+      completedTasks: 0,
+      totalTriggers: 0,
+      activeTriggers: 0,
       totalTodos: 0,
       completedTodos: 0,
     };
@@ -9406,113 +9931,266 @@ async function handleRequest(
       thinking: autonomySvc?.isLoopRunning() ?? false,
       lastEventAt: latestAutonomyEvent?.ts ?? null,
     };
-    let goalsAvailable = false;
+    let tasksAvailable = false;
+    let triggersAvailable = false;
     let todosAvailable = false;
+    let runtimeTasks: Task[] = [];
+    let todoData: TodoDataServiceLike | null = null;
 
     if (state.runtime) {
-      // Goals: access via the GOAL_DATA service registered by @elizaos/plugin-goals
       try {
-        const goalService = state.runtime.getService("GOAL_DATA" as never) as {
-          getDataService?: () => {
-            getGoals: (
-              filters: Record<string, unknown>,
-            ) => Promise<Record<string, unknown>[]>;
-          } | null;
-        } | null;
-        const goalData = goalService?.getDataService?.();
-        goalsAvailable = goalData != null;
-        if (goalData) {
-          const dbGoals = await goalData.getGoals({
-            ownerId: state.runtime.agentId,
-            ownerType: "agent",
-          });
-          goals.push(...dbGoals);
-          summary.totalGoals = dbGoals.length;
-          summary.completedGoals = dbGoals.filter(
-            (g) => g.isCompleted === true,
-          ).length;
+        runtimeTasks = await state.runtime.getTasks({});
+        tasksAvailable = true;
+        todosAvailable = true;
+
+        for (const task of runtimeTasks) {
+          const todo = toWorkbenchTodo(task);
+          if (todo) {
+            todos.push(todo);
+            continue;
+          }
+          const mappedTask = toWorkbenchTask(task);
+          if (mappedTask) {
+            tasks.push(mappedTask);
+          }
         }
       } catch {
-        // Plugin not loaded or errored — goals unavailable
+        tasksAvailable = false;
+        todosAvailable = false;
       }
 
-      // Todos: create a data service on the fly (plugin-todo pattern)
       try {
-        const todoModuleId = "@elizaos/plugin-todo";
-        const todoModule = (await import(todoModuleId)) as unknown as Record<
-          string,
-          unknown
-        >;
-        const createTodoDataService = todoModule.createTodoDataService as
-          | ((rt: unknown) => {
-              getTodos: (
-                filters: Record<string, unknown>,
-              ) => Promise<Record<string, unknown>[]>;
-            })
-          | undefined;
-        if (createTodoDataService) {
-          const todoData = createTodoDataService(state.runtime);
-          todosAvailable = true;
+        todoData = await getTodoDataService(state.runtime);
+        if (todoData) {
           const dbTodos = await todoData.getTodos({
             agentId: state.runtime.agentId,
           });
-          todos.push(...dbTodos);
-          summary.totalTodos = dbTodos.length;
-          summary.completedTodos = dbTodos.filter(
-            (t) => t.isCompleted === true,
-          ).length;
+          todosAvailable = true;
+          for (const rawTodo of dbTodos) {
+            const mapped = toWorkbenchTodoFromRecord(rawTodo);
+            if (mapped) {
+              todos.push(mapped);
+            }
+          }
         }
       } catch {
-        // Plugin not loaded or errored — todos unavailable
+        // plugin todo unavailable or errored; keep fallback todos
+      }
+
+      try {
+        const triggerTasks = await listTriggerTasks(state.runtime);
+        triggersAvailable = true;
+        for (const task of triggerTasks) {
+          const summaryItem = taskToTriggerSummary(task);
+          if (summaryItem) {
+            triggers.push(summaryItem);
+          }
+        }
+      } catch {
+        if (tasksAvailable) {
+          triggersAvailable = true;
+          for (const task of runtimeTasks) {
+            const summaryItem = taskToTriggerSummary(task);
+            if (summaryItem) {
+              triggers.push(summaryItem);
+            }
+          }
+        }
       }
     }
 
+    if (todos.length > 1) {
+      const dedupedTodos = new Map<string, WorkbenchTodoView>();
+      for (const todo of todos) {
+        dedupedTodos.set(todo.id, todo);
+      }
+      todos.length = 0;
+      todos.push(...dedupedTodos.values());
+    }
+
+    tasks.sort((a, b) => a.name.localeCompare(b.name));
+    todos.sort((a, b) => a.name.localeCompare(b.name));
+    triggers.sort((a, b) => a.displayName.localeCompare(b.displayName));
+    summary.totalTasks = tasks.length;
+    summary.completedTasks = tasks.filter((task) => task.isCompleted).length;
+    summary.totalTriggers = triggers.length;
+    summary.activeTriggers = triggers.filter(
+      (trigger) => trigger.enabled,
+    ).length;
+    summary.totalTodos = todos.length;
+    summary.completedTodos = todos.filter((todo) => todo.isCompleted).length;
+
     json(res, {
-      goals,
+      tasks,
+      triggers,
       todos,
       summary,
       autonomy,
-      goalsAvailable,
+      tasksAvailable,
+      triggersAvailable,
       todosAvailable,
     });
     return;
   }
 
-  // ── PATCH /api/workbench/goals/:id ───────────────────────────────────
-  if (method === "PATCH" && pathname.startsWith("/api/workbench/goals/")) {
+  // ── GET /api/workbench/tasks ─────────────────────────────────────────
+  if (method === "GET" && pathname === "/api/workbench/tasks") {
     if (!state.runtime) {
       error(res, "Agent runtime is not available", 503);
       return;
     }
-    const goalId = pathname.slice("/api/workbench/goals/".length);
-    const body = await readJsonBody(req, res);
-    if (!body) return;
-    json(res, { ok: true, goalId, updated: body });
+    const runtimeTasks = await state.runtime.getTasks({});
+    const tasks = runtimeTasks
+      .map((task) => toWorkbenchTask(task))
+      .filter((task): task is WorkbenchTaskView => task !== null)
+      .sort((a, b) => a.name.localeCompare(b.name));
+    json(res, { tasks });
     return;
   }
 
-  // ── POST /api/workbench/goals ────────────────────────────────────────
-  if (method === "POST" && pathname === "/api/workbench/goals") {
+  // ── POST /api/workbench/tasks ────────────────────────────────────────
+  if (method === "POST" && pathname === "/api/workbench/tasks") {
     if (!state.runtime) {
       error(res, "Agent runtime is not available", 503);
       return;
     }
-    const body = await readJsonBody(req, res);
+    const body = await readJsonBody<{
+      name?: string;
+      description?: string;
+      tags?: string[];
+      isCompleted?: boolean;
+    }>(req, res);
     if (!body) return;
-    json(res, { ok: true, goal: body });
+    const name = typeof body.name === "string" ? body.name.trim() : "";
+    if (!name) {
+      error(res, "name is required", 400);
+      return;
+    }
+    const description =
+      typeof body.description === "string" ? body.description : "";
+    const isCompleted = body.isCompleted === true;
+    const metadata = {
+      isCompleted,
+      workbench: { kind: "task" },
+    };
+    const taskId = await state.runtime.createTask({
+      name,
+      description,
+      tags: normalizeTags(body.tags, [WORKBENCH_TASK_TAG]),
+      metadata,
+    });
+    const created = await state.runtime.getTask(taskId);
+    const task = created ? toWorkbenchTask(created) : null;
+    if (!task) {
+      error(res, "Task created but unavailable", 500);
+      return;
+    }
+    json(res, { task }, 201);
     return;
   }
 
-  // ── PATCH /api/workbench/todos/:id ───────────────────────────────────
-  if (method === "PATCH" && pathname.startsWith("/api/workbench/todos/")) {
+  const taskItemMatch = /^\/api\/workbench\/tasks\/([^/]+)$/.exec(pathname);
+  if (taskItemMatch && ["GET", "PUT", "DELETE"].includes(method)) {
     if (!state.runtime) {
       error(res, "Agent runtime is not available", 503);
       return;
     }
-    const todoId = pathname.slice("/api/workbench/todos/".length);
-    const body = await readJsonBody(req, res);
+    const decodedTaskId = decodePathComponent(taskItemMatch[1], res, "task id");
+    if (!decodedTaskId) return;
+    const task = await state.runtime.getTask(decodedTaskId as UUID);
+    const taskView = task ? toWorkbenchTask(task) : null;
+    if (!task || !taskView || !task.id) {
+      error(res, "Task not found", 404);
+      return;
+    }
+
+    if (method === "GET") {
+      json(res, { task: taskView });
+      return;
+    }
+
+    if (method === "DELETE") {
+      await state.runtime.deleteTask(task.id);
+      json(res, { ok: true });
+      return;
+    }
+
+    const body = await readJsonBody<{
+      name?: string;
+      description?: string;
+      tags?: string[];
+      isCompleted?: boolean;
+    }>(req, res);
     if (!body) return;
-    json(res, { ok: true, todoId, updated: body });
+
+    const update: Partial<Task> = {};
+    if (typeof body.name === "string") {
+      const name = body.name.trim();
+      if (!name) {
+        error(res, "name cannot be empty", 400);
+        return;
+      }
+      update.name = name;
+    }
+    if (typeof body.description === "string") {
+      update.description = body.description;
+    }
+    if (body.tags !== undefined) {
+      update.tags = normalizeTags(body.tags, [WORKBENCH_TASK_TAG]);
+    }
+    if (typeof body.isCompleted === "boolean") {
+      update.metadata = {
+        ...readTaskMetadata(task),
+        isCompleted: body.isCompleted,
+      };
+    }
+    await state.runtime.updateTask(task.id, update);
+    const refreshed = await state.runtime.getTask(task.id);
+    const refreshedView = refreshed ? toWorkbenchTask(refreshed) : null;
+    if (!refreshedView) {
+      error(res, "Task updated but unavailable", 500);
+      return;
+    }
+    json(res, { task: refreshedView });
+    return;
+  }
+
+  // ── GET /api/workbench/todos ─────────────────────────────────────────
+  if (method === "GET" && pathname === "/api/workbench/todos") {
+    if (!state.runtime) {
+      error(res, "Agent runtime is not available", 503);
+      return;
+    }
+    const runtimeTasks = await state.runtime.getTasks({});
+    const todos = runtimeTasks
+      .map((task) => toWorkbenchTodo(task))
+      .filter((todo): todo is WorkbenchTodoView => todo !== null)
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const todoData = await getTodoDataService(state.runtime);
+    if (todoData) {
+      try {
+        const dbTodos = await todoData.getTodos({
+          agentId: state.runtime.agentId,
+        });
+        for (const rawTodo of dbTodos) {
+          const mapped = toWorkbenchTodoFromRecord(rawTodo);
+          if (mapped) {
+            const existingIndex = todos.findIndex(
+              (todo) => todo.id === mapped.id,
+            );
+            if (existingIndex >= 0) {
+              todos[existingIndex] = mapped;
+            } else {
+              todos.push(mapped);
+            }
+          }
+        }
+        todos.sort((a, b) => a.name.localeCompare(b.name));
+      } catch {
+        // fallback to task-backed todos only
+      }
+    }
+    json(res, { todos });
     return;
   }
 
@@ -9522,9 +10200,322 @@ async function handleRequest(
       error(res, "Agent runtime is not available", 503);
       return;
     }
-    const body = await readJsonBody(req, res);
+    const body = await readJsonBody<{
+      name?: string;
+      description?: string;
+      priority?: number | string | null;
+      isUrgent?: boolean;
+      type?: string;
+      isCompleted?: boolean;
+      tags?: string[];
+    }>(req, res);
     if (!body) return;
-    json(res, { ok: true, todo: body });
+    const name = typeof body.name === "string" ? body.name.trim() : "";
+    if (!name) {
+      error(res, "name is required", 400);
+      return;
+    }
+    const description =
+      typeof body.description === "string" ? body.description : "";
+    const isCompleted = body.isCompleted === true;
+    const priority = parseNullableNumber(body.priority);
+    const isUrgent = body.isUrgent === true;
+    const type =
+      typeof body.type === "string" && body.type.trim().length > 0
+        ? body.type.trim()
+        : "task";
+
+    const todoData = await getTodoDataService(state.runtime);
+    if (todoData) {
+      try {
+        const now = Date.now();
+        const roomId =
+          (
+            state.runtime.getService("AUTONOMY") as {
+              getAutonomousRoomId?: () => UUID;
+            } | null
+          )?.getAutonomousRoomId?.() ??
+          stringToUuid(`workbench-todo-room-${state.runtime.agentId}`);
+        const worldId = stringToUuid(
+          `workbench-todo-world-${state.runtime.agentId}`,
+        );
+        const entityId =
+          state.adminEntityId ?? stringToUuid(`workbench-todo-entity-${now}`);
+        const createdTodoId = await todoData.createTodo({
+          agentId: state.runtime.agentId,
+          worldId,
+          roomId,
+          entityId,
+          name,
+          description: description || name,
+          type,
+          priority: priority ?? undefined,
+          isUrgent,
+          metadata: {
+            createdAt: new Date(now).toISOString(),
+            source: "workbench-api",
+          },
+          tags: normalizeTags(body.tags, ["TODO"]),
+        });
+        const createdDbTodo = await todoData.getTodo(createdTodoId);
+        const mappedDbTodo = createdDbTodo
+          ? toWorkbenchTodoFromRecord(createdDbTodo)
+          : null;
+        if (mappedDbTodo) {
+          json(res, { todo: mappedDbTodo }, 201);
+          return;
+        }
+      } catch {
+        // fallback to task-backed todo creation
+      }
+    }
+
+    const metadata = {
+      isCompleted,
+      workbenchTodo: {
+        description,
+        priority,
+        isUrgent,
+        isCompleted,
+        type,
+      },
+    };
+    const taskId = await state.runtime.createTask({
+      name,
+      description,
+      tags: normalizeTags(body.tags, [WORKBENCH_TODO_TAG, "todo"]),
+      metadata,
+    });
+    const created = await state.runtime.getTask(taskId);
+    const todo = created ? toWorkbenchTodo(created) : null;
+    if (!todo) {
+      error(res, "Todo created but unavailable", 500);
+      return;
+    }
+    json(res, { todo }, 201);
+    return;
+  }
+
+  const todoCompleteMatch = /^\/api\/workbench\/todos\/([^/]+)\/complete$/.exec(
+    pathname,
+  );
+  if (method === "POST" && todoCompleteMatch) {
+    if (!state.runtime) {
+      error(res, "Agent runtime is not available", 503);
+      return;
+    }
+    const decodedTodoId = decodePathComponent(
+      todoCompleteMatch[1],
+      res,
+      "todo id",
+    );
+    if (!decodedTodoId) return;
+    const body = await readJsonBody<{ isCompleted?: boolean }>(req, res);
+    if (!body) return;
+    const isCompleted = body.isCompleted === true;
+    const todoData = await getTodoDataService(state.runtime);
+    if (todoData) {
+      try {
+        await todoData.updateTodo(decodedTodoId, {
+          isCompleted,
+          completedAt: isCompleted ? new Date() : null,
+        });
+        json(res, { ok: true });
+        return;
+      } catch {
+        // fallback to task-backed path
+      }
+    }
+    const todoTask = await state.runtime.getTask(decodedTodoId as UUID);
+    if (!todoTask || !todoTask.id || !toWorkbenchTodo(todoTask)) {
+      error(res, "Todo not found", 404);
+      return;
+    }
+    const metadata = readTaskMetadata(todoTask);
+    const todoMeta =
+      asObject(metadata.workbenchTodo) ?? asObject(metadata.todo) ?? {};
+    await state.runtime.updateTask(todoTask.id, {
+      metadata: {
+        ...metadata,
+        isCompleted,
+        workbenchTodo: {
+          ...todoMeta,
+          isCompleted,
+        },
+      },
+    });
+    json(res, { ok: true });
+    return;
+  }
+
+  const todoItemMatch = /^\/api\/workbench\/todos\/([^/]+)$/.exec(pathname);
+  if (todoItemMatch && ["GET", "PUT", "DELETE"].includes(method)) {
+    if (!state.runtime) {
+      error(res, "Agent runtime is not available", 503);
+      return;
+    }
+    const decodedTodoId = decodePathComponent(todoItemMatch[1], res, "todo id");
+    if (!decodedTodoId) return;
+    const todoData = await getTodoDataService(state.runtime);
+
+    if (method === "GET" && todoData) {
+      try {
+        const dbTodo = await todoData.getTodo(decodedTodoId);
+        const mapped = dbTodo ? toWorkbenchTodoFromRecord(dbTodo) : null;
+        if (mapped) {
+          json(res, { todo: mapped });
+          return;
+        }
+      } catch {
+        // fallback to task-backed path
+      }
+    }
+
+    if (method === "GET") {
+      const todoTask = await state.runtime.getTask(decodedTodoId as UUID);
+      const todoView = todoTask ? toWorkbenchTodo(todoTask) : null;
+      if (!todoTask || !todoTask.id || !todoView) {
+        error(res, "Todo not found", 404);
+        return;
+      }
+      json(res, { todo: todoView });
+      return;
+    }
+
+    if (method === "DELETE" && todoData) {
+      try {
+        await todoData.deleteTodo(decodedTodoId);
+        json(res, { ok: true });
+        return;
+      } catch {
+        // fallback to task-backed path
+      }
+    }
+
+    if (method === "DELETE") {
+      const todoTask = await state.runtime.getTask(decodedTodoId as UUID);
+      if (!todoTask?.id || !toWorkbenchTodo(todoTask)) {
+        error(res, "Todo not found", 404);
+        return;
+      }
+      await state.runtime.deleteTask(todoTask.id);
+      json(res, { ok: true });
+      return;
+    }
+
+    const body = await readJsonBody<{
+      name?: string;
+      description?: string;
+      priority?: number | string | null;
+      isUrgent?: boolean;
+      type?: string;
+      isCompleted?: boolean;
+      tags?: string[];
+    }>(req, res);
+    if (!body) return;
+
+    if (todoData) {
+      try {
+        const updates: Record<string, unknown> = {};
+        if (typeof body.name === "string") {
+          const name = body.name.trim();
+          if (!name) {
+            error(res, "name cannot be empty", 400);
+            return;
+          }
+          updates.name = name;
+        }
+        if (typeof body.description === "string") {
+          updates.description = body.description;
+        }
+        if (body.priority !== undefined) {
+          updates.priority = parseNullableNumber(body.priority);
+        }
+        if (typeof body.isUrgent === "boolean") {
+          updates.isUrgent = body.isUrgent;
+        }
+        if (typeof body.type === "string" && body.type.trim().length > 0) {
+          updates.type = body.type.trim();
+        }
+        if (typeof body.isCompleted === "boolean") {
+          updates.isCompleted = body.isCompleted;
+          updates.completedAt = body.isCompleted ? new Date() : null;
+        }
+        await todoData.updateTodo(decodedTodoId, updates);
+        const refreshedDbTodo = await todoData.getTodo(decodedTodoId);
+        const refreshedMapped = refreshedDbTodo
+          ? toWorkbenchTodoFromRecord(refreshedDbTodo)
+          : null;
+        if (refreshedMapped) {
+          json(res, { todo: refreshedMapped });
+          return;
+        }
+      } catch {
+        // fallback to task-backed path
+      }
+    }
+
+    const todoTask = await state.runtime.getTask(decodedTodoId as UUID);
+    const todoView = todoTask ? toWorkbenchTodo(todoTask) : null;
+    if (!todoTask || !todoTask.id || !todoView) {
+      error(res, "Todo not found", 404);
+      return;
+    }
+
+    const update: Partial<Task> = {};
+    if (typeof body.name === "string") {
+      const name = body.name.trim();
+      if (!name) {
+        error(res, "name cannot be empty", 400);
+        return;
+      }
+      update.name = name;
+    }
+    if (typeof body.description === "string") {
+      update.description = body.description;
+    }
+    if (body.tags !== undefined) {
+      update.tags = normalizeTags(body.tags, [WORKBENCH_TODO_TAG, "todo"]);
+    }
+
+    const metadata = readTaskMetadata(todoTask);
+    const existingTodoMeta =
+      asObject(metadata.workbenchTodo) ?? asObject(metadata.todo) ?? {};
+    const nextTodoMeta: Record<string, unknown> = {
+      ...existingTodoMeta,
+    };
+    if (typeof body.description === "string") {
+      nextTodoMeta.description = body.description;
+    }
+    if (body.priority !== undefined) {
+      nextTodoMeta.priority = parseNullableNumber(body.priority);
+    }
+    if (typeof body.isUrgent === "boolean") {
+      nextTodoMeta.isUrgent = body.isUrgent;
+    }
+    if (typeof body.type === "string" && body.type.trim().length > 0) {
+      nextTodoMeta.type = body.type.trim();
+    }
+
+    let isCompleted = readTaskCompleted(todoTask);
+    if (typeof body.isCompleted === "boolean") {
+      isCompleted = body.isCompleted;
+    }
+    nextTodoMeta.isCompleted = isCompleted;
+    update.metadata = {
+      ...metadata,
+      isCompleted,
+      workbenchTodo: nextTodoMeta,
+    };
+
+    await state.runtime.updateTask(todoTask.id, update);
+    const refreshed = await state.runtime.getTask(todoTask.id);
+    const refreshedTodo = refreshed ? toWorkbenchTodo(refreshed) : null;
+    if (!refreshedTodo) {
+      error(res, "Todo updated but unavailable", 500);
+      return;
+    }
+    json(res, { todo: refreshedTodo });
     return;
   }
 
@@ -9861,6 +10852,357 @@ async function handleRequest(
     return;
   }
 
+  // ── POST /api/terminal/run ──────────────────────────────────────────────
+  // Execute a shell command server-side and stream output via WebSocket.
+  if (method === "POST" && pathname === "/api/terminal/run") {
+    if (state.shellEnabled === false) {
+      error(res, "Shell access is disabled", 403);
+      return;
+    }
+
+    const body = await readJsonBody<{ command?: string }>(req, res);
+    if (!body) return;
+    const command = typeof body.command === "string" ? body.command.trim() : "";
+    if (!command) {
+      error(res, "Missing or empty command");
+      return;
+    }
+
+    // Guard against excessively long commands (likely injection or abuse)
+    if (command.length > 4096) {
+      error(res, "Command exceeds maximum length (4096 chars)", 400);
+      return;
+    }
+
+    // Respond immediately — output streams via WebSocket
+    json(res, { ok: true });
+
+    // Spawn in background and broadcast output
+    const { spawn } = await import("node:child_process");
+    const runId = `run-${Date.now()}`;
+
+    state.broadcastWs?.({
+      type: "terminal-output",
+      runId,
+      event: "start",
+      command,
+    });
+
+    const proc = spawn(command, {
+      shell: true,
+      cwd: process.cwd(),
+      env: { ...process.env, FORCE_COLOR: "0" },
+    });
+
+    proc.stdout?.on("data", (chunk: Buffer) => {
+      state.broadcastWs?.({
+        type: "terminal-output",
+        runId,
+        event: "stdout",
+        data: chunk.toString("utf-8"),
+      });
+    });
+
+    proc.stderr?.on("data", (chunk: Buffer) => {
+      state.broadcastWs?.({
+        type: "terminal-output",
+        runId,
+        event: "stderr",
+        data: chunk.toString("utf-8"),
+      });
+    });
+
+    proc.on("close", (code: number | null) => {
+      state.broadcastWs?.({
+        type: "terminal-output",
+        runId,
+        event: "exit",
+        code: code ?? 1,
+      });
+    });
+
+    proc.on("error", (err: Error) => {
+      state.broadcastWs?.({
+        type: "terminal-output",
+        runId,
+        event: "error",
+        data: err.message,
+      });
+    });
+
+    return;
+  }
+
+  // ── Custom Actions CRUD ──────────────────────────────────────────────
+
+  if (method === "GET" && pathname === "/api/custom-actions") {
+    const config = loadMilaidyConfig();
+    json(res, { actions: config.customActions ?? [] });
+    return;
+  }
+
+  if (method === "POST" && pathname === "/api/custom-actions") {
+    const body = await readJsonBody<Record<string, unknown>>(req, res);
+    if (!body) return;
+
+    const name = typeof body.name === "string" ? body.name.trim() : "";
+    const description =
+      typeof body.description === "string" ? body.description.trim() : "";
+
+    if (!name || !description) {
+      error(res, "name and description are required", 400);
+      return;
+    }
+
+    const handler = body.handler as CustomActionDef["handler"] | undefined;
+    const validHandlerTypes = new Set(["http", "shell", "code"]);
+    if (!handler || !handler.type || !validHandlerTypes.has(handler.type)) {
+      error(
+        res,
+        "handler with valid type (http, shell, code) is required",
+        400,
+      );
+      return;
+    }
+
+    // Validate type-specific required fields
+    if (
+      handler.type === "http" &&
+      (typeof handler.url !== "string" || !handler.url.trim())
+    ) {
+      error(res, "HTTP handler requires a url", 400);
+      return;
+    }
+    if (
+      handler.type === "shell" &&
+      (typeof handler.command !== "string" || !handler.command.trim())
+    ) {
+      error(res, "Shell handler requires a command", 400);
+      return;
+    }
+    if (
+      handler.type === "code" &&
+      (typeof handler.code !== "string" || !handler.code.trim())
+    ) {
+      error(res, "Code handler requires code", 400);
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const actionDef: CustomActionDef = {
+      id: crypto.randomUUID(),
+      name: name.toUpperCase().replace(/\s+/g, "_"),
+      description,
+      similes: Array.isArray(body.similes)
+        ? body.similes.filter((s): s is string => typeof s === "string")
+        : [],
+      parameters: Array.isArray(body.parameters)
+        ? (body.parameters as Array<{
+            name: string;
+            description: string;
+            required: boolean;
+          }>)
+        : [],
+      handler,
+      enabled: body.enabled !== false,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const config = loadMilaidyConfig();
+    if (!config.customActions) config.customActions = [];
+    config.customActions.push(actionDef);
+    saveMilaidyConfig(config);
+
+    // Hot-register into the running agent so it's available immediately
+    if (actionDef.enabled) {
+      registerCustomActionLive(actionDef);
+    }
+
+    json(res, { ok: true, action: actionDef });
+    return;
+  }
+
+  // Generate a custom action definition from a natural language prompt
+  if (method === "POST" && pathname === "/api/custom-actions/generate") {
+    const body = await readJsonBody<{ prompt?: string }>(req, res);
+    if (!body) return;
+
+    const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
+    if (!prompt) {
+      error(res, "prompt is required", 400);
+      return;
+    }
+
+    const runtime = state.runtime;
+    if (!runtime) {
+      error(res, "Agent runtime not available", 503);
+      return;
+    }
+
+    try {
+      const systemPrompt = [
+        "You are a helper that generates custom action definitions from natural language descriptions.",
+        "Given a user's description of what they want an action to do, generate a JSON object with these fields:",
+        "",
+        "- name: string (UPPER_SNAKE_CASE action name)",
+        "- description: string (clear description of what the action does)",
+        '- handlerType: "http" | "shell" | "code"',
+        "- handler: object with type-specific fields:",
+        '  For http: { type: "http", method: "GET"|"POST"|etc, url: string, headers?: object, bodyTemplate?: string }',
+        '  For shell: { type: "shell", command: string }',
+        '  For code: { type: "code", code: string }',
+        "- parameters: array of { name: string, description: string, required: boolean }",
+        "",
+        "Use {{paramName}} placeholders in URLs, body templates, and shell commands.",
+        "For code handlers, parameters are available via params.paramName and fetch() is available.",
+        "",
+        "Respond with ONLY the JSON object, no markdown fences or explanation.",
+      ].join("\n");
+
+      const llmResponse = await runtime.useModel(ModelType.TEXT_SMALL, {
+        prompt: `${systemPrompt}\n\nUser request: ${prompt}`,
+        stopSequences: [],
+      });
+
+      // Parse the JSON from the LLM response
+      const text =
+        typeof llmResponse === "string" ? llmResponse : String(llmResponse);
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        error(res, "Failed to generate action definition", 500);
+        return;
+      }
+
+      const generated = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
+      json(res, { ok: true, generated });
+    } catch (err) {
+      error(
+        res,
+        `Generation failed: ${err instanceof Error ? err.message : String(err)}`,
+        500,
+      );
+    }
+    return;
+  }
+
+  const customActionMatch = pathname.match(/^\/api\/custom-actions\/([^/]+)$/);
+  const customActionTestMatch = pathname.match(
+    /^\/api\/custom-actions\/([^/]+)\/test$/,
+  );
+
+  if (method === "POST" && customActionTestMatch) {
+    const actionId = decodeURIComponent(customActionTestMatch[1]);
+    const body = await readJsonBody<{ params?: Record<string, string> }>(
+      req,
+      res,
+    );
+    if (!body) return;
+
+    const config = loadMilaidyConfig();
+    const def = (config.customActions ?? []).find((a) => a.id === actionId);
+    if (!def) {
+      error(res, "Action not found", 404);
+      return;
+    }
+
+    const testParams = body.params ?? {};
+    const start = Date.now();
+    try {
+      const handler = buildTestHandler(def);
+      const result = await handler(testParams);
+      json(res, {
+        ok: result.ok,
+        output: result.output,
+        durationMs: Date.now() - start,
+      });
+    } catch (err) {
+      json(res, {
+        ok: false,
+        output: "",
+        error: err instanceof Error ? err.message : String(err),
+        durationMs: Date.now() - start,
+      });
+    }
+    return;
+  }
+
+  if (method === "PUT" && customActionMatch) {
+    const actionId = decodeURIComponent(customActionMatch[1]);
+    const body = await readJsonBody<Record<string, unknown>>(req, res);
+    if (!body) return;
+
+    const config = loadMilaidyConfig();
+    const actions = config.customActions ?? [];
+    const idx = actions.findIndex((a) => a.id === actionId);
+    if (idx === -1) {
+      error(res, "Action not found", 404);
+      return;
+    }
+
+    const existing = actions[idx];
+
+    // Validate handler if provided in the update
+    let newHandler = existing.handler;
+    if (body.handler != null) {
+      const h = body.handler as Record<string, unknown>;
+      const hValidTypes = new Set(["http", "shell", "code"]);
+      if (!h.type || !hValidTypes.has(h.type as string)) {
+        error(res, "handler.type must be http, shell, or code", 400);
+        return;
+      }
+      newHandler = h as unknown as CustomActionDef["handler"];
+    }
+
+    const updated: CustomActionDef = {
+      ...existing,
+      name:
+        typeof body.name === "string"
+          ? body.name.trim().toUpperCase().replace(/\s+/g, "_")
+          : existing.name,
+      description:
+        typeof body.description === "string"
+          ? body.description.trim()
+          : existing.description,
+      similes: Array.isArray(body.similes)
+        ? body.similes.filter((s): s is string => typeof s === "string")
+        : existing.similes,
+      parameters: Array.isArray(body.parameters)
+        ? (body.parameters as CustomActionDef["parameters"])
+        : existing.parameters,
+      handler: newHandler,
+      enabled:
+        typeof body.enabled === "boolean" ? body.enabled : existing.enabled,
+      updatedAt: new Date().toISOString(),
+    };
+
+    actions[idx] = updated;
+    config.customActions = actions;
+    saveMilaidyConfig(config);
+
+    json(res, { ok: true, action: updated });
+    return;
+  }
+
+  if (method === "DELETE" && customActionMatch) {
+    const actionId = decodeURIComponent(customActionMatch[1]);
+
+    const config = loadMilaidyConfig();
+    const actions = config.customActions ?? [];
+    const idx = actions.findIndex((a) => a.id === actionId);
+    if (idx === -1) {
+      error(res, "Action not found", 404);
+      return;
+    }
+
+    actions.splice(idx, 1);
+    config.customActions = actions;
+    saveMilaidyConfig(config);
+
+    json(res, { ok: true });
+    return;
+  }
+
   // ── Static UI serving (production) ──────────────────────────────────────
   if (method === "GET" || method === "HEAD") {
     if (serveStaticUi(req, res, pathname)) return;
@@ -9871,86 +11213,14 @@ async function handleRequest(
 }
 
 // ---------------------------------------------------------------------------
-// Early log capture
+// Early log capture — re-exported from the standalone module so existing
+// callers that `import { captureEarlyLogs } from "../api/server"` keep
+// working.  The implementation lives in `./early-logs.ts` to avoid pulling
+// the entire server dependency graph into lightweight consumers (e.g. the
+// headless `startEliza()` path).
 // ---------------------------------------------------------------------------
-// Call `captureEarlyLogs()` BEFORE starting the runtime to buffer logs from
-// the global @elizaos/core logger.  The buffered entries are flushed into
-// the API server's logBuffer when `startApiServer` runs.
-// ---------------------------------------------------------------------------
-
-interface EarlyLogEntry {
-  timestamp: number;
-  level: string;
-  message: string;
-  source: string;
-  tags: string[];
-}
-
-let earlyLogBuffer: EarlyLogEntry[] | null = null;
-let earlyPatchCleanup: (() => void) | null = null;
-
-/**
- * Start capturing logs from the global @elizaos/core logger before the API
- * server is up.  Call this once, early in the startup flow (e.g. before
- * `startEliza`).  When `startApiServer` runs it will flush and take over.
- */
-export function captureEarlyLogs(): void {
-  if (earlyLogBuffer) return; // already capturing
-  // If the global logger is already fully patched (e.g. dev-server started
-  // the API server before calling startEliza), skip early capture entirely.
-  if ((logger as unknown as Record<string, unknown>).__milaidyLogPatched)
-    return;
-  earlyLogBuffer = [];
-  const EARLY_PATCHED = "__milaidyEarlyPatched";
-  if ((logger as unknown as Record<string, unknown>)[EARLY_PATCHED]) return;
-
-  const LEVELS = ["debug", "info", "warn", "error"] as const;
-  const originals = new Map<string, (...args: unknown[]) => void>();
-
-  for (const lvl of LEVELS) {
-    const original = logger[lvl].bind(logger);
-    originals.set(lvl, original as (...args: unknown[]) => void);
-    const earlyPatched: (typeof logger)[typeof lvl] = (
-      ...args: Parameters<typeof original>
-    ) => {
-      let msg = "";
-      let source = "agent";
-      const tags = ["agent"];
-      if (typeof args[0] === "string") {
-        msg = args[0];
-      } else if (args[0] && typeof args[0] === "object") {
-        const obj = args[0] as Record<string, unknown>;
-        if (typeof obj.src === "string") source = obj.src;
-        msg = typeof args[1] === "string" ? args[1] : JSON.stringify(obj);
-      }
-      const bracketMatch = /^\[([^\]]+)\]\s*/.exec(msg);
-      if (bracketMatch && source === "agent") source = bracketMatch[1];
-      if (source !== "agent" && !tags.includes(source)) tags.push(source);
-      earlyLogBuffer?.push({
-        timestamp: Date.now(),
-        level: lvl,
-        message: msg,
-        source,
-        tags,
-      });
-      return original(...args);
-    };
-    logger[lvl] = earlyPatched;
-  }
-
-  (logger as unknown as Record<string, unknown>)[EARLY_PATCHED] = true;
-
-  earlyPatchCleanup = () => {
-    // Restore originals so `patchLogger` inside `startApiServer` can re-patch
-    for (const lvl of LEVELS) {
-      const orig = originals.get(lvl);
-      if (orig) logger[lvl] = orig as (typeof logger)[typeof lvl];
-    }
-    delete (logger as unknown as Record<string, unknown>)[EARLY_PATCHED];
-    // Don't set the main PATCHED_MARKER — `patchLogger` will do that
-    delete (logger as unknown as Record<string, unknown>).__milaidyLogPatched;
-  };
-}
+import { captureEarlyLogs, flushEarlyLogs } from "./early-logs";
+export { captureEarlyLogs };
 
 // ---------------------------------------------------------------------------
 // Server start
@@ -9959,6 +11229,8 @@ export function captureEarlyLogs(): void {
 export async function startApiServer(opts?: {
   port?: number;
   runtime?: AgentRuntime;
+  /** Initial state when starting without a runtime (e.g. embedded bootstrapping). */
+  initialAgentState?: "not_started" | "starting" | "stopped" | "error";
   /**
    * Called when the UI requests a restart via `POST /api/agent/restart`.
    * Should stop the current runtime, create a new one, and return it.
@@ -10008,13 +11280,11 @@ export async function startApiServer(opts?: {
   const plugins = discoverPluginsFromManifest();
   const workspaceDir =
     config.agents?.defaults?.workspace ?? resolveDefaultAgentWorkspaceDir();
-  const skills = await discoverSkills(
-    workspaceDir,
-    config,
-    opts?.runtime ?? null,
-  );
 
   const hasRuntime = opts?.runtime != null;
+  const initialAgentState = hasRuntime
+    ? "running"
+    : (opts?.initialAgentState ?? "not_started");
   const agentName = hasRuntime
     ? (opts.runtime?.character.name ?? "Milaidy")
     : (config.agents?.list?.[0]?.name ??
@@ -10024,12 +11294,14 @@ export async function startApiServer(opts?: {
   const state: ServerState = {
     runtime: opts?.runtime ?? null,
     config,
-    agentState: hasRuntime ? "running" : "not_started",
+    agentState: initialAgentState,
     agentName,
     model: hasRuntime ? "provided" : undefined,
-    startedAt: hasRuntime ? Date.now() : undefined,
+    startedAt:
+      hasRuntime || initialAgentState === "starting" ? Date.now() : undefined,
     plugins,
-    skills,
+    // Filled asynchronously after server start to keep startup latency low.
+    skills: [],
     logBuffer: [],
     eventBuffer: [],
     nextEventId: 1,
@@ -10061,14 +11333,8 @@ export async function startApiServer(opts?: {
       saveMilaidyConfig(nextConfig);
     },
   });
-  try {
-    await trainingService.initialize();
-    state.trainingService = trainingService;
-  } catch (err) {
-    logger.error(
-      `[milaidy-api] Training service init failed: ${err instanceof Error ? err.message : String(err)}`,
-    );
-  }
+  // Register immediately so /api/training routes are available without a startup race.
+  state.trainingService = trainingService;
   const configuredAdminEntityId = config.agents?.defaults?.adminEntityId;
   if (configuredAdminEntityId && isUuidLike(configuredAdminEntityId)) {
     state.adminEntityId = configuredAdminEntityId;
@@ -10117,8 +11383,9 @@ export async function startApiServer(opts?: {
   };
 
   // ── Flush early-captured logs into the main buffer ────────────────────
-  if (earlyLogBuffer && earlyLogBuffer.length > 0) {
-    for (const entry of earlyLogBuffer) {
+  const earlyEntries = flushEarlyLogs();
+  if (earlyEntries.length > 0) {
+    for (const entry of earlyEntries) {
       state.logBuffer.push(entry);
     }
     if (state.logBuffer.length > 1000) {
@@ -10126,97 +11393,15 @@ export async function startApiServer(opts?: {
     }
     addLog(
       "info",
-      `Flushed ${earlyLogBuffer.length} early startup log entries`,
+      `Flushed ${earlyEntries.length} early startup log entries`,
       "system",
       ["system"],
     );
   }
-  // Clean up early capture so the main patchLogger can take over
-  if (earlyPatchCleanup) {
-    earlyPatchCleanup();
-    earlyPatchCleanup = null;
-  }
-  earlyLogBuffer = null;
-
-  // ── Cloud Manager initialisation ──────────────────────────────────────
-  if (config.cloud?.enabled && config.cloud?.apiKey) {
-    const mgr = new CloudManager(config.cloud, {
-      onStatusChange: (s) => {
-        addLog("info", `Cloud connection status: ${s}`, "cloud", [
-          "server",
-          "cloud",
-        ]);
-      },
-    });
-    try {
-      await mgr.init();
-      state.cloudManager = mgr;
-      addLog(
-        "info",
-        "Cloud manager initialised (Eliza Cloud enabled)",
-        "cloud",
-        ["server", "cloud"],
-      );
-    } catch (initErr) {
-      addLog(
-        "warn",
-        `Cloud manager init failed: ${initErr instanceof Error ? initErr.message : String(initErr)}`,
-        "cloud",
-        ["server", "cloud"],
-      );
-    }
-  }
-
-  // ── ERC-8004 Registry & Drop service initialisation ────────────────────
-  initializeOGCodeInState();
-
-  let registryService: RegistryService | null = null;
-  let dropService: DropService | null = null;
-
-  // Get EVM private key from runtime secrets (preferred) or config.env (fallback)
-  const runtime = opts?.runtime ?? null;
-  const evmKey =
-    (runtime?.getSetting?.("EVM_PRIVATE_KEY") as string | undefined) ??
-    (config.env as Record<string, string> | undefined)?.EVM_PRIVATE_KEY;
-  const registryConfig = config.registry;
-  if (evmKey && registryConfig?.registryAddress && registryConfig?.mainnetRpc) {
-    try {
-      const txService = new TxService(registryConfig.mainnetRpc, evmKey);
-      registryService = new RegistryService(
-        txService,
-        registryConfig.registryAddress,
-      );
-
-      if (registryConfig.collectionAddress) {
-        const dropEnabled = config.features?.dropEnabled === true;
-        dropService = new DropService(
-          txService,
-          registryConfig.collectionAddress,
-          dropEnabled,
-        );
-      }
-
-      addLog(
-        "info",
-        `ERC-8004 registry service initialised (${registryConfig.registryAddress})`,
-        "system",
-        ["system"],
-      );
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      addLog("warn", `ERC-8004 registry service disabled: ${msg}`, "system", [
-        "system",
-      ]);
-      logger.warn({ err }, "Failed to initialize ERC-8004 registry service");
-    }
-  }
-
-  state.registryService = registryService;
-  state.dropService = dropService;
 
   addLog(
     "info",
-    `Discovered ${plugins.length} plugins, ${skills.length} skills`,
+    `Discovered ${plugins.length} plugins, loading skills in background`,
     "system",
     ["system", "plugins"],
   );
@@ -10418,6 +11603,125 @@ export async function startApiServer(opts?: {
     });
   };
 
+  // ── Deferred startup work (non-blocking) ────────────────────────────────
+  // Keep API startup fast: listen first, then warm optional subsystems.
+  const startDeferredStartupWork = () => {
+    void (async () => {
+      try {
+        const discoveredSkills = await discoverSkills(
+          workspaceDir,
+          state.config,
+          state.runtime,
+        );
+        state.skills = discoveredSkills;
+        addLog(
+          "info",
+          `Discovered ${discoveredSkills.length} skills`,
+          "system",
+          ["system", "plugins"],
+        );
+      } catch (err) {
+        logger.warn(
+          `[milaidy-api] Skill discovery failed during startup: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    })();
+
+    void (async () => {
+      try {
+        await trainingService.initialize();
+        bindTrainingStream();
+        addLog("info", "Training service initialised", "system", [
+          "system",
+          "training",
+        ]);
+      } catch (err) {
+        logger.error(
+          `[milaidy-api] Training service init failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    })();
+
+    void (async () => {
+      if (!state.config.cloud?.enabled || !state.config.cloud.apiKey) return;
+      const mgr = new CloudManager(state.config.cloud, {
+        onStatusChange: (s) => {
+          addLog("info", `Cloud connection status: ${s}`, "cloud", [
+            "server",
+            "cloud",
+          ]);
+        },
+      });
+
+      try {
+        await mgr.init();
+        state.cloudManager = mgr;
+        addLog(
+          "info",
+          "Cloud manager initialised (Eliza Cloud enabled)",
+          "cloud",
+          ["server", "cloud"],
+        );
+      } catch (err) {
+        addLog(
+          "warn",
+          `Cloud manager init failed: ${err instanceof Error ? err.message : String(err)}`,
+          "cloud",
+          ["server", "cloud"],
+        );
+      }
+    })();
+
+    void (async () => {
+      initializeOGCodeInState();
+
+      // Get EVM private key from runtime secrets (preferred) or config.env (fallback)
+      const runtime = state.runtime;
+      const evmKey =
+        (runtime?.getSetting?.("EVM_PRIVATE_KEY") as string | undefined) ??
+        (state.config.env as Record<string, string> | undefined)
+          ?.EVM_PRIVATE_KEY;
+      const registryConfig = state.config.registry;
+      if (
+        !evmKey ||
+        !registryConfig?.registryAddress ||
+        !registryConfig.mainnetRpc
+      ) {
+        return;
+      }
+
+      try {
+        const txService = new TxService(registryConfig.mainnetRpc, evmKey);
+        state.registryService = new RegistryService(
+          txService,
+          registryConfig.registryAddress,
+        );
+
+        if (registryConfig.collectionAddress) {
+          const dropEnabled = state.config.features?.dropEnabled === true;
+          state.dropService = new DropService(
+            txService,
+            registryConfig.collectionAddress,
+            dropEnabled,
+          );
+        }
+
+        addLog(
+          "info",
+          `ERC-8004 registry service initialised (${registryConfig.registryAddress})`,
+          "system",
+          ["system"],
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        addLog("warn", `ERC-8004 registry service disabled: ${msg}`, "system", [
+          "system",
+        ]);
+        logger.warn({ err }, "Failed to initialize ERC-8004 registry service");
+      }
+    })();
+  };
+
   // ── WebSocket Server ─────────────────────────────────────────────────────
   const wss = new WebSocketServer({ noServer: true });
   const wsClients = new Set<WebSocket>();
@@ -10436,7 +11740,6 @@ export async function startApiServer(opts?: {
         rejectWebSocketUpgrade(socket, rejection.status, rejection.reason);
         return;
       }
-
       wss.handleUpgrade(request, socket, head, (ws) => {
         wss.emit("connection", ws, request);
       });
@@ -10672,6 +11975,7 @@ export async function startApiServer(opts?: {
       logger.info(
         `[milaidy-api] Listening on http://${displayHost}:${actualPort}`,
       );
+      startDeferredStartupWork();
       resolve({
         port: actualPort,
         close: () =>

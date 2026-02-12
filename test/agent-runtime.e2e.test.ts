@@ -167,6 +167,31 @@ function sleep(ms: number): Promise<void> {
   });
 }
 
+function readSerializedProperty(
+  value: unknown,
+  key: string,
+): unknown | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const direct = (value as Record<string, unknown>)[key];
+  if (direct !== undefined) return direct;
+  const properties = (value as Record<string, unknown>).properties;
+  if (
+    !properties ||
+    typeof properties !== "object" ||
+    Array.isArray(properties)
+  )
+    return undefined;
+  return (properties as Record<string, unknown>)[key];
+}
+
+function readSerializedArray(value: unknown): Array<Record<string, unknown>> {
+  if (Array.isArray(value)) return value as Array<Record<string, unknown>>;
+  if (!value || typeof value !== "object") return [];
+  const items = (value as Record<string, unknown>).items;
+  if (Array.isArray(items)) return items as Array<Record<string, unknown>>;
+  return [];
+}
+
 async function postChatWithRetries(
   port: number,
   attempts = 3,
@@ -205,6 +230,49 @@ async function postChatWithRetries(
   }
   throw new Error(
     `POST /api/chat failed after ${attempts} attempts: ${errors.join(" | ")}`,
+  );
+}
+
+async function postChatPromptWithRetries(
+  port: number,
+  prompt: string,
+  attempts = 4,
+  timeoutMs = 90_000,
+): Promise<{ status: number; data: Record<string, unknown> }> {
+  const errors: string[] = [];
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      const response = await http$(
+        port,
+        "POST",
+        "/api/chat",
+        { text: prompt, mode: "simple" },
+        { timeoutMs },
+      );
+      const text = response.data.text;
+      if (
+        response.status === 200 &&
+        typeof text === "string" &&
+        text.trim().length > 0
+      ) {
+        return response;
+      }
+      errors.push(
+        `attempt ${attempt}: status=${response.status}, textType=${typeof text}, textLength=${
+          typeof text === "string" ? text.length : 0
+        }`,
+      );
+    } catch (err) {
+      errors.push(
+        `attempt ${attempt}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+    if (attempt < attempts) {
+      await sleep(1_000);
+    }
+  }
+  throw new Error(
+    `POST /api/chat(prompt) failed after ${attempts} attempts: ${errors.join(" | ")}`,
   );
 }
 
@@ -262,6 +330,7 @@ describe("Agent Runtime E2E", () => {
     "@elizaos/plugin-commands",
     "@elizaos/plugin-personality",
     "@elizaos/plugin-experience",
+    "@elizaos/plugin-todo",
     // NOTE: @elizaos/plugin-form is excluded because its package.json has
     // an incorrect main/module/exports entry that prevents resolution.
   ];
@@ -620,6 +689,74 @@ describe("Agent Runtime E2E", () => {
     );
 
     it.skipIf(!hasModelProvider)(
+      "todo CRUD works through workbench endpoints",
+      async () => {
+        const todoName = `REST Todo ${Date.now()}`;
+        const create = await http$(
+          server?.port,
+          "POST",
+          "/api/workbench/todos",
+          {
+            name: todoName,
+            description: "Created from agent-runtime REST e2e",
+            priority: 2,
+            isUrgent: false,
+            type: "one-off",
+          },
+        );
+        expect(create.status).toBe(201);
+        const todo = create.data.todo as Record<string, unknown>;
+        const todoId = String(todo.id ?? "");
+        expect(todoId.length).toBeGreaterThan(0);
+
+        const list = await http$(server?.port, "GET", "/api/workbench/todos");
+        expect(list.status).toBe(200);
+        const todos = list.data.todos as Array<Record<string, unknown>>;
+        expect(todos.some((item) => item.id === todoId)).toBe(true);
+
+        const update = await http$(
+          server?.port,
+          "PUT",
+          `/api/workbench/todos/${encodeURIComponent(todoId)}`,
+          { priority: 1, isUrgent: true },
+        );
+        expect(update.status).toBe(200);
+        expect((update.data.todo as Record<string, unknown>).priority).toBe(1);
+        expect((update.data.todo as Record<string, unknown>).isUrgent).toBe(
+          true,
+        );
+
+        const complete = await http$(
+          server?.port,
+          "POST",
+          `/api/workbench/todos/${encodeURIComponent(todoId)}/complete`,
+          { isCompleted: true },
+        );
+        expect(complete.status).toBe(200);
+        expect(complete.data.ok).toBe(true);
+
+        const get = await http$(
+          server?.port,
+          "GET",
+          `/api/workbench/todos/${encodeURIComponent(todoId)}`,
+        );
+        expect(get.status).toBe(200);
+        expect((get.data.todo as Record<string, unknown>).isCompleted).toBe(
+          true,
+        );
+
+        const del = await http$(
+          server?.port,
+          "DELETE",
+          `/api/workbench/todos/${encodeURIComponent(todoId)}`,
+        );
+        expect(del.status).toBe(200);
+        expect(del.data.ok).toBe(true);
+      },
+      120_000,
+    );
+
+    it.skipIf(!hasModelProvider)(
       "POST /api/chat rejects empty text",
       async () => {
         expect(
@@ -963,7 +1100,88 @@ describe("Agent Runtime E2E", () => {
   });
 
   // ===================================================================
-  //  10. startEliza() — real subprocess test
+  //  10. Todos — real LLM action access and chat-created todo verification
+  // ===================================================================
+
+  describe("todos (real LLM + actions)", () => {
+    it.skipIf(!hasModelProvider)(
+      "runtime exposes todo actions",
+      async () => {
+        const runtimeDebug = await http$(server?.port, "GET", "/api/runtime");
+        expect(runtimeDebug.status).toBe(200);
+        let actions = readSerializedArray(
+          (runtimeDebug.data.order as Record<string, unknown>)?.actions,
+        );
+        if (actions.length === 0) {
+          actions = readSerializedArray(
+            (runtimeDebug.data.sections as Record<string, unknown>)?.actions,
+          );
+        }
+        expect(actions.length).toBeGreaterThan(0);
+        const actionNames = actions
+          .map((action) => readSerializedProperty(action, "name"))
+          .map((name) => (typeof name === "string" ? name : null))
+          .filter((name): name is string => name !== null);
+
+        const actionAliases: string[][] = [
+          ["CREATE_TODO", "CREATE_TASK"],
+          ["COMPLETE_TODO", "COMPLETE_TASK"],
+          ["UPDATE_TODO", "UPDATE_TASK"],
+          ["CANCEL_TODO", "CANCEL_TASK"],
+        ];
+        for (const aliases of actionAliases) {
+          expect(actionNames.some((name) => aliases.includes(name))).toBe(true);
+        }
+      },
+      120_000,
+    );
+
+    it.skipIf(!hasModelProvider)(
+      "chat can create a todo via action and workbench API reflects it",
+      async () => {
+        const todoName = `LLM Todo ${Date.now()}`;
+        const prompt = [
+          "Create a one-off todo task right now.",
+          `Name: ${todoName}`,
+          "Description: created by the live e2e chat test.",
+          "Priority: 2",
+          "Urgent: false",
+          "Then confirm creation in one short sentence.",
+        ].join(" ");
+
+        const chatRes = await postChatPromptWithRetries(
+          server?.port,
+          prompt,
+          5,
+        );
+        expect(chatRes.status).toBe(200);
+        const responseText = String(chatRes.data.text ?? "");
+        expect(responseText.length).toBeGreaterThan(0);
+
+        let found = false;
+        for (let attempt = 1; attempt <= 6; attempt += 1) {
+          const todosRes = await http$(
+            server?.port,
+            "GET",
+            "/api/workbench/todos",
+          );
+          expect(todosRes.status).toBe(200);
+          const todos = (todosRes.data.todos ?? []) as Array<
+            Record<string, unknown>
+          >;
+          found = todos.some((todo) => todo.name === todoName);
+          if (found) break;
+          await sleep(1_000);
+        }
+
+        expect(found).toBe(true);
+      },
+      240_000,
+    );
+  });
+
+  // ===================================================================
+  //  11. startEliza() — real subprocess test
   // ===================================================================
 
   describe("startEliza subprocess", () => {
@@ -1002,6 +1220,10 @@ describe("Agent Runtime E2E", () => {
         env.XDG_DATA_HOME = path.join(subHome, ".local/share");
         env.XDG_STATE_HOME = path.join(subHome, ".local/state");
         env.XDG_CACHE_HOME = path.join(subHome, ".cache");
+        // Avoid collisions with any local process already bound to default 2138.
+        env.MILAIDY_API_PORT = String(
+          30_000 + Math.floor(Math.random() * 20_000),
+        );
         // Remove test-isolation vars that might confuse the subprocess
         delete env.MILAIDY_CONFIG_PATH;
         delete env.MILAIDY_STATE_DIR;

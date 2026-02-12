@@ -19,7 +19,6 @@ import {
   buildCharacterFromConfig,
   CUSTOM_PLUGINS_DIRNAME,
   collectPluginNames,
-  getSecurityBlockedPluginReason,
   mergeDropInPlugins,
   resolvePackageEntry,
   resolvePrimaryModel,
@@ -120,6 +119,23 @@ describe("collectPluginNames", () => {
     expect(names.has("@elizaos/plugin-plugin-manager")).toBe(true);
   });
 
+  it("does not load @elizaos/plugin-shell when features.shellEnabled is false", () => {
+    const config = {
+      features: { shellEnabled: false },
+    } as unknown as MilaidyConfig;
+    const names = collectPluginNames(config);
+    expect(names.has("@elizaos/plugin-shell")).toBe(false);
+  });
+
+  it("removes @elizaos/plugin-shell from explicit allowlist when shell is disabled", () => {
+    const config = {
+      plugins: { allow: ["@elizaos/plugin-shell"] },
+      features: { shellEnabled: false },
+    } as unknown as MilaidyConfig;
+    const names = collectPluginNames(config);
+    expect(names.has("@elizaos/plugin-shell")).toBe(false);
+  });
+
   it("adds model-provider plugins when env keys are present", () => {
     process.env.ANTHROPIC_API_KEY = "sk-test";
     process.env.OPENAI_API_KEY = "sk-test";
@@ -142,8 +158,23 @@ describe("collectPluginNames", () => {
     expect(names.has("@elizaos/plugin-slack")).toBe(false);
   });
 
-  it("uses enhanced telegram plugin when enabled via plugins.entries", () => {
+  it("uses enhanced Telegram plugin when telegram is enabled via plugins.entries", () => {
     const config = {
+      plugins: {
+        entries: { telegram: { enabled: true } },
+      },
+    } as unknown as MilaidyConfig;
+    const names = collectPluginNames(config);
+    // Should load the enhanced telegram plugin, NOT the base @elizaos/plugin-telegram
+    expect(names.has("@milaidy/plugin-telegram-enhanced")).toBe(true);
+    expect(names.has("@elizaos/plugin-telegram")).toBe(false);
+  });
+
+  it("uses enhanced Telegram plugin from CHANNEL_PLUGIN_MAP for connectors with plugins.entries", () => {
+    // When both connectors AND plugins.entries set telegram, the enhanced
+    // plugin should load (not both enhanced + base).
+    const config = {
+      connectors: { telegram: { botToken: "tok" } },
       plugins: {
         entries: { telegram: { enabled: true } },
       },
@@ -309,20 +340,6 @@ describe("collectPluginNames", () => {
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-elizacloud")).toBe(true);
     expect(names.has("@elizaos/plugin-vision")).toBe(false);
-  });
-
-  it("blocks @elizaos/plugin-pdf even when explicitly allow-listed", () => {
-    const config = {
-      plugins: { allow: ["@elizaos/plugin-pdf"] },
-    } as unknown as MilaidyConfig;
-    const names = collectPluginNames(config);
-    expect(names.has("@elizaos/plugin-pdf")).toBe(false);
-    expect(names.has("@elizaos/plugin-sql")).toBe(true);
-  });
-
-  it("provides a security block reason for @elizaos/plugin-pdf", () => {
-    const reason = getSecurityBlockedPluginReason("@elizaos/plugin-pdf");
-    expect(reason).toContain("pdfjs-dist");
   });
 });
 

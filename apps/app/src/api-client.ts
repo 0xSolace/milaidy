@@ -79,7 +79,25 @@ export interface QueryResult {
   durationMs: number;
 }
 
-export type AgentState = "not_started" | "running" | "paused" | "stopped" | "restarting" | "error";
+// Custom actions types
+export type CustomActionHandler =
+  | { type: "http"; method: string; url: string; headers?: Record<string, string>; bodyTemplate?: string }
+  | { type: "shell"; command: string }
+  | { type: "code"; code: string };
+
+export interface CustomActionDef {
+  id: string;
+  name: string;
+  description: string;
+  similes?: string[];
+  parameters: Array<{ name: string; description: string; required: boolean }>;
+  handler: CustomActionHandler;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type AgentState = "not_started" | "starting" | "running" | "paused" | "stopped" | "restarting" | "error";
 
 export interface AgentStatus {
   state: AgentState;
@@ -395,6 +413,10 @@ export interface PluginInfo {
   npmName?: string;
   version?: string;
   pluginDeps?: string[];
+  /** Whether this plugin is actually loaded and running in the runtime. */
+  isActive?: boolean;
+  /** Error message when plugin is installed but failed to load. */
+  loadError?: string;
   /** Server-provided UI hints for plugin configuration fields. */
   configUiHints?: Record<string, ConfigUiHint>;
   /** Optional icon URL or emoji for the plugin card header. */
@@ -829,13 +851,13 @@ export interface ShareIngestItem {
 }
 
 // Workbench
-export interface WorkbenchGoal {
+export interface WorkbenchTask {
   id: string;
   name: string;
-  description?: string;
+  description: string;
   tags: string[];
-  metadata?: { priority?: number };
   isCompleted: boolean;
+  updatedAt?: number;
 }
 
 export interface WorkbenchTodo {
@@ -849,7 +871,8 @@ export interface WorkbenchTodo {
 }
 
 export interface WorkbenchOverview {
-  goals: WorkbenchGoal[];
+  tasks: WorkbenchTask[];
+  triggers: TriggerSummary[];
   todos: WorkbenchTodo[];
   autonomy?: {
     enabled: boolean;
@@ -1465,6 +1488,7 @@ declare global {
 
 const GENERIC_NO_RESPONSE_TEXT =
   "Sorry, I couldn't generate a response right now. Please try again.";
+const AGENT_TRANSFER_MIN_PASSWORD_LENGTH = 4;
 
 export class MilaidyClient {
   private _baseUrl: string;
@@ -1472,8 +1496,23 @@ export class MilaidyClient {
   private _token: string | null;
   private ws: WebSocket | null = null;
   private wsHandlers = new Map<string, Set<WsEventHandler>>();
+  private wsSendQueue: string[] = [];
+  private readonly wsSendQueueLimit = 32;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private backoffMs = 500;
+
+  private static resolveElectronLocalFallbackBase(): string {
+    if (typeof window === "undefined") return "";
+    const proto = window.location.protocol;
+    if (proto === "capacitor-electron:") {
+      return "http://127.0.0.1:2138";
+    }
+    // Legacy Electron file:// mode fallback.
+    if (proto === "file:" && /\bElectron\b/i.test(window.navigator.userAgent)) {
+      return "http://127.0.0.1:2138";
+    }
+    return "";
+  }
 
   constructor(baseUrl?: string, token?: string) {
     this._explicitBase = baseUrl != null;
@@ -1485,7 +1524,9 @@ export class MilaidyClient {
     // Priority: explicit arg > Capacitor/Electron injected global > same origin (Vite proxy)
     const injectedBase =
       typeof window !== "undefined" ? window.__MILAIDY_API_BASE__ : undefined;
-    this._baseUrl = baseUrl ?? (injectedBase ?? "");
+    this._baseUrl =
+      baseUrl ??
+      (injectedBase ?? MilaidyClient.resolveElectronLocalFallbackBase());
   }
 
   /**
@@ -1499,6 +1540,8 @@ export class MilaidyClient {
       const injected = window.__MILAIDY_API_BASE__;
       if (injected) {
         this._baseUrl = injected;
+      } else {
+        this._baseUrl = MilaidyClient.resolveElectronLocalFallbackBase();
       }
     }
     return this._baseUrl;
@@ -1601,6 +1644,13 @@ export class MilaidyClient {
     });
   }
 
+  async runTerminalCommand(command: string): Promise<{ ok: boolean }> {
+    return this.fetch("/api/terminal/run", {
+      method: "POST",
+      body: JSON.stringify({ command }),
+    });
+  }
+
   async getOnboardingStatus(): Promise<{ complete: boolean }> {
     return this.fetch("/api/onboarding/status");
   }
@@ -1697,6 +1747,33 @@ export class MilaidyClient {
   async restartAgent(): Promise<AgentStatus> {
     const res = await this.fetch<{ status: AgentStatus }>("/api/agent/restart", { method: "POST" });
     return res.status;
+  }
+
+  /**
+   * Restart the agent if possible, or wait for an in-progress restart to finish.
+   * Polls status until the agent state is "running".
+   */
+  async restartAndWait(maxWaitMs = 30000): Promise<AgentStatus> {
+    // Try triggering a restart; 409 means one is already in progress
+    try {
+      await this.restartAgent();
+    } catch {
+      // Already restarting — that's fine, we'll poll
+    }
+    // Poll until running
+    const start = Date.now();
+    const interval = 1000;
+    while (Date.now() - start < maxWaitMs) {
+      await new Promise((r) => setTimeout(r, interval));
+      try {
+        const status = await this.getStatus();
+        if (status.state === "running") return status;
+      } catch {
+        // Server may be briefly unavailable during restart
+      }
+    }
+    // Return whatever we get after timeout
+    return this.getStatus();
   }
 
   async resetAgent(): Promise<void> {
@@ -2077,6 +2154,11 @@ export class MilaidyClient {
    * Returns the raw Response so the caller can stream the binary body.
    */
   async exportAgent(password: string, includeLogs = false): Promise<Response> {
+    if (password.length < AGENT_TRANSFER_MIN_PASSWORD_LENGTH) {
+      throw new Error(
+        `Password must be at least ${AGENT_TRANSFER_MIN_PASSWORD_LENGTH} characters.`,
+      );
+    }
     if (!this.apiAvailable) {
       throw new Error("API not available (no HTTP origin)");
     }
@@ -2123,6 +2205,11 @@ export class MilaidyClient {
     agentName: string;
     counts: Record<string, number>;
   }> {
+    if (password.length < AGENT_TRANSFER_MIN_PASSWORD_LENGTH) {
+      throw new Error(
+        `Password must be at least ${AGENT_TRANSFER_MIN_PASSWORD_LENGTH} characters.`,
+      );
+    }
     if (!this.apiAvailable) {
       throw new Error("API not available (no HTTP origin)");
     }
@@ -2196,7 +2283,12 @@ export class MilaidyClient {
   async getWalletNfts(): Promise<WalletNftsResponse> { return this.fetch("/api/wallet/nfts"); }
   async getWalletConfig(): Promise<WalletConfigStatus> { return this.fetch("/api/wallet/config"); }
   async updateWalletConfig(config: Record<string, string>): Promise<{ ok: boolean }> { return this.fetch("/api/wallet/config", { method: "PUT", body: JSON.stringify(config) }); }
-  async exportWalletKeys(): Promise<WalletExportResult> { return this.fetch("/api/wallet/export", { method: "POST", body: JSON.stringify({ confirm: true }) }); }
+  async exportWalletKeys(exportToken: string): Promise<WalletExportResult> {
+    return this.fetch("/api/wallet/export", {
+      method: "POST",
+      body: JSON.stringify({ confirm: true, exportToken }),
+    });
+  }
 
   // Software Updates
   async getUpdateStatus(force = false): Promise<UpdateStatus> {
@@ -2379,32 +2471,107 @@ export class MilaidyClient {
 
   // Workbench
 
-  async getWorkbenchOverview(): Promise<WorkbenchOverview & { goalsAvailable?: boolean; todosAvailable?: boolean }> {
+  async getWorkbenchOverview(): Promise<
+    WorkbenchOverview & {
+      tasksAvailable?: boolean;
+      triggersAvailable?: boolean;
+      todosAvailable?: boolean;
+    }
+  > {
     return this.fetch("/api/workbench/overview");
   }
 
-  async createWorkbenchGoal(data: { name: string; description: string; tags: string[]; priority: number }): Promise<void> {
-    await this.fetch("/api/workbench/goals", { method: "POST", body: JSON.stringify(data) });
+  async listWorkbenchTasks(): Promise<{ tasks: WorkbenchTask[] }> {
+    return this.fetch("/api/workbench/tasks");
   }
 
-  async updateWorkbenchGoal(goalId: string, data: { name?: string; description?: string; tags?: string[]; priority?: number }): Promise<void> {
-    await this.fetch(`/api/workbench/goals/${encodeURIComponent(goalId)}`, { method: "PUT", body: JSON.stringify(data) });
+  async getWorkbenchTask(taskId: string): Promise<{ task: WorkbenchTask }> {
+    return this.fetch(`/api/workbench/tasks/${encodeURIComponent(taskId)}`);
   }
 
-  async setWorkbenchGoalCompleted(goalId: string, isCompleted: boolean): Promise<void> {
-    await this.fetch(`/api/workbench/goals/${encodeURIComponent(goalId)}/complete`, { method: "POST", body: JSON.stringify({ isCompleted }) });
+  async createWorkbenchTask(data: {
+    name: string;
+    description?: string;
+    tags?: string[];
+    isCompleted?: boolean;
+  }): Promise<{ task: WorkbenchTask }> {
+    return this.fetch("/api/workbench/tasks", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
   }
 
-  async createWorkbenchTodo(data: { name: string; description: string; priority: number; isUrgent: boolean; type: string }): Promise<void> {
-    await this.fetch("/api/workbench/todos", { method: "POST", body: JSON.stringify(data) });
+  async updateWorkbenchTask(
+    taskId: string,
+    data: {
+      name?: string;
+      description?: string;
+      tags?: string[];
+      isCompleted?: boolean;
+    },
+  ): Promise<{ task: WorkbenchTask }> {
+    return this.fetch(`/api/workbench/tasks/${encodeURIComponent(taskId)}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
   }
 
-  async updateWorkbenchTodo(todoId: string, data: { priority?: number; isUrgent?: boolean }): Promise<void> {
-    await this.fetch(`/api/workbench/todos/${encodeURIComponent(todoId)}`, { method: "PUT", body: JSON.stringify(data) });
+  async deleteWorkbenchTask(taskId: string): Promise<{ ok: boolean }> {
+    return this.fetch(`/api/workbench/tasks/${encodeURIComponent(taskId)}`, {
+      method: "DELETE",
+    });
+  }
+
+  async listWorkbenchTodos(): Promise<{ todos: WorkbenchTodo[] }> {
+    return this.fetch("/api/workbench/todos");
+  }
+
+  async getWorkbenchTodo(todoId: string): Promise<{ todo: WorkbenchTodo }> {
+    return this.fetch(`/api/workbench/todos/${encodeURIComponent(todoId)}`);
+  }
+
+  async createWorkbenchTodo(data: {
+    name: string;
+    description?: string;
+    priority?: number;
+    isUrgent?: boolean;
+    type?: string;
+    isCompleted?: boolean;
+  }): Promise<{ todo: WorkbenchTodo }> {
+    return this.fetch("/api/workbench/todos", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateWorkbenchTodo(
+    todoId: string,
+    data: {
+      name?: string;
+      description?: string;
+      priority?: number;
+      isUrgent?: boolean;
+      type?: string;
+      isCompleted?: boolean;
+    },
+  ): Promise<{ todo: WorkbenchTodo }> {
+    return this.fetch(`/api/workbench/todos/${encodeURIComponent(todoId)}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
   }
 
   async setWorkbenchTodoCompleted(todoId: string, isCompleted: boolean): Promise<void> {
-    await this.fetch(`/api/workbench/todos/${encodeURIComponent(todoId)}/complete`, { method: "POST", body: JSON.stringify({ isCompleted }) });
+    await this.fetch(`/api/workbench/todos/${encodeURIComponent(todoId)}/complete`, {
+      method: "POST",
+      body: JSON.stringify({ isCompleted }),
+    });
+  }
+
+  async deleteWorkbenchTodo(todoId: string): Promise<{ ok: boolean }> {
+    return this.fetch(`/api/workbench/todos/${encodeURIComponent(todoId)}`, {
+      method: "DELETE",
+    });
   }
 
   // Registry
@@ -2539,6 +2706,22 @@ export class MilaidyClient {
 
     this.ws.onopen = () => {
       this.backoffMs = 500;
+      if (this.wsSendQueue.length > 0 && this.ws?.readyState === WebSocket.OPEN) {
+        const pending = this.wsSendQueue;
+        this.wsSendQueue = [];
+        for (let i = 0; i < pending.length; i++) {
+          if (this.ws?.readyState !== WebSocket.OPEN) {
+            this.wsSendQueue = pending.slice(i).concat(this.wsSendQueue);
+            break;
+          }
+          try {
+            this.ws.send(pending[i]);
+          } catch {
+            this.wsSendQueue = pending.slice(i).concat(this.wsSendQueue);
+            break;
+          }
+        }
+      }
     };
 
     this.ws.onmessage = (event) => {
@@ -2584,8 +2767,31 @@ export class MilaidyClient {
 
   /** Send an arbitrary JSON message over the WebSocket connection. */
   sendWsMessage(data: Record<string, unknown>): void {
+    const payload = JSON.stringify(data);
     if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(data));
+      this.ws.send(payload);
+      return;
+    }
+
+    // Keep only the newest active-conversation update while disconnected.
+    if (data.type === "active-conversation") {
+      this.wsSendQueue = this.wsSendQueue.filter((queued) => {
+        try {
+          const parsed = JSON.parse(queued) as { type?: unknown };
+          return parsed.type !== "active-conversation";
+        } catch {
+          return true;
+        }
+      });
+    }
+
+    if (this.wsSendQueue.length >= this.wsSendQueueLimit) {
+      this.wsSendQueue.shift();
+    }
+    this.wsSendQueue.push(payload);
+
+    if (!this.ws || this.ws.readyState === WebSocket.CLOSED) {
+      this.connectWs();
     }
   }
 
@@ -3080,6 +3286,7 @@ export class MilaidyClient {
     }
     this.ws?.close();
     this.ws = null;
+    this.wsSendQueue = [];
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -3169,6 +3376,59 @@ export class MilaidyClient {
     return this.fetch("/api/whitelist/twitter/verify", {
       method: "POST",
       body: JSON.stringify({ tweetUrl }),
+    });
+  }
+
+  // ── Custom Actions ─────────────────────────────────────────────────────
+
+  async listCustomActions(): Promise<CustomActionDef[]> {
+    const data = await this.fetch<{ actions: CustomActionDef[] }>("/api/custom-actions");
+    return data.actions;
+  }
+
+  async createCustomAction(
+    action: Omit<CustomActionDef, "id" | "createdAt" | "updatedAt">,
+  ): Promise<CustomActionDef> {
+    const data = await this.fetch<{ ok: boolean; action: CustomActionDef }>(
+      "/api/custom-actions",
+      { method: "POST", body: JSON.stringify(action) },
+    );
+    return data.action;
+  }
+
+  async updateCustomAction(
+    id: string,
+    action: Partial<CustomActionDef>,
+  ): Promise<CustomActionDef> {
+    const data = await this.fetch<{ ok: boolean; action: CustomActionDef }>(
+      `/api/custom-actions/${encodeURIComponent(id)}`,
+      { method: "PUT", body: JSON.stringify(action) },
+    );
+    return data.action;
+  }
+
+  async deleteCustomAction(id: string): Promise<void> {
+    await this.fetch(`/api/custom-actions/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+  }
+
+  async testCustomAction(
+    id: string,
+    params: Record<string, string>,
+  ): Promise<{ ok: boolean; output: string; error?: string; durationMs: number }> {
+    return this.fetch(
+      `/api/custom-actions/${encodeURIComponent(id)}/test`,
+      { method: "POST", body: JSON.stringify({ params }) },
+    );
+  }
+
+  async generateCustomAction(
+    prompt: string,
+  ): Promise<{ ok: boolean; generated: Record<string, unknown> }> {
+    return this.fetch("/api/custom-actions/generate", {
+      method: "POST",
+      body: JSON.stringify({ prompt }),
     });
   }
 }

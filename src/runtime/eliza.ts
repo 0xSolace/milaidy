@@ -23,6 +23,7 @@ import {
   type Character,
   createMessageMemory,
   logger,
+  ModelType,
   mergeCharacterDefaults,
   type Plugin,
   stringToUuid,
@@ -63,6 +64,7 @@ import {
 } from "../services/sandbox-manager.js";
 import { diagnoseNoAIProvider } from "../services/version-compat.js";
 import { CORE_PLUGINS, OPTIONAL_CORE_PLUGINS } from "./core-plugins.js";
+import { MilaidyEmbeddingManager } from "./embedding-manager.js";
 import { createMilaidyPlugin } from "./milaidy-plugin.js";
 import {
   createPhettaCompanionPlugin,
@@ -155,31 +157,6 @@ const CHANNEL_ENV_MAP: Readonly<
 export { CORE_PLUGINS, OPTIONAL_CORE_PLUGINS };
 
 /**
- * Security blocklist for plugins that are temporarily disabled due to known
- * high-severity vulnerabilities in their dependency chain.
- *
- * Keep entries minimal and remove them once patched upstream versions ship.
- */
-const SECURITY_BLOCKED_PLUGINS: Readonly<Record<string, string>> = {
-  "@elizaos/plugin-pdf":
-    "Temporarily disabled: vulnerable pdfjs-dist chain (GHSA-wgrm-67xf-hhpq).",
-};
-
-export function getSecurityBlockedPluginReason(
-  pluginName: string,
-): string | null {
-  return SECURITY_BLOCKED_PLUGINS[pluginName] ?? null;
-}
-
-function applySecurityPluginBlocklist(pluginsToLoad: Set<string>): void {
-  for (const [pluginName, reason] of Object.entries(SECURITY_BLOCKED_PLUGINS)) {
-    if (pluginsToLoad.delete(pluginName)) {
-      logger.warn(`[milaidy] Blocking plugin ${pluginName}: ${reason}`);
-    }
-  }
-}
-
-/**
  * Optional plugins that require native binaries or specific config.
  * These are only loaded when explicitly enabled via features config,
  * NOT by default — they crash if their prerequisites are missing.
@@ -196,6 +173,7 @@ const CHANNEL_PLUGIN_MAP: Readonly<Record<string, string>> = {
   discord: "@elizaos/plugin-discord",
   telegram: "@milaidy/plugin-telegram-enhanced",
   slack: "@elizaos/plugin-slack",
+  twitter: "@elizaos/plugin-twitter",
   whatsapp: "@elizaos/plugin-whatsapp",
   signal: "@elizaos/plugin-signal",
   imessage: "@elizaos/plugin-imessage",
@@ -268,6 +246,8 @@ function extractPlugin(mod: PluginModuleShape): Plugin | null {
  */
 /** @internal Exported for testing. */
 export function collectPluginNames(config: MilaidyConfig): Set<string> {
+  const shellPluginDisabled = config.features?.shellEnabled === false;
+
   // Check for explicit allow list first
   const allowList = config.plugins?.allow;
   const hasExplicitAllowList = allowList && allowList.length > 0;
@@ -275,10 +255,19 @@ export function collectPluginNames(config: MilaidyConfig): Set<string> {
   // If there's an explicit allow list, respect it and skip auto-detection —
   // but always include essential plugins that the runtime depends on.
   if (hasExplicitAllowList) {
-    const names = new Set<string>(allowList);
+    const names = new Set<string>();
+    // Convert short names to full package names using plugin maps
+    for (const item of allowList) {
+      const pluginName =
+        CHANNEL_PLUGIN_MAP[item] ?? OPTIONAL_PLUGIN_MAP[item] ?? item;
+      names.add(pluginName);
+    }
     // Core plugins are always loaded regardless of allow list.
     for (const core of CORE_PLUGINS) {
       names.add(core);
+    }
+    if (shellPluginDisabled) {
+      names.delete("@elizaos/plugin-shell");
     }
 
     const cloudActive = config.cloud?.enabled || Boolean(config.cloud?.apiKey);
@@ -296,12 +285,22 @@ export function collectPluginNames(config: MilaidyConfig): Set<string> {
         names.delete(p);
       }
     }
-    applySecurityPluginBlocklist(names);
     return names;
   }
 
   // Otherwise, proceed with auto-detection
   const pluginsToLoad = new Set<string>(CORE_PLUGINS);
+  if (shellPluginDisabled) {
+    pluginsToLoad.delete("@elizaos/plugin-shell");
+  }
+
+  // Allow list is additive — extra plugins on top of auto-detection,
+  // not an exclusive whitelist that blocks everything else.
+  if (allowList && allowList.length > 0) {
+    for (const name of allowList) {
+      pluginsToLoad.add(name);
+    }
+  }
 
   // Connector plugins — load when connector has config entries
   // Prefer config.connectors, fall back to config.channels for backward compatibility
@@ -322,17 +321,18 @@ export function collectPluginNames(config: MilaidyConfig): Set<string> {
     }
   }
 
-  // plugin-local-embedding provides the TEXT_EMBEDDING delegate which is
-  // required for knowledge / memory retrieval.  Remote model-provider plugins
-  // do NOT supply this delegate, so local-embedding must always stay loaded.
-  // (Previously it was stripped when a remote provider was detected, but that
-  // left TEXT_EMBEDDING unhandled — see #10.)
-
-  // ElizaCloud plugin — load when cloud is enabled OR an API key exists
-  // (the key proves the user logged in; the enabled flag may have been
-  // accidentally reset by a provider switch or config merge).
-  if (config.cloud?.enabled || config.cloud?.apiKey) {
+  // ElizaCloud plugin — load when explicitly enabled OR when an API key
+  // exists in config (persisted login). This matches allow-list behavior.
+  if (config.cloud?.enabled === true || Boolean(config.cloud?.apiKey)) {
     pluginsToLoad.add("@elizaos/plugin-elizacloud");
+
+    // When cloud is active, remove direct AI provider plugins — the cloud
+    // plugin handles ALL model calls via its own gateway.
+    const directProviders = new Set(Object.values(PROVIDER_PLUGIN_MAP));
+    directProviders.delete("@elizaos/plugin-elizacloud");
+    for (const p of directProviders) {
+      pluginsToLoad.delete(p);
+    }
   }
 
   // Optional feature plugins from config.plugins.entries
@@ -346,6 +346,8 @@ export function collectPluginNames(config: MilaidyConfig): Set<string> {
         typeof entry === "object" &&
         (entry as Record<string, unknown>).enabled !== false
       ) {
+        // Connector keys (telegram, discord, etc.) must use CHANNEL_PLUGIN_MAP
+        // so the correct variant loads (e.g. enhanced telegram, not base).
         const pluginName =
           CHANNEL_PLUGIN_MAP[key] ??
           OPTIONAL_PLUGIN_MAP[key] ??
@@ -390,7 +392,6 @@ export function collectPluginNames(config: MilaidyConfig): Set<string> {
     }
   }
 
-  applySecurityPluginBlocklist(pluginsToLoad);
   return pluginsToLoad;
 }
 
@@ -1632,7 +1633,7 @@ export interface StartElizaOptions {
 export interface BootElizaRuntimeOptions {
   /**
    * When true, require an existing ~/.milaidy/milaidy.json config file.
-   * This is used by non-CLI UIs (like the pi-tui interface) where interactive
+   * This is used by non-CLI UIs (like the @elizaos/tui interface) where interactive
    * onboarding prompts would break the alternate screen.
    */
   requireConfig?: boolean;
@@ -1668,7 +1669,7 @@ export async function startEliza(
   opts?: StartElizaOptions,
 ): Promise<AgentRuntime | undefined> {
   // Start buffering logs early so startup messages appear in the UI log viewer
-  const { captureEarlyLogs } = await import("../api/server");
+  const { captureEarlyLogs } = await import("../api/early-logs");
   captureEarlyLogs();
 
   // 1. Load Milaidy config from ~/.milaidy/milaidy.json
@@ -1696,7 +1697,7 @@ export async function startEliza(
 
   // 1c. Apply logging level from config to process.env so the global
   //     @elizaos/core logger (used by plugins) respects it.
-  //     Default to "error" to keep the CLI startup output readable.
+  //     config.logging.level is guaranteed to be set (defaults to "error").
   //     Users can still opt into noisy logs via config.logging.level or
   //     an explicit LOG_LEVEL environment variable.
   if (!process.env.LOG_LEVEL) {
@@ -1870,13 +1871,11 @@ export async function startEliza(
 
   // Resolve the runtime log level from config (AgentRuntime doesn't support
   // "silent", so we map it to "fatal" as the quietest supported level).
-  // Default to "error" so `npx milaidy` is not flooded by runtime logs.
   const runtimeLogLevel = (() => {
     // process.env.LOG_LEVEL is already resolved (set explicitly or from
     // config.logging.level above), so prefer it to honour the dev-mode
     // LOG_LEVEL=error override set by scripts/dev-ui.mjs.
-    const lvl = process.env.LOG_LEVEL ?? config.logging?.level;
-    if (!lvl) return "error" as const;
+    const lvl = process.env.LOG_LEVEL ?? config.logging?.level ?? "error";
     if (lvl === "silent") return "fatal" as const;
     return lvl as "trace" | "debug" | "info" | "warn" | "error" | "fatal";
   })();
@@ -2098,6 +2097,43 @@ export async function startEliza(
     );
   }
 
+  // 7e. Register Milaidy's optimized TEXT_EMBEDDING handler at priority 100
+  //     (supersedes the upstream plugin-local-embedding's priority 10).
+  //     The upstream plugin still provides TEXT_TOKENIZER_ENCODE/DECODE;
+  //     we only replace its embedding with Metal GPU + idle unloading.
+  //     Uses `let` so hot-reload can swap to a fresh manager instance.
+  let embeddingManager = new MilaidyEmbeddingManager({
+    model: config.embedding?.model,
+    modelRepo: config.embedding?.modelRepo,
+    dimensions: config.embedding?.dimensions,
+    gpuLayers:
+      config.embedding?.gpuLayers ??
+      (process.platform === "darwin" ? "auto" : 0),
+    idleTimeoutMs: (config.embedding?.idleTimeoutMinutes ?? 30) * 60 * 1000,
+  });
+  const embeddingDimensions = config.embedding?.dimensions ?? 768;
+  runtime.registerModel(
+    ModelType.TEXT_EMBEDDING,
+    async (_runtime, params) => {
+      const text =
+        typeof params === "string"
+          ? params
+          : params && typeof params === "object" && "text" in params
+            ? (params as { text: string }).text
+            : null;
+      if (!text) return new Array(embeddingDimensions).fill(0);
+      return embeddingManager.generateEmbedding(text);
+    },
+    "milaidy",
+    100,
+  );
+  logger.info(
+    "[milaidy] Embedding handler registered (priority 100, " +
+      `model=${config.embedding?.model ?? "nomic-embed-text-v1.5.Q5_K_M.gguf"}, ` +
+      `dims=${embeddingDimensions}, ` +
+      `gpu=${config.embedding?.gpuLayers ?? (process.platform === "darwin" ? "auto" : 0)})`,
+  );
+
   // 8. Initialize the runtime (registers remaining plugins, starts services)
   await runtime.initialize();
 
@@ -2201,6 +2237,17 @@ export async function startEliza(
             );
           }
         }
+      } catch (err) {
+        logger.warn(`[milaidy] Sandbox shutdown error: ${formatError(err)}`);
+      }
+      try {
+        await embeddingManager.dispose();
+      } catch (err) {
+        logger.warn(
+          `[milaidy] Error disposing embedding manager: ${formatError(err)}`,
+        );
+      }
+      try {
         await runtime.stop();
       } catch (err) {
         logger.warn(`[milaidy] Error during shutdown: ${formatError(err)}`);
@@ -2255,6 +2302,13 @@ export async function startEliza(
         logger.info("[milaidy] Hot-reload: Restarting runtime...");
         try {
           // Stop the old runtime to release resources (DB connections, timers, etc.)
+          try {
+            await embeddingManager.dispose();
+          } catch (disposeErr) {
+            logger.warn(
+              `[milaidy] Hot-reload: embedding manager dispose failed: ${formatError(disposeErr)}`,
+            );
+          }
           try {
             await runtime.stop();
           } catch (stopErr) {
@@ -2366,15 +2420,55 @@ export async function startEliza(
 
           // Pre-register plugin-sql + local-embedding before initialize()
           // to avoid the same race condition as the initial startup.
-          if (sqlPlugin) {
-            await newRuntime.registerPlugin(sqlPlugin.plugin);
+          // Re-derive from freshly resolved plugins (not outer closure) so
+          // hot-reload picks up any plugin updates.
+          const freshSqlPlugin = resolvedPlugins.find(
+            (p) => p.name === "@elizaos/plugin-sql",
+          );
+          const freshLocalEmbeddingPlugin = resolvedPlugins.find(
+            (p) => p.name === "@elizaos/plugin-local-embedding",
+          );
+          if (freshSqlPlugin) {
+            await newRuntime.registerPlugin(freshSqlPlugin.plugin);
             if (newRuntime.adapter && !(await newRuntime.adapter.isReady())) {
               await newRuntime.adapter.init();
             }
           }
-          if (localEmbeddingPlugin) {
-            await newRuntime.registerPlugin(localEmbeddingPlugin.plugin);
+          if (freshLocalEmbeddingPlugin) {
+            await newRuntime.registerPlugin(freshLocalEmbeddingPlugin.plugin);
           }
+
+          // Re-create embedding manager with fresh config and register
+          // at priority 100 (same as initial startup).
+          const freshEmbeddingManager = new MilaidyEmbeddingManager({
+            model: freshConfig.embedding?.model,
+            modelRepo: freshConfig.embedding?.modelRepo,
+            dimensions: freshConfig.embedding?.dimensions,
+            gpuLayers:
+              freshConfig.embedding?.gpuLayers ??
+              (process.platform === "darwin" ? "auto" : 0),
+            idleTimeoutMs:
+              (freshConfig.embedding?.idleTimeoutMinutes ?? 30) * 60 * 1000,
+          });
+          const freshEmbeddingDims = freshConfig.embedding?.dimensions ?? 768;
+          newRuntime.registerModel(
+            ModelType.TEXT_EMBEDDING,
+            async (_rt, params) => {
+              const text =
+                typeof params === "string"
+                  ? params
+                  : params && typeof params === "object" && "text" in params
+                    ? (params as { text: string }).text
+                    : null;
+              if (!text) return new Array(freshEmbeddingDims).fill(0);
+              return freshEmbeddingManager.generateEmbedding(text);
+            },
+            "milaidy",
+            100,
+          );
+          // Swap the outer reference so shutdown/next-reload disposes
+          // the correct instance.
+          embeddingManager = freshEmbeddingManager;
 
           await newRuntime.initialize();
           runtime = newRuntime;
