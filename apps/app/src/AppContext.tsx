@@ -1007,6 +1007,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const cloudLoginBusyRef = useRef(false);
   /** Synchronous lock for update channel changes to prevent duplicate submits. */
   const updateChannelSavingRef = useRef(false);
+  /** Synchronous lock for onboarding completion submit to prevent duplicate clicks. */
+  const onboardingFinishSavingRef = useRef(false);
 
   // ── Action notice ──────────────────────────────────────────────────
 
@@ -2727,6 +2729,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const handleOnboardingFinish = useCallback(async () => {
     if (!onboardingOptions) return;
+    if (onboardingFinishSavingRef.current || onboardingRestarting) return;
     const style = onboardingOptions.styles.find((s: StylePreset) => s.catchphrase === onboardingStyle);
     const systemPrompt = style?.system
       ? style.system.replace(/\{\{name\}\}/g, onboardingName)
@@ -2748,6 +2751,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const apiRunMode = onboardingRunMode === "cloud" ? "cloud" : "local";
 
     setOnboardingRestarting(true);
+    onboardingFinishSavingRef.current = true;
+
     try {
       await client.submitOnboarding({
         name: onboardingName,
@@ -2778,9 +2783,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         blooioPhoneNumber: onboardingBlooioPhoneNumber.trim() || undefined,
       });
     } catch (err) {
-      setOnboardingRestarting(false);
       window.alert(`Setup failed: ${err instanceof Error ? err.message : "network error"}. Please try again.`);
       return;
+    } finally {
+      onboardingFinishSavingRef.current = false;
+      setOnboardingRestarting(false);
     }
 
     setOnboardingComplete(true);
@@ -2790,7 +2797,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch {
       /* ignore */
     }
-    setOnboardingRestarting(false);
   }, [
     onboardingOptions, onboardingStyle, onboardingName, onboardingTheme,
     onboardingRunMode, onboardingCloudProvider, onboardingSmallModel,

@@ -1,6 +1,7 @@
 import { EventEmitter } from "node:events";
 import type http from "node:http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createMockHttpResponse } from "../test-support/test-helpers.js";
 
 const loadMilaidyConfigMock = vi.fn();
 const saveMilaidyConfigMock = vi.fn();
@@ -30,34 +31,6 @@ function createMockRequest(
   return req;
 }
 
-function createMockResponse(): {
-  res: http.ServerResponse;
-  getStatus: () => number;
-  getJson: () => unknown;
-} {
-  let statusCode = 200;
-  let payload = "";
-
-  const res = {
-    set statusCode(value: number) {
-      statusCode = value;
-    },
-    get statusCode() {
-      return statusCode;
-    },
-    setHeader: () => undefined,
-    end: (chunk?: string | Buffer) => {
-      payload = chunk ? chunk.toString() : "";
-    },
-  } as unknown as http.ServerResponse;
-
-  return {
-    res,
-    getStatus: () => statusCode,
-    getJson: () => (payload ? JSON.parse(payload) : null),
-  };
-}
-
 describe("database API security hardening", () => {
   const prevBind = process.env.MILAIDY_API_BIND;
 
@@ -82,7 +55,7 @@ describe("database API security hardening", () => {
     const req = createMockRequest("PUT", "/api/database/config", {
       postgres: { host: "169.254.169.254" },
     });
-    const { res, getStatus, getJson } = createMockResponse();
+    const { res, getStatus, getJson } = createMockHttpResponse();
 
     const handled = await handleDatabaseRoute(
       req,
@@ -108,7 +81,7 @@ describe("database API security hardening", () => {
           "postgresql://postgres:password@db.invalid:5432/postgres",
       },
     });
-    const { res, getStatus, getJson } = createMockResponse();
+    const { res, getStatus, getJson } = createMockHttpResponse();
 
     const handled = await handleDatabaseRoute(
       req,
@@ -127,7 +100,7 @@ describe("database API security hardening", () => {
     const req = createMockRequest("POST", "/api/database/test", {
       host: "db.invalid",
     });
-    const { res, getStatus, getJson } = createMockResponse();
+    const { res, getStatus, getJson } = createMockHttpResponse();
 
     const handled = await handleDatabaseRoute(
       req,
@@ -152,7 +125,7 @@ describe("database API security hardening", () => {
           "postgresql://postgres:password@1.1.1.1:5432/postgres?host=8.8.8.8,8.8.4.4&hostaddr=8.8.4.4",
       },
     });
-    const { res, getStatus, getJson } = createMockResponse();
+    const { res, getStatus, getJson } = createMockHttpResponse();
 
     const handled = await handleDatabaseRoute(
       req,

@@ -5911,7 +5911,7 @@ async function handleRequest(
         pluginId,
         plugin.category,
         plugin.envKey,
-        Object.keys(body.config),
+        plugin.configKeys,
         body.config,
         submittedParamInfos,
       );
@@ -6229,10 +6229,21 @@ async function handleRequest(
     try {
       // Find the plugin in the runtime
       const allPlugins = state.runtime?.plugins ?? [];
-      const plugin = allPlugins.find(
-        (p: { id?: string; name?: string }) =>
-          p.id === pluginId || p.name === pluginId,
-      );
+      const normalizePluginId = (value: string): string =>
+        value.replace(/^@[^/]+\//, "").replace(/^plugin-/, "");
+
+      const normalizedPluginId = normalizePluginId(pluginId);
+
+      const plugin = allPlugins.find((p: { id?: string; name?: string }) => {
+        const runtimeName = p.name ?? "";
+        const runtimeId = normalizePluginId(runtimeName);
+        return (
+          p.id === pluginId ||
+          p.name === pluginId ||
+          runtimeId === pluginId ||
+          runtimeId === normalizedPluginId
+        );
+      });
 
       if (!plugin) {
         json(

@@ -38,6 +38,59 @@ export interface ContainerExecResult {
   durationMs: number;
 }
 
+type ExecCommandResult = {
+  binary: string;
+  args: string[];
+  timeoutMs?: number;
+  stdin?: string;
+};
+
+async function runExecInContainer(
+  opts: ExecCommandResult,
+): Promise<ContainerExecResult> {
+  const { binary, args, timeoutMs, stdin } = opts;
+  const start = Date.now();
+  return new Promise<ContainerExecResult>((resolve) => {
+    const proc = spawn(binary, args, { stdio: ["pipe", "pipe", "pipe"] });
+
+    let stdout = "";
+    let stderr = "";
+    const timeout = setTimeout(() => proc.kill("SIGKILL"), timeoutMs ?? 30_000);
+
+    proc.stdout.on("data", (data: Buffer) => {
+      stdout += data.toString();
+    });
+    proc.stderr.on("data", (data: Buffer) => {
+      stderr += data.toString();
+    });
+
+    if (stdin) {
+      proc.stdin.write(stdin);
+      proc.stdin.end();
+    }
+
+    proc.on("close", (code) => {
+      clearTimeout(timeout);
+      resolve({
+        exitCode: code ?? 1,
+        stdout,
+        stderr,
+        durationMs: Date.now() - start,
+      });
+    });
+
+    proc.on("error", (err) => {
+      clearTimeout(timeout);
+      resolve({
+        exitCode: 1,
+        stdout,
+        stderr: `Exec error: ${err.message}`,
+        durationMs: Date.now() - start,
+      });
+    });
+  });
+}
+
 export interface EngineInfo {
   type: SandboxEngineType;
   available: boolean;
@@ -147,7 +200,6 @@ export class DockerEngine implements ISandboxEngine {
   async execInContainer(
     opts: ContainerExecOptions,
   ): Promise<ContainerExecResult> {
-    const start = Date.now();
     const args = ["exec"];
     if (opts.workdir) args.push("-w", opts.workdir);
     if (opts.env) {
@@ -156,46 +208,11 @@ export class DockerEngine implements ISandboxEngine {
       }
     }
     args.push(opts.containerId, "sh", "-c", opts.command);
-
-    return new Promise<ContainerExecResult>((resolve) => {
-      const proc = spawn("docker", args, { stdio: ["pipe", "pipe", "pipe"] });
-
-      let stdout = "";
-      let stderr = "";
-      const timeoutMs = opts.timeoutMs ?? 30000;
-      const timeout = setTimeout(() => proc.kill("SIGKILL"), timeoutMs);
-
-      proc.stdout.on("data", (data: Buffer) => {
-        stdout += data.toString();
-      });
-      proc.stderr.on("data", (data: Buffer) => {
-        stderr += data.toString();
-      });
-
-      if (opts.stdin) {
-        proc.stdin.write(opts.stdin);
-        proc.stdin.end();
-      }
-
-      proc.on("close", (code) => {
-        clearTimeout(timeout);
-        resolve({
-          exitCode: code ?? 1,
-          stdout,
-          stderr,
-          durationMs: Date.now() - start,
-        });
-      });
-
-      proc.on("error", (err) => {
-        clearTimeout(timeout);
-        resolve({
-          exitCode: 1,
-          stdout,
-          stderr: `Exec error: ${err.message}`,
-          durationMs: Date.now() - start,
-        });
-      });
+    return runExecInContainer({
+      binary: "docker",
+      args,
+      timeoutMs: opts.timeoutMs,
+      stdin: opts.stdin,
     });
   }
 
@@ -394,52 +411,14 @@ export class AppleContainerEngine implements ISandboxEngine {
   async execInContainer(
     opts: ContainerExecOptions,
   ): Promise<ContainerExecResult> {
-    const start = Date.now();
     const args = ["exec"];
     if (opts.workdir) args.push("-w", opts.workdir);
     args.push(opts.containerId, "sh", "-c", opts.command);
-
-    return new Promise<ContainerExecResult>((resolve) => {
-      const proc = spawn("container", args, {
-        stdio: ["pipe", "pipe", "pipe"],
-      });
-
-      let stdout = "";
-      let stderr = "";
-      const timeoutMs = opts.timeoutMs ?? 30000;
-      const timeout = setTimeout(() => proc.kill("SIGKILL"), timeoutMs);
-
-      proc.stdout.on("data", (data: Buffer) => {
-        stdout += data.toString();
-      });
-      proc.stderr.on("data", (data: Buffer) => {
-        stderr += data.toString();
-      });
-
-      if (opts.stdin) {
-        proc.stdin.write(opts.stdin);
-        proc.stdin.end();
-      }
-
-      proc.on("close", (code) => {
-        clearTimeout(timeout);
-        resolve({
-          exitCode: code ?? 1,
-          stdout,
-          stderr,
-          durationMs: Date.now() - start,
-        });
-      });
-
-      proc.on("error", (err) => {
-        clearTimeout(timeout);
-        resolve({
-          exitCode: 1,
-          stdout,
-          stderr: `Exec error: ${err.message}`,
-          durationMs: Date.now() - start,
-        });
-      });
+    return runExecInContainer({
+      binary: "container",
+      args,
+      timeoutMs: opts.timeoutMs,
+      stdin: opts.stdin,
     });
   }
 
