@@ -601,7 +601,9 @@ describe("Plugin Stress Test", () => {
 
     // In CI, many plugins fail due to missing native deps or build artifacts.
     // Require at least 2 core plugins to load (sanity check), but log all failures.
-    const minRequired = process.env.CI ? 2 : Math.floor(ALL_CORE_PLUGINS.length * 0.75);
+    const minRequired = process.env.CI
+      ? 2
+      : Math.floor(ALL_CORE_PLUGINS.length * 0.75);
     expect(loaded.length).toBeGreaterThanOrEqual(minRequired);
   }, 60_000);
 
