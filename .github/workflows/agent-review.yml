@@ -86,7 +86,7 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          allowed_non_write_users: '*'
+          allowed_non_write_users: 'lawyered0,jqmwa,0xSolace'
           claude_args: |
             --model claude-opus-4-6
             --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr review:*),Bash(cat:*),Bash(find:*),Bash(grep:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Read,Glob,LS"
@@ -344,7 +344,7 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          allowed_non_write_users: '*'
+          allowed_non_write_users: 'lawyered0,jqmwa,0xSolace'
           claude_args: |
             --model claude-opus-4-6
             --allowedTools "Bash(gh issue comment:*),Bash(gh issue edit:*),Bash(gh issue close:*),Bash(gh issue view:*)"
