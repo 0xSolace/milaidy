@@ -110,9 +110,10 @@ jobs:
               });
               const allStates = JSON.parse(data.value);
               if (allStates[author]) {
-                const { computeTrustScore, DEFAULT_CONFIG } = require('./.github/trust-scoring.cjs');
-                const result = computeTrustScore(allStates[author], DEFAULT_CONFIG);
-                trustInfo = `Trust score: ${result.score}/100 (${result.tier}) | Events: ${allStates[author].events.length} | ${result.tierInfo.description}`;
+                const { computeTrustScore, DEFAULT_CONFIG, expandState, compactState } = require('./.github/trust-scoring.cjs');
+                const state = expandState(allStates[author]);
+                const result = computeTrustScore(state, DEFAULT_CONFIG);
+                trustInfo = `Trust score: ${result.score}/100 (${result.tier}) | Events: ${state.events.length} | ${result.tierInfo.description}`;
                 if (result.warnings.length > 0) {
                   trustInfo += ` | Warnings: ${result.warnings.join('; ')}`;
                 }
@@ -128,7 +129,7 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          allowed_non_write_users: ${{ vars.ALLOWED_NON_WRITE_USERS || 'lawyered0,jqmwa,0xSolace' }}
+          allowed_non_write_users: ${{ vars.ALLOWED_NON_WRITE_USERS || 'lawyered0,jqmwa,0xSolace,0xVera' }}
           claude_args: '--model claude-opus-4-6 --allowedTools "Bash,GitHub,Read,Glob,LS"'
           prompt: |
             You are the sole code reviewer for the Milaidy project (milady-ai/milaidy).
@@ -476,7 +477,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const { computeTrustScore, DEFAULT_CONFIG, createContributorState, addEvent, getTier } = require('./.github/trust-scoring.cjs');
+            const { computeTrustScore, DEFAULT_CONFIG, createContributorState, addEvent, getTier, expandState, compactState } = require('./.github/trust-scoring.cjs');
             const author = context.payload.pull_request.user.login;
             const verdict = '${{ needs.review-pr.outputs.verdict }}';
             const category = '${{ needs.classify.outputs.category }}';
@@ -510,6 +511,9 @@ jobs:
                 name: 'CONTRIBUTOR_TRUST_V2',
               });
               allStates = JSON.parse(data.value);
+              allStates = Object.fromEntries(
+                Object.entries(allStates).map(([contributor, state]) => [contributor, expandState(state)])
+              );
             } catch (e) {
               console.log('No existing v2 trust data, starting fresh');
             }
@@ -536,7 +540,10 @@ jobs:
             }
 
             // Write back to repo variable
-            const value = JSON.stringify(allStates);
+            const compactedStates = Object.fromEntries(
+              Object.entries(allStates).map(([contributor, state]) => [contributor, compactState(state)])
+            );
+            const value = JSON.stringify(compactedStates);
             try {
               await github.rest.actions.updateRepoVariable({
                 owner: context.repo.owner,
@@ -705,7 +712,7 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          allowed_non_write_users: 'lawyered0,jqmwa,0xSolace'
+          allowed_non_write_users: 'lawyered0,jqmwa,0xSolace,0xVera'
           claude_args: '--model claude-opus-4-6 --allowedTools "Bash(gh issue comment:*),Bash(gh issue edit:*),Bash(gh issue close:*),Bash(gh issue view:*),Bash(cat:*),Read,Glob,LS"'
           prompt: |
             You are the issue triager for the Milaidy project. This is an agents-only codebase where humans serve as QA testers.
