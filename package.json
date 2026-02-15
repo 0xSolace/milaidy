@@ -13,6 +13,12 @@
     "url": "https://github.com/milady-ai/milaidy.git"
   },
   "license": "MIT",
+  "workspaces": [
+    "apps/*",
+    "apps/*/plugins/*",
+    "apps/*/electron",
+    "deploy/cloud-agent-template"
+  ],
   "type": "module",
   "main": "build/src/index.js",
   "bin": {
@@ -52,7 +58,7 @@
     "learn:loop": "scripts/rt.sh scripts/knowledge-loop.mjs",
     "learn:snapshot": "scripts/rt.sh scripts/knowledge-loop.mjs --full",
     "milaidy": "scripts/rt.sh scripts/run-node.mjs",
-    "postinstall": "node ./scripts/link-browser-server.mjs",
+    "postinstall": "node ./scripts/link-browser-server.mjs && node ./scripts/patch-deps.mjs",
     "prepack": "scripts/rt.sh run build",
     "prepare": "node -e \"try{require('child_process').execSync('git config core.hooksPath git-hooks',{stdio:'ignore'})}catch{}\"",
     "release:check": "node --import tsx scripts/release-check.ts",
@@ -89,13 +95,22 @@
     "@capacitor-community/electron": "^5.0.1",
     "@clack/prompts": "^1.0.0",
     "@elizaos/core": "next",
+    "@elizaos/plugin-agent-orchestrator": "next",
+    "@elizaos/plugin-agent-skills": "next",
+    "@elizaos/plugin-browser": "next",
+    "@elizaos/plugin-local-embedding": "next",
+    "@elizaos/plugin-discord": "next",
+    "@elizaos/plugin-elizacloud": "next",
     "@elizaos/plugin-google-genai": "next",
     "@elizaos/plugin-knowledge": "next",
     "@elizaos/plugin-ollama": "next",
     "@elizaos/plugin-openai": "next",
     "@elizaos/plugin-openrouter": "next",
-    "@elizaos/plugin-sql": "^2.0.0-alpha.10",
+    "@elizaos/plugin-plugin-manager": "next",
+    "@elizaos/plugin-shell": "next",
+    "@elizaos/plugin-sql": "2.0.0-alpha.11",
     "@elizaos/plugin-todo": "next",
+    "@elizaos/plugin-trajectory-logger": "next",
     "@elizaos/tui": "next",
     "@mariozechner/pi-ai": "^0.52.12",
     "@noble/curves": "^2.0.1",
@@ -131,6 +146,7 @@
     "vitest": "^4.0.18"
   },
   "overrides": {
-    "drizzle-orm": "0.45.1"
+    "drizzle-orm": "0.45.1",
+    "@elizaos/core": "2.0.0-alpha.7"
   }
 }
