@@ -119,7 +119,7 @@
     "@elizaos/plugin-shell": "2.0.0-alpha.6",
     "@elizaos/plugin-sql": "2.0.0-alpha.11",
     "@elizaos/plugin-todo": "next",
-    "@elizaos/plugin-trajectory-logger": "next",
+    "@elizaos/plugin-trajectory-logger": "^2.0.0-alpha.1",
     "@elizaos/plugin-trust": "next",
     "@elizaos/tui": "next",
     "@mariozechner/pi-ai": "^0.52.12",
