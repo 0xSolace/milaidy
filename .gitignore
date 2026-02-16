@@ -32,6 +32,9 @@ apps/ui/test-results/
 # Vendored repos (clone separately if needed)
 vendor/
 
+# Local plugin development (ejected/custom plugins live outside repo)
+plugins/
+
 # Local untracked files
 .local/
 .vscode/
