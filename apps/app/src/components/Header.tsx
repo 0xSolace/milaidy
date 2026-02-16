@@ -1,7 +1,11 @@
 import { useEffect } from "react";
 import { useApp } from "../AppContext.js";
 
-export function Header() {
+interface HeaderProps {
+  onToggleSidebar?: () => void;
+}
+
+export function Header({ onToggleSidebar }: HeaderProps) {
   const {
     agentStatus, cloudEnabled, cloudConnected, cloudCredits, cloudCreditsCritical, cloudCreditsLow,
     cloudTopUpUrl, walletAddresses, lifecycleBusy, lifecycleAction, handlePauseResume,
@@ -33,15 +37,26 @@ export function Header() {
   const iconBtn = "inline-flex items-center justify-center w-7 h-7 border border-border bg-bg cursor-pointer text-sm leading-none hover:border-accent hover:text-accent transition-colors";
 
   return (<>
-    <header className="flex items-center justify-between border-b border-border py-4 px-5">
-      <div className="flex items-center gap-3">
-        <span className="text-lg font-bold text-txt-strong" data-testid="agent-name">{name}</span>
+    <header className="flex items-center justify-between border-b border-border py-2.5 sm:py-4 px-3 sm:px-5 gap-2">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        {/* Mobile sidebar toggle — only shown on small screens */}
+        {onToggleSidebar && (
+          <button
+            className="sm:hidden w-8 h-8 flex items-center justify-center border border-border bg-bg rounded text-base cursor-pointer hover:border-accent hover:text-accent transition-colors flex-shrink-0"
+            onClick={onToggleSidebar}
+            title="Toggle chats"
+          >
+            ☰
+          </button>
+        )}
+        <span className="text-base sm:text-lg font-bold text-txt-strong truncate" data-testid="agent-name">{name}</span>
       </div>
-      <div className="flex items-center gap-3">
+
+      <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
         {dropStatus?.dropEnabled && dropStatus?.publicMintOpen && !dropStatus?.mintedOut && !dropStatus?.userHasMinted && !registryStatus?.registered && (
           <button
             onClick={() => setTab("character")}
-            className="inline-flex items-center gap-1.5 px-3 py-1 border border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] text-xs font-bold text-[var(--accent)] cursor-pointer hover:bg-[color-mix(in_srgb,var(--accent)_20%,transparent)] transition-colors animate-pulse"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 border border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] text-xs font-bold text-[var(--accent)] cursor-pointer hover:bg-[color-mix(in_srgb,var(--accent)_20%,transparent)] transition-colors animate-pulse"
           >
             <span className="inline-block w-2 h-2 rounded-full bg-[var(--accent)] animate-ping" style={{ animationDuration: "1.5s" }} />
             Free Mint Live!
@@ -50,25 +65,25 @@ export function Header() {
         {(cloudEnabled || cloudConnected) && (
           cloudConnected ? (
             <a href={cloudTopUpUrl} target="_blank" rel="noopener noreferrer"
-              className={`inline-flex items-center gap-1 px-2.5 py-0.5 border font-mono text-xs no-underline transition-colors hover:border-accent hover:text-accent ${cloudCredits === null ? "border-muted text-muted" : creditColor}`}>
+              className={`hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 border font-mono text-xs no-underline transition-colors hover:border-accent hover:text-accent ${cloudCredits === null ? "border-muted text-muted" : creditColor}`}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/></svg>
               {cloudCredits === null ? "Cloud connected" : `$${cloudCredits.toFixed(2)}`}
             </a>
           ) : (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 border border-danger text-danger font-mono text-xs">
+            <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 border border-danger text-danger font-mono text-xs">
               Cloud disconnected
             </span>
           )
         )}
-        <div className="flex items-center gap-1.5">
-          <span className={`inline-flex items-center h-7 px-2.5 border font-mono text-xs leading-none ${stateColor}`} data-testid="status-pill">{state}</span>
+        <div className="flex items-center gap-1">
+          <span className={`inline-flex items-center h-6 sm:h-7 px-1.5 sm:px-2.5 border font-mono text-[10px] sm:text-xs leading-none ${stateColor}`} data-testid="status-pill">{state}</span>
           {state === "restarting" || state === "starting" || state === "not_started" || state === "stopped" ? (
-            <span className="inline-flex items-center justify-center w-7 h-7 text-sm leading-none opacity-60">⏳</span>
+            <span className="inline-flex items-center justify-center w-6 sm:w-7 h-6 sm:h-7 text-sm leading-none opacity-60">⏳</span>
           ) : (
             <button
               onClick={handlePauseResume}
               title={state === "paused" ? "Resume autonomy" : "Pause autonomy"}
-              className={`${iconBtn} disabled:opacity-40 disabled:cursor-not-allowed`}
+              className={`${iconBtn} w-6 sm:w-7 h-6 sm:h-7 disabled:opacity-40 disabled:cursor-not-allowed`}
               disabled={pauseResumeDisabled}
             >
               {pauseResumeBusy ? "⏳" : state === "paused" ? "▶️" : "⏸️"}
@@ -78,9 +93,10 @@ export function Header() {
             onClick={handleRestart}
             disabled={lifecycleBusy || state === "restarting"}
             title="Restart agent"
-            className="inline-flex items-center h-7 px-3 border border-border bg-bg text-xs font-mono cursor-pointer hover:border-accent hover:text-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center h-6 sm:h-7 px-1.5 sm:px-3 border border-border bg-bg text-xs font-mono cursor-pointer hover:border-accent hover:text-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {restartBusy || state === "restarting" ? "Restarting..." : "Restart"}
+            <span className="hidden sm:inline">{restartBusy || state === "restarting" ? "Restarting..." : "Restart"}</span>
+            <span className="sm:hidden text-[11px]">↻</span>
           </button>
         </div>
         {(evmShort || solShort) && (
@@ -110,7 +126,7 @@ export function Header() {
         )}
       </div>
     </header>
-    <button onClick={openCommandPalette} className="fixed bottom-5 right-5 z-50 inline-flex items-center h-7 px-3 border border-border bg-bg text-xs font-mono cursor-pointer hover:border-accent hover:text-accent transition-colors shadow-lg">Cmd+K</button>
+    <button onClick={openCommandPalette} className="hidden sm:inline-flex fixed bottom-5 right-5 z-50 items-center h-7 px-3 border border-border bg-bg text-xs font-mono cursor-pointer hover:border-accent hover:text-accent transition-colors shadow-lg">Cmd+K</button>
   </>
   );
 }

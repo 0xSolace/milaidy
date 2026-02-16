@@ -332,7 +332,7 @@ export function ChatView() {
       )}
 
       {/* ── Input row: mic + textarea + send ───────────────────────── */}
-      <div className="flex gap-2 items-end border-t border-border pt-3 pb-4 relative" style={{ zIndex: 1 }}>
+      <div className="flex gap-1.5 sm:gap-2 items-end border-t border-border pt-2 sm:pt-3 pb-2 sm:pb-4 relative" style={{ zIndex: 1 }}>
         {/* Mic button — user voice input */}
         {voice.supported && (
           <button
@@ -370,7 +370,7 @@ export function ChatView() {
         ) : (
           <textarea
             ref={textareaRef}
-            className="flex-1 px-3 py-2 border border-border bg-card text-txt text-sm font-body leading-relaxed resize-none overflow-y-hidden min-h-[38px] max-h-[200px] focus:border-accent focus:outline-none"
+            className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 border border-border bg-card text-txt text-sm font-body leading-relaxed resize-none overflow-y-hidden min-h-[36px] sm:min-h-[38px] max-h-[120px] sm:max-h-[200px] focus:border-accent focus:outline-none"
             rows={1}
             placeholder={voice.isListening ? "Listening..." : "Type a message..."}
             value={chatInput}
@@ -399,7 +399,7 @@ export function ChatView() {
           </button>
         ) : (
           <button
-            className="h-[38px] px-6 py-2 border border-accent bg-accent text-accent-fg text-sm cursor-pointer hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed self-end"
+            className="h-[36px] sm:h-[38px] px-4 sm:px-6 py-1.5 sm:py-2 border border-accent bg-accent text-accent-fg text-sm cursor-pointer hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed self-end flex-shrink-0"
             onClick={() => void handleChatSend(chatMode)}
             disabled={chatSending}
           >

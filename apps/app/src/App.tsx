@@ -67,9 +67,8 @@ export function App() {
   const [customActionsPanelOpen, setCustomActionsPanelOpen] = useState(false);
   const [customActionsEditorOpen, setCustomActionsEditorOpen] = useState(false);
   const [editingAction, setEditingAction] = useState<import("./api-client").CustomActionDef | null>(null);
+  const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
 
-  // Keep hook order stable across onboarding/auth state transitions.
-  // Otherwise React can throw when onboarding completes and the main shell mounts.
   useEffect(() => {
     const handler = () => setCustomActionsPanelOpen((v) => !v);
     window.addEventListener("toggle-custom-actions-panel", handler);
@@ -80,6 +79,9 @@ export function App() {
     setCustomActionsEditorOpen(false);
     setEditingAction(null);
   }, []);
+
+  const toggleSidebar = useCallback(() => setSidebarMobileOpen((v) => !v), []);
+  const closeSidebar = useCallback(() => setSidebarMobileOpen(false), []);
 
   if (onboardingLoading) {
     return <LoadingScreen phase={startupPhase} />;
@@ -105,14 +107,17 @@ export function App() {
     <>
       {isChat ? (
         <div className="flex flex-col flex-1 min-h-0 w-full font-body text-txt bg-bg">
-          <Header />
+          <Header onToggleSidebar={toggleSidebar} />
           <Nav />
           <div className="flex flex-1 min-h-0 relative">
-            <ConversationsSidebar />
-            <main className="flex flex-col flex-1 min-w-0 overflow-visible pt-3 px-5">
+            <ConversationsSidebar mobileOpen={sidebarMobileOpen} onMobileClose={closeSidebar} />
+            <main className="flex flex-col flex-1 min-w-0 overflow-visible pt-2 sm:pt-3 px-1 sm:px-5">
               <ChatView />
             </main>
-            <AutonomousPanel />
+            {/* Autonomous panel: desktop only */}
+            <div className="hidden md:block">
+              <AutonomousPanel />
+            </div>
             <CustomActionsPanel
               open={customActionsPanelOpen}
               onClose={() => setCustomActionsPanelOpen(false)}
@@ -128,7 +133,7 @@ export function App() {
         <div className="flex flex-col flex-1 min-h-0 w-full font-body text-txt bg-bg">
           <Header />
           <Nav />
-          <main className={`flex-1 min-h-0 py-6 px-5 ${isAdvancedTab ? "overflow-hidden" : "overflow-y-auto"}`}>
+          <main className={`flex-1 min-h-0 py-4 sm:py-6 px-3 sm:px-5 ${isAdvancedTab ? "overflow-hidden" : "overflow-y-auto"}`}>
             <ViewRouter />
           </main>
           <TerminalPanel />
