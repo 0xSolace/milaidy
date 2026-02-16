@@ -95,7 +95,7 @@
   "dependencies": {
     "@capacitor-community/electron": "^5.0.1",
     "@clack/prompts": "^1.0.0",
-    "@elizaos/core": "next",
+    "@elizaos/core": "2.0.0-alpha.11",
     "@elizaos/plugin-agent-orchestrator": "next",
     "@elizaos/plugin-agent-skills": "next",
     "@elizaos/plugin-browser": "next",
@@ -160,7 +160,7 @@
   },
   "overrides": {
     "drizzle-orm": "0.45.1",
-    "@elizaos/core": "2.0.0-alpha.10",
+    "@elizaos/core": "2.0.0-alpha.11",
     "tar": "^7.5.7"
   }
 }

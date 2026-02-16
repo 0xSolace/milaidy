@@ -492,7 +492,7 @@ describe("plugin-eject", () => {
       );
     });
 
-    it("continues when build script fails during ejected plugin install", async () => {
+    it("fails and cleans up when build script fails during ejected plugin install", async () => {
       const installer = await import("./plugin-installer");
       const { getPluginInfo } = await import("./registry-client");
       vi.mocked(getPluginInfo).mockResolvedValue(pluginInfo() as never);
@@ -529,13 +529,8 @@ describe("plugin-eject", () => {
       const { ejectPlugin } = await loadPluginEject();
       const result = await ejectPlugin("@elizaos/plugin-test");
 
-      expect(result.success).toBe(true);
-      expect(execFile).toHaveBeenCalledWith(
-        "npm",
-        ["run", "build"],
-        expect.any(Object),
-        expect.any(Function),
-      );
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/build failed/i);
     });
 
     it("converts non-Error install errors during eject", async () => {
