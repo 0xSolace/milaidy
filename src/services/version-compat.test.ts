@@ -7,7 +7,6 @@
  * @see https://github.com/milady-ai/milady/issues/10
  */
 import { describe, expect, it } from "vitest";
-import { isWorkspaceDependency } from "../test-support/test-helpers";
 import {
   AI_PROVIDER_PLUGINS,
   compareSemver,
@@ -28,6 +27,27 @@ function _getCorePin(pkg: RootPackageJson): string | undefined {
   return (
     pkg.overrides?.["@elizaos/core"] ?? pkg.pnpm?.overrides?.["@elizaos/core"]
   );
+}
+
+function _isLocalDependency(version: string): boolean {
+  return (
+    version.startsWith("./") ||
+    version.startsWith("../") ||
+    version.startsWith("file:")
+  );
+}
+
+function _resolveCoreVersion(
+  manifest: RootPackageJson,
+  coreVersion: string,
+): string {
+  const resolvedCoreVersion = _isLocalDependency(coreVersion)
+    ? _getCorePin(manifest)
+    : coreVersion === "next"
+      ? _getCorePin(manifest)
+      : coreVersion;
+  expect(resolvedCoreVersion).toBeDefined();
+  return resolvedCoreVersion as string;
 }
 
 // ============================================================================
@@ -370,15 +390,6 @@ describe("Package.json version pinning (issue #10)", () => {
     return JSON.parse(readFileSync(pkgPath, "utf-8")) as PackageManifest;
   }
 
-  function getDependencyOverride(
-    manifest: PackageManifest,
-  ): string | undefined {
-    return (
-      manifest.overrides?.["@elizaos/core"] ??
-      manifest.pnpm?.overrides?.["@elizaos/core"]
-    );
-  }
-
   /**
    * Verify that the affected plugins are pinned to a version compatible
    * with core@2.0.0-alpha.3 in milady's package.json.
@@ -390,23 +401,9 @@ describe("Package.json version pinning (issue #10)", () => {
 
     const coreVersion = pkg.dependencies["@elizaos/core"];
     expect(coreVersion).toBeDefined();
-    // Core can use "next" dist-tag if pnpm overrides pin the actual version
-    if (coreVersion === "next") {
-      const pinnedCoreVersion = getDependencyOverride(pkg);
-      expect(pinnedCoreVersion).toBeDefined();
-      expect(pinnedCoreVersion).toMatch(/^\d+\.\d+\.\d+/);
-      expect(versionSatisfies(pinnedCoreVersion ?? "", "2.0.0-alpha.3")).toBe(
-        true,
-      );
-    } else if (isWorkspaceDependency(coreVersion)) {
-      const pinnedCoreVersion = getDependencyOverride(pkg);
-      if (pinnedCoreVersion !== undefined) {
-        expect(pinnedCoreVersion).toMatch(/^\d+\.\d+\.\d+/);
-      }
-    } else {
-      expect(coreVersion).toMatch(/^\d+\.\d+\.\d+/);
-      expect(versionSatisfies(coreVersion, "2.0.0-alpha.3")).toBe(true);
-    }
+    const resolvedCoreVersion = _resolveCoreVersion(pkg, coreVersion);
+    expect(resolvedCoreVersion).toMatch(/^\d+\.\d+\.\d+/);
+    expect(versionSatisfies(resolvedCoreVersion, "2.0.0-alpha.3")).toBe(true);
   });
 
   it("affected plugins are present in dependencies (core pin makes next safe)", async () => {
@@ -423,13 +420,8 @@ describe("Package.json version pinning (issue #10)", () => {
 
     // If core is "next", ensure pnpm overrides pin the actual version
     const coreVersion = pkg.dependencies["@elizaos/core"];
-    if (coreVersion === "next") {
-      const pinnedCoreVersion = getDependencyOverride(pkg);
-      expect(pinnedCoreVersion).toBeDefined();
-      expect(pinnedCoreVersion).toMatch(/^\d+\.\d+\.\d+/);
-    } else if (!isWorkspaceDependency(coreVersion)) {
-      expect(coreVersion).toMatch(/^\d+\.\d+\.\d+/);
-    }
+    const resolvedCoreVersion = _resolveCoreVersion(pkg, coreVersion);
+    expect(resolvedCoreVersion).toMatch(/^\d+\.\d+\.\d+/);
 
     for (const plugin of affectedPlugins) {
       const version = pkg.dependencies[plugin];
@@ -449,18 +441,8 @@ describe("Package.json version pinning (issue #10)", () => {
     // See docs/ELIZAOS_VERSIONING.md for explanation.
     const coreVersion = pkg.dependencies["@elizaos/core"];
     expect(coreVersion).toBeDefined();
-    if (coreVersion === "next") {
-      const pinnedCoreVersion = getDependencyOverride(pkg);
-      expect(pinnedCoreVersion).toBeDefined();
-      expect(pinnedCoreVersion).toMatch(/^\d+\.\d+\.\d+/);
-    } else if (isWorkspaceDependency(coreVersion)) {
-      const pinnedCoreVersion = getDependencyOverride(pkg);
-      if (pinnedCoreVersion !== undefined) {
-        expect(pinnedCoreVersion).toMatch(/^\d+\.\d+\.\d+/);
-      }
-    } else {
-      expect(coreVersion).toMatch(/^\d+\.\d+\.\d+-alpha\.\d+$/);
-    }
+    const resolvedCoreVersion = _resolveCoreVersion(pkg, coreVersion);
+    expect(resolvedCoreVersion).toMatch(/^\d+\.\d+\.\d+-alpha\.\d+$/);
   });
 
   it("pinned versions are compatible with each other", () => {
