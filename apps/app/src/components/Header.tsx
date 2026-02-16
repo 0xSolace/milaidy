@@ -30,18 +30,18 @@ export function Header() {
   const solShort = walletAddresses?.solanaAddress
     ? `${walletAddresses.solanaAddress.slice(0, 4)}...${walletAddresses.solanaAddress.slice(-4)}` : null;
 
-  const iconBtn = "inline-flex items-center justify-center w-7 h-7 border border-border bg-bg cursor-pointer text-sm leading-none hover:border-accent hover:text-accent transition-colors";
+  const iconBtn = "inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 border border-border bg-bg cursor-pointer text-sm leading-none hover:border-accent hover:text-accent transition-colors";
 
   return (<>
-    <header className="flex items-center justify-between border-b border-border py-4 px-5">
-      <div className="flex items-center gap-3">
-        <span className="text-lg font-bold text-txt-strong" data-testid="agent-name">{name}</span>
+    <header className="flex flex-wrap items-start sm:items-center justify-between gap-3 border-b border-border py-3 sm:py-4 px-5">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="text-lg font-bold text-txt-strong truncate max-w-[120px] sm:max-w-none" data-testid="agent-name">{name}</span>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex w-full sm:w-auto flex-wrap items-center gap-2 sm:gap-3 sm:justify-end">
         {dropStatus?.dropEnabled && dropStatus?.publicMintOpen && !dropStatus?.mintedOut && !dropStatus?.userHasMinted && !registryStatus?.registered && (
           <button
             onClick={() => setTab("character")}
-            className="inline-flex items-center gap-1.5 px-3 py-1 border border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] text-xs font-bold text-[var(--accent)] cursor-pointer hover:bg-[color-mix(in_srgb,var(--accent)_20%,transparent)] transition-colors animate-pulse"
+            className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 border border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] text-[11px] sm:text-xs font-bold text-[var(--accent)] cursor-pointer hover:bg-[color-mix(in_srgb,var(--accent)_20%,transparent)] transition-colors animate-pulse"
           >
             <span className="inline-block w-2 h-2 rounded-full bg-[var(--accent)] animate-ping" style={{ animationDuration: "1.5s" }} />
             Free Mint Live!
@@ -50,20 +50,20 @@ export function Header() {
         {(cloudEnabled || cloudConnected) && (
           cloudConnected ? (
             <a href={cloudTopUpUrl} target="_blank" rel="noopener noreferrer"
-              className={`inline-flex items-center gap-1 px-2.5 py-0.5 border font-mono text-xs no-underline transition-colors hover:border-accent hover:text-accent ${cloudCredits === null ? "border-muted text-muted" : creditColor}`}>
+              className={`inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 border font-mono text-[11px] sm:text-xs no-underline transition-colors hover:border-accent hover:text-accent ${cloudCredits === null ? "border-muted text-muted" : creditColor}`}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/></svg>
               {cloudCredits === null ? "Cloud connected" : `$${cloudCredits.toFixed(2)}`}
             </a>
           ) : (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 border border-danger text-danger font-mono text-xs">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 border border-danger text-danger font-mono text-[11px] sm:text-xs">
               Cloud disconnected
             </span>
           )
         )}
         <div className="flex items-center gap-1.5">
-          <span className={`inline-flex items-center h-7 px-2.5 border font-mono text-xs leading-none ${stateColor}`} data-testid="status-pill">{state}</span>
+          <span className={`inline-flex items-center h-6 sm:h-7 px-2 sm:px-2.5 border font-mono text-[10px] sm:text-xs leading-none ${stateColor}`} data-testid="status-pill">{state}</span>
           {state === "restarting" || state === "starting" || state === "not_started" || state === "stopped" ? (
-            <span className="inline-flex items-center justify-center w-7 h-7 text-sm leading-none opacity-60">⏳</span>
+            <span className="inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 text-sm leading-none opacity-60">⏳</span>
           ) : (
             <button
               onClick={handlePauseResume}
@@ -78,13 +78,14 @@ export function Header() {
             onClick={handleRestart}
             disabled={lifecycleBusy || state === "restarting"}
             title="Restart agent"
-            className="inline-flex items-center h-7 px-3 border border-border bg-bg text-xs font-mono cursor-pointer hover:border-accent hover:text-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center justify-center h-6 w-6 sm:h-7 sm:w-auto sm:px-3 border border-border bg-bg text-xs font-mono cursor-pointer hover:border-accent hover:text-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {restartBusy || state === "restarting" ? "Restarting..." : "Restart"}
+            <svg className={`${restartBusy || state === "restarting" ? "animate-spin" : ""}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 15.55-6.36L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.55 6.36L3 16"/><path d="M3 21v-5h5"/></svg>
+            <span className="hidden sm:inline sm:ml-1.5">{restartBusy || state === "restarting" ? "Restarting..." : "Restart"}</span>
           </button>
         </div>
         {(evmShort || solShort) && (
-          <div className="wallet-wrapper relative inline-flex">
+          <div className="wallet-wrapper relative hidden sm:inline-flex">
             <button onClick={() => setTab("wallets")} className="inline-flex items-center justify-center w-7 h-7 border border-border bg-bg cursor-pointer hover:border-accent hover:text-accent transition-colors">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
             </button>
@@ -110,7 +111,7 @@ export function Header() {
         )}
       </div>
     </header>
-    <button onClick={openCommandPalette} className="fixed bottom-5 right-5 z-50 inline-flex items-center h-7 px-3 border border-border bg-bg text-xs font-mono cursor-pointer hover:border-accent hover:text-accent transition-colors shadow-lg">Cmd+K</button>
+    <button onClick={openCommandPalette} className="fixed bottom-5 right-5 z-50 hidden sm:inline-flex items-center h-7 px-3 border border-border bg-bg text-xs font-mono cursor-pointer hover:border-accent hover:text-accent transition-colors shadow-lg">Cmd+K</button>
   </>
   );
 }
