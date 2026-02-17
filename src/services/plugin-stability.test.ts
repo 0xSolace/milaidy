@@ -606,7 +606,7 @@ describe("Provider Validation", () => {
     expect(typeof provider.name).toBe("string");
     expect(typeof provider.description).toBe("string");
     expect(typeof provider.get).toBe("function");
-    expect(provider.name).toBe("miladySessionKey");
+    expect(provider.name).toBe("session-key");
   });
 
   it("createMiladyPlugin returns a valid Plugin with providers", () => {
