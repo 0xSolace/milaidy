@@ -123,7 +123,6 @@
     "@elizaos/plugin-sql": "next",
     "@elizaos/plugin-telegram": "next",
     "@elizaos/plugin-todo": "next",
-    "@elizaos/plugin-training": "next",
     "@elizaos/plugin-trajectory-logger": "next",
     "@elizaos/plugin-trust": "next",
     "@elizaos/sweagent-root": "next",
