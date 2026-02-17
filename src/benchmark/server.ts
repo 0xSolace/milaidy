@@ -185,11 +185,13 @@ async function ensureBenchmarkSessionContext(
     },
   });
 
+  // Use ChannelType.API to ensure the agent always responds to benchmark messages
+  // (API channel type bypasses shouldRespond evaluation)
   await runtime.ensureRoomExists({
     id: session.roomId,
     name: `benchmark:${session.taskId}`,
     source: "benchmark",
-    type: ChannelType.GROUP,
+    type: ChannelType.API,
     channelId: `bench-${session.taskId}`,
     messageServerId: BENCHMARK_MESSAGE_SERVER_ID,
     worldId: BENCHMARK_WORLD_ID,
@@ -203,7 +205,7 @@ async function ensureBenchmarkSessionContext(
     id: session.relayRoomId,
     name: "relay-room",
     source: "benchmark",
-    type: ChannelType.GROUP,
+    type: ChannelType.API,
     channelId: `relay-${session.taskId}`,
     messageServerId: BENCHMARK_MESSAGE_SERVER_ID,
     worldId: BENCHMARK_WORLD_ID,
@@ -221,7 +223,7 @@ async function ensureBenchmarkSessionContext(
     userName: "Benchmark User",
     source: "benchmark",
     channelId: `bench-${session.taskId}`,
-    type: ChannelType.GROUP,
+    type: ChannelType.API,
     messageServerId: BENCHMARK_MESSAGE_SERVER_ID,
     metadata: {
       benchmark: session.benchmark,
@@ -427,7 +429,11 @@ export async function startBenchmarkServer() {
 
   // Build settings object from environment variables
   // These are needed by plugins like Groq that use runtime.getSetting()
-  const settings: Record<string, string> = {};
+  const settings: Record<string, string> = {
+    // Use in-memory database for benchmarks to avoid pglite corruption issues
+    // and ensure a clean state for each benchmark run
+    PGLITE_DATA_DIR: "memory://",
+  };
   const envKeys = [
     "GROQ_API_KEY",
     "OPENAI_API_KEY",
