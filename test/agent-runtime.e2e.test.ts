@@ -1,5 +1,5 @@
 /**
- * Comprehensive E2E tests for the Milaidy agent runtime.
+ * Comprehensive E2E tests for the Milady agent runtime.
  *
  * NO MOCKS. Single test file (PGlite constraint). All suites share one
  * fully-initialized runtime with PRODUCTION defaults:
@@ -30,8 +30,12 @@ import {
 } from "@elizaos/core";
 import dotenv from "dotenv";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { startApiServer } from "../src/api/server.js";
-import { ensureAgentWorkspace } from "../src/providers/workspace.js";
+import { startApiServer } from "../src/api/server";
+import { ensureAgentWorkspace } from "../src/providers/workspace";
+import {
+  extractPlugin,
+  type PluginModuleShape,
+} from "../src/test-support/test-helpers";
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -45,7 +49,7 @@ dotenv.config({ path: path.resolve(packageRoot, "..", "eliza", ".env") });
 const hasOpenAI = Boolean(process.env.OPENAI_API_KEY);
 const hasAnthropic = Boolean(process.env.ANTHROPIC_API_KEY);
 const hasGroq = Boolean(process.env.GROQ_API_KEY);
-const liveModelTestsEnabled = process.env.MILAIDY_LIVE_TEST === "1";
+const liveModelTestsEnabled = process.env.MILADY_LIVE_TEST === "1";
 const hasModelProvider =
   liveModelTestsEnabled && (hasOpenAI || hasAnthropic || hasGroq);
 
@@ -53,35 +57,14 @@ const hasModelProvider =
 // Plugin helpers — tracks failures
 // ---------------------------------------------------------------------------
 
-interface PluginModule {
-  default?: Plugin;
-  plugin?: Plugin;
-}
-
-function looksLikePlugin(v: unknown): v is Plugin {
-  return (
-    !!v &&
-    typeof v === "object" &&
-    typeof (v as Record<string, unknown>).name === "string"
-  );
-}
-function extractPlugin(mod: PluginModule): Plugin | null {
-  if (looksLikePlugin(mod.default)) return mod.default;
-  if (looksLikePlugin(mod.plugin)) return mod.plugin;
-  if (looksLikePlugin(mod)) return mod as unknown as Plugin;
-  for (const [key, value] of Object.entries(mod)) {
-    if (key === "default" || key === "plugin") continue;
-    if (looksLikePlugin(value)) return value;
-  }
-  return null;
-}
-
 const pluginLoadResults: { name: string; loaded: boolean; error?: string }[] =
   [];
 
 async function loadPlugin(name: string): Promise<Plugin | null> {
   try {
-    const p = extractPlugin((await import(name)) as PluginModule);
+    const p = extractPlugin(
+      (await import(name)) as PluginModuleShape,
+    ) as Plugin | null;
     pluginLoadResults.push({
       name,
       loaded: p !== null,
@@ -383,13 +366,14 @@ describe("Agent Runtime E2E", () => {
   const worldId = stringToUuid("test-e2e-world");
 
   const pgliteDir = fs.mkdtempSync(
-    path.join(os.tmpdir(), "milaidy-e2e-pglite-"),
+    path.join(os.tmpdir(), "milady-e2e-pglite-"),
   );
   const workspaceDir = fs.mkdtempSync(
-    path.join(os.tmpdir(), "milaidy-e2e-workspace-"),
+    path.join(os.tmpdir(), "milady-e2e-workspace-"),
   );
 
   const corePluginNames = [
+    "@elizaos/plugin-trajectory-logger",
     "@elizaos/plugin-agent-skills",
     "@elizaos/plugin-directives",
     "@elizaos/plugin-commands",
@@ -404,7 +388,7 @@ describe("Agent Runtime E2E", () => {
 
   beforeAll(async () => {
     if (!hasModelProvider) return;
-    process.env.LOG_LEVEL = process.env.MILAIDY_E2E_LOG_LEVEL ?? "error";
+    process.env.LOG_LEVEL = process.env.MILADY_E2E_LOG_LEVEL ?? "error";
     process.env.PGLITE_DATA_DIR = pgliteDir;
 
     const secrets: Record<string, string> = {};
@@ -787,9 +771,8 @@ describe("Agent Runtime E2E", () => {
     );
 
     it.skipIf(!hasModelProvider)(
-      "autonomy REST endpoint always reports enabled",
+      "autonomy REST endpoint reflects enabled state",
       async () => {
-        // Autonomy is always enabled — the endpoint is a no-op for backward compat.
         const get1 = await http$(server?.port, "GET", "/api/agent/autonomy");
         expect(get1.data.enabled).toBe(true);
 
@@ -797,7 +780,13 @@ describe("Agent Runtime E2E", () => {
           enabled: false,
         });
         const get2 = await http$(server?.port, "GET", "/api/agent/autonomy");
-        expect(get2.data.enabled).toBe(true);
+        expect(get2.data.enabled).toBe(false);
+
+        await http$(server?.port, "POST", "/api/agent/autonomy", {
+          enabled: true,
+        });
+        const get3 = await http$(server?.port, "GET", "/api/agent/autonomy");
+        expect(get3.data.enabled).toBe(true);
       },
     );
   });
@@ -1126,9 +1115,9 @@ describe("Agent Runtime E2E", () => {
     it.skipIf(!hasModelProvider)(
       "creates trigger, executes it, LLM processes instruction, run history records success",
       async () => {
-        // Register the trigger worker on the real runtime (same as milaidy-plugin.ts does).
+        // Register the trigger worker on the real runtime (same as milady-plugin.ts does).
         const { registerTriggerTaskWorker } = await import(
-          "../src/triggers/runtime.js"
+          "../src/triggers/runtime"
         );
         registerTriggerTaskWorker(runtime);
 
@@ -1403,15 +1392,15 @@ describe("Agent Runtime E2E", () => {
       async () => {
         // Create an isolated environment for the subprocess
         const subHome = fs.mkdtempSync(
-          path.join(os.tmpdir(), "milaidy-e2e-starteliza-"),
+          path.join(os.tmpdir(), "milady-e2e-starteliza-"),
         );
         const subPglite = path.join(subHome, "pglite");
-        const subConfigDir = path.join(subHome, ".milaidy");
+        const subConfigDir = path.join(subHome, ".milady");
         fs.mkdirSync(subConfigDir, { recursive: true });
 
         // Write a config with an agent name so onboarding is skipped
         fs.writeFileSync(
-          path.join(subConfigDir, "milaidy.json"),
+          path.join(subConfigDir, "milady.json"),
           JSON.stringify({
             agents: {
               list: [{ id: "main", name: "SubprocessAgent", bio: ["test"] }],
@@ -1434,13 +1423,13 @@ describe("Agent Runtime E2E", () => {
         env.XDG_STATE_HOME = path.join(subHome, ".local/state");
         env.XDG_CACHE_HOME = path.join(subHome, ".cache");
         // Avoid collisions with any local process already bound to default 2138.
-        env.MILAIDY_API_PORT = String(
+        env.MILADY_API_PORT = String(
           30_000 + Math.floor(Math.random() * 20_000),
         );
         // Remove test-isolation vars that might confuse the subprocess
-        delete env.MILAIDY_CONFIG_PATH;
-        delete env.MILAIDY_STATE_DIR;
-        delete env.MILAIDY_TEST_HOME;
+        delete env.MILADY_CONFIG_PATH;
+        delete env.MILADY_STATE_DIR;
+        delete env.MILADY_TEST_HOME;
         delete env.VITEST;
 
         const result = await new Promise<{

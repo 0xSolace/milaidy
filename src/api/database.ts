@@ -1,5 +1,5 @@
 /**
- * Database management API handlers for the Milaidy Control UI.
+ * Database management API handlers for the Milady Control UI.
  *
  * Provides endpoints for:
  * - Database provider configuration (PGLite vs Postgres)
@@ -18,12 +18,21 @@ import type http from "node:http";
 import net from "node:net";
 import { promisify } from "node:util";
 import { type AgentRuntime, logger } from "@elizaos/core";
-import { loadMilaidyConfig, saveMilaidyConfig } from "../config/config.js";
+import { loadMiladyConfig, saveMiladyConfig } from "../config/config";
 import type {
   DatabaseConfig,
   DatabaseProviderType,
   PostgresCredentials,
-} from "../config/types.milaidy.js";
+} from "../config/types.milady";
+import {
+  normalizeHostLike,
+  normalizeIpForPolicy,
+} from "../security/network-policy";
+import {
+  readJsonBody as parseJsonBody,
+  sendJson,
+  sendJsonError,
+} from "./http-helpers";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -71,69 +80,13 @@ interface ConnectionTestResult {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function jsonResponse(
-  res: http.ServerResponse,
-  data: unknown,
-  status = 200,
-): void {
-  res.statusCode = status;
-  res.setHeader("Content-Type", "application/json");
-  res.end(JSON.stringify(data));
-}
-
-function errorResponse(
-  res: http.ServerResponse,
-  message: string,
-  status = 400,
-): void {
-  jsonResponse(res, { error: message }, status);
-}
-
-function readBody(req: http.IncomingMessage): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    let totalBytes = 0;
-    req.on("data", (c: Buffer) => {
-      totalBytes += c.length;
-      if (totalBytes > 2 * 1024 * 1024) {
-        reject(new Error("Request body too large"));
-        return;
-      }
-      chunks.push(c);
-    });
-    req.on("end", () => resolve(Buffer.concat(chunks).toString()));
-    req.on("error", reject);
-  });
-}
-
-/**
- * Read and parse a JSON request body with size limits and error handling.
- * Returns null (and sends a 4xx response) if reading or parsing fails.
- */
 async function readJsonBody<T = Record<string, unknown>>(
   req: http.IncomingMessage,
   res: http.ServerResponse,
 ): Promise<T | null> {
-  let raw: string;
-  try {
-    raw = await readBody(req);
-  } catch (err) {
-    const msg =
-      err instanceof Error ? err.message : "Failed to read request body";
-    errorResponse(res, msg, 413);
-    return null;
-  }
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) {
-      errorResponse(res, "Request body must be a JSON object", 400);
-      return null;
-    }
-    return parsed as T;
-  } catch {
-    errorResponse(res, "Invalid JSON in request body", 400);
-    return null;
-  }
+  return parseJsonBody(req, res, {
+    maxBytes: 2 * 1024 * 1024,
+  });
 }
 
 /**
@@ -200,7 +153,7 @@ const dnsLookupAll = promisify(dns.lookup);
 const ALWAYS_BLOCKED_IP_PATTERNS: RegExp[] = [
   /^169\.254\./, // Link-local / cloud metadata (AWS, GCP, Azure)
   /^0\./, // "This" network
-  /^fe80:/i, // IPv6 link-local
+  /^fe[89ab][0-9a-f]:/i, // IPv6 link-local fe80::/10
 ];
 
 /**
@@ -226,46 +179,10 @@ const PRIVATE_IP_PATTERNS: RegExp[] = [
  */
 function isApiLoopbackOnly(): boolean {
   const bind =
-    (process.env.MILAIDY_API_BIND ?? "127.0.0.1").trim() || "127.0.0.1";
+    (process.env.MILADY_API_BIND ?? "127.0.0.1").trim() || "127.0.0.1";
   return (
     bind === "127.0.0.1" || bind === "::1" || bind.toLowerCase() === "localhost"
   );
-}
-
-function normalizeHostLike(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/^\[|\]$/g, "");
-}
-
-/**
- * Decode IPv6-mapped IPv4 hex notation (::ffff:7f00:1 → 127.0.0.1).
- * Returns null if not a valid hex-encoded IPv4.
- */
-function decodeIpv6MappedHex(mapped: string): string | null {
-  const match = /^([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i.exec(mapped);
-  if (!match) return null;
-  const hi = Number.parseInt(match[1], 16);
-  const lo = Number.parseInt(match[2], 16);
-  if (!Number.isFinite(hi) || !Number.isFinite(lo)) return null;
-  const octets = [hi >> 8, hi & 0xff, lo >> 8, lo & 0xff];
-  return octets.join(".");
-}
-
-/**
- * Normalize an IP for policy checks.
- * Strips zone ID, handles IPv6-mapped IPv4 (both dotted and hex forms).
- */
-function normalizeIpForPolicy(ip: string): string {
-  const base = normalizeHostLike(ip).split("%")[0];
-  if (!base.startsWith("::ffff:")) return base;
-
-  const mapped = base.slice("::ffff:".length);
-  // Dotted form like ::ffff:127.0.0.1
-  if (net.isIP(mapped) === 4) return mapped;
-  // Hex form like ::ffff:7f00:1
-  return decodeIpv6MappedHex(mapped) ?? mapped;
 }
 
 /**
@@ -521,7 +438,7 @@ async function handleGetStatus(
 ): Promise<void> {
   const provider = detectCurrentProvider();
   if (!runtime?.adapter) {
-    jsonResponse(res, {
+    sendJson(res, {
       provider,
       connected: false,
       serverVersion: null,
@@ -566,18 +483,18 @@ async function handleGetStatus(
         : null,
   };
 
-  jsonResponse(res, status);
+  sendJson(res, status);
 }
 
 /**
  * GET /api/database/config
- * Returns the persisted database configuration from milaidy.json.
+ * Returns the persisted database configuration from milady.json.
  */
 function handleGetConfig(
   _req: http.IncomingMessage,
   res: http.ServerResponse,
 ): void {
-  const config = loadMilaidyConfig();
+  const config = loadMiladyConfig();
   const dbConfig: DatabaseConfig = config.database ?? { provider: "pglite" };
   // Mask the password in the response
   const sanitized = { ...dbConfig };
@@ -597,7 +514,7 @@ function handleGetConfig(
       ),
     };
   }
-  jsonResponse(res, {
+  sendJson(res, {
     config: sanitized,
     activeProvider: detectCurrentProvider(),
     needsRestart: (dbConfig.provider ?? "pglite") !== detectCurrentProvider(),
@@ -622,7 +539,7 @@ async function handlePutConfig(
     body.provider !== "pglite" &&
     body.provider !== "postgres"
   ) {
-    errorResponse(
+    sendJsonError(
       res,
       `Invalid provider: ${String(body.provider)}. Must be "pglite" or "postgres".`,
     );
@@ -630,7 +547,7 @@ async function handlePutConfig(
   }
 
   // Load current config so validation can account for unchanged provider.
-  const config = loadMilaidyConfig();
+  const config = loadMiladyConfig();
   const existingDb = config.database ?? {};
   const effectiveProvider =
     body.provider ?? existingDb.provider ?? ("pglite" as DatabaseProviderType);
@@ -639,7 +556,7 @@ async function handlePutConfig(
   if (body.postgres) {
     const pg = body.postgres;
     if (effectiveProvider === "postgres" && !pg.connectionString && !pg.host) {
-      errorResponse(
+      sendJsonError(
         res,
         "Postgres configuration requires either a connectionString or at least a host.",
       );
@@ -650,7 +567,7 @@ async function handlePutConfig(
       allowUnresolvedHostnames: Boolean(pg.connectionString),
     });
     if (validation.error) {
-      errorResponse(res, validation.error);
+      sendJsonError(res, validation.error);
       return;
     }
     validatedPostgres = validation.pinnedHost
@@ -677,14 +594,14 @@ async function handlePutConfig(
   }
 
   config.database = merged;
-  saveMilaidyConfig(config);
+  saveMiladyConfig(config);
 
   logger.info(
     { src: "database-api", provider: merged.provider },
     "Database configuration saved",
   );
 
-  jsonResponse(res, {
+  sendJson(res, {
     saved: true,
     config: merged,
     needsRestart: (merged.provider ?? "pglite") !== detectCurrentProvider(),
@@ -705,7 +622,7 @@ async function handleTestConnection(
 
   const validation = await validateDbHost(body);
   if (validation.error) {
-    errorResponse(res, validation.error);
+    sendJsonError(res, validation.error);
     return;
   }
 
@@ -721,7 +638,7 @@ async function handleTestConnection(
     const pgModule = await import("pg");
     Pool = pgModule.default?.Pool ?? pgModule.Pool;
   } catch {
-    jsonResponse(res, {
+    sendJson(res, {
       success: false,
       serverVersion: null,
       error:
@@ -745,7 +662,7 @@ async function handleTestConnection(
     const serverVersion = String(versionResult.rows[0]?.version ?? "");
     const durationMs = Date.now() - start;
 
-    jsonResponse(res, {
+    sendJson(res, {
       success: true,
       serverVersion,
       error: null,
@@ -754,7 +671,7 @@ async function handleTestConnection(
   } catch (err) {
     const durationMs = Date.now() - start;
     const message = err instanceof Error ? err.message : String(err);
-    jsonResponse(res, {
+    sendJson(res, {
       success: false,
       serverVersion: null,
       error: message,
@@ -844,7 +761,7 @@ async function handleGetTables(
     };
   });
 
-  jsonResponse(res, { tables });
+  sendJson(res, { tables });
 }
 
 /**
@@ -871,7 +788,7 @@ async function handleGetRows(
   const search = url.searchParams.get("search") ?? "";
 
   if (!(await assertTableExists(runtime, tableName))) {
-    errorResponse(res, `Table "${tableName}" not found`, 404);
+    sendJsonError(res, `Table "${tableName}" not found`, 404);
     return;
   }
 
@@ -944,7 +861,7 @@ async function handleGetRows(
 
   const result = await executeRawSql(runtime, query);
 
-  jsonResponse(res, {
+  sendJson(res, {
     table: tableName,
     rows: result.rows,
     columns: result.columns,
@@ -974,12 +891,12 @@ async function handleInsertRow(
     typeof body.data !== "object" ||
     Object.keys(body.data).length === 0
   ) {
-    errorResponse(res, "Request body must include a non-empty 'data' object.");
+    sendJsonError(res, "Request body must include a non-empty 'data' object.");
     return;
   }
 
   if (!(await assertTableExists(runtime, tableName))) {
-    errorResponse(res, `Table "${tableName}" not found`, 404);
+    sendJsonError(res, `Table "${tableName}" not found`, 404);
     return;
   }
 
@@ -993,7 +910,7 @@ async function handleInsertRow(
     `INSERT INTO ${quoteIdent(tableName)} (${colList}) VALUES (${valList}) RETURNING *`,
   );
 
-  jsonResponse(res, { inserted: true, row: result.rows[0] ?? null }, 201);
+  sendJson(res, { inserted: true, row: result.rows[0] ?? null }, 201);
 }
 
 /**
@@ -1013,14 +930,14 @@ async function handleUpdateRow(
   if (!body) return;
 
   if (!body.where || Object.keys(body.where).length === 0) {
-    errorResponse(
+    sendJsonError(
       res,
       "Request body must include a non-empty 'where' object for row identification.",
     );
     return;
   }
   if (!body.data || Object.keys(body.data).length === 0) {
-    errorResponse(
+    sendJsonError(
       res,
       "Request body must include a non-empty 'data' object with fields to update.",
     );
@@ -1043,11 +960,11 @@ async function handleUpdateRow(
   );
 
   if (result.rows.length === 0) {
-    errorResponse(res, "No matching row found to update.", 404);
+    sendJsonError(res, "No matching row found to update.", 404);
     return;
   }
 
-  jsonResponse(res, { updated: true, row: result.rows[0] });
+  sendJson(res, { updated: true, row: result.rows[0] });
 }
 
 /**
@@ -1066,7 +983,7 @@ async function handleDeleteRow(
   if (!body) return;
 
   if (!body.where || Object.keys(body.where).length === 0) {
-    errorResponse(
+    sendJsonError(
       res,
       "Request body must include a non-empty 'where' object for row identification.",
     );
@@ -1085,11 +1002,11 @@ async function handleDeleteRow(
   );
 
   if (result.rows.length === 0) {
-    errorResponse(res, "No matching row found to delete.", 404);
+    sendJsonError(res, "No matching row found to delete.", 404);
     return;
   }
 
-  jsonResponse(res, { deleted: true, row: result.rows[0] });
+  sendJson(res, { deleted: true, row: result.rows[0] });
 }
 
 /**
@@ -1112,7 +1029,7 @@ async function handleQuery(
     typeof body.sql !== "string" ||
     body.sql.trim().length === 0
   ) {
-    errorResponse(res, "Request body must include a non-empty 'sql' string.");
+    sendJsonError(res, "Request body must include a non-empty 'sql' string.");
     return;
   }
 
@@ -1132,22 +1049,33 @@ async function handleQuery(
       .replace(/--.*$/gm, "")
       .trim();
 
-    // Strip string literals so that keywords inside quoted strings are ignored.
-    // Handles single-quoted ('...'), dollar-quoted ($$...$$), and tagged
-    // dollar-quoted ($tag$...$tag$) strings, plus double-quoted identifiers.
-    const noStrings = stripped
+    // Strip string literals so that mutation keywords/functions inside quoted
+    // strings are ignored. Handles single-quoted ('...'), dollar-quoted
+    // ($$...$$), and tagged dollar-quoted ($tag$...$tag$) strings.
+    const noLiterals = stripped
       .replace(/\$([A-Za-z0-9_]*)\$[\s\S]*?\$\1\$/g, " ")
-      .replace(/'(?:[^']|'')*'/g, " ")
-      .replace(/"(?:[^"]|"")*"/g, " ");
+      .replace(/'(?:[^']|'')*'/g, " ");
+
+    // For keyword checks, also strip double-quoted identifiers to avoid
+    // matching words inside quoted table/column names.
+    const noStrings = noLiterals.replace(/"(?:[^"]|"")*"/g, " ");
 
     const mutationKeywords = [
       "INSERT",
       "UPDATE",
       "DELETE",
+      "INTO",
       "DROP",
       "ALTER",
       "TRUNCATE",
       "CREATE",
+      "COPY",
+      "MERGE",
+      "CALL",
+      "DO",
+      "REFRESH",
+      "REINDEX",
+      "VACUUM",
       "GRANT",
       "REVOKE",
     ];
@@ -1159,16 +1087,30 @@ async function handleQuery(
     );
     const match = mutationPattern.exec(noStrings);
     if (match) {
-      errorResponse(
+      sendJsonError(
         res,
         `Query rejected: "${match[1].toUpperCase()}" is a mutation keyword. Set readOnly: false to execute mutations.`,
       );
       return;
     }
+
+    // Some SELECT functions still mutate server state (for example sequence
+    // advancement via nextval/setval). Reject those in read-only mode.
+    const mutatingFunctionPattern =
+      /(?:^|[^\w$])"?((?:nextval|setval))"?\s*\(/i;
+    const mutatingFunctionMatch = mutatingFunctionPattern.exec(noLiterals);
+    if (mutatingFunctionMatch) {
+      sendJsonError(
+        res,
+        `Query rejected: "${mutatingFunctionMatch[1].toUpperCase()}" is a mutating function. Set readOnly: false to execute mutations.`,
+      );
+      return;
+    }
+
     // Reject multi-statement queries (naive: any semicolon not at the very end)
     const trimmedForSemicolon = stripped.replace(/;\s*$/, "");
     if (trimmedForSemicolon.includes(";")) {
-      errorResponse(
+      sendJsonError(
         res,
         "Query rejected: multi-statement queries are not allowed in read-only mode.",
       );
@@ -1187,7 +1129,7 @@ async function handleQuery(
     durationMs,
   };
 
-  jsonResponse(res, queryResult);
+  sendJson(res, queryResult);
 }
 
 // ---------------------------------------------------------------------------
@@ -1243,7 +1185,7 @@ export async function handleDatabaseRoute(
 
   // Routes below require a live runtime with a database adapter
   if (!runtime?.adapter) {
-    errorResponse(
+    sendJsonError(
       res,
       "Database not available. The agent may not be running or the database adapter is not initialized.",
       503,
