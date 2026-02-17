@@ -8,7 +8,25 @@
   "files": {
     "ignoreUnknown": true,
     "maxSize": 1048576,
-    "includes": ["src/**", "scripts/**", "apps/**"]
+    "includes": [
+      "**",
+      "!apps",
+      "!assets",
+      "!dist",
+      "!docs/_layouts",
+      "!**/.github/contributor-trust.json",
+      "!node_modules",
+      "!patches",
+      "!pnpm-lock.yaml",
+      "!bun.lock",
+      "!bun.lockb",
+      "!skills",
+      "!Swabble",
+      "!vendor",
+      "!test/contracts/lib",
+      "!test/contracts/out",
+      "!test/contracts/cache"
+    ]
   },
   "assist": {
     "actions": {

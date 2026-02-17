@@ -59,23 +59,15 @@ export function Header() {
     "inline-flex items-center justify-center w-7 h-7 border border-border bg-bg cursor-pointer text-sm leading-none hover:border-accent hover:text-accent transition-colors";
 
   return (
-    <header className="border-b border-border py-2 px-3 sm:py-3 sm:px-4">
-      <div className="flex items-center gap-2 min-w-0">
-        <div className="shrink-0 min-w-0">
-          <span
-            className="text-base font-bold text-txt-strong truncate block"
-            data-testid="agent-name"
-          >
-            {name}
-          </span>
-        </div>
-        <div className="flex-1 min-w-0 overflow-x-auto">
-          <div className="flex items-center gap-1.5 w-max ml-auto pr-0.5">
-            {dropStatus?.dropEnabled &&
-              dropStatus?.publicMintOpen &&
-              !dropStatus?.mintedOut &&
-              !dropStatus?.userHasMinted &&
-              !registryStatus?.registered && (
+    <>
+      <header className="border-b border-border py-2 px-3 sm:py-3 sm:px-4">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="shrink-0 min-w-0">
+            <span className="text-base font-bold text-txt-strong truncate block" data-testid="agent-name">{name}</span>
+          </div>
+          <div className="flex-1 min-w-0 overflow-x-auto">
+            <div className="flex items-center gap-1.5 w-max ml-auto pr-0.5">
+              {dropStatus?.dropEnabled && dropStatus?.publicMintOpen && !dropStatus?.mintedOut && !dropStatus?.userHasMinted && !registryStatus?.registered && (
                 <button
                   type="button"
                   onClick={() => setTab("character")}

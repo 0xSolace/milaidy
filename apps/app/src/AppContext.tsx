@@ -3080,6 +3080,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // ── Onboarding ─────────────────────────────────────────────────────
 
+
+
   const handleOnboardingFinish = useCallback(async () => {
     if (onboardingFinishBusyRef.current || onboardingRestarting) return;
     if (!onboardingOptions) return;
