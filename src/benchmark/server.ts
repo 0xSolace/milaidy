@@ -11,6 +11,7 @@ import {
   stringToUuid,
   type UUID,
 } from "@elizaos/core";
+import { CORE_PLUGINS } from "../runtime/core-plugins";
 import { createMiladyPlugin } from "../runtime/milady-plugin";
 
 // Load environment variables BEFORE anything else
@@ -255,16 +256,52 @@ export async function startBenchmarkServer() {
     `[bench] Initializing milady benchmark runtime on port ${port}...`,
   );
 
-  const plugins: Plugin[] = [];
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PLUGIN LOADING — Use full CORE_PLUGINS to test with realistic context
+  // ═══════════════════════════════════════════════════════════════════════════
+  // We intentionally load the full Milady plugin set to ensure benchmarks test
+  // the agent's ability to perform tasks despite context "pollution" from all
+  // the default actions, providers, evaluators, etc. If the agent can still
+  // succeed with a crowded context, it demonstrates sufficient context handling.
+  // ═══════════════════════════════════════════════════════════════════════════
 
-  try {
-    const { default: sqlPlugin } = await import("@elizaos/plugin-sql");
-    plugins.push(toPlugin(sqlPlugin, "@elizaos/plugin-sql"));
-    elizaLogger.info("[bench] Loaded core plugin: @elizaos/plugin-sql");
-  } catch (error: unknown) {
-    elizaLogger.error(
-      `[bench] Failed to load sql plugin: ${formatUnknownError(error)}`,
-    );
+  const plugins: Plugin[] = [];
+  const loadedPlugins: string[] = [];
+  const failedPlugins: string[] = [];
+
+  // Plugins to skip in benchmark context — these require external auth or
+  // interfere with benchmark operation
+  const skipPlugins = new Set([
+    "@elizaos/plugin-elizacloud", // Requires ElizaOS cloud auth, conflicts with local LLM
+  ]);
+
+  // Load all CORE_PLUGINS — these are what the production Milady runtime uses
+  for (const pluginName of CORE_PLUGINS) {
+    if (skipPlugins.has(pluginName)) {
+      elizaLogger.debug(`[bench] Skipping plugin (benchmark mode): ${pluginName}`);
+      continue;
+    }
+    try {
+      const pluginModule = await import(pluginName);
+      const plugin = pluginModule.default ?? pluginModule[Object.keys(pluginModule)[0]];
+      if (plugin) {
+        plugins.push(toPlugin(plugin, pluginName));
+        loadedPlugins.push(pluginName);
+      }
+    } catch (error: unknown) {
+      // Some plugins may not be available in all environments — that's OK
+      failedPlugins.push(pluginName);
+      elizaLogger.debug(
+        `[bench] Plugin not available: ${pluginName} (${formatUnknownError(error)})`,
+      );
+    }
+  }
+
+  elizaLogger.info(
+    `[bench] Loaded ${loadedPlugins.length}/${CORE_PLUGINS.length} core plugins`,
+  );
+  if (failedPlugins.length > 0) {
+    elizaLogger.debug(`[bench] Unavailable plugins: ${failedPlugins.join(", ")}`);
   }
 
   // Load Milady plugin — provides workspace context, session keys, autonomous state,
@@ -285,6 +322,50 @@ export async function startBenchmarkServer() {
     );
   }
 
+  // Load trust plugin — provides trust engine, security module, and permission system
+  // (may already be in CORE_PLUGINS but we want to ensure it's loaded)
+  if (!loadedPlugins.includes("@elizaos/plugin-trust")) {
+    try {
+      const { default: trustPlugin } = await import("@elizaos/plugin-trust");
+      plugins.push(toPlugin(trustPlugin, "@elizaos/plugin-trust"));
+      elizaLogger.info("[bench] Loaded plugin: @elizaos/plugin-trust");
+    } catch (error: unknown) {
+      elizaLogger.debug(
+        `[bench] Trust plugin not available: ${formatUnknownError(error)}`,
+      );
+    }
+  }
+
+  // Load LLM provider plugins based on environment
+  const groqApiKey = process.env.GROQ_API_KEY?.trim();
+  if (groqApiKey) {
+    process.env.GROQ_API_KEY = groqApiKey;
+    try {
+      const { default: groqPlugin } = await import("@elizaos/plugin-groq");
+      plugins.push(toPlugin(groqPlugin, "@elizaos/plugin-groq"));
+      elizaLogger.info("[bench] Loaded LLM plugin: @elizaos/plugin-groq");
+    } catch (error: unknown) {
+      elizaLogger.warn(
+        `[bench] Groq plugin not available: ${formatUnknownError(error)}`,
+      );
+    }
+  }
+
+  const openAiApiKey = process.env.OPENAI_API_KEY?.trim();
+  if (openAiApiKey && !openAiApiKey.startsWith("gsk_")) {
+    process.env.OPENAI_API_KEY = openAiApiKey;
+    try {
+      const { default: openaiPlugin } = await import("@elizaos/plugin-openai");
+      plugins.push(toPlugin(openaiPlugin, "@elizaos/plugin-openai"));
+      elizaLogger.info("[bench] Loaded LLM plugin: @elizaos/plugin-openai");
+    } catch (error: unknown) {
+      elizaLogger.debug(
+        `[bench] OpenAI plugin not available: ${formatUnknownError(error)}`,
+      );
+    }
+  }
+
+  // Load computer use plugin if enabled
   if (process.env.MILADY_ENABLE_COMPUTERUSE) {
     try {
       process.env.COMPUTERUSE_ENABLED ??= "true";
@@ -299,119 +380,20 @@ export async function startBenchmarkServer() {
         computeruseModule.computerusePlugin ??
         computeruseModule.computerUsePlugin ??
         computeruseModule.default;
-      if (!computerusePlugin) {
-        throw new Error(
-          "ComputerUse plugin export not found in local plugins workspace",
+      if (computerusePlugin) {
+        plugins.push(toPlugin(computerusePlugin, localComputerusePath));
+        elizaLogger.info(
+          "[bench] Loaded local plugin: @elizaos/plugin-computeruse",
         );
       }
-      plugins.push(toPlugin(computerusePlugin, localComputerusePath));
-      elizaLogger.info(
-        "[bench] Loaded local plugin: @elizaos/plugin-computeruse",
-      );
     } catch (error: unknown) {
-      elizaLogger.error(
-        `[bench] Failed to load computer use plugin: ${formatUnknownError(error)}`,
+      elizaLogger.debug(
+        `[bench] Computer use plugin not available: ${formatUnknownError(error)}`,
       );
     }
   }
 
-  // Load local embedding plugin first (required for embeddings without OpenAI)
-  try {
-    const { default: localEmbeddingPlugin } = await import(
-      "@elizaos/plugin-local-embedding"
-    );
-    plugins.push(
-      toPlugin(localEmbeddingPlugin, "@elizaos/plugin-local-embedding"),
-    );
-    elizaLogger.info("[bench] Loaded plugin: @elizaos/plugin-local-embedding");
-  } catch (error: unknown) {
-    elizaLogger.warn(
-      `[bench] Local embedding plugin not available: ${formatUnknownError(error)}`,
-    );
-  }
-
-  // Load Groq plugin if GROQ_API_KEY is set
-  const groqApiKey = process.env.GROQ_API_KEY?.trim();
-  if (groqApiKey) {
-    process.env.GROQ_API_KEY = groqApiKey;
-    try {
-      const { default: groqPlugin } = await import("@elizaos/plugin-groq");
-      plugins.push(toPlugin(groqPlugin, "@elizaos/plugin-groq"));
-      elizaLogger.info("[bench] Loaded plugin: @elizaos/plugin-groq");
-    } catch (error: unknown) {
-      elizaLogger.warn(
-        `[bench] Groq plugin not available: ${formatUnknownError(error)}`,
-      );
-    }
-  }
-
-  // Load OpenAI plugin only if explicitly configured with real OpenAI key
-  const openAiApiKey = process.env.OPENAI_API_KEY?.trim();
-  if (openAiApiKey && !openAiApiKey.startsWith("gsk_")) {
-    process.env.OPENAI_API_KEY = openAiApiKey;
-    try {
-      const { default: openaiPlugin } = await import("@elizaos/plugin-openai");
-      plugins.push(toPlugin(openaiPlugin, "@elizaos/plugin-openai"));
-      elizaLogger.info("[bench] Loaded plugin: @elizaos/plugin-openai");
-    } catch (error: unknown) {
-      elizaLogger.error(
-        `[bench] Failed to load openai plugin: ${formatUnknownError(error)}`,
-      );
-    }
-  }
-
-  try {
-    const { default: rolodexPlugin } = await import("@elizaos/plugin-rolodex");
-    plugins.push(toPlugin(rolodexPlugin, "@elizaos/plugin-rolodex"));
-    elizaLogger.info("[bench] Loaded plugin: @elizaos/plugin-rolodex");
-  } catch (error: unknown) {
-    elizaLogger.error(
-      `[bench] Failed to load rolodex plugin: ${formatUnknownError(error)}`,
-    );
-  }
-
-  // Load trust plugin — provides trust engine, security module, and permission system
-  try {
-    const { default: trustPlugin } = await import("@elizaos/plugin-trust");
-    plugins.push(toPlugin(trustPlugin, "@elizaos/plugin-trust"));
-    elizaLogger.info("[bench] Loaded plugin: @elizaos/plugin-trust");
-  } catch (error: unknown) {
-    elizaLogger.warn(
-      `[bench] Trust plugin not available: ${formatUnknownError(error)}`,
-    );
-  }
-
-  // Load shell plugin — enables shell command execution for agentic benchmarks
-  if (process.env.MILADY_ENABLE_SHELL !== "false") {
-    try {
-      const { default: shellPlugin } = await import("@elizaos/plugin-shell");
-      plugins.push(toPlugin(shellPlugin, "@elizaos/plugin-shell"));
-      elizaLogger.info("[bench] Loaded plugin: @elizaos/plugin-shell");
-    } catch (error: unknown) {
-      elizaLogger.warn(
-        `[bench] Shell plugin not available: ${formatUnknownError(error)}`,
-      );
-    }
-  }
-
-  // Load trajectory logger — records agent actions for benchmark evaluation
-  try {
-    const { default: trajectoryPlugin } = await import(
-      "@elizaos/plugin-trajectory-logger"
-    );
-    plugins.push(
-      toPlugin(trajectoryPlugin, "@elizaos/plugin-trajectory-logger"),
-    );
-    elizaLogger.info(
-      "[bench] Loaded plugin: @elizaos/plugin-trajectory-logger",
-    );
-  } catch (error: unknown) {
-    elizaLogger.warn(
-      `[bench] Trajectory logger plugin not available: ${formatUnknownError(error)}`,
-    );
-  }
-
-  // Keep typo alias for backward compatibility while preferring corrected key.
+  // Load mock plugin for testing
   if (
     process.env.MILADY_BENCH_MOCK === "true" ||
     process.env.MILAIDY_BENCH_MOCK === "true"
