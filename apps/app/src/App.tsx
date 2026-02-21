@@ -21,6 +21,8 @@ import { KnowledgeView } from "./components/KnowledgeView";
 import { LoadingScreen } from "./components/LoadingScreen";
 import { Nav } from "./components/Nav";
 import { OnboardingWizard } from "./components/OnboardingWizard";
+import { CloudLanding } from "./components/CloudLanding";
+import { DiscordCallback } from "./components/DiscordCallback";
 import { PairingView } from "./components/PairingView";
 import { RestartBanner } from "./components/RestartBanner";
 import { SaveCommandModal } from "./components/SaveCommandModal";
@@ -235,6 +237,16 @@ export function App() {
       />
     );
   }
+
+  // Discord OAuth callback route (cloud-only)
+  if (typeof window !== "undefined" && window.location.pathname === "/discord-callback") {
+    return <DiscordCallback />;
+  }
+
+  // Cloud-only mode: show simplified landing page
+  // Hardcoded for Vercel deployment
+  const isCloudOnly = true;
+  if (isCloudOnly && !onboardingComplete) return <CloudLanding />;
 
   if (authRequired) return <PairingView />;
   if (!onboardingComplete) return <OnboardingWizard />;
