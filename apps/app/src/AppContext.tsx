@@ -3789,6 +3789,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
       let onboardingNeedsOptions = false;
       let requiresAuth = false;
+
+      // Cloud-only mode: skip backend initialization entirely
+      const isCloudOnly = import.meta.env.VITE_CLOUD_ONLY === 'true';
+      if (isCloudOnly) {
+        setOnboardingLoading(false);
+        setOnboardingComplete(false);
+        return;
+      }
+
       setStartupPhase("starting-backend");
 
       // Keep the splash screen up until the backend is reachable.
