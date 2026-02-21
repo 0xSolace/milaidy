@@ -3791,8 +3791,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       let requiresAuth = false;
 
       // Cloud-only mode: skip backend initialization entirely
-      const isCloudOnly = import.meta.env.VITE_CLOUD_ONLY === 'true';
+      const cloudOnlyEnv = import.meta.env.VITE_CLOUD_ONLY;
+      const isCloudOnly = cloudOnlyEnv === 'true' || cloudOnlyEnv === true;
+      
+      if (import.meta.env.DEV) {
+        console.debug('[milady] Cloud-only mode check:', {
+          cloudOnlyEnv,
+          isCloudOnly,
+          allEnv: import.meta.env
+        });
+      }
+      
       if (isCloudOnly) {
+        console.log('[milady] Cloud-only mode detected - skipping backend initialization');
         setOnboardingLoading(false);
         setOnboardingComplete(false);
         return;
