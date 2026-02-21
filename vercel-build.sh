@@ -3,6 +3,14 @@ set -e
 
 echo "Vercel build script starting..."
 
+# Export environment variables for Vite
+export VITE_CLOUD_ONLY="${VITE_CLOUD_ONLY:-true}"
+export VITE_ELIZACLOUD_BASE="${VITE_ELIZACLOUD_BASE:-https://www.elizacloud.ai}"
+
+echo "Environment variables:"
+echo "  VITE_CLOUD_ONLY=$VITE_CLOUD_ONLY"
+echo "  VITE_ELIZACLOUD_BASE=$VITE_ELIZACLOUD_BASE"
+
 # Patch app/package.json to remove workspace dependencies
 cd apps/app
 echo "Patching package.json to remove workspace dependencies..."
