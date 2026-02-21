@@ -3791,19 +3791,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       let requiresAuth = false;
 
       // Cloud-only mode: skip backend initialization entirely
-      const cloudOnlyEnv = import.meta.env.VITE_CLOUD_ONLY;
-      const isCloudOnly = cloudOnlyEnv === 'true' || cloudOnlyEnv === true;
+      // Temporarily hardcoded to true for Vercel deployment
+      const isCloudOnly = true;
       
-      if (import.meta.env.DEV) {
-        console.debug('[milady] Cloud-only mode check:', {
-          cloudOnlyEnv,
-          isCloudOnly,
-          allEnv: import.meta.env
-        });
-      }
+      console.log('[milady] Cloud-only mode:', isCloudOnly);
       
       if (isCloudOnly) {
-        console.log('[milady] Cloud-only mode detected - skipping backend initialization');
+        console.log('[milady] Cloud-only mode active - skipping backend initialization');
         setOnboardingLoading(false);
         setOnboardingComplete(false);
         return;
