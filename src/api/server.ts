@@ -11480,40 +11480,20 @@ async function handleRequest(
     // Try to dynamically load the route handler from the local plugin first
     let handled = false;
 
-    // Try @elizaos/plugin-coding-agent first (local workspace plugin)
     try {
-      const codingAgentPlugin = await import("@elizaos/plugin-coding-agent");
-      if (codingAgentPlugin.createCodingAgentRouteHandler) {
-        const coordinator = codingAgentPlugin.getCoordinator?.(state.runtime);
-        const handler = codingAgentPlugin.createCodingAgentRouteHandler(
+      const orchestratorPlugin = await import(
+        "@elizaos/plugin-agent-orchestrator"
+      );
+      if (orchestratorPlugin.createCodingAgentRouteHandler) {
+        const coordinator = orchestratorPlugin.getCoordinator?.(state.runtime);
+        const handler = orchestratorPlugin.createCodingAgentRouteHandler(
           state.runtime,
           coordinator,
         );
         handled = await handler(req, res, pathname);
       }
     } catch {
-      // Local plugin not available, try npm plugin
-    }
-
-    // Fallback to @elizaos/plugin-agent-orchestrator (npm)
-    if (!handled) {
-      try {
-        const orchestratorPlugin = await import(
-          "@elizaos/plugin-agent-orchestrator"
-        );
-        if (orchestratorPlugin.createCodingAgentRouteHandler) {
-          const coordinator = orchestratorPlugin.getCoordinator?.(
-            state.runtime,
-          );
-          const handler = orchestratorPlugin.createCodingAgentRouteHandler(
-            state.runtime,
-            coordinator,
-          );
-          handled = await handler(req, res, pathname);
-        }
-      } catch {
-        // Plugin doesn't export these functions - skip routing
-      }
+      // Plugin doesn't export these functions - skip routing
     }
 
     // Final fallback: Handle coding-agents routes using AgentOrchestratorService
@@ -13891,17 +13871,17 @@ export async function startApiServer(opts?: {
 
   // Wire coding-agent bridges at initial boot (coordinator may not exist yet)
   if (opts?.runtime) {
-    const chatOk = wireCodingAgentChatBridge(state);
-    const wsOk = wireCodingAgentWsBridge(state);
-    const eventOk = wireCoordinatorEventRouting(state);
+    let chatOk = wireCodingAgentChatBridge(state);
+    let wsOk = wireCodingAgentWsBridge(state);
+    let eventOk = wireCoordinatorEventRouting(state);
     if (!chatOk || !wsOk || !eventOk) {
       let wireAttempts = 0;
       const wireInterval = setInterval(() => {
         wireAttempts++;
-        const chatDone = chatOk || wireCodingAgentChatBridge(state);
-        const wsDone = wsOk || wireCodingAgentWsBridge(state);
-        const eventDone = eventOk || wireCoordinatorEventRouting(state);
-        if ((chatDone && wsDone && eventDone) || wireAttempts >= 15) {
+        chatOk = chatOk || wireCodingAgentChatBridge(state);
+        wsOk = wsOk || wireCodingAgentWsBridge(state);
+        eventOk = eventOk || wireCoordinatorEventRouting(state);
+        if ((chatOk && wsOk && eventOk) || wireAttempts >= 15) {
           clearInterval(wireInterval);
         }
       }, 1000);
@@ -14268,17 +14248,17 @@ export async function startApiServer(opts?: {
 
     // Wire coding-agent bridges (coordinator may not exist yet — retry)
     {
-      const chatOk = wireCodingAgentChatBridge(state);
-      const wsOk = wireCodingAgentWsBridge(state);
-      const eventOk = wireCoordinatorEventRouting(state);
+      let chatOk = wireCodingAgentChatBridge(state);
+      let wsOk = wireCodingAgentWsBridge(state);
+      let eventOk = wireCoordinatorEventRouting(state);
       if (!chatOk || !wsOk || !eventOk) {
         let wireAttempts = 0;
         const wireInterval = setInterval(() => {
           wireAttempts++;
-          const chatDone = chatOk || wireCodingAgentChatBridge(state);
-          const wsDone = wsOk || wireCodingAgentWsBridge(state);
-          const eventDone = eventOk || wireCoordinatorEventRouting(state);
-          if ((chatDone && wsDone && eventDone) || wireAttempts >= 15) {
+          chatOk = chatOk || wireCodingAgentChatBridge(state);
+          wsOk = wsOk || wireCodingAgentWsBridge(state);
+          eventOk = eventOk || wireCoordinatorEventRouting(state);
+          if ((chatOk && wsOk && eventOk) || wireAttempts >= 15) {
             clearInterval(wireInterval);
           }
         }, 1000);
