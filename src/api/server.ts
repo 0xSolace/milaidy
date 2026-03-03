@@ -27,10 +27,6 @@ import {
   type Task,
   type UUID,
 } from "@elizaos/core";
-import type {
-  PTYService,
-  SwarmEvent,
-} from "@elizaos/plugin-agent-orchestrator";
 import { listPiAiModelOptions } from "@elizaos/plugin-pi-ai";
 import { type WebSocket, WebSocketServer } from "ws";
 import type { CloudManager } from "../cloud/cloud-manager";
@@ -121,6 +117,12 @@ import { handleMemoryRoutes } from "./memory-routes";
 import { buildWhitelistTree, generateProof } from "./merkle-tree";
 import { handleModelsRoutes } from "./models-routes";
 import { verifyAndWhitelistHolder } from "./nft-verify";
+import type {
+  CoordinationLLMResponse,
+  PTYService,
+  SwarmEvent,
+  TaskContext,
+} from "./parse-action-block";
 import { handlePermissionRoutes } from "./permissions-routes";
 import {
   type PluginParamInfo,
@@ -5415,6 +5417,13 @@ function getCoordinatorFromRuntime(runtime: AgentRuntime): {
     cb: (text: string, source?: string) => Promise<void>,
   ) => void;
   setWsBroadcast?: (cb: (event: SwarmEvent) => void) => void;
+  setAgentDecisionCallback?: (
+    cb: (
+      eventDescription: string,
+      sessionId: string,
+      taskContext: TaskContext,
+    ) => Promise<CoordinationLLMResponse | null>,
+  ) => void;
 } | null {
   // Try to get coordinator from runtime services
   const coordinator = runtime.getService("SWARM_COORDINATOR");
@@ -5453,6 +5462,165 @@ function wireCodingAgentWsBridge(st: ServerState): boolean {
     const { type: eventType, ...rest } = event;
     st.broadcastWs?.({ type: "pty-session-event", eventType, ...rest });
   });
+  return true;
+}
+
+// ── Parse Action Block from Milaidy's Response ─────────────────────────
+import { parseActionBlock } from "./parse-action-block";
+
+// ── Coordinator Event Routing ───────────────────────────────────────────
+
+/**
+ * Wire the SwarmCoordinator's agentDecisionCallback so coordinator events
+ * (blocked prompts, turn completions) route through Milaidy's full
+ * ElizaOS pipeline (memory, personality, actions) so she has conversation
+ * context to make informed decisions. The pipeline's model size is
+ * The pipeline's model size is temporarily overridden to TEXT_SMALL
+ * via the private `runtime.llmModeOption` (no public setter exists).
+ * This is intentional — coordinator decisions must be fast to avoid
+ * stalling CLI agents waiting for input.
+ *
+ * Events are serialized (one at a time) to prevent context confusion.
+ * Milaidy's response appears in chat via WS broadcast, and the embedded
+ * JSON action block is parsed and returned to the coordinator for execution.
+ *
+ * If the callback fails or Milaidy's response has no action block,
+ * returns null → coordinator falls back to the small LLM.
+ */
+function wireCoordinatorEventRouting(st: ServerState): boolean {
+  if (!st.runtime) return false;
+  const coordinator = getCoordinatorFromRuntime(st.runtime);
+  if (!coordinator?.setAgentDecisionCallback) return false;
+
+  // Serialization queue — one coordinator event at a time
+  let eventQueue: Promise<void> = Promise.resolve();
+
+  coordinator.setAgentDecisionCallback(
+    async (
+      eventDescription: string,
+      _sessionId: string,
+      _taskCtx: TaskContext,
+    ): Promise<CoordinationLLMResponse | null> => {
+      let resolveOuter!: (v: CoordinationLLMResponse | null) => void;
+      const resultPromise = new Promise<CoordinationLLMResponse | null>((r) => {
+        resolveOuter = r;
+      });
+
+      eventQueue = eventQueue.then(async () => {
+        try {
+          const runtime = st.runtime;
+          if (!runtime) {
+            resolveOuter(null);
+            return;
+          }
+
+          // Ensure the legacy chat connection exists (creates room/world if needed).
+          // We inline the setup here because ensureLegacyChatConnection is
+          // closure-scoped in the route handler and not accessible at module level.
+          const agentName = runtime.character.name ?? "Milady";
+          if (!st.chatUserId || !st.chatRoomId) {
+            const adminId =
+              st.adminEntityId ??
+              (stringToUuid(`${st.agentName}-admin-entity`) as UUID);
+            st.adminEntityId = adminId;
+            st.chatUserId = adminId;
+            st.chatRoomId =
+              st.chatRoomId ??
+              (stringToUuid(`${agentName}-web-chat-room`) as UUID);
+            const worldId = stringToUuid(`${agentName}-web-chat-world`) as UUID;
+            const messageServerId = stringToUuid(
+              `${agentName}-web-server`,
+            ) as UUID;
+            await runtime.ensureConnection({
+              entityId: adminId,
+              roomId: st.chatRoomId,
+              worldId,
+              userName: "User",
+              source: "client_chat",
+              channelId: `${agentName}-web-chat`,
+              type: ChannelType.DM,
+              messageServerId,
+              metadata: { ownership: { ownerId: adminId } },
+            });
+          }
+          if (!st.chatUserId || !st.chatRoomId) {
+            resolveOuter(null);
+            return;
+          }
+
+          // Create a message memory so the event enters Milaidy's conversation history.
+          const message = createMessageMemory({
+            id: crypto.randomUUID() as UUID,
+            entityId: st.chatUserId,
+            agentId: runtime.agentId,
+            roomId: st.chatRoomId,
+            content: {
+              text: eventDescription,
+              source: "coordinator",
+              channelType: "DM",
+            },
+          });
+
+          // Temporarily force TEXT_SMALL — coordinator events are time-sensitive
+          // and TEXT_LARGE can timeout while CLI agents stall waiting for input.
+          // llmModeOption is private with no public setter; cast is intentional.
+          const rt = runtime as unknown as Record<string, unknown>;
+          const prevLlmMode = rt.llmModeOption;
+          rt.llmModeOption = "SMALL";
+          let result: { text: string; agentName?: string };
+          try {
+            result = await generateChatResponse(runtime, message, agentName, {
+              resolveNoResponseText: () => "I'll look into that.",
+            });
+          } finally {
+            rt.llmModeOption = prevLlmMode;
+          }
+
+          // WS broadcast the natural language portion (strip JSON action block).
+          if (result.text && result.text !== "(no response)") {
+            const displayText = result.text
+              .replace(
+                /```(?:json)?\s*\n?\{[\s\S]*?"action"[\s\S]*?\}\s*\n?```/g,
+                "",
+              )
+              .trim();
+            if (displayText && displayText.length > 2) {
+              const conv = st.activeConversationId
+                ? st.conversations.get(st.activeConversationId)
+                : Array.from(st.conversations.values()).sort(
+                    (a, b) =>
+                      new Date(b.updatedAt).getTime() -
+                      new Date(a.updatedAt).getTime(),
+                  )[0];
+              if (conv) {
+                st.broadcastWs?.({
+                  type: "proactive-message",
+                  conversationId: conv.id,
+                  message: {
+                    id: `coordinator-${Date.now()}`,
+                    role: "assistant",
+                    text: displayText,
+                    timestamp: Date.now(),
+                    source: "coordinator",
+                  },
+                });
+              }
+            }
+          }
+
+          resolveOuter(parseActionBlock(result.text ?? ""));
+        } catch (err) {
+          logger.error(
+            `Coordinator event routing failed: ${err instanceof Error ? err.message : String(err)}`,
+          );
+          resolveOuter(null);
+        }
+      });
+
+      return resultPromise;
+    },
+  );
+
   return true;
 }
 
@@ -11112,6 +11280,15 @@ async function handleRequest(
       aborted = true;
     });
 
+    // Pause coordinator LLM decisions while processing user message
+    const streamCoordinator = state.runtime.getService("SWARM_COORDINATOR") as
+      | { pause?: () => void; resume?: () => void; isPaused?: boolean }
+      | undefined;
+    const streamDidPause = streamCoordinator && !streamCoordinator.isPaused;
+    if (streamDidPause) {
+      streamCoordinator.pause?.();
+    }
+
     try {
       const runtime = state.runtime;
       const agentName = runtime.character.name ?? "Milady";
@@ -11172,6 +11349,10 @@ async function handleRequest(
         }
       }
     } finally {
+      // Resume coordinator after user message processed
+      if (streamDidPause) {
+        streamCoordinator.resume?.();
+      }
       res.end();
     }
     return;
@@ -11200,6 +11381,15 @@ async function handleRequest(
     if (!state.runtime) {
       error(res, "Agent is not running", 503);
       return;
+    }
+
+    // Pause coordinator LLM decisions while processing user message
+    const chatCoordinator = state.runtime.getService("SWARM_COORDINATOR") as
+      | { pause?: () => void; resume?: () => void; isPaused?: boolean }
+      | undefined;
+    const chatDidPause = chatCoordinator && !chatCoordinator.isPaused;
+    if (chatDidPause) {
+      chatCoordinator.pause?.();
     }
 
     try {
@@ -11247,6 +11437,11 @@ async function handleRequest(
         });
       } else {
         error(res, getErrorMessage(err), 500);
+      }
+    } finally {
+      // Resume coordinator after user message processed
+      if (chatDidPause) {
+        chatCoordinator.resume?.();
       }
     }
     return;
@@ -13700,13 +13895,15 @@ export async function startApiServer(opts?: {
   if (opts?.runtime) {
     const chatOk = wireCodingAgentChatBridge(state);
     const wsOk = wireCodingAgentWsBridge(state);
-    if (!chatOk || !wsOk) {
+    const eventOk = wireCoordinatorEventRouting(state);
+    if (!chatOk || !wsOk || !eventOk) {
       let wireAttempts = 0;
       const wireInterval = setInterval(() => {
         wireAttempts++;
         const chatDone = chatOk || wireCodingAgentChatBridge(state);
         const wsDone = wsOk || wireCodingAgentWsBridge(state);
-        if ((chatDone && wsDone) || wireAttempts >= 15) {
+        const eventDone = eventOk || wireCoordinatorEventRouting(state);
+        if ((chatDone && wsDone && eventDone) || wireAttempts >= 15) {
           clearInterval(wireInterval);
         }
       }, 1000);
@@ -14075,13 +14272,15 @@ export async function startApiServer(opts?: {
     {
       const chatOk = wireCodingAgentChatBridge(state);
       const wsOk = wireCodingAgentWsBridge(state);
-      if (!chatOk || !wsOk) {
+      const eventOk = wireCoordinatorEventRouting(state);
+      if (!chatOk || !wsOk || !eventOk) {
         let wireAttempts = 0;
         const wireInterval = setInterval(() => {
           wireAttempts++;
           const chatDone = chatOk || wireCodingAgentChatBridge(state);
           const wsDone = wsOk || wireCodingAgentWsBridge(state);
-          if ((chatDone && wsDone) || wireAttempts >= 15) {
+          const eventDone = eventOk || wireCoordinatorEventRouting(state);
+          if ((chatDone && wsDone && eventDone) || wireAttempts >= 15) {
             clearInterval(wireInterval);
           }
         }, 1000);
