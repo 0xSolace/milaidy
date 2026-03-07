@@ -16,11 +16,11 @@
 const CODEX_BASE_URL = "https://chatgpt.com/backend-api";
 const JWT_CLAIM_PATH = "https://api.openai.com/auth";
 
-// Codex API only supports specific model names — remap standard ones
-const DEFAULT_CODEX_MODEL = "gpt-5.3-codex";
+// Codex API supports specific model names — remap standard ones to GPT-5.4 (flagship)
+const DEFAULT_CODEX_MODEL = "gpt-5.4";
 
 const MODEL_REMAP = {
-  // Standard API models → Codex 5.3
+  // Standard API models → GPT-5.4 (flagship coding + reasoning model)
   "gpt-4o": DEFAULT_CODEX_MODEL,
   "gpt-4o-mini": DEFAULT_CODEX_MODEL,
   "gpt-4.1": DEFAULT_CODEX_MODEL,
@@ -39,6 +39,15 @@ const MODEL_REMAP = {
   "gpt-5-mini": DEFAULT_CODEX_MODEL,
   "gpt-5-mini-transcribe": DEFAULT_CODEX_MODEL,
   "gpt-5.1": DEFAULT_CODEX_MODEL,
+  "gpt-5.2": DEFAULT_CODEX_MODEL,
+  // GPT-5.4 variants (pass through without remapping)
+  "gpt-5.4": "gpt-5.4",
+  "gpt-5.4-pro": "gpt-5.4-pro",
+  "gpt-5.4-thinking": "gpt-5.4-thinking",
+  // Legacy Codex models (keep available)
+  "gpt-5.3-codex": "gpt-5.3-codex",
+  "gpt-5.3-codex-spark": "gpt-5.3-codex-spark",
+  "gpt-5.2-codex": "gpt-5.2-codex",
 };
 
 function remapModel(model) {
@@ -657,6 +666,17 @@ globalThis.fetch = async function openaiStealthFetch(input, init) {
       JSON.stringify({
         object: "list",
         data: [
+          // GPT-5.4 family (flagship)
+          { id: "gpt-5.4", object: "model", owned_by: "openai" },
+          { id: "gpt-5.4-pro", object: "model", owned_by: "openai" },
+          { id: "gpt-5.4-thinking", object: "model", owned_by: "openai" },
+          // Legacy GPT-5.3 Codex
+          { id: "gpt-5.3-codex", object: "model", owned_by: "openai" },
+          { id: "gpt-5.3-codex-spark", object: "model", owned_by: "openai" },
+          // Previous generation
+          { id: "gpt-5.2", object: "model", owned_by: "openai" },
+          { id: "gpt-5.2-codex", object: "model", owned_by: "openai" },
+          // Older models (mapped to 5.4)
           { id: "gpt-4o", object: "model", owned_by: "openai" },
           { id: "gpt-4o-mini", object: "model", owned_by: "openai" },
           { id: "gpt-4.1", object: "model", owned_by: "openai" },
