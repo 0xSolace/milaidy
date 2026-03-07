@@ -421,6 +421,16 @@ describe("collectPluginNames", () => {
     expect(names.has("@elizaos/plugin-elizacloud")).toBe(true);
   });
 
+  it("treats env-only cloud api key as active provider precedence", () => {
+    process.env.ELIZAOS_CLOUD_API_KEY = "ck-test";
+    process.env.OPENAI_API_KEY = "sk-openai";
+
+    const names = collectPluginNames({} as MiladyConfig);
+
+    expect(names.has("@elizaos/plugin-elizacloud")).toBe(true);
+    expect(names.has("@elizaos/plugin-openai")).toBe(false);
+  });
+
   it("respects feature flags in config.features", () => {
     const config = {
       features: { someFeature: true, another: { enabled: false } },
@@ -892,6 +902,10 @@ describe("applyCloudConfigToEnv", () => {
     "ELIZAOS_CLOUD_ENABLED",
     "ELIZAOS_CLOUD_API_KEY",
     "ELIZAOS_CLOUD_BASE_URL",
+    "ELIZAOS_CLOUD_SMALL_MODEL",
+    "ELIZAOS_CLOUD_LARGE_MODEL",
+    "SMALL_MODEL",
+    "LARGE_MODEL",
   ];
   const snap = envSnapshot(envKeys);
   beforeEach(() => {
@@ -919,6 +933,21 @@ describe("applyCloudConfigToEnv", () => {
 
   it("handles missing cloud config gracefully", () => {
     expect(() => applyCloudConfigToEnv({} as MiladyConfig)).not.toThrow();
+  });
+
+  it("hydrates enabled cloud env and model defaults from env-only api key", () => {
+    process.env.ELIZAOS_CLOUD_API_KEY = "ck-env-only";
+
+    applyCloudConfigToEnv({} as MiladyConfig);
+
+    expect(process.env.ELIZAOS_CLOUD_ENABLED).toBe("true");
+    expect(process.env.ELIZAOS_CLOUD_API_KEY).toBe("ck-env-only");
+    expect(process.env.ELIZAOS_CLOUD_SMALL_MODEL).toBe("openai/gpt-5-mini");
+    expect(process.env.ELIZAOS_CLOUD_LARGE_MODEL).toBe(
+      "anthropic/claude-sonnet-4.5",
+    );
+    expect(process.env.SMALL_MODEL).toBe("openai/gpt-5-mini");
+    expect(process.env.LARGE_MODEL).toBe("anthropic/claude-sonnet-4.5");
   });
 });
 

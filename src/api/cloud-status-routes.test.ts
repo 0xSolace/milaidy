@@ -54,6 +54,13 @@ async function invoke(args: {
 afterEach(() => {
   validateCloudBaseUrlMock.mockReset();
   validateCloudBaseUrlMock.mockResolvedValue(null);
+  delete process.env.ELIZAOS_CLOUD_API_KEY;
+  delete process.env.ELIZAOS_CLOUD_ENABLED;
+  delete process.env.ELIZAOS_CLOUD_BASE_URL;
+  delete process.env.ELIZAOS_CLOUD_SMALL_MODEL;
+  delete process.env.ELIZAOS_CLOUD_LARGE_MODEL;
+  delete process.env.SMALL_MODEL;
+  delete process.env.LARGE_MODEL;
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -88,6 +95,28 @@ describe("cloud status routes", () => {
       pathname: "/api/cloud/status",
       runtime: null,
       config: { cloud: { apiKey: "abc123" } } as MiladyConfig,
+    });
+
+    expect(result.handled).toBe(true);
+    expect(result.payload).toEqual({
+      connected: true,
+      enabled: true,
+      hasApiKey: true,
+      userId: undefined,
+      organizationId: undefined,
+      topUpUrl: "https://www.elizacloud.ai/dashboard/settings?tab=billing",
+      reason: "api_key_present_runtime_not_started",
+    });
+  });
+
+  test("reports env-backed cloud status when config is empty", async () => {
+    process.env.ELIZAOS_CLOUD_API_KEY = "ck-env";
+
+    const result = await invoke({
+      method: "GET",
+      pathname: "/api/cloud/status",
+      runtime: null,
+      config: {} as MiladyConfig,
     });
 
     expect(result.handled).toBe(true);
@@ -173,6 +202,39 @@ describe("cloud status routes", () => {
     );
     expect(validateCloudBaseUrlMock).toHaveBeenCalledWith(
       "https://cloud.example/api/v1",
+    );
+  });
+
+  test("fetches credits via env-backed api key", async () => {
+    process.env.ELIZAOS_CLOUD_API_KEY = "ck-env";
+    process.env.ELIZAOS_CLOUD_BASE_URL = "https://env-cloud.example";
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ balance: 3.25 }),
+    }));
+    vi.stubGlobal("fetch", fetchMock as unknown as typeof fetch);
+
+    const result = await invoke({
+      method: "GET",
+      pathname: "/api/cloud/credits",
+      runtime: null,
+      config: {} as MiladyConfig,
+    });
+
+    expect(result.handled).toBe(true);
+    expect(result.payload).toEqual({
+      connected: true,
+      balance: 3.25,
+      low: false,
+      critical: false,
+      topUpUrl: "https://www.elizacloud.ai/dashboard/settings?tab=billing",
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://env-cloud.example/api/v1/credits/balance",
+      expect.objectContaining({
+        redirect: "manual",
+      }),
     );
   });
 

@@ -1,4 +1,5 @@
 import { type AgentRuntime, logger } from "@elizaos/core";
+import { resolveEffectiveCloudRuntimeConfig } from "../cloud/runtime-config";
 import { validateCloudBaseUrl } from "../cloud/validate-url";
 import type { MiladyConfig } from "../config/config";
 import type { RouteHelpers, RouteRequestMeta } from "./route-helpers";
@@ -82,11 +83,9 @@ export async function handleCloudStatusRoutes(
 
   // GET /api/cloud/status
   if (method === "GET" && pathname === "/api/cloud/status") {
-    const cloudMode = config.cloud?.enabled;
-    const cloudEnabled = cloudMode === true;
-    const hasApiKey = Boolean(config.cloud?.apiKey?.trim());
-    const effectivelyEnabled =
-      cloudEnabled || (cloudMode !== false && hasApiKey);
+    const effectiveCloud = resolveEffectiveCloudRuntimeConfig(config);
+    const hasApiKey = effectiveCloud.hasApiKey;
+    const effectivelyEnabled = effectiveCloud.enabled;
     const cloudAuth = runtime
       ? (runtime.getService("CLOUD_AUTH") as CloudAuthIdentityService | null)
       : null;
@@ -135,7 +134,8 @@ export async function handleCloudStatusRoutes(
     const cloudAuth = runtime
       ? (runtime.getService("CLOUD_AUTH") as CloudAuthCreditsService | null)
       : null;
-    const configApiKey = config.cloud?.apiKey?.trim();
+    const effectiveCloud = resolveEffectiveCloudRuntimeConfig(config);
+    const configApiKey = effectiveCloud.apiKey;
 
     if (!cloudAuth || !cloudAuth.isAuthenticated()) {
       if (!configApiKey) {
@@ -143,7 +143,7 @@ export async function handleCloudStatusRoutes(
         return true;
       }
 
-      const resolvedBaseUrl = resolveCloudApiBaseUrl(config.cloud?.baseUrl);
+      const resolvedBaseUrl = resolveCloudApiBaseUrl(effectiveCloud.baseUrl);
       const baseUrlRejection = await validateCloudBaseUrl(resolvedBaseUrl);
       if (baseUrlRejection) {
         json(res, { balance: null, connected: true, error: baseUrlRejection });

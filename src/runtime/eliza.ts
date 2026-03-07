@@ -49,6 +49,7 @@ import {
   debugLogResolvedContext,
   validateRuntimeContext,
 } from "../api/plugin-validation";
+import { resolveEffectiveCloudRuntimeConfig } from "../cloud/runtime-config";
 import {
   configFileExists,
   loadMiladyConfig,
@@ -607,11 +608,9 @@ export function findRuntimePluginExport(mod: PluginModuleShape): Plugin | null {
 /** @internal Exported for testing. */
 export function collectPluginNames(config: MiladyConfig): Set<string> {
   const shellPluginDisabled = config.features?.shellEnabled === false;
-  const cloudMode = config.cloud?.enabled;
-  const cloudHasApiKey = Boolean(config.cloud?.apiKey);
-  const cloudExplicitlyDisabled = cloudMode === false;
-  const cloudEffectivelyEnabled =
-    cloudMode === true || (!cloudExplicitlyDisabled && cloudHasApiKey);
+  const effectiveCloud = resolveEffectiveCloudRuntimeConfig(config);
+  const cloudExplicitlyDisabled = effectiveCloud.explicitlyDisabled;
+  const cloudEffectivelyEnabled = effectiveCloud.enabled;
   const configEnv = config.env as
     | (Record<string, unknown> & { vars?: Record<string, unknown> })
     | undefined;
@@ -1768,48 +1767,39 @@ export async function autoResolveDiscordAppId(): Promise<void> {
  */
 /** @internal Exported for testing. */
 export function applyCloudConfigToEnv(config: MiladyConfig): void {
-  const cloud = config.cloud;
-  if (!cloud) return;
+  const effectiveCloud = resolveEffectiveCloudRuntimeConfig(config);
 
-  const cloudMode = cloud.enabled;
-  const hasApiKey = Boolean(cloud.apiKey);
-  const cloudExplicitlyDisabled = cloudMode === false;
-  const effectivelyEnabled =
-    cloudMode === true || (!cloudExplicitlyDisabled && hasApiKey);
+  if (!effectiveCloud.configured) return;
 
-  if (effectivelyEnabled) {
+  if (effectiveCloud.enabled) {
     process.env.ELIZAOS_CLOUD_ENABLED = "true";
     logger.info(
-      `[milady] Cloud config: enabled=${cloud.enabled}, hasApiKey=${Boolean(cloud.apiKey)}, baseUrl=${cloud.baseUrl ?? "(default)"}`,
+      `[milady] Cloud config: enabled=${effectiveCloud.enabled}, hasApiKey=${effectiveCloud.hasApiKey}, baseUrl=${effectiveCloud.baseUrl ?? "(default)"}`,
     );
   } else {
     delete process.env.ELIZAOS_CLOUD_ENABLED;
     delete process.env.ELIZAOS_CLOUD_SMALL_MODEL;
     delete process.env.ELIZAOS_CLOUD_LARGE_MODEL;
   }
-  if (cloud.apiKey) {
-    process.env.ELIZAOS_CLOUD_API_KEY = cloud.apiKey;
+  if (effectiveCloud.apiKey) {
+    process.env.ELIZAOS_CLOUD_API_KEY = effectiveCloud.apiKey;
   } else {
     delete process.env.ELIZAOS_CLOUD_API_KEY;
   }
-  if (cloud.baseUrl) {
-    process.env.ELIZAOS_CLOUD_BASE_URL = cloud.baseUrl;
+  if (effectiveCloud.baseUrl) {
+    process.env.ELIZAOS_CLOUD_BASE_URL = effectiveCloud.baseUrl;
   } else {
     delete process.env.ELIZAOS_CLOUD_BASE_URL;
   }
 
-  // Propagate model names so the cloud plugin picks them up.  Falls back to
+  // Propagate model names so the cloud plugin picks them up. Falls back to
   // sensible defaults when cloud is enabled but no explicit selection exists.
-  const models = (config as Record<string, unknown>).models as
-    | { small?: string; large?: string }
-    | undefined;
-  if (effectivelyEnabled) {
-    const small = models?.small || "openai/gpt-5-mini";
-    const large = models?.large || "anthropic/claude-sonnet-4.5";
-    process.env.SMALL_MODEL = small;
-    process.env.LARGE_MODEL = large;
-    process.env.ELIZAOS_CLOUD_SMALL_MODEL = small;
-    process.env.ELIZAOS_CLOUD_LARGE_MODEL = large;
+  if (effectiveCloud.enabled) {
+    process.env.SMALL_MODEL = effectiveCloud.smallModel ?? "openai/gpt-5-mini";
+    process.env.LARGE_MODEL =
+      effectiveCloud.largeModel ?? "anthropic/claude-sonnet-4.5";
+    process.env.ELIZAOS_CLOUD_SMALL_MODEL = process.env.SMALL_MODEL;
+    process.env.ELIZAOS_CLOUD_LARGE_MODEL = process.env.LARGE_MODEL;
   }
 }
 
