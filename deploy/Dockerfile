@@ -14,16 +14,13 @@ RUN if [ -n "$MILADY_DOCKER_APT_PACKAGES" ]; then \
       rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*; \
     fi
 
-# Copy dependency manifests first for better layer caching
-COPY package.json bun.lock* .npmrc ./
-COPY apps/app/package.json ./apps/app/package.json
-COPY scripts ./scripts
+# Copy all source files (workspace structure is too complex for selective copying)
+COPY . .
 
 # Install dependencies using the committed lockfile only.
 RUN bun install --frozen-lockfile
 
-# Copy source and build (includes apps/app/dist UI bundle)
-COPY . .
+# Build the project (includes apps/app/dist UI bundle)
 RUN bun run build
 
 ENV NODE_ENV=production

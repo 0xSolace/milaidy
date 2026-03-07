@@ -1,25 +1,75 @@
 /**
  * Cloud Agent Entrypoint
  *
- * Runs inside the ECS container. Starts a real ElizaOS AgentRuntime with
- * the ElizaCloud plugin for inference, serves a health endpoint on $PORT,
- * and a bridge HTTP server on $BRIDGE_PORT that forwards messages into
- * the runtime and serves snapshot/restore for state management.
+ * Runs inside the cloud agent container. Starts an ElizaOS AgentRuntime,
+ * serves a health endpoint on $PORT, and serves a bridge listener on the
+ * primary bridge port plus an optional compatibility bridge port.
+ *
+ * Bridge protocol:
+ *   - POST /bridge          JSON-RPC request/response
+ *   - POST /bridge/stream   JSON-RPC -> SSE stream
+ *   - POST /api/snapshot    capture in-memory state
+ *   - POST /api/restore     restore in-memory state
+ *
+ * Health / diagnostics aliases on the bridge port:
+ *   - GET|HEAD /health
+ *   - GET|HEAD /bridge/health
+ *   - GET|HEAD /bridge
+ *   - GET|HEAD /
+ *
+ * Compatibility aliases:
+ *   - POST /stream          -> /bridge/stream
+ *   - POST /snapshot        -> /api/snapshot
+ *   - POST /restore         -> /api/restore
  */
 
 import * as crypto from "node:crypto";
 import * as http from "node:http";
 import { readRequestBody } from "./http-helpers";
 
-const PORT = Number(process.env.PORT ?? "2138");
-const BRIDGE_PORT = Number(process.env.BRIDGE_PORT ?? "18790");
 type ChatMode = "simple" | "power";
 
 interface BridgeRpcParams {
   text?: string;
   roomId?: string;
   mode?: string;
+  channelType?: string;
 }
+
+interface BridgeRpcRequest {
+  jsonrpc?: string;
+  id?: string | number;
+  method?: string;
+  params?: BridgeRpcParams;
+}
+
+function parsePort(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) {
+    return fallback;
+  }
+
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed <= 0 || parsed > 65535) {
+    console.warn(
+      `[cloud-agent] Invalid ${name}=${raw}; falling back to ${fallback}`,
+    );
+    return fallback;
+  }
+
+  return parsed;
+}
+
+const PORT = parsePort("PORT", 2138);
+const PRIMARY_BRIDGE_PORT = parsePort("BRIDGE_PORT", 31337);
+const COMPAT_BRIDGE_PORT = parsePort("BRIDGE_COMPAT_PORT", 18790);
+const BRIDGE_PORTS = Array.from(
+  new Set(
+    [PRIMARY_BRIDGE_PORT, COMPAT_BRIDGE_PORT].filter(
+      (port) => Number.isInteger(port) && port > 0,
+    ),
+  ),
+);
 
 // ─── ElizaOS Runtime ────────────────────────────────────────────────────
 
@@ -53,13 +103,6 @@ const state = {
 };
 
 async function initRuntime(): Promise<void> {
-  /**
-   * Dynamic import — the ElizaOS packages may or may not be installed in
-   * the container image. When they are, we get a real agent runtime. When
-   * they aren't (e.g., during development or bare container testing), we
-   * fall back to the echo handler so the bridge protocol is still
-   * exercisable end-to-end.
-   */
   const elizaAvailable = await import("@elizaos/core")
     .then(() => true)
     .catch(() => false);
@@ -77,8 +120,6 @@ async function initRuntime(): Promise<void> {
       name: process.env.AGENT_NAME ?? "CloudAgent",
       bio: "An ElizaOS agent running in the cloud.",
       settings: {
-        // Database connection — plugin-sql reads POSTGRES_URL from runtime
-        // settings and auto-detects Neon URLs for the serverless driver.
         ...(process.env.DATABASE_URL
           ? {
               POSTGRES_URL: process.env.DATABASE_URL,
@@ -99,9 +140,7 @@ async function initRuntime(): Promise<void> {
         ...(process.env.GOOGLE_API_KEY
           ? { GOOGLE_API_KEY: process.env.GOOGLE_API_KEY }
           : {}),
-        ...(process.env.XAI_API_KEY
-          ? { XAI_API_KEY: process.env.XAI_API_KEY }
-          : {}),
+        ...(process.env.XAI_API_KEY ? { XAI_API_KEY: process.env.XAI_API_KEY } : {}),
         ...(process.env.GROQ_API_KEY
           ? { GROQ_API_KEY: process.env.GROQ_API_KEY }
           : {}),
@@ -110,13 +149,11 @@ async function initRuntime(): Promise<void> {
 
     const plugins = [];
 
-    // Load ElizaCloud plugin for inference if available
     const cloudPlugin = await import("@elizaos/plugin-elizacloud")
       .then((m) => m.default ?? m.elizaOSCloudPlugin)
       .catch(() => null);
     if (cloudPlugin) plugins.push(cloudPlugin);
 
-    // Load SQL plugin for persistence if available
     const sqlPlugin = await import("@elizaos/plugin-sql")
       .then((m) => m.default ?? m.sqlPlugin)
       .catch(() => null);
@@ -224,7 +261,6 @@ async function initRuntime(): Promise<void> {
 
     console.log("[cloud-agent] ElizaOS runtime initialized with real agent");
   } else {
-    // Fallback: no ElizaOS installed — echo mode for protocol testing
     console.warn(
       "[cloud-agent] @elizaos/core not available, running in echo mode",
     );
@@ -265,29 +301,94 @@ async function initRuntime(): Promise<void> {
   }
 }
 
+function getBridgeStatus() {
+  return {
+    service: "elizaos-cloud-agent-bridge",
+    status: agentRuntime ? "healthy" : "initializing",
+    uptime: process.uptime(),
+    startedAt: state.startedAt,
+    memoryUsage: process.memoryUsage().rss,
+    runtimeReady: agentRuntime !== null,
+    bridgePorts: BRIDGE_PORTS,
+    primaryBridgePort: PRIMARY_BRIDGE_PORT,
+  };
+}
+
+function writeJson(
+  res: http.ServerResponse,
+  statusCode: number,
+  body: unknown,
+): void {
+  res.writeHead(statusCode, { "Content-Type": "application/json" });
+  res.end(JSON.stringify(body));
+}
+
+function isHeadRequest(req: http.IncomingMessage): boolean {
+  return req.method === "HEAD";
+}
+
+function writeHeadOnly(
+  res: http.ServerResponse,
+  statusCode: number,
+  headers: Record<string, string>,
+): void {
+  res.writeHead(statusCode, headers);
+  res.end();
+}
+
+async function readJsonBody<T>(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+): Promise<T | null> {
+  const body = await readRequestBody(req);
+  if (!body.trim()) {
+    return {} as T;
+  }
+
+  try {
+    return JSON.parse(body) as T;
+  } catch (error: any) {
+    writeJson(res, 400, { error: `Invalid JSON body: ${error.message}` });
+    return null;
+  }
+}
+
 // ─── Health endpoint ────────────────────────────────────────────────────
 
 const healthServer = http.createServer((req, res) => {
-  if (req.method === "GET" && req.url === "/health") {
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(
-      JSON.stringify({
-        status: agentRuntime ? "healthy" : "initializing",
-        uptime: process.uptime(),
-        startedAt: state.startedAt,
-        memoryUsage: process.memoryUsage().rss,
-        runtimeReady: agentRuntime !== null,
-      }),
-    );
+  if ((req.method === "GET" || isHeadRequest(req)) && req.url === "/health") {
+    if (isHeadRequest(req)) {
+      writeHeadOnly(res, 200, { "Content-Type": "application/json" });
+      return;
+    }
+
+    writeJson(res, 200, {
+      status: agentRuntime ? "healthy" : "initializing",
+      uptime: process.uptime(),
+      startedAt: state.startedAt,
+      memoryUsage: process.memoryUsage().rss,
+      runtimeReady: agentRuntime !== null,
+      bridgePorts: BRIDGE_PORTS,
+      primaryBridgePort: PRIMARY_BRIDGE_PORT,
+    });
     return;
   }
-  if (req.method === "GET" && req.url === "/") {
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(
-      JSON.stringify({ service: "elizaos-cloud-agent", status: "running" }),
-    );
+
+  if ((req.method === "GET" || isHeadRequest(req)) && req.url === "/") {
+    if (isHeadRequest(req)) {
+      writeHeadOnly(res, 200, { "Content-Type": "application/json" });
+      return;
+    }
+
+    writeJson(res, 200, {
+      service: "elizaos-cloud-agent",
+      status: "running",
+      bridgePorts: BRIDGE_PORTS,
+      primaryBridgePort: PRIMARY_BRIDGE_PORT,
+    });
     return;
   }
+
   res.writeHead(404);
   res.end("Not Found");
 });
@@ -298,140 +399,137 @@ healthServer.listen(PORT, "0.0.0.0", () => {
 
 // ─── Bridge HTTP server ─────────────────────────────────────────────────
 
-const bridgeServer = http.createServer(async (req, res) => {
-  res.setHeader("Content-Type", "application/json");
+const bridgeRequestHandler = async (
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+) => {
+  const url = req.url ?? "/";
 
-  if (req.method === "POST" && req.url === "/api/snapshot") {
-    res.writeHead(200);
-    res.end(
-      JSON.stringify({
+  try {
+    if (
+      (req.method === "GET" || isHeadRequest(req)) &&
+      (url === "/" || url === "/health" || url === "/bridge" || url === "/bridge/health")
+    ) {
+      if (isHeadRequest(req)) {
+        writeHeadOnly(res, 200, { "Content-Type": "application/json" });
+        return;
+      }
+
+      writeJson(res, 200, getBridgeStatus());
+      return;
+    }
+
+    if (req.method === "POST" && (url === "/api/snapshot" || url === "/snapshot")) {
+      writeJson(res, 200, {
         memories: state.memories,
         config: state.config,
         workspaceFiles: state.workspaceFiles,
         timestamp: new Date().toISOString(),
-      }),
-    );
-    return;
-  }
-
-  if (req.method === "POST" && req.url === "/api/restore") {
-    const body = await readRequestBody(req);
-    const incoming = JSON.parse(body) as Partial<typeof state>;
-    if (incoming.memories) state.memories = incoming.memories;
-    if (incoming.config) state.config = incoming.config;
-    if (incoming.workspaceFiles) state.workspaceFiles = incoming.workspaceFiles;
-    console.log("[cloud-agent] State restored from snapshot");
-    res.writeHead(200);
-    res.end(JSON.stringify({ success: true }));
-    return;
-  }
-
-  // ── SSE streaming endpoint ──────────────────────────────────────────────
-  // Streams agent response chunks as Server-Sent Events.  The Eliza Cloud
-  // proxy connects here and relays events to the Milady client.
-  if (req.method === "POST" && req.url === "/bridge/stream") {
-    if (!agentRuntime) {
-      res.writeHead(503, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "Agent runtime not ready" }));
+      });
       return;
     }
 
-    const body = await readRequestBody(req);
-    const rpc = JSON.parse(body) as {
-      jsonrpc: string;
-      id?: string | number;
-      method?: string;
-      params?: BridgeRpcParams;
-    };
+    if (req.method === "POST" && (url === "/api/restore" || url === "/restore")) {
+      const incoming = await readJsonBody<Partial<typeof state>>(req, res);
+      if (!incoming) {
+        return;
+      }
 
-    if (rpc.method !== "message.send") {
-      res.writeHead(400, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "Only message.send is streamable" }));
+      if (incoming.memories) state.memories = incoming.memories;
+      if (incoming.config) state.config = incoming.config;
+      if (incoming.workspaceFiles) state.workspaceFiles = incoming.workspaceFiles;
+
+      console.log("[cloud-agent] State restored from snapshot");
+      writeJson(res, 200, { success: true });
       return;
     }
 
-    // Switch to SSE mode
-    res.writeHead(200, {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-      "X-Accel-Buffering": "no",
-    });
-
-    const sendEvent = (event: string, data: unknown) => {
-      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-    };
-
-    const text = (rpc.params?.text as string) ?? "";
-    const roomId = (rpc.params?.roomId as string) ?? "default";
-    const mode: ChatMode = rpc.params?.mode === "simple" ? "simple" : "power";
-
-    sendEvent("connected", { rpcId: rpc.id, timestamp: Date.now() });
-
-    // The ElizaOS handleMessage callback fires once per response part
-    // (typically the full response in a single call). True per-token
-    // streaming requires the runtime's streaming context support, which
-    // is not wired through the bridge protocol yet. For now, each
-    // onChunk call emits one SSE event containing whatever text the
-    // runtime produced in that callback invocation.
-    await agentRuntime.processMessageStream(
-      text,
-      roomId,
-      mode,
-      (chunk: string) => {
-        sendEvent("chunk", { text: chunk });
-      },
-    );
-
-    sendEvent("done", { rpcId: rpc.id, timestamp: Date.now() });
-    res.end();
-    return;
-  }
-
-  if (req.method === "POST" && req.url === "/bridge") {
-    const body = await readRequestBody(req);
-    const rpc = JSON.parse(body) as {
-      jsonrpc: string;
-      id?: string | number;
-      method?: string;
-      params?: BridgeRpcParams;
-    };
-
-    if (rpc.method === "message.send") {
+    if (req.method === "POST" && (url === "/bridge/stream" || url === "/stream")) {
       if (!agentRuntime) {
-        res.writeHead(503);
-        res.end(
-          JSON.stringify({
+        writeJson(res, 503, { error: "Agent runtime not ready" });
+        return;
+      }
+
+      const rpc = await readJsonBody<BridgeRpcRequest>(req, res);
+      if (!rpc) {
+        return;
+      }
+
+      if (rpc.method !== "message.send") {
+        writeJson(res, 400, { error: "Only message.send is streamable" });
+        return;
+      }
+
+      res.writeHead(200, {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+        "X-Accel-Buffering": "no",
+      });
+
+      const sendEvent = (event: string, data: unknown) => {
+        res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+      };
+
+      const text = rpc.params?.text ?? "";
+      const roomId = rpc.params?.roomId ?? "default";
+      const mode: ChatMode = rpc.params?.mode === "simple" ? "simple" : "power";
+
+      sendEvent("connected", {
+        rpcId: rpc.id,
+        timestamp: Date.now(),
+        bridgePorts: BRIDGE_PORTS,
+      });
+
+      try {
+        await agentRuntime.processMessageStream(text, roomId, mode, (chunk: string) => {
+          sendEvent("chunk", { text: chunk });
+        });
+
+        sendEvent("done", { rpcId: rpc.id, timestamp: Date.now() });
+      } catch (error: any) {
+        console.error("[cloud-agent] stream bridge error:", error);
+        sendEvent("error", {
+          message: error instanceof Error ? error.message : String(error),
+          timestamp: Date.now(),
+        });
+      }
+
+      res.end();
+      return;
+    }
+
+    if (req.method === "POST" && url === "/bridge") {
+      const rpc = await readJsonBody<BridgeRpcRequest>(req, res);
+      if (!rpc) {
+        return;
+      }
+
+      if (rpc.method === "message.send") {
+        if (!agentRuntime) {
+          writeJson(res, 503, {
             jsonrpc: "2.0",
             id: rpc.id,
             error: { code: -32000, message: "Agent runtime not ready" },
-          }),
-        );
-        return;
-      }
-      const text = (rpc.params?.text as string) ?? "";
-      const roomId = (rpc.params?.roomId as string) ?? "default";
-      const mode: ChatMode = rpc.params?.mode === "simple" ? "simple" : "power";
-      const responseText = await agentRuntime.processMessage(
-        text,
-        roomId,
-        mode,
-      );
-      res.writeHead(200);
-      res.end(
-        JSON.stringify({
+          });
+          return;
+        }
+
+        const text = rpc.params?.text ?? "";
+        const roomId = rpc.params?.roomId ?? "default";
+        const mode: ChatMode = rpc.params?.mode === "simple" ? "simple" : "power";
+        const responseText = await agentRuntime.processMessage(text, roomId, mode);
+
+        writeJson(res, 200, {
           jsonrpc: "2.0",
           id: rpc.id,
           result: { text: responseText, metadata: { timestamp: Date.now() } },
-        }),
-      );
-      return;
-    }
+        });
+        return;
+      }
 
-    if (rpc.method === "status.get") {
-      res.writeHead(200);
-      res.end(
-        JSON.stringify({
+      if (rpc.method === "status.get") {
+        writeJson(res, 200, {
           jsonrpc: "2.0",
           id: rpc.id,
           result: {
@@ -439,60 +537,76 @@ const bridgeServer = http.createServer(async (req, res) => {
             uptime: process.uptime(),
             memoriesCount: state.memories.length,
             startedAt: state.startedAt,
+            bridgePorts: BRIDGE_PORTS,
+            primaryBridgePort: PRIMARY_BRIDGE_PORT,
           },
-        }),
-      );
-      return;
-    }
+        });
+        return;
+      }
 
-    if (rpc.method === "heartbeat") {
-      res.writeHead(200);
-      res.end(
-        JSON.stringify({
+      if (rpc.method === "heartbeat") {
+        writeJson(res, 200, {
           jsonrpc: "2.0",
           method: "heartbeat.ack",
-          params: { timestamp: Date.now() },
-        }),
-      );
-      return;
-    }
+          params: { timestamp: Date.now(), runtimeReady: agentRuntime !== null },
+        });
+        return;
+      }
 
-    res.writeHead(200);
-    res.end(
-      JSON.stringify({
+      writeJson(res, 200, {
         jsonrpc: "2.0",
         id: rpc.id,
         error: { code: -32601, message: `Method not found: ${rpc.method}` },
-      }),
-    );
-    return;
+      });
+      return;
+    }
+
+    writeJson(res, 404, { error: "Not Found" });
+  } catch (error: any) {
+    console.error("[cloud-agent] bridge request failed:", error);
+
+    if (!res.headersSent) {
+      writeJson(res, 500, {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return;
+    }
+
+    try {
+      res.end();
+    } catch {
+      // ignore secondary failure while unwinding a broken stream
+    }
   }
+};
 
-  res.writeHead(404);
-  res.end(JSON.stringify({ error: "Not Found" }));
+const bridgeServers = BRIDGE_PORTS.map((port) => {
+  const server = http.createServer(bridgeRequestHandler);
+  server.listen(port, "0.0.0.0", () => {
+    const label = port === PRIMARY_BRIDGE_PORT ? "primary" : "compat";
+    console.log(`[cloud-agent] Bridge server listening on port ${port} (${label})`);
+  });
+  return server;
 });
 
-bridgeServer.listen(BRIDGE_PORT, "0.0.0.0", () => {
-  console.log(`[cloud-agent] Bridge server listening on port ${BRIDGE_PORT}`);
-});
-
-// ─── Startup ────────────────────────────────────────────────────────────
+// ─── Startup / Shutdown ─────────────────────────────────────────────────
 
 function shutdown() {
   console.log("[cloud-agent] Shutting down...");
   healthServer.close();
-  bridgeServer.close();
+  for (const server of bridgeServers) {
+    server.close();
+  }
   process.exit(0);
 }
 process.on("SIGTERM", shutdown);
 process.on("SIGINT", shutdown);
 
-// Initialize runtime asynchronously — bridge returns 503 until ready
 initRuntime()
   .then(() => {
     console.log("[cloud-agent] Ready");
   })
   .catch((err) => {
     console.error("[cloud-agent] Runtime init failed:", err);
-    // Don't exit — health/bridge still work for diagnostics
+    // Keep health/bridge listeners alive for diagnostics.
   });

@@ -1,10 +1,15 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # ElizaOS Cloud Agent Container
 #
-# Pre-built image for deploying ElizaOS agents to ElizaCloud (AWS ECS).
+# Pre-built image for deploying ElizaOS agents to ElizaCloud / Milady Cloud.
 # Runs an ElizaOS agent runtime with the ElizaCloud plugin for inference,
 # exposes a health endpoint on $PORT (default 2138), and a bridge HTTP
-# server on $BRIDGE_PORT (default 18790) for communication with milady.
+# server on $BRIDGE_PORT (default 31337) plus an optional compatibility
+# listener on $BRIDGE_COMPAT_PORT (default 18790).
+#
+# This matches current Milady Cloud runtime assumptions:
+#   - orchestrators map host bridge ports to container 31337
+#   - older local docs/tests may still hit 18790 directly
 #
 # Configuration is injected via environment variables:
 #   ELIZAOS_CLOUD_API_KEY — for cloud inference
@@ -15,7 +20,7 @@
 #   docker build -f deploy/Dockerfile.cloud-agent -t elizaos/agent:latest .
 #
 # Run:
-#   docker run -p 2138:2138 -p 18790:18790 \
+#   docker run -p 2138:2138 -p 31337:31337 -p 18790:18790 \
 #     -e ELIZAOS_CLOUD_API_KEY=eliza_xxx \
 #     elizaos/agent:latest
 # ─────────────────────────────────────────────────────────────────────────────
@@ -30,7 +35,7 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# Copy the entrypoint (standalone Node.js script, no build step needed)
+# Copy the entrypoint (standalone TypeScript script run with tsx)
 COPY deploy/cloud-agent-entrypoint.ts ./entrypoint.ts
 
 # Install tsx for running TypeScript directly
@@ -38,14 +43,14 @@ RUN npm install -g tsx@4
 
 ENV NODE_ENV=production
 ENV PORT=2138
-ENV BRIDGE_PORT=18790
+ENV BRIDGE_PORT=31337
+ENV BRIDGE_COMPAT_PORT=18790
 
 # Health check endpoint
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD curl -f http://localhost:${PORT}/health || exit 1
 
-EXPOSE ${PORT}
-EXPOSE ${BRIDGE_PORT}
+EXPOSE 2138 31337 18790
 
 # Security: run as non-root
 RUN useradd -m agent
