@@ -42,6 +42,23 @@ describe("Electrobun release workflow drift", () => {
     expect(workflow).toContain('"identifier":"com.miladyai.milady"');
   });
 
+  it("builds the Intel macOS artifact under Rosetta on macos-14", () => {
+    const workflow = fs.readFileSync(WORKFLOW_PATH, "utf8");
+
+    expect(workflow).toContain("- name: macOS (Intel)");
+    expect(workflow).toContain("runner: macos-14");
+    expect(workflow).toContain(
+      "arch -x86_64 bun install --frozen-lockfile --ignore-scripts",
+    );
+    expect(workflow).toContain("arch -x86_64 bunx tsdown");
+    expect(workflow).toContain("arch -x86_64 npx vite build");
+    expect(workflow).toContain("arch -x86_64 bun run build:whisper");
+    expect(workflow).toContain(
+      `arch -x86_64 electrobun build --env=\${{ needs.prepare.outputs.env }}`,
+    );
+    expect(workflow).not.toContain("runner: macos-15-intel");
+  });
+
   it("keeps updater transport files off the public GitHub release asset list", () => {
     const workflow = fs.readFileSync(WORKFLOW_PATH, "utf8");
 
