@@ -42,18 +42,13 @@ describe("Electrobun release workflow drift", () => {
     expect(workflow).toContain('"identifier":"com.miladyai.milady"');
   });
 
-  it("builds the Intel macOS artifact under Rosetta on macos-14", () => {
+  it("builds the Intel macOS artifact on the real Intel runner", () => {
     const workflow = fs.readFileSync(WORKFLOW_PATH, "utf8");
 
     expect(workflow).toContain("- name: macOS (Intel)");
-    expect(workflow).toContain("runner: macos-14");
-    expect(workflow).toContain("name: Setup Node.js (macOS Intel via Rosetta)");
-    expect(workflow).toContain('architecture: "x64"');
-    expect(workflow).toContain("name: Setup Bun (macOS Intel via Rosetta)");
-    expect(workflow).toContain("curl -fsSL \\");
-    expect(workflow).toContain("bun-darwin-x64.zip");
-    expect(workflow).toContain('exec arch -x86_64 "$BUN_REAL" "\\$@"');
-    expect(workflow).toContain('exec arch -x86_64 "$BUN_REAL" x "\\$@"');
+    expect(workflow).toContain("runner: macos-15-intel");
+    expect(workflow).toContain("- name: Setup Node.js");
+    expect(workflow).toContain("- name: Setup Bun");
     expect(workflow).toContain(
       "arch -x86_64 bun install --frozen-lockfile --ignore-scripts",
     );
@@ -63,7 +58,11 @@ describe("Electrobun release workflow drift", () => {
     expect(workflow).toContain(
       `arch -x86_64 electrobun build --env=\${{ needs.prepare.outputs.env }}`,
     );
-    expect(workflow).not.toContain("runner: macos-15-intel");
+    expect(workflow).not.toContain(
+      "name: Setup Node.js (macOS Intel via Rosetta)",
+    );
+    expect(workflow).not.toContain("name: Setup Bun (macOS Intel via Rosetta)");
+    expect(workflow).not.toContain("bun-darwin-x64.zip");
   });
 
   it("keeps updater transport files off the public GitHub release asset list", () => {
