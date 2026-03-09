@@ -1923,6 +1923,12 @@ async function discoverSkills(
     skillsDirs.add(workspaceSkills);
   }
 
+  // Marketplace-installed skills (stored under .marketplace, skipped by dot-prefix filter)
+  const marketplaceSkills = path.join(workspaceDir, "skills", ".marketplace");
+  if (fs.existsSync(marketplaceSkills)) {
+    skillsDirs.add(marketplaceSkills);
+  }
+
   // Extra dirs from config
   const extraDirs = config.skills?.load?.extraDirs;
   if (extraDirs) {
@@ -2370,6 +2376,28 @@ function getCachedFile(filePath: string, mtimeMs: number): Buffer {
  * Serve built dashboard assets from apps/app/dist with SPA fallback.
  * Returns true when the request is handled.
  */
+export function injectApiBaseIntoHtml(
+  html: Buffer,
+  externalBase?: string | null,
+): Buffer {
+  const trimmedBase = externalBase?.trim();
+  if (!trimmedBase) return html;
+
+  const headCloseTag = "</head>";
+  const headCloseIndex = html.indexOf(headCloseTag);
+  if (headCloseIndex < 0) return html;
+
+  const injection = Buffer.from(
+    `<script>window.__MILADY_API_BASE__=${JSON.stringify(trimmedBase)};</script>`,
+  );
+
+  return Buffer.concat([
+    html.subarray(0, headCloseIndex),
+    injection,
+    html.subarray(headCloseIndex),
+  ]);
+}
+
 function serveStaticUi(
   req: http.IncomingMessage,
   res: http.ServerResponse,
@@ -2433,16 +2461,24 @@ function serveStaticUi(
   if (reqExt && reqExt !== ".html") return false;
 
   if (!uiIndexHtml) return false;
+
+  // When served behind a reverse proxy (e.g. Railway /proxy/PORT/), inject the
+  // API base so the UI client sends requests to the correct path prefix.
+  const html = injectApiBaseIntoHtml(
+    uiIndexHtml,
+    process.env.MILADY_EXTERNAL_BASE_URL,
+  );
+
   sendStaticResponse(
     req,
     res,
     200,
     {
       "Cache-Control": "public, max-age=0, must-revalidate",
-      "Content-Length": uiIndexHtml.length,
+      "Content-Length": html.length,
       "Content-Type": "text/html; charset=utf-8",
     },
-    uiIndexHtml,
+    html,
   );
   return true;
 }
@@ -4721,10 +4757,15 @@ export function isAllowedHost(req: http.IncomingMessage): boolean {
   return LOCAL_HOST_RE.test(hostname);
 }
 
-function resolveCorsOrigin(origin?: string): string | null {
+export function resolveCorsOrigin(origin?: string): string | null {
   if (!origin) return null;
   const trimmed = origin.trim();
   if (!trimmed) return null;
+
+  // When bound to a wildcard address, allow any origin. Non-loopback binds still
+  // require an explicit token, so this only relaxes the browser origin check.
+  const bindHost = (process.env.MILADY_API_BIND ?? "").trim().toLowerCase();
+  if (WILDCARD_BIND_RE.test(stripPort(bindHost))) return trimmed;
 
   // Explicit allowlist via env (comma-separated)
   const extra = process.env.MILADY_ALLOWED_ORIGINS;
@@ -9558,6 +9599,13 @@ async function handleRequest(
               ? body.source
               : "clawhub",
         });
+
+        state.skills = await discoverSkills(
+          workspaceDir,
+          state.config,
+          state.runtime,
+        );
+
         json(res, { ok: true, skill: result });
       }
     } catch (err) {
@@ -9588,6 +9636,13 @@ async function handleRequest(
         state.config.agents?.defaults?.workspace ??
         resolveDefaultAgentWorkspaceDir();
       const result = await uninstallMarketplaceSkill(workspaceDir, uninstallId);
+
+      state.skills = await discoverSkills(
+        workspaceDir,
+        state.config,
+        state.runtime,
+      );
+
       json(res, { ok: true, skill: result });
     } catch (err) {
       error(
