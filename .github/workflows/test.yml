@@ -56,7 +56,7 @@ jobs:
           restore-keys: bun-${{ runner.os }}-
 
       - name: Install dependencies
-        run: bun install
+        run: bun install --ignore-scripts
         env:
           npm_config_python: ${{ env.pythonLocation }}/bin/python3
 
@@ -113,7 +113,7 @@ jobs:
           restore-keys: bun-${{ runner.os }}-
 
       - name: Install dependencies
-        run: bun install
+        run: bun install --ignore-scripts
         env:
           npm_config_python: ${{ env.pythonLocation }}/bin/python3
 
@@ -160,7 +160,7 @@ jobs:
           restore-keys: bun-${{ runner.os }}-
 
       - name: Install dependencies
-        run: bun install
+        run: bun install --ignore-scripts
         env:
           npm_config_python: ${{ env.pythonLocation }}/bin/python3
 
@@ -282,7 +282,7 @@ jobs:
           restore-keys: bun-${{ runner.os }}-
 
       - name: Install dependencies
-        run: bun install
+        run: bun install --ignore-scripts
         env:
           npm_config_python: ${{ env.pythonLocation }}/bin/python3
 
@@ -396,7 +396,7 @@ jobs:
           restore-keys: bun-${{ runner.os }}-
 
       - name: Install dependencies
-        run: bun install
+        run: bun install --ignore-scripts
         env:
           npm_config_python: ${{ env.pythonLocation }}/bin/python3
 
@@ -464,7 +464,7 @@ jobs:
         if: steps.cloud.outputs.enabled == 'true'
         run: |
           for i in 1 2 3 4 5; do
-            bun install --frozen-lockfile && break
+            bun install --frozen-lockfile --ignore-scripts && break
             echo "Attempt $i failed, retrying in $((i * 15))s..."
             sleep $((i * 15))
           done
@@ -507,7 +507,7 @@ jobs:
           restore-keys: bun-${{ runner.os }}-
 
       - name: Install dependencies
-        run: bun install
+        run: bun install --ignore-scripts
 
       - name: Run repository postinstall patches
         run: bun run postinstall
