@@ -15,7 +15,7 @@ const forbiddenPrefixes = ["dist/Milady.app/"];
 const requiredWorkflowSnippets = [
   'BUN_VERSION: "1.3.9"',
   "name: Validate Release Inputs",
-  "bun-version: ${{ env.BUN_VERSION }}",
+  "bun-version: $" + "{{ env.BUN_VERSION }}",
   "name: Release readiness checks",
   "run: bun run release:check",
   "Install quiet macOS packaging wrappers",
