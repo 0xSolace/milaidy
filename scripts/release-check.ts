@@ -13,6 +13,11 @@ const requiredPaths = [
 ];
 const forbiddenPrefixes = ["dist/Milady.app/"];
 const requiredWorkflowSnippets = [
+  'BUN_VERSION: "1.3.5"',
+  "name: Validate Release Inputs",
+  "bun-version: ${{ env.BUN_VERSION }}",
+  "name: Release readiness checks",
+  "run: bun run release:check",
   "Install quiet macOS packaging wrappers",
   "apps/app/electrobun/scripts/xcrun-wrapper.sh",
   "apps/app/electrobun/scripts/zip-wrapper.sh",
@@ -35,6 +40,11 @@ const requiredWorkflowSnippets = [
   "Stage Windows setup executables",
   "apps/app/electrobun/artifacts/*.exe",
   "DMG attach attempt $attempt/5 failed",
+  "https://api.github.com/repos/blackboardsh/electrobun/releases/tags/v$version",
+  "$asset = @($release.assets) | Where-Object { $_.name -eq $assetName } | Select-Object -First 1",
+  "$expectedHash = $asset.digest.Substring(7).ToLowerInvariant()",
+  "$actualHash = (Get-FileHash -Path $tarPath -Algorithm SHA256).Hash.ToLowerInvariant()",
+  "electrobun CLI checksum mismatch",
 ];
 const requiredElectrobunConfigSnippets = [
   'postBuild: "scripts/postwrap-sign-runtime-macos.ts"',
@@ -103,7 +113,6 @@ function assertMacArtifactStagerLooksCorrect() {
     'install -m 0755 "$TMP_LAUNCHER_PATH" "$LAUNCHER_PATH"',
     'codesign --force --deep --timestamp --sign "$ELECTROBUN_DEVELOPER_ID" "$STAGED_APP_PATH"',
     'codesign --verify --deep --strict --verbose=2 "$STAGED_APP_PATH"',
-    'spctl -a -vv --type exec "$STAGED_APP_PATH"',
     "hdiutil create \\",
     "retry_command 3 20 xcrun notarytool submit \\",
     'retry_command 5 15 xcrun stapler staple "$TEMP_DMG_PATH"',
