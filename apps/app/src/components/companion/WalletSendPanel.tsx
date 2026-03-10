@@ -1,3 +1,4 @@
+import { getExplorerTxUrl } from "../chainConfig";
 import { shortHash, type TranslatorFn } from "./walletUtils";
 
 type WalletSendPanelProps = {
@@ -32,18 +33,18 @@ export function WalletSendPanel({
   t,
 }: WalletSendPanelProps) {
   return (
-    <div className="anime-wallet-action-body">
-      <label className="anime-wallet-field">
-        <span>{t("wallet.toAddressBsc")}</span>
+    <div className="text-sm">
+      <label className="text-sm">
+        <span>{t("wallet.toAddress")}</span>
         <input
           type="text"
           value={sendTo}
           onChange={(event) => setSendTo(event.target.value)}
-          placeholder="0x..."
+          placeholder={t("walletsendpanel.0x")}
         />
       </label>
-      <div className="anime-wallet-field-grid">
-        <label className="anime-wallet-field">
+      <div className="text-sm">
+        <label className="text-sm">
           <span>{t("wallet.amount")}</span>
           <input
             type="text"
@@ -52,23 +53,23 @@ export function WalletSendPanel({
             placeholder="0.01"
           />
         </label>
-        <label className="anime-wallet-field">
+        <label className="text-sm">
           <span>{t("wallet.asset")}</span>
           <select
             value={sendAsset}
             onChange={(event) => setSendAsset(event.target.value)}
           >
-            <option value="BNB">BNB</option>
-            <option value="USDT">USDT</option>
-            <option value="USDC">USDC</option>
+            <option value="BNB">{t("walletsendpanel.BNB")}</option>
+            <option value="USDT">{t("walletsendpanel.USDT")}</option>
+            <option value="USDC">{t("walletsendpanel.USDC")}</option>
           </select>
         </label>
       </div>
-      <div className="anime-wallet-send-hint">{t("wallet.sendHint")}</div>
-      <div className="anime-wallet-popover-actions">
+      <div className="text-sm">{t("wallet.sendHint")}</div>
+      <div className="text-sm">
         <button
           type="button"
-          className="anime-wallet-popover-action"
+          className="text-sm"
           disabled={!sendReady || sendExecuteBusy}
           onClick={() => {
             void handleSendExecute();
@@ -79,14 +80,14 @@ export function WalletSendPanel({
       </div>
 
       {sendUserSignTx && (
-        <div className="anime-wallet-usersign">
-          <div className="anime-wallet-usersign-title">
+        <div className="text-sm">
+          <div className="text-sm">
             {t("wallet.userSignSendPayload")}
           </div>
-          <div className="anime-wallet-usersign-actions">
+          <div className="text-sm">
             <button
               type="button"
-              className="anime-wallet-address-copy"
+              className="text-sm"
               onClick={() => {
                 void handleCopyUserSignPayload(sendUserSignTx);
               }}
@@ -98,14 +99,17 @@ export function WalletSendPanel({
       )}
 
       {sendLastTxHash && (
-        <div className="anime-wallet-tx-row">
+        <div className="text-sm">
           <span>{t("wallet.latestTx")}</span>
           <code>{shortHash(sendLastTxHash)}</code>
           <a
-            href={`https://bscscan.com/tx/${sendLastTxHash}`}
+            href={
+              getExplorerTxUrl("bsc", sendLastTxHash) ??
+              `https://bscscan.com/tx/${sendLastTxHash}`
+            }
             target="_blank"
             rel="noopener noreferrer"
-            className="anime-wallet-tx-link"
+            className="text-sm"
           >
             {t("wallet.view")}
           </a>

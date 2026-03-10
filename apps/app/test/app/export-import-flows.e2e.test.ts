@@ -432,6 +432,7 @@ describe("Export/Import UI", () => {
 
     mockUseApp.mockReset();
     mockUseApp.mockImplementation(() => ({
+      t: (k: string) => k,
       ...state,
       loadPlugins: vi.fn(),
       handlePluginToggle: vi.fn(),

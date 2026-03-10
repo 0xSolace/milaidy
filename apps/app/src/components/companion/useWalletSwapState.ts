@@ -8,6 +8,7 @@ import type {
   BscTradeTxStatusResponse,
   EvmChainBalance,
 } from "../../api-client";
+import { getExplorerTxUrl } from "../chainConfig";
 import {
   BSC_SWAP_GAS_RESERVE,
   formatRouteAddress,
@@ -281,7 +282,9 @@ export function useWalletSwapState(args: UseWalletSwapStateArgs) {
           nonce: result.execution.nonce ?? null,
           reason: null,
           explorerUrl:
-            result.execution.explorerUrl || `https://bscscan.com/tx/${txHash}`,
+            result.execution.explorerUrl ||
+            getExplorerTxUrl("bsc", txHash) ||
+            `https://bscscan.com/tx/${txHash}`,
         });
         if (initialStatus === "pending") {
           recentTxRefreshAtRef.current[txHash] = Date.now();

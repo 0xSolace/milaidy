@@ -9,7 +9,7 @@
 import { BugReportModal } from "./BugReportModal";
 import { CommandPalette } from "./CommandPalette";
 import { EmotePicker } from "./EmotePicker";
-import { MemoryDebugPanel } from "./MemoryDebugPanel";
+// import { MemoryDebugPanel } from "./MemoryDebugPanel";
 import { RestartBanner } from "./RestartBanner";
 import { ShortcutsOverlay } from "./ShortcutsOverlay";
 
@@ -28,7 +28,7 @@ export function ShellOverlays({
       <CommandPalette />
       <EmotePicker />
       <RestartBanner />
-      <MemoryDebugPanel />
+      {/* <MemoryDebugPanel /> */}
       <BugReportModal />
       <ShortcutsOverlay />
       {actionNotice && (

@@ -47,6 +47,7 @@ function createContext(
 ): SidebarContextStub {
   const now = Date.now();
   return {
+    t: (k: string) => k,
     conversations: [
       {
         id: "conv-1",

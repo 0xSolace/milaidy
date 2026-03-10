@@ -326,7 +326,7 @@ describe("collectPluginNames", () => {
     } as unknown as MiladyConfig;
     const names = collectPluginNames(config);
 
-    expect(names.has("@milady/plugin-streaming-base")).toBe(true);
+    expect(names.has("@elizaos/plugin-streaming-base")).toBe(true);
     expect(names.has("@elizaos/plugin-streaming-base")).toBe(false);
   });
 
@@ -434,7 +434,7 @@ describe("collectPluginNames", () => {
     } as unknown as MiladyConfig;
     const names = collectPluginNames(config);
 
-    expect(names.has("@milady/plugin-streaming-base")).toBe(true);
+    expect(names.has("@elizaos/plugin-streaming-base")).toBe(true);
     expect(names.has("@elizaos/plugin-streaming-base")).toBe(false);
   });
 
@@ -446,7 +446,7 @@ describe("collectPluginNames", () => {
     } as unknown as MiladyConfig;
     const names = collectPluginNames(config);
 
-    expect(names.has("@milady/plugin-x-streaming")).toBe(true);
+    expect(names.has("@elizaos/plugin-x-streaming")).toBe(true);
     expect(names.has("@elizaos/plugin-x-streaming")).toBe(false);
   });
 
@@ -1899,7 +1899,7 @@ describe("resolveMiladyPluginImportSpecifier", () => {
     await fs.writeFile(pluginIndex, "export default {};\n");
 
     const specifier = resolveMiladyPluginImportSpecifier(
-      "@milady/plugin-retake",
+      "@elizaos/plugin-retake",
       pathToFileURL(path.join(runtimeDir, "eliza.ts")).href,
     );
 
@@ -1914,11 +1914,11 @@ describe("resolveMiladyPluginImportSpecifier", () => {
     await fs.mkdir(runtimeDir, { recursive: true });
 
     const specifier = resolveMiladyPluginImportSpecifier(
-      "@milady/plugin-x-streaming",
+      "@elizaos/plugin-x-streaming",
       pathToFileURL(path.join(runtimeDir, "eliza.ts")).href,
     );
 
-    expect(specifier).toBe("@milady/plugin-x-streaming");
+    expect(specifier).toBe("@elizaos/plugin-x-streaming");
 
     await fs.rm(tmpDir, { recursive: true, force: true });
   });
@@ -1933,12 +1933,12 @@ describe("resolveMiladyPluginImportSpecifier", () => {
 describe("shouldIgnoreMissingPluginExport", () => {
   it("ignores helper-only streaming-base package exports", () => {
     expect(
-      shouldIgnoreMissingPluginExport("@milady/plugin-streaming-base"),
+      shouldIgnoreMissingPluginExport("@elizaos/plugin-streaming-base"),
     ).toBe(true);
   });
 
   it("does not ignore real plugins", () => {
-    expect(shouldIgnoreMissingPluginExport("@milady/plugin-x-streaming")).toBe(
+    expect(shouldIgnoreMissingPluginExport("@elizaos/plugin-x-streaming")).toBe(
       false,
     );
   });

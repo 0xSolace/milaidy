@@ -5,16 +5,17 @@
  * Autonomous Loop sidebar). Voice controls are managed externally.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getVrmNeedsFlip,
   getVrmPreviewUrl,
   getVrmUrl,
   useApp,
-} from "../AppContext";
+} from "@milady/app-core/state";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { client } from "../api-client";
 import { resolveAppAssetUrl } from "../asset-url";
 import { STOP_EMOTE_EVENT } from "../events";
+import { AvatarLoader } from "./avatar/AvatarLoader";
 import type { VrmEngine, VrmEngineState } from "./avatar/VrmEngine";
 import { VrmViewer } from "./avatar/VrmViewer";
 
@@ -139,6 +140,8 @@ export function ChatAvatar({
               className="absolute left-1/2 -translate-x-1/2 bottom-[-2%] h-[122%] object-contain opacity-90"
             />
           )}
+
+          {!vrmLoaded && !showFallback && <AvatarLoader />}
         </div>
       </div>
     </div>

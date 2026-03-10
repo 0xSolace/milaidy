@@ -49,6 +49,7 @@ export function GameView() {
     loadLogs,
     setState,
     setActionNotice,
+    t,
   } = useApp();
   const [stopping, setStopping] = useState(false);
   const [showLogsPanel, setShowLogsPanel] = useState(false);
@@ -254,7 +255,7 @@ export function GameView() {
   if (!activeGameViewerUrl) {
     return (
       <div className="flex items-center justify-center py-10 text-muted italic">
-        No active game session.{" "}
+        {t("game.noActiveSession")}{" "}
         <button
           type="button"
           onClick={() => {
@@ -263,7 +264,7 @@ export function GameView() {
           }}
           className="text-xs px-3 py-1 bg-accent text-accent-fg border border-accent cursor-pointer hover:bg-accent-hover disabled:opacity-40 ml-2"
         >
-          Back to Apps
+          {t("game.backToApps")}
         </button>
       </div>
     );
@@ -272,21 +273,21 @@ export function GameView() {
   const renderLogsPanel = () => (
     <div className="w-80 border-l border-border bg-card flex flex-col min-h-0">
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
-        <span className="font-bold text-xs">Agent Activity</span>
+        <span className="font-bold text-xs">{t("game.agentActivity")}</span>
         <span className="flex-1" />
         <button
           type="button"
           className="text-[10px] px-2 py-0.5 border border-border bg-card cursor-pointer hover:border-accent"
           onClick={() => void loadLogs()}
         >
-          Refresh
+          {t("common.refresh")}
         </button>
         <button
           type="button"
           className="text-[10px] px-2 py-0.5 border border-border bg-card cursor-pointer hover:border-accent"
           onClick={() => setShowLogsPanel(false)}
         >
-          Hide
+          {t("common.hide")}
         </button>
       </div>
       {/* Chat input for sending commands to agent */}
@@ -301,7 +302,7 @@ export function GameView() {
               handleSendChat();
             }
           }}
-          placeholder="e.g. 'go chop wood' or 'attack the goblin'"
+          placeholder={t("game.chatPlaceholder")}
           className="flex-1 px-2 py-1 text-xs border border-border bg-bg rounded-none focus:border-accent focus:outline-none"
           disabled={sendingChat}
         />
@@ -311,13 +312,13 @@ export function GameView() {
           disabled={sendingChat || !chatInput.trim()}
           className="text-xs px-2 py-1 bg-accent text-accent-fg border border-accent cursor-pointer hover:bg-accent-hover disabled:opacity-40"
         >
-          {sendingChat ? "..." : "Send"}
+          {sendingChat ? "..." : t("common.send")}
         </button>
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto p-2 text-[11px] font-mono">
         {gameLogs.length === 0 ? (
           <div className="text-center py-4 text-muted italic">
-            No agent activity yet.
+            {t("game.noAgentActivity")}
           </div>
         ) : (
           gameLogs.slice(0, 50).map((entry: LogEntry, idx) => (
@@ -382,14 +383,14 @@ export function GameView() {
           className={`text-[10px] px-1.5 py-0.5 border ${connectionStatusColor}`}
         >
           {connectionStatus === "connected"
-            ? "Connected"
+            ? t("game.connected")
             : connectionStatus === "connecting"
-              ? "Connecting..."
-              : "Disconnected"}
+              ? t("game.connecting")
+              : t("game.disconnected")}
         </span>
         {activeGamePostMessageAuth ? (
           <span className="text-[10px] px-1.5 py-0.5 border border-border text-muted">
-            postMessage auth
+            {t("gameview.postMessageAuth")}
           </span>
         ) : null}
         <span className="flex-1" />
@@ -403,7 +404,7 @@ export function GameView() {
           }`}
           onClick={() => setShowLogsPanel(!showLogsPanel)}
         >
-          {showLogsPanel ? "Hide Logs" : "Show Logs"}
+          {showLogsPanel ? t("game.hideLogs") : t("game.showLogs")}
         </button>
         {retakeEnabled && (
           <button
@@ -414,9 +415,9 @@ export function GameView() {
                 : "bg-card text-txt border-border hover:border-accent"
             }`}
             onClick={() => setRetakeCapture(!retakeCapture)}
-            title="Stream this view to retake.tv (requires active retake stream)"
+            title={t("game.retakeTitle")}
           >
-            {retakeCapture ? "Stop Capture" : "Retake Capture"}
+            {retakeCapture ? t("game.stopCapture") : t("game.retakeCapture")}
           </button>
         )}
         <button
@@ -429,18 +430,18 @@ export function GameView() {
           onClick={() => setState("gameOverlayEnabled", !gameOverlayEnabled)}
           title={
             gameOverlayEnabled
-              ? "Disable floating overlay"
-              : "Keep game visible when switching tabs"
+              ? t("game.disableOverlay")
+              : t("game.keepVisible")
           }
         >
-          {gameOverlayEnabled ? "Unpin Overlay" : "Keep on Top"}
+          {gameOverlayEnabled ? t("game.unpinOverlay") : t("game.keepOnTop")}
         </button>
         <button
           type="button"
           className="text-xs px-3 py-1 bg-accent text-accent-fg border border-accent cursor-pointer hover:bg-accent-hover disabled:opacity-40"
           onClick={handleOpenInNewTab}
         >
-          Open in New Tab
+          {t("game.openInNewTab")}
         </button>
         <button
           type="button"
@@ -448,7 +449,7 @@ export function GameView() {
           disabled={stopping}
           onClick={handleStop}
         >
-          {stopping ? "Stopping..." : "Stop"}
+          {stopping ? t("game.stopping") : t("game.stop")}
         </button>
         <button
           type="button"
@@ -458,7 +459,7 @@ export function GameView() {
             setState("appsSubTab", "browse");
           }}
         >
-          Back to Apps
+          {t("game.backToApps")}
         </button>
       </div>
       <div className="flex-1 min-h-0 flex">

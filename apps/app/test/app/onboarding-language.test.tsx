@@ -36,6 +36,7 @@ function createOnboardingContext(
   overrides?: Record<string, unknown>,
 ): Record<string, unknown> {
   return {
+    t: (k: string) => k,
     onboardingStep: "runMode",
     onboardingOptions: {
       names: ["Milady"],

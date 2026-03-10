@@ -174,6 +174,7 @@ function PermissionRow({
   shellEnabled: boolean;
   onToggleShell?: (enabled: boolean) => void;
 }) {
+  const { t } = useApp();
   const showAction = status !== "granted" && status !== "not-applicable";
 
   return (
@@ -213,7 +214,7 @@ function PermissionRow({
                 className="btn text-[11px] py-1 px-2.5"
                 onClick={onRequest}
               >
-                Request
+                {t("permissionssection.Request")}
               </button>
             )}
             <button
@@ -221,7 +222,7 @@ function PermissionRow({
               className="btn text-[11px] py-1 px-2.5"
               onClick={onOpenSettings}
             >
-              Settings
+              {t("permissionssection.Settings")}
             </button>
           </>
         )}
@@ -242,6 +243,7 @@ function CapabilityToggle({
   permissionsGranted: boolean;
   onToggle: (enabled: boolean) => void;
 }) {
+  const { t } = useApp();
   const enabled = plugin?.enabled ?? false;
   const available = plugin !== null;
   const canEnable = permissionsGranted && available;
@@ -257,7 +259,7 @@ function CapabilityToggle({
           <span className="font-semibold text-[13px]">{cap.label}</span>
           {!permissionsGranted && (
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--warning)]/20 text-[var(--warning)]">
-              Missing Permissions
+              {t("permissionssection.MissingPermissions")}
             </span>
           )}
         </div>
@@ -328,6 +330,7 @@ function usePermissionActions(
 }
 
 export function PermissionsSection() {
+  const { t } = useApp();
   const { plugins, handlePluginToggle } = useApp();
   const [permissions, setPermissions] = useState<AllPermissionsState | null>(
     null,
@@ -412,7 +415,7 @@ export function PermissionsSection() {
   if (loading) {
     return (
       <div className="text-center py-6 text-[var(--muted)] text-xs">
-        Loading permissions...
+        {t("permissionssection.LoadingPermissions")}
       </div>
     );
   }
@@ -420,7 +423,7 @@ export function PermissionsSection() {
   if (!permissions) {
     return (
       <div className="text-center py-6 text-[var(--muted)] text-xs">
-        Unable to load permissions. This feature requires Electron.
+        {t("permissionssection.UnableToLoadPermi")}
       </div>
     );
   }
@@ -430,7 +433,9 @@ export function PermissionsSection() {
       {/* System Permissions */}
       <div>
         <div className="flex justify-between items-center mb-3">
-          <div className="font-bold text-sm">System Permissions</div>
+          <div className="font-bold text-sm">
+            {t("permissionssection.SystemPermissions")}
+          </div>
           <div className="flex gap-2">
             <button
               type="button"
@@ -448,7 +453,7 @@ export function PermissionsSection() {
                 }
               }}
             >
-              Allow All
+              {t("permissionssection.AllowAll")}
             </button>
             <button
               type="button"
@@ -497,7 +502,9 @@ export function PermissionsSection() {
 
       {/* Capability Toggles */}
       <div>
-        <div className="font-bold text-sm mb-3">Capabilities</div>
+        <div className="font-bold text-sm mb-3">
+          {t("permissionssection.Capabilities")}
+        </div>
         <div className="space-y-2">
           {CAPABILITIES.map((cap) => {
             const plugin = plugins.find((p) => p.id === cap.id) ?? null;
@@ -518,8 +525,7 @@ export function PermissionsSection() {
           })}
         </div>
         <div className="text-[11px] text-[var(--muted)] mt-2">
-          Capabilities require their underlying system permissions to be
-          granted. Enable capabilities to unlock agent features.
+          {t("permissionssection.CapabilitiesRequire")}
         </div>
       </div>
     </div>
@@ -536,6 +542,7 @@ export function PermissionsOnboardingSection({
 }: {
   onContinue: (options?: { allowPermissionBypass?: boolean }) => void;
 }) {
+  const { t } = useApp();
   const [permissions, setPermissions] = useState<AllPermissionsState | null>(
     null,
   );
@@ -564,7 +571,7 @@ export function PermissionsOnboardingSection({
     return (
       <div className="text-center py-8">
         <div className="text-[var(--muted)] text-sm">
-          Checking permissions...
+          {t("permissionssection.CheckingPermissions")}
         </div>
       </div>
     );
@@ -574,14 +581,14 @@ export function PermissionsOnboardingSection({
     return (
       <div className="text-center py-8">
         <div className="text-[var(--muted)] text-sm mb-4">
-          Unable to check permissions. You can configure them later in Settings.
+          {t("permissionssection.UnableToCheckPerm")}
         </div>
         <button
           type="button"
           className="btn"
           onClick={() => onContinue({ allowPermissionBypass: true })}
         >
-          Continue
+          {t("permissionssection.Continue")}
         </button>
       </div>
     );
@@ -596,9 +603,11 @@ export function PermissionsOnboardingSection({
   return (
     <div>
       <div className="text-center mb-6">
-        <div className="text-xl font-bold mb-2">System Permissions</div>
+        <div className="text-xl font-bold mb-2">
+          {t("permissionssection.SystemPermissions")}
+        </div>
         <div className="text-[var(--muted)] text-sm">
-          Grant permissions to unlock full capabilities
+          {t("permissionssection.GrantPermissionsTo")}
         </div>
       </div>
 
@@ -635,7 +644,7 @@ export function PermissionsOnboardingSection({
                       className="btn text-xs py-1.5 px-3"
                       onClick={() => handleRequest(def.id)}
                     >
-                      Grant
+                      {t("permissionssection.Grant")}
                     </button>
                   )}
                   <button
@@ -643,7 +652,7 @@ export function PermissionsOnboardingSection({
                     className="btn text-xs py-1.5 px-3"
                     onClick={() => handleOpenSettings(def.id)}
                   >
-                    Open Settings
+                    {t("permissionssection.OpenSettings")}
                   </button>
                 </div>
               )}
@@ -674,7 +683,7 @@ export function PermissionsOnboardingSection({
               }
             }}
           >
-            Allow All Permissions
+            {t("permissionssection.AllowAllPermission")}
           </button>
         </div>
       )}
@@ -685,7 +694,7 @@ export function PermissionsOnboardingSection({
           className="btn text-xs py-2 px-6 opacity-70"
           onClick={() => onContinue({ allowPermissionBypass: true })}
         >
-          Skip for Now
+          {t("permissionssection.SkipForNow")}
         </button>
         {allGranted && (
           <button
@@ -697,13 +706,13 @@ export function PermissionsOnboardingSection({
             }}
             onClick={() => onContinue()}
           >
-            Continue
+            {t("permissionssection.Continue")}
           </button>
         )}
       </div>
 
       <div className="text-center mt-4 text-[11px] text-[var(--muted)]">
-        You can change these settings later in Settings → Permissions
+        {t("permissionssection.YouCanChangeThese")}
       </div>
     </div>
   );

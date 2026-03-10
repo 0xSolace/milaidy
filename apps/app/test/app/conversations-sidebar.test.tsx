@@ -22,6 +22,7 @@ type ConversationStub = {
 
 function createContext(overrides: Record<string, unknown> = {}) {
   return {
+    t: (k: string) => k,
     conversations: [
       {
         id: "conv-1",

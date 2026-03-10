@@ -4669,7 +4669,7 @@ export function resolveMcpTerminalAuthorizationRejection(
 const LOCAL_ORIGIN_RE =
   /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\]|\[0:0:0:0:0:0:0:1\])(:\d+)?$/i;
 const APP_ORIGIN_RE =
-  /^(capacitor|capacitor-electron|app):\/\/(localhost|-)?$/i;
+  /^(capacitor|capacitor-electron|app|tauri|file|electrobun):\/\/.*$/i;
 
 /**
  * Hostname allowlist for DNS rebinding protection.
@@ -4759,8 +4759,11 @@ export function resolveCorsOrigin(origin?: string): string | null {
 
   if (LOCAL_ORIGIN_RE.test(trimmed)) return trimmed;
   if (APP_ORIGIN_RE.test(trimmed)) return trimmed;
-  if (trimmed === "null" && process.env.MILADY_ALLOW_NULL_ORIGIN === "1")
-    return "null";
+  if (trimmed === "null" || trimmed === "file://") {
+    if (process.env.MILADY_ALLOW_NULL_ORIGIN === "1") {
+      return "null";
+    }
+  }
   return null;
 }
 
@@ -6896,6 +6899,7 @@ async function handleRequest(
       state: state.agentState,
       agentName: state.agentName,
       model: state.model,
+      startedAt: state.startedAt,
       uptime,
       startup: state.startup,
       cloud: cloudStatus,
@@ -12914,8 +12918,19 @@ async function handleRequest(
     }
     const charName = runtime.character.name ?? state.agentName ?? "Milady";
 
-    // Collect post examples from the character
-    const postExamples = runtime.character.postExamples ?? [];
+    // Collect post examples from the character, with language support
+    const url = new URL(req.url ?? "", `http://${req.headers.host}`);
+    const lang = url.searchParams.get("lang") ?? "en";
+    const localizedExamples =
+      lang === "zh-CN"
+        ? ((runtime.character as Record<string, unknown>).postExamples_zhCN as
+            | string[]
+            | undefined)
+        : undefined;
+    const postExamples =
+      localizedExamples && localizedExamples.length > 0
+        ? localizedExamples
+        : (runtime.character.postExamples ?? []);
     const greeting =
       postExamples[Math.floor(Math.random() * postExamples.length)];
 
@@ -15553,7 +15568,7 @@ export async function startApiServer(opts?: {
         // Retake (API-driven, full integration)
         if (isConnectorConfigured("retake", connectors.retake)) {
           try {
-            const retakeMod = "@milady/plugin-retake";
+            const retakeMod = "@elizaos/plugin-retake";
             const { createRetakeDestination } = await import(retakeMod);
             destinations.set(
               "retake",
@@ -15597,7 +15612,7 @@ export async function startApiServer(opts?: {
         // Twitch
         if (isStreamingDestinationConfigured("twitch", streaming?.twitch)) {
           try {
-            const twitchMod = "@milady/plugin-twitch-streaming";
+            const twitchMod = "@elizaos/plugin-twitch-streaming";
             const { createTwitchDestination } = await import(twitchMod);
             destinations.set(
               "twitch",
@@ -15615,7 +15630,7 @@ export async function startApiServer(opts?: {
         // YouTube
         if (isStreamingDestinationConfigured("youtube", streaming?.youtube)) {
           try {
-            const youtubeMod = "@milady/plugin-youtube-streaming";
+            const youtubeMod = "@elizaos/plugin-youtube-streaming";
             const { createYoutubeDestination } = await import(youtubeMod);
             destinations.set(
               "youtube",
@@ -15633,7 +15648,7 @@ export async function startApiServer(opts?: {
         // pump.fun
         if (isStreamingDestinationConfigured("pumpfun", streaming?.pumpfun)) {
           try {
-            const pumpfunMod = "@milady/plugin-pumpfun-streaming";
+            const pumpfunMod = "@elizaos/plugin-pumpfun-streaming";
             const { createPumpfunDestination } = await import(pumpfunMod);
             destinations.set(
               "pumpfun",
@@ -15651,7 +15666,7 @@ export async function startApiServer(opts?: {
         // X (Twitter)
         if (isStreamingDestinationConfigured("x", streaming?.x)) {
           try {
-            const xMod = "@milady/plugin-x-streaming";
+            const xMod = "@elizaos/plugin-x-streaming";
             const { createXStreamDestination } = await import(xMod);
             destinations.set(
               "x",

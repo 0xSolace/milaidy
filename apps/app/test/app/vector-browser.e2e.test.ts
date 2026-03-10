@@ -399,6 +399,7 @@ async function flush(): Promise<void> {
 describe("VectorBrowserView Component", () => {
   beforeEach(() => {
     mockUseApp.mockReset();
+    mockUseApp.mockReturnValue({ uiLanguage: "en", t: (k: string) => k });
     vi.mocked(client.getDatabaseTables).mockReset();
     vi.mocked(client.executeDatabaseQuery).mockReset();
   });

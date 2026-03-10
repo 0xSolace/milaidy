@@ -52,6 +52,7 @@ import { CompanionView } from "../../src/components/CompanionView";
 
 function createContext() {
   return {
+    t: (k: string) => k,
     setState: vi.fn(),
     selectedVrmIndex: 1,
     customVrmUrl: "",

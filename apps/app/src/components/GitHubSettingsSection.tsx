@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
+import { useApp } from "../AppContext";
 import { client } from "../api-client";
 import { ConfigSaveFooter } from "./ConfigSaveFooter";
 
 export function GitHubSettingsSection() {
+  const { t } = useApp();
   const [tokenConfigured, setTokenConfigured] = useState(false);
   const [oauthAvailable, setOauthAvailable] = useState(false);
   const [newToken, setNewToken] = useState("");
@@ -47,7 +49,7 @@ export function GitHubSettingsSection() {
   if (loading) {
     return (
       <div className="py-4 text-center text-[var(--muted)] text-xs">
-        Loading GitHub configuration...
+        {t("githubsettingssection.LoadingGitHubConfi")}
       </div>
     );
   }
@@ -57,7 +59,7 @@ export function GitHubSettingsSection() {
       {/* Status badge */}
       <div className="flex items-center gap-2">
         <span className="text-xs font-semibold text-[var(--muted)]">
-          Personal Access Token:
+          {t("githubsettingssection.PersonalAccessToke")}
         </span>
         <span
           className={`ml-auto text-[10px] px-2 py-0.5 border ${
@@ -87,24 +89,25 @@ export function GitHubSettingsSection() {
           }}
         />
         <div className="text-[11px] text-[var(--muted)]">
-          Generate a token at{" "}
+          {t("githubsettingssection.GenerateATokenAt")}{" "}
           <a
             href="https://github.com/settings/tokens"
             target="_blank"
             rel="noreferrer"
             className="underline hover:text-[var(--accent)]"
           >
-            github.com/settings/tokens
+            {t("githubsettingssection.githubComSettings")}
           </a>{" "}
-          with <code className="text-[10px]">repo</code> scope.
+          {t("githubsettingssection.with")}{" "}
+          <code className="text-[10px]">{t("githubsettingssection.repo")}</code>{" "}
+          {t("githubsettingssection.scope")}
         </div>
       </div>
 
       {/* OAuth note */}
       {oauthAvailable && (
         <div className="text-[11px] text-[var(--muted)] border border-[var(--border)] bg-[var(--bg-muted)] px-2.5 py-2">
-          OAuth is also available as a fallback when a GitHub OAuth Client ID is
-          configured.
+          {t("githubsettingssection.OAuthIsAlsoAvaila")}
         </div>
       )}
 

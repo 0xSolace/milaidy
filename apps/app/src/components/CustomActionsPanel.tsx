@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useApp } from "../AppContext";
 import { type CustomActionDef, client } from "../api-client";
 
 interface CustomActionsPanelProps {
@@ -24,6 +25,7 @@ export function CustomActionsPanel({
   onClose,
   onOpenEditor,
 }: CustomActionsPanelProps) {
+  const { t } = useApp();
   const [actions, setActions] = useState<CustomActionDef[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
@@ -128,10 +130,13 @@ export function CustomActionsPanel({
           {/* Header */}
           <div className="flex items-start justify-between p-4 border-b border-border">
             <div>
-              <h2 className="text-sm font-semibold text-txt">Custom Actions</h2>
+              <h2 className="text-sm font-semibold text-txt">
+                {t("customactionspanel.CustomActions")}
+              </h2>
               <p className="text-xs text-muted mt-0.5">
-                {actions.length} action{actions.length === 1 ? "" : "s"} ·{" "}
-                {enabledCount} enabled
+                {actions.length} {t("customactionspanel.action")}
+                {actions.length === 1 ? "" : "s"} · {enabledCount}{" "}
+                {t("customactionspanel.enabled")}
               </p>
             </div>
             <button
@@ -149,7 +154,7 @@ export function CustomActionsPanel({
                 strokeWidth="2"
                 strokeLinecap="round"
               >
-                <title>Close panel</title>
+                <title>{t("customactionspanel.ClosePanel")}</title>
                 <path d="M12 4L4 12M4 4l8 8" />
               </svg>
             </button>
@@ -161,14 +166,14 @@ export function CustomActionsPanel({
               onClick={handleCreate}
               className="w-full bg-accent text-txt hover:bg-accent/90 transition-colors rounded px-3 py-2 text-sm font-medium"
             >
-              + New Custom Action
+              {t("customactionspanel.NewCustomAction")}
             </button>
 
             <div className="relative">
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search by name, description, alias..."
+                placeholder={t("customactionspanel.SearchByNameDesc")}
                 className="w-full bg-surface border border-border px-2 py-1.5 text-xs text-txt placeholder:text-muted/50 outline-none focus:border-accent"
               />
             </div>
@@ -184,7 +189,7 @@ export function CustomActionsPanel({
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
             {loading ? (
               <div className="text-center text-muted text-xs py-8">
-                Loading your actions...
+                {t("customactionspanel.LoadingYourActions")}
               </div>
             ) : filteredActions.length === 0 ? (
               <div className="text-center text-muted text-xs py-8">
@@ -204,7 +209,8 @@ export function CustomActionsPanel({
                         {action.name}
                       </div>
                       <p className="text-[10px] text-muted mt-0.5">
-                        {action.parameters?.length || 0} parameter
+                        {action.parameters?.length || 0}{" "}
+                        {t("customactionspanel.parameter")}
                         {(action.parameters?.length || 0) === 1 ? "" : "s"}
                         {action.similes?.length
                           ? ` • ${action.similes.length} alias`.concat(
@@ -239,7 +245,7 @@ export function CustomActionsPanel({
                         onChange={() => handleToggleEnabled(action)}
                         className="w-3 h-3 cursor-pointer accent-accent"
                       />
-                      <span>Enabled</span>
+                      <span>{t("customactionspanel.Enabled")}</span>
                     </label>
 
                     <div className="ml-auto flex items-center gap-2">
@@ -247,17 +253,17 @@ export function CustomActionsPanel({
                         type="button"
                         onClick={() => handleEdit(action)}
                         className="text-xs text-accent hover:text-accent/80 transition-colors"
-                        title="Edit action"
+                        title={t("customactionspanel.EditAction")}
                       >
-                        Edit
+                        {t("customactionspanel.Edit")}
                       </button>
                       <button
                         type="button"
                         onClick={() => handleDelete(action)}
                         className="text-xs text-danger hover:text-danger/80 transition-colors"
-                        title="Delete action"
+                        title={t("customactionspanel.DeleteAction")}
                       >
-                        Delete
+                        {t("customactionspanel.Delete")}
                       </button>
                     </div>
                   </div>

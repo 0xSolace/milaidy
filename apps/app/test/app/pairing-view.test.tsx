@@ -14,6 +14,7 @@ import { PairingView } from "../../src/components/PairingView";
 
 function createContext(overrides?: Record<string, unknown>) {
   return {
+    t: (k: string) => k,
     pairingEnabled: true,
     pairingExpiresAt: null,
     pairingCodeInput: "",

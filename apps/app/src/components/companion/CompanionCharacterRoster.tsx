@@ -11,7 +11,6 @@ export type RosterItem = {
 export function CompanionCharacterRoster({
   rosterItems,
   selectedVrmIndex,
-  safeSelectedVrmIndex,
   characterRosterOpen,
   setState,
   handleRosterVrmUpload,
@@ -22,7 +21,6 @@ export function CompanionCharacterRoster({
 }: {
   rosterItems: RosterItem[];
   selectedVrmIndex: number;
-  safeSelectedVrmIndex: number;
   characterRosterOpen: boolean;
   setState: <K extends keyof AppState>(key: K, value: AppState[K]) => void;
   handleRosterVrmUpload: (file: File) => void;
@@ -42,24 +40,22 @@ export function CompanionCharacterRoster({
             {t("companion.customVrmActive")}
           </div>
         )}
-        <div className="anime-roster-list">
+        <div className="text-sm">
           {rosterItems.map((item) => {
-            const active =
-              selectedVrmIndex !== 0 && item.index === safeSelectedVrmIndex;
             return (
               <button
                 key={item.index}
                 type="button"
-                className={`anime-roster-item ${active ? "is-active" : ""}`}
+                className={`text-sm`}
                 onClick={() => setState("selectedVrmIndex", item.index)}
               >
                 <img
                   src={item.previewUrl}
                   alt={item.title}
-                  className="anime-roster-img"
+                  className="text-sm"
                 />
-                <div className="anime-roster-meta">
-                  <span className="anime-roster-name">{item.title}</span>
+                <div className="text-sm">
+                  <span className="text-sm">{item.title}</span>
                 </div>
               </button>
             );
@@ -78,12 +74,12 @@ export function CompanionCharacterRoster({
           />
           <button
             type="button"
-            className={`anime-roster-item ${selectedVrmIndex === 0 ? "is-active" : ""}`}
+            className={`text-sm`}
             onClick={() => vrmFileInputRef.current?.click()}
-            title="Upload custom .vrm"
+            title={t("companioncharacterroster.UploadCustomVrm")}
           >
             <div
-              className="anime-roster-img"
+              className="text-sm"
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -100,12 +96,14 @@ export function CompanionCharacterRoster({
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
-                <title>Upload VRM</title>
+                <title>{t("companioncharacterroster.UploadVRM")}</title>
                 <path d="M12 5v14m-7-7h14" />
               </svg>
             </div>
-            <div className="anime-roster-meta">
-              <span className="anime-roster-name">Custom</span>
+            <div className="text-sm">
+              <span className="text-sm">
+                {t("companioncharacterroster.Custom")}
+              </span>
             </div>
           </button>
         </div>
@@ -125,7 +123,7 @@ export function CompanionCharacterRoster({
           type="button"
           className="text-xs text-muted hover:text-accent mt-2 flex items-center gap-1"
           onClick={() => bgFileInputRef.current?.click()}
-          title="Upload custom background image"
+          title={t("companioncharacterroster.UploadCustomBackgr")}
         >
           <svg
             width="14"
@@ -137,12 +135,13 @@ export function CompanionCharacterRoster({
             strokeLinecap="round"
             strokeLinejoin="round"
           >
-            <title>Upload Background</title>
+            <title>{t("companioncharacterroster.UploadBackground")}</title>
             <rect x="3" y="3" width="18" height="18" rx="2" />
             <circle cx="8.5" cy="8.5" r="1.5" />
             <path d="M21 15l-5-5L5 21" />
           </svg>
-          Change Background
+
+          {t("companioncharacterroster.ChangeBackground")}
         </button>
       </div>
     </div>

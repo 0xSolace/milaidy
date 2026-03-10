@@ -49,6 +49,7 @@ function createSettingsContext(
   overrides?: Record<string, unknown>,
 ): Record<string, unknown> {
   return {
+    t: (k: string) => k,
     cloudEnabled: false,
     cloudConnected: false,
     cloudCredits: null,

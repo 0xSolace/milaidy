@@ -44,6 +44,7 @@ function createContext(
   overrides?: Partial<PaletteContext>,
 ): PaletteContext & Record<string, unknown> {
   return {
+    t: (k: string) => k,
     commandPaletteOpen: true,
     commandQuery: "",
     commandActiveIndex: 0,

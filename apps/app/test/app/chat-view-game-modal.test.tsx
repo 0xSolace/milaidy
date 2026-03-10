@@ -28,6 +28,7 @@ interface ChatViewContextStub {
   chatAgentVoiceMuted: boolean;
   selectedVrmIndex: number;
   uiLanguage: "en" | "zh-CN";
+  t: (k: string) => string;
 }
 
 const { mockClient, mockUseApp, mockUseVoiceChat } = vi.hoisted(() => ({
@@ -78,6 +79,7 @@ function createContext(
     uiLanguage: "en",
     chatPendingImages: [],
     setChatPendingImages: vi.fn(),
+    t: (k: string) => k,
     ...overrides,
   };
 }

@@ -44,6 +44,7 @@ import { ChatModalView } from "../../src/components/ChatModalView";
 
 function createContext() {
   return {
+    t: (k: string) => k,
     conversations: [
       {
         id: "conv-1",

@@ -3,7 +3,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useApp } from "./AppContext";
+import { getVrmUrl, useApp } from "./AppContext";
 import { AdvancedPageView } from "./components/AdvancedPageView";
 import { AppsPageView } from "./components/AppsPageView";
 import { AutonomousPanel } from "./components/AutonomousPanel";
@@ -30,11 +30,11 @@ import { OnboardingWizard } from "./components/OnboardingWizard";
 import { PairingView } from "./components/PairingView";
 import { SaveCommandModal } from "./components/SaveCommandModal";
 import { SettingsView } from "./components/SettingsView";
+import { ErrorBoundary } from "./components/shared/ErrorBoundary";
 import { ShellOverlays } from "./components/ShellOverlays";
 import { StartupFailureView } from "./components/StartupFailureView";
 import { StreamView } from "./components/StreamView";
 import { SystemWarningBanner } from "./components/SystemWarningBanner";
-import { ErrorBoundary } from "./components/shared/ErrorBoundary";
 import { TerminalPanel } from "./components/TerminalPanel";
 import { BugReportProvider, useBugReportState } from "./hooks/useBugReport";
 import { useContextMenu } from "./hooks/useContextMenu";
@@ -123,7 +123,16 @@ export function App() {
     activeGameViewerUrl,
     gameOverlayEnabled,
     setActionNotice,
+    selectedVrmIndex,
+    customVrmUrl,
   } = useApp();
+
+  // Compute active VRM URL for preloading during the loading screen
+  const activeVrmUrl = useMemo(() => {
+    if (selectedVrmIndex === 0 && customVrmUrl) return customVrmUrl;
+    const safeIndex = selectedVrmIndex > 0 ? selectedVrmIndex : 1;
+    return getVrmUrl(safeIndex);
+  }, [selectedVrmIndex, customVrmUrl]);
   const isPopout = useIsPopout();
   const shellMode = uiShellMode ?? "companion";
   const effectiveTab: Tab =
@@ -168,8 +177,8 @@ export function App() {
     agentStatus?.state === "running"
       ? "bg-ok shadow-[0_0_8px_color-mix(in_srgb,var(--ok)_60%,transparent)]"
       : agentStatus?.state === "paused" ||
-          agentStatus?.state === "starting" ||
-          agentStatus?.state === "restarting"
+        agentStatus?.state === "starting" ||
+        agentStatus?.state === "restarting"
         ? "bg-warn"
         : agentStatus?.state === "error"
           ? "bg-danger"
@@ -178,11 +187,10 @@ export function App() {
     <div className="flex items-center gap-2 w-max">
       <button
         type="button"
-        className={`inline-flex items-center gap-2 px-3 py-2 border rounded-md text-[12px] font-semibold transition-all cursor-pointer ${
-          mobileConversationsOpen
+        className={`inline-flex items-center gap-2 px-3 py-2 border rounded-md text-[12px] font-semibold transition-all cursor-pointer ${mobileConversationsOpen
             ? "border-accent bg-accent-subtle text-accent"
             : "border-border bg-card text-txt hover:border-accent hover:text-accent"
-        }`}
+          }`}
         onClick={() => {
           setMobileAutonomousOpen(false);
           setMobileConversationsOpen(true);
@@ -212,11 +220,10 @@ export function App() {
       </button>
       <button
         type="button"
-        className={`inline-flex items-center gap-2 px-3 py-2 border rounded-md text-[12px] font-semibold transition-all cursor-pointer ${
-          mobileAutonomousOpen
+        className={`inline-flex items-center gap-2 px-3 py-2 border rounded-md text-[12px] font-semibold transition-all cursor-pointer ${mobileAutonomousOpen
             ? "border-accent bg-accent-subtle text-accent"
             : "border-border bg-card text-txt hover:border-accent hover:text-accent"
-        }`}
+          }`}
         onClick={() => {
           setMobileConversationsOpen(false);
           setMobileAutonomousOpen(true);
@@ -334,6 +341,7 @@ export function App() {
     return (
       <LoadingScreen
         phase={agentStarting ? "initializing-agent" : startupPhase}
+        vrmUrl={activeVrmUrl}
       />
     );
   }

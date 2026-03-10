@@ -123,6 +123,7 @@ describe("app startup routing (e2e)", () => {
     mockIsLifoPopoutMode.mockReset();
     mockIsLifoPopoutMode.mockReturnValue(false);
     mockUseApp.mockReturnValue({
+      t: (k: string) => k,
       onboardingLoading: false,
       authRequired: false,
       onboardingComplete: true,
@@ -169,6 +170,7 @@ describe("app startup routing (e2e)", () => {
 
   it("renders wallets screen when wallets tab is active", async () => {
     mockUseApp.mockReturnValue({
+      t: (k: string) => k,
       onboardingLoading: false,
       authRequired: false,
       onboardingComplete: true,

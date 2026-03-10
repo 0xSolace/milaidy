@@ -394,6 +394,7 @@ describe("Settings Reset UI", () => {
 
     mockUseApp.mockReset();
     mockUseApp.mockImplementation(() => ({
+      t: (k: string) => k,
       ...state,
       setState: (key: string, value: unknown) => {
         state[key] = value;
@@ -585,6 +586,7 @@ describe("Reset to Onboarding Flow Integration", () => {
 
     mockUseApp.mockReset();
     mockUseApp.mockImplementation(() => ({
+      t: (k: string) => k,
       ...state,
       setState: (key: string, value: unknown) => {
         state[key] = value;

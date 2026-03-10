@@ -4,6 +4,7 @@
 
 import type { AppState } from "../../AppContext";
 import type { createTranslator } from "../../i18n";
+import { CHAIN_CONFIGS, PRIMARY_CHAIN_KEYS } from "../chainConfig";
 
 type InventoryToolbarStateKey =
   | "inventoryView"
@@ -62,14 +63,20 @@ export function InventoryToolbar({
       {inventoryView === "tokens" && (
         <>
           <span className="wt__sep" />
-          <button
-            type="button"
-            data-testid="wallet-focus-bsc"
-            className={`wt__chip ${inventoryChainFocus === "bsc" ? "is-active" : ""}`}
-            onClick={() => setState("inventoryChainFocus", "bsc")}
-          >
-            BSC
-          </button>
+          {PRIMARY_CHAIN_KEYS.map((key) => {
+            const config = CHAIN_CONFIGS[key];
+            return (
+              <button
+                key={key}
+                type="button"
+                data-testid={`wallet-focus-${key}`}
+                className={`wt__chip ${inventoryChainFocus === key ? "is-active" : ""}`}
+                onClick={() => setState("inventoryChainFocus", key)}
+              >
+                {config.name}
+              </button>
+            );
+          })}
           <button
             type="button"
             data-testid="wallet-focus-all"
@@ -115,7 +122,7 @@ export function InventoryToolbar({
           inventoryView === "tokens" ? loadBalances() : loadNfts()
         }
       >
-        Refresh
+        {t("inventorytoolbar.Refresh")}
       </button>
     </div>
   );

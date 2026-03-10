@@ -101,9 +101,8 @@ export function useWalletPanelState(props: WalletPanelProps) {
   const [walletPortfolioTab, setWalletPortfolioTab] = useState<
     "tokens" | "collectibles"
   >("tokens");
-  const [walletPortfolioChain, setWalletPortfolioChain] = useState<
-    "all" | "bsc" | "evm" | "solana"
-  >("all");
+  const [walletPortfolioChain, setWalletPortfolioChain] =
+    useState<string>("all");
   const [walletSelectedTokenKey, setWalletSelectedTokenKey] = useState<
     string | null
   >(null);
@@ -213,7 +212,10 @@ export function useWalletPanelState(props: WalletPanelProps) {
 
   const handleSelectedTokenSwap = useCallback(() => {
     if (!portfolio.selectedWalletToken) return;
-    if (portfolio.selectedWalletToken.chainKey !== "bsc") {
+    if (
+      portfolio.selectedWalletToken.chainKey !== "bsc" &&
+      portfolio.selectedWalletToken.chainKey !== "avax"
+    ) {
       setActionNotice(t("wallet.tokenOpenWalletForSwap"), "info", 2600);
       return;
     }

@@ -10,6 +10,7 @@ import type {
 } from "../../src/api-client";
 
 interface FineTuningContextStub {
+  t: (key: string) => string;
   handleRestart: () => Promise<void>;
   setActionNotice: (
     text: string,
@@ -195,6 +196,7 @@ describe("FineTuningView", () => {
     mockClientFns.onWsEvent.mockReset();
 
     appContext = {
+      t: (k: string) => k,
       handleRestart: async () => undefined,
       setActionNotice: vi.fn<FineTuningContextStub["setActionNotice"]>(),
     };

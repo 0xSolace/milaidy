@@ -15,6 +15,7 @@
  */
 
 import { useCallback, useMemo, useRef, useState } from "react";
+import { useApp } from "../AppContext";
 import { type MemorySample, useMemoryMonitor } from "../hooks/useMemoryMonitor";
 
 interface MemoryDebugPanelProps {
@@ -37,6 +38,7 @@ function MiniChart({
   samples: MemorySample[];
   maxSamples: number;
 }) {
+  const { t } = useApp();
   if (samples.length < 2) return null;
 
   const width = 120;
@@ -61,7 +63,7 @@ function MiniChart({
 
   return (
     <svg width={width} height={height} className="opacity-70">
-      <title>Memory usage over time</title>
+      <title>{t("memorydebugpanel.MemoryUsageOverTi")}</title>
       <defs>
         <linearGradient id="memGradient" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.3" />
@@ -91,6 +93,7 @@ export function MemoryDebugPanel({
   initialPosition = { x: 16, y: 16 },
   initialMinimized = true,
 }: MemoryDebugPanelProps) {
+  const { t } = useApp();
   // Only render in dev mode unless forced
   const shouldRender = forceEnable || import.meta.env.DEV;
 
@@ -164,10 +167,10 @@ export function MemoryDebugPanel({
     return (
       <span className={color}>
         {sign}
-        {trend.mbPerMinute.toFixed(2)} MB/min
+        {trend.mbPerMinute.toFixed(2)} {t("memorydebugpanel.MBMin")}
       </span>
     );
-  }, [trend]);
+  }, [trend, t]);
 
   if (!shouldRender || !supported) return null;
 
@@ -191,7 +194,7 @@ export function MemoryDebugPanel({
               isLeaking ? "bg-danger animate-pulse" : "bg-success"
             }`}
           />
-          <span className="text-txt-muted">Memory</span>
+          <span className="text-txt-muted">{t("memorydebugpanel.Memory")}</span>
         </div>
         <div className="flex items-center gap-1">
           {!minimized && (
@@ -199,7 +202,7 @@ export function MemoryDebugPanel({
               type="button"
               className="p-0.5 hover:bg-accent/20 rounded text-muted hover:text-txt"
               onClick={clearHistory}
-              title="Clear history"
+              title={t("memorydebugpanel.ClearHistory")}
             >
               <svg
                 width="10"
@@ -209,7 +212,7 @@ export function MemoryDebugPanel({
                 stroke="currentColor"
                 strokeWidth="2"
               >
-                <title>Clear</title>
+                <title>{t("memorydebugpanel.Clear")}</title>
                 <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
               </svg>
             </button>
@@ -251,7 +254,7 @@ export function MemoryDebugPanel({
           <div className="space-y-2">
             {/* Current usage */}
             <div className="flex justify-between">
-              <span className="text-muted">Heap:</span>
+              <span className="text-muted">{t("memorydebugpanel.Heap")}</span>
               <span className="text-txt">
                 {metrics ? formatMB(metrics.usedHeapSize) : "..."}
               </span>
@@ -259,7 +262,7 @@ export function MemoryDebugPanel({
 
             {/* Limit */}
             <div className="flex justify-between">
-              <span className="text-muted">Limit:</span>
+              <span className="text-muted">{t("memorydebugpanel.Limit")}</span>
               <span className="text-txt">
                 {metrics ? formatMB(metrics.heapSizeLimit) : "..."}
               </span>
@@ -283,7 +286,7 @@ export function MemoryDebugPanel({
 
             {/* Trend */}
             <div className="flex justify-between">
-              <span className="text-muted">Trend:</span>
+              <span className="text-muted">{t("memorydebugpanel.Trend")}</span>
               {trendDisplay ?? <span className="text-muted">...</span>}
             </div>
 
@@ -293,7 +296,7 @@ export function MemoryDebugPanel({
             {/* Leak warning */}
             {isLeaking && (
               <div className="text-danger text-center text-[10px] font-bold animate-pulse">
-                POTENTIAL LEAK DETECTED
+                {t("memorydebugpanel.POTENTIALLEAKDETEC")}
               </div>
             )}
           </div>

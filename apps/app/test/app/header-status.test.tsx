@@ -22,6 +22,7 @@ describe("header status", () => {
   beforeEach(() => {
     mockUseApp.mockReset();
     baseAppState = {
+      t: (k: string) => k,
       agentStatus: {
         state: "running",
         agentName: "Milady",

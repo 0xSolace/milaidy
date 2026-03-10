@@ -254,6 +254,7 @@ describe("pages navigation smoke (e2e)", () => {
 
   beforeEach(() => {
     state = {
+      t: (k: string) => k,
       onboardingLoading: false,
       authRequired: false,
       onboardingComplete: true,
@@ -491,6 +492,7 @@ describe("pages navigation smoke (e2e)", () => {
 
     for (const entry of cases) {
       state = {
+        t: (k: string) => k,
         onboardingLoading: false,
         authRequired: false,
         onboardingComplete: true,

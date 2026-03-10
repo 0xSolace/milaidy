@@ -3,14 +3,12 @@ import type {
   WalletBalancesResponse,
   WalletNftsResponse,
 } from "../../api-client";
+import { getNativeLogoUrl } from "../chainConfig";
 import {
-  BSC_NATIVE_LOGO_URL,
   fetchBscTokenMetadata,
   getTokenExplorerUrl,
-  isBscChainName,
   MILADY_BSC_TOKEN_ADDRESS,
   resolvePortfolioChainKey,
-  SOL_NATIVE_LOGO_URL,
   type TokenMetadata,
   type TranslatorFn,
   type WalletCollectibleRow,
@@ -79,7 +77,7 @@ export function useWalletPortfolio(args: UseWalletPortfolioArgs) {
         isNative: true,
         valueUsd: nativeValue,
         balance: chain.nativeBalance,
-        logoUrl: isBscChainName(chain.chain) ? BSC_NATIVE_LOGO_URL : null,
+        logoUrl: getNativeLogoUrl(chain.chain),
       });
       for (const token of chain.tokens ?? []) {
         rows.push({
@@ -108,7 +106,7 @@ export function useWalletPortfolio(args: UseWalletPortfolioArgs) {
         isNative: true,
         valueUsd: Number.parseFloat(walletBalances.solana.solValueUsd) || 0,
         balance: walletBalances.solana.solBalance,
-        logoUrl: SOL_NATIVE_LOGO_URL,
+        logoUrl: getNativeLogoUrl("solana"),
       });
       for (const token of walletBalances.solana.tokens ?? []) {
         rows.push({
@@ -147,7 +145,7 @@ export function useWalletPortfolio(args: UseWalletPortfolioArgs) {
           isNative: true,
           valueUsd: 0,
           balance: "0",
-          logoUrl: BSC_NATIVE_LOGO_URL,
+          logoUrl: getNativeLogoUrl("bsc"),
         },
       );
     }
@@ -274,11 +272,15 @@ export function useWalletPortfolio(args: UseWalletPortfolioArgs) {
     const hasSolana = [...walletTokenRows, ...walletCollectibleRows].some(
       (row) => row.chainKey === "solana",
     );
+    const hasAvax = [...walletTokenRows, ...walletCollectibleRows].some(
+      (row) => row.chainKey === "avax",
+    );
     const options: Array<{
       value: WalletPortfolioChainFilter;
       label: string;
     }> = [{ value: "all", label: t("wallet.all") }];
     if (hasBsc) options.push({ value: "bsc", label: "BSC" });
+    if (hasAvax) options.push({ value: "avax", label: "AVAX" });
     if (hasEvm) options.push({ value: "evm", label: "EVM" });
     if (hasSolana) options.push({ value: "solana", label: "SOL" });
     return options;

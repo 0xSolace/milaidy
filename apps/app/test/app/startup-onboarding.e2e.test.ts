@@ -449,6 +449,7 @@ describe("app startup onboarding flow (e2e)", () => {
     mockUseApp.mockReset();
     mockUseLifoAutoPopout.mockReset();
     mockUseApp.mockImplementation(() => ({
+      t: (k: string) => k,
       ...state,
       setState: (key: string, value: unknown) => {
         state[key] = value;

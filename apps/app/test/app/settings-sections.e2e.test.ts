@@ -127,6 +127,7 @@ function createUseAppMock(
   overrides: Record<string, unknown> = {},
 ) {
   return {
+    t: (k: string) => k,
     ...state,
     exportBusy: false,
     exportPassword: "",

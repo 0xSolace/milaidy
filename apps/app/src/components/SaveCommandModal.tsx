@@ -3,6 +3,7 @@
  */
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useApp } from "../AppContext";
 
 interface SaveCommandModalProps {
   open: boolean;
@@ -19,6 +20,7 @@ export function SaveCommandModal({
   onSave,
   onClose,
 }: SaveCommandModalProps) {
+  const { t } = useApp();
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -85,7 +87,7 @@ export function SaveCommandModal({
         {/* Header */}
         <div className="flex items-center px-5 py-3 border-b border-border shrink-0">
           <span id={dialogTitleId} className="font-bold text-sm flex-1">
-            Save as /Command
+            {t("savecommandmodal.SaveAsCommand")}
           </span>
           <button
             type="button"
@@ -93,7 +95,7 @@ export function SaveCommandModal({
             onClick={onClose}
             aria-label="Close dialog"
           >
-            &times;
+            {t("savecommandmodal.Times")}
           </button>
         </div>
 
@@ -104,7 +106,7 @@ export function SaveCommandModal({
             htmlFor={inputId}
             className="text-xs text-muted"
           >
-            Command name
+            {t("savecommandmodal.CommandName")}
           </label>
           <div className="flex items-center gap-1">
             <span className="text-sm text-muted">/</span>
@@ -118,7 +120,7 @@ export function SaveCommandModal({
                 setError("");
               }}
               onKeyDown={handleKeyDown}
-              placeholder="my-command"
+              placeholder={t("savecommandmodal.myCommand")}
               aria-labelledby={inputLabelId}
               aria-describedby={error ? inputErrorId : undefined}
               aria-invalid={error ? "true" : undefined}
@@ -131,7 +133,9 @@ export function SaveCommandModal({
             </p>
           )}
 
-          <span className="text-xs text-muted mt-1">Preview</span>
+          <span className="text-xs text-muted mt-1">
+            {t("savecommandmodal.Preview")}
+          </span>
           <pre className="text-xs text-muted bg-surface border border-border px-3 py-2 whitespace-pre-wrap break-words max-h-24 overflow-y-auto">
             {preview}
           </pre>
@@ -144,14 +148,14 @@ export function SaveCommandModal({
             className="px-3 py-1.5 text-xs border border-border text-muted hover:text-txt cursor-pointer"
             onClick={onClose}
           >
-            Cancel
+            {t("savecommandmodal.Cancel")}
           </button>
           <button
             type="button"
             className="px-3 py-1.5 text-xs border border-accent bg-accent text-white hover:opacity-90 cursor-pointer"
             onClick={handleSubmit}
           >
-            Save
+            {t("savecommandmodal.Save")}
           </button>
         </div>
       </div>

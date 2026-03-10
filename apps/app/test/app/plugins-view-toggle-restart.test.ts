@@ -35,6 +35,7 @@ function createDeferred<T>() {
 
 function baseContext() {
   return {
+    t: (k: string) => k,
     plugins: [
       {
         id: "test-plugin",

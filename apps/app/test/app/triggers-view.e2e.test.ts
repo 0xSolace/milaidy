@@ -373,6 +373,7 @@ function TriggerUiHarness(props: { client: MiladyClient }): ReactElement {
 
   const appContext = useMemo<TriggerViewContextShape>(
     () => ({
+      t: (k: string) => k,
       triggers,
       triggersLoading,
       triggersSaving,

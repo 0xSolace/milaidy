@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useApp } from "../AppContext";
 import { client } from "../api-client";
 import { ConfigSaveFooter } from "./ConfigSaveFooter";
 
@@ -87,6 +88,7 @@ export function CodingAgentSettingsSection() {
 
   // Model preferences stored by env var name
   const [prefs, setPrefs] = useState<Record<string, string>>({});
+  const { t } = useApp();
 
   // Dynamic model lists keyed by provider ID (e.g. "anthropic" → ModelOption[])
   const [providerModels, setProviderModels] = useState<
@@ -199,7 +201,7 @@ export function CodingAgentSettingsSection() {
   if (loading) {
     return (
       <div className="py-4 text-center text-[var(--muted)] text-xs">
-        Loading coding agent configuration...
+        {t("codingagentsettingssection.LoadingCodingAgent")}
       </div>
     );
   }
@@ -224,7 +226,9 @@ export function CodingAgentSettingsSection() {
     <div className="flex flex-col gap-4">
       {/* Agent selection strategy */}
       <div className="flex flex-col gap-1.5">
-        <span className="text-xs font-semibold">Agent Selection Strategy</span>
+        <span className="text-xs font-semibold">
+          {t("codingagentsettingssection.AgentSelectionStra")}
+        </span>
         <select
           className="px-2.5 py-1.5 border border-[var(--border)] bg-[var(--card)] text-xs focus:border-[var(--accent)] focus:outline-none"
           value={selectionStrategy}
@@ -232,8 +236,10 @@ export function CodingAgentSettingsSection() {
             setPref("PARALLAX_AGENT_SELECTION_STRATEGY", e.target.value)
           }
         >
-          <option value="fixed">Fixed</option>
-          <option value="ranked">Ranked (auto-select best performer)</option>
+          <option value="fixed">{t("codingagentsettingssection.Fixed")}</option>
+          <option value="ranked">
+            {t("codingagentsettingssection.RankedAutoSelect")}
+          </option>
         </select>
         <div className="text-[11px] text-[var(--muted)]">
           {selectionStrategy === "fixed"
@@ -245,7 +251,9 @@ export function CodingAgentSettingsSection() {
       {/* Default agent type — only shown when strategy is "fixed" */}
       {selectionStrategy === "fixed" && (
         <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold">Default Agent Type</span>
+          <span className="text-xs font-semibold">
+            {t("codingagentsettingssection.DefaultAgentType")}
+          </span>
           <select
             className="px-2.5 py-1.5 border border-[var(--border)] bg-[var(--card)] text-xs focus:border-[var(--accent)] focus:outline-none"
             value={defaultAgentType}
@@ -253,20 +261,30 @@ export function CodingAgentSettingsSection() {
               setPref("PARALLAX_DEFAULT_AGENT_TYPE", e.target.value)
             }
           >
-            <option value="claude">Claude</option>
-            <option value="gemini">Gemini</option>
-            <option value="codex">Codex</option>
-            <option value="aider">Aider</option>
+            <option value="claude">
+              {t("codingagentsettingssection.Claude")}
+            </option>
+            <option value="gemini">
+              {t("codingagentsettingssection.Gemini")}
+            </option>
+            <option value="codex">
+              {t("codingagentsettingssection.Codex")}
+            </option>
+            <option value="aider">
+              {t("codingagentsettingssection.Aider")}
+            </option>
           </select>
           <div className="text-[11px] text-[var(--muted)]">
-            Agent used when no explicit type is specified in a spawn request.
+            {t("codingagentsettingssection.AgentUsedWhenNoE")}
           </div>
         </div>
       )}
 
       {/* Default approval preset — global, not per-agent */}
       <div className="flex flex-col gap-1.5">
-        <span className="text-xs font-semibold">Default Permission Level</span>
+        <span className="text-xs font-semibold">
+          {t("codingagentsettingssection.DefaultPermissionL")}
+        </span>
         <select
           className="px-2.5 py-1.5 border border-[var(--border)] bg-[var(--card)] text-xs focus:border-[var(--accent)] focus:outline-none"
           value={approvalPreset}
@@ -312,15 +330,23 @@ export function CodingAgentSettingsSection() {
       {/* Aider provider selector */}
       {activeTab === "aider" && (
         <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold">Provider</span>
+          <span className="text-xs font-semibold">
+            {t("codingagentsettingssection.Provider")}
+          </span>
           <select
             className="px-2.5 py-1.5 border border-[var(--border)] bg-[var(--card)] text-xs focus:border-[var(--accent)] focus:outline-none"
             value={aiderProvider}
             onChange={(e) => setPref("PARALLAX_AIDER_PROVIDER", e.target.value)}
           >
-            <option value="anthropic">Anthropic</option>
-            <option value="openai">OpenAI</option>
-            <option value="google">Google</option>
+            <option value="anthropic">
+              {t("codingagentsettingssection.Anthropic")}
+            </option>
+            <option value="openai">
+              {t("codingagentsettingssection.OpenAI")}
+            </option>
+            <option value="google">
+              {t("codingagentsettingssection.Google")}
+            </option>
           </select>
         </div>
       )}
@@ -328,7 +354,9 @@ export function CodingAgentSettingsSection() {
       {/* Model selectors — both use the same list, user picks tier preference */}
       <div className="flex gap-3">
         <div className="flex-1 flex flex-col gap-1.5">
-          <span className="text-xs font-semibold">Powerful Model</span>
+          <span className="text-xs font-semibold">
+            {t("codingagentsettingssection.PowerfulModel")}
+          </span>
           <select
             className="px-2.5 py-1.5 border border-[var(--border)] bg-[var(--card)] text-xs focus:border-[var(--accent)] focus:outline-none"
             value={powerfulValue}
@@ -336,7 +364,7 @@ export function CodingAgentSettingsSection() {
               setPref(`${prefix}_MODEL_POWERFUL`, e.target.value)
             }
           >
-            <option value="">Default</option>
+            <option value="">{t("codingagentsettingssection.Default")}</option>
             {modelOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
@@ -345,13 +373,15 @@ export function CodingAgentSettingsSection() {
           </select>
         </div>
         <div className="flex-1 flex flex-col gap-1.5">
-          <span className="text-xs font-semibold">Fast Model</span>
+          <span className="text-xs font-semibold">
+            {t("codingagentsettingssection.FastModel")}
+          </span>
           <select
             className="px-2.5 py-1.5 border border-[var(--border)] bg-[var(--card)] text-xs focus:border-[var(--accent)] focus:outline-none"
             value={fastValue}
             onChange={(e) => setPref(`${prefix}_MODEL_FAST`, e.target.value)}
           >
-            <option value="">Default</option>
+            <option value="">{t("codingagentsettingssection.Default")}</option>
             {modelOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}

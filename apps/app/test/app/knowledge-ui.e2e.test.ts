@@ -430,6 +430,7 @@ describe("KnowledgeView UI", () => {
 
     mockUseApp.mockReset();
     mockUseApp.mockImplementation(() => ({
+      t: (k: string) => k,
       ...state,
       loadKnowledgeStats: vi.fn(),
       loadKnowledgeDocuments: vi.fn(),

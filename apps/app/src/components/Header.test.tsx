@@ -21,6 +21,7 @@ describe("Header", () => {
   it("renders wallet overlay with correct hover classes", async () => {
     // Mock the useApp hook return value
     const mockUseApp = {
+      t: (k: string) => k,
       agentStatus: { state: "running", agentName: "Milady" },
       cloudEnabled: false,
       cloudConnected: false,
@@ -41,6 +42,10 @@ describe("Header", () => {
       dropStatus: null,
       loadDropStatus: vi.fn(),
       registryStatus: null,
+      uiLanguage: "en",
+      setUiLanguage: vi.fn(),
+      uiShellMode: "native",
+      setUiShellMode: vi.fn(),
     };
 
     // @ts-expect-error - test uses a narrowed subset of the full app context type.

@@ -8,6 +8,7 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useApp } from "../AppContext";
 import {
   type ColumnInfo,
   client,
@@ -90,6 +91,7 @@ function CellPopover({
   value: string;
   onClose: () => void;
 }) {
+  const { t } = useApp();
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -107,7 +109,7 @@ function CellPopover({
     >
       <div className="flex items-center justify-between mb-2">
         <span className="text-[10px] text-[var(--muted)] uppercase font-bold">
-          Cell Value
+          {t("databaseview.CellValue")}
         </span>
         <button
           type="button"
@@ -143,6 +145,7 @@ function ResultsGrid({
   onSort?: (col: string) => void;
   onCellClick?: (value: string) => void;
 }) {
+  const { t } = useApp();
   return (
     <div
       className="overflow-auto border border-[var(--border)] bg-[var(--card)]"
@@ -225,7 +228,7 @@ function ResultsGrid({
                   >
                     {isNull ? (
                       <span className="text-[var(--muted)] italic opacity-50">
-                        NULL
+                        {t("databaseview.NULL")}
                       </span>
                     ) : (
                       <span className="text-[var(--txt)]">{display}</span>
@@ -256,6 +259,7 @@ function PaginationBar({
   onPrev: () => void;
   onNext: () => void;
 }) {
+  const { t } = useApp();
   const start = offset + 1;
   const end = Math.min(offset + limit, total);
   const hasPrev = offset > 0;
@@ -264,7 +268,8 @@ function PaginationBar({
   return (
     <div className="flex items-center justify-between px-3 py-2 border border-t-0 border-[var(--border)] bg-[var(--bg)] text-[11px] text-[var(--muted)]">
       <span>
-        {total.toLocaleString()} row{total !== 1 ? "s" : ""}
+        {total.toLocaleString()} {t("databaseview.row")}
+        {total !== 1 ? "s" : ""}
         {total > 0 && ` · showing ${start}-${end}`}
       </span>
       <div className="flex items-center gap-1">
@@ -274,7 +279,7 @@ function PaginationBar({
           disabled={!hasPrev}
           onClick={onPrev}
         >
-          Prev
+          {t("databaseview.Prev")}
         </button>
         <button
           type="button"
@@ -282,7 +287,7 @@ function PaginationBar({
           disabled={!hasNext}
           onClick={onNext}
         >
-          Next
+          {t("databaseview.Next")}
         </button>
       </div>
     </div>
@@ -292,6 +297,7 @@ function PaginationBar({
 // ── Main component ────────────────────────────────────────────────────
 
 export function DatabaseView() {
+  const { t } = useApp();
   const [dbStatus, setDbStatus] = useState<DatabaseStatus | null>(null);
   const [tables, setTables] = useState<TableInfo[]>([]);
   const [selectedTable, setSelectedTable] = useState("");
@@ -478,10 +484,12 @@ export function DatabaseView() {
               />
               <span>{dbStatus.provider}</span>
               <span className="opacity-40">·</span>
-              <span>{dbStatus.tableCount} tables</span>
+              <span>
+                {dbStatus.tableCount} {t("databaseview.tables")}
+              </span>
             </>
           ) : (
-            <span>Connecting...</span>
+            <span>{t("databaseview.Connecting")}</span>
           )}
         </div>
 
@@ -498,7 +506,7 @@ export function DatabaseView() {
             }`}
             onClick={() => setView("tables")}
           >
-            Table Editor
+            {t("databaseview.TableEditor")}
           </button>
           <button
             type="button"
@@ -509,7 +517,7 @@ export function DatabaseView() {
             }`}
             onClick={() => setView("query")}
           >
-            SQL Editor
+            {t("databaseview.SQLEditor")}
           </button>
         </div>
 
@@ -523,20 +531,16 @@ export function DatabaseView() {
             }
           }}
         >
-          Refresh
+          {t("databaseview.Refresh")}
         </button>
       </div>
 
       {dbStatus && !dbStatus.connected && (
         <div className="p-3 border border-[var(--border)] bg-[var(--card)] text-[var(--muted)] text-xs mb-3">
           <p className="m-0 mb-1 font-medium text-[var(--txt)]">
-            Database not available
+            {t("databaseview.DatabaseNotAvailab")}
           </p>
-          <p className="m-0">
-            The database viewer requires a local agent with a database
-            connection. If you're running in cloud mode, the database is managed
-            remotely.
-          </p>
+          <p className="m-0">{t("databaseview.TheDatabaseViewer")}</p>
         </div>
       )}
 
@@ -564,18 +568,19 @@ export function DatabaseView() {
               <div className="flex items-center gap-1 mb-2">
                 <input
                   type="text"
-                  placeholder="Filter tables..."
+                  placeholder={t("databaseview.FilterTables")}
                   value={sidebarSearch}
                   onChange={(e) => setSidebarSearch(e.target.value)}
                   className="flex-1 px-2 py-1 border border-[var(--border)] bg-[var(--card)] text-[var(--txt)] text-[11px] min-w-0"
                 />
               </div>
               <div className="text-[9px] text-[var(--muted)] uppercase font-bold tracking-wider mb-1 px-1">
-                Tables ({filteredTables.length})
+                {t("databaseview.Tables")}
+                {filteredTables.length})
               </div>
               {loading && tables.length === 0 ? (
                 <div className="text-[11px] text-[var(--muted)] px-1">
-                  Loading...
+                  {t("databaseview.Loading")}
                 </div>
               ) : (
                 <div className="flex flex-col gap-px max-h-[calc(100vh-280px)] overflow-auto">
@@ -621,16 +626,16 @@ export function DatabaseView() {
               <div className="flex-1 flex items-center justify-center">
                 <div className="text-center">
                   <div className="text-[var(--muted)] text-sm mb-1">
-                    Select a table
+                    {t("databaseview.SelectATable")}
                   </div>
                   <div className="text-[var(--muted)] text-[11px] opacity-60">
-                    Choose a table from the sidebar to browse its data
+                    {t("databaseview.ChooseATableFrom")}
                   </div>
                 </div>
               </div>
             ) : loading && !tableData ? (
               <div className="flex-1 flex items-center justify-center text-[var(--muted)] text-sm italic">
-                Loading...
+                {t("databaseview.Loading")}
               </div>
             ) : tableData ? (
               <>
@@ -641,7 +646,7 @@ export function DatabaseView() {
                   </span>
                   {columnMeta.size > 0 && (
                     <span className="text-[var(--muted)]">
-                      ({columnMeta.size} columns)
+                      ({columnMeta.size} {t("databaseview.columns")}
                     </span>
                   )}
                 </div>
@@ -651,7 +656,7 @@ export function DatabaseView() {
                   {tableData.rows.length === 0 ? (
                     <div className="flex items-center justify-center h-full border border-[var(--border)] bg-[var(--card)]">
                       <div className="text-[var(--muted)] text-sm">
-                        Table is empty
+                        {t("databaseview.TableIsEmpty")}
                       </div>
                     </div>
                   ) : (
@@ -694,7 +699,7 @@ export function DatabaseView() {
                     runQuery();
                   }
                 }}
-                placeholder="SELECT * FROM memories LIMIT 50;"
+                placeholder={t("databaseview.SELECTFROMMemori")}
                 rows={6}
                 className="w-full px-3 py-2.5 border border-[var(--border)] bg-[var(--card)] text-[var(--txt)] text-[12px] font-mono resize-y leading-relaxed"
                 spellCheck={false}
@@ -710,11 +715,12 @@ export function DatabaseView() {
                 {queryLoading ? "Running..." : "Run"}
               </button>
               <span className="text-[10px] text-[var(--muted)]">
-                {navigator.platform.includes("Mac") ? "⌘" : "Ctrl"}+Enter
+                {navigator.platform.includes("Mac") ? "⌘" : "Ctrl"}
+                {t("databaseview.Enter")}
               </span>
               {queryResult && (
                 <span className="text-[10px] text-[var(--muted)] ml-auto">
-                  {queryResult.rowCount} row
+                  {queryResult.rowCount} {t("databaseview.row")}
                   {queryResult.rowCount !== 1 ? "s" : ""} ·{" "}
                   {queryResult.durationMs}ms
                 </span>
@@ -726,7 +732,7 @@ export function DatabaseView() {
           {queryHistory.length > 0 && !queryResult && (
             <div className="border border-[var(--border)] bg-[var(--card)]">
               <div className="px-3 py-1.5 text-[9px] text-[var(--muted)] uppercase font-bold tracking-wider border-b border-[var(--border)]">
-                Recent queries
+                {t("databaseview.RecentQueries")}
               </div>
               {queryHistory.slice(0, 5).map((q) => (
                 <button
@@ -754,7 +760,7 @@ export function DatabaseView() {
 
           {queryResult && queryResult.rows.length === 0 && (
             <div className="flex items-center justify-center py-8 border border-[var(--border)] bg-[var(--card)] text-[var(--muted)] text-sm">
-              Query returned no rows
+              {t("databaseview.QueryReturnedNoRo")}
             </div>
           )}
         </div>

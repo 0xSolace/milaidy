@@ -207,6 +207,7 @@ describe("Advanced trajectories/fine-tuning integration", () => {
     mockClientFns.onWsEvent.mockImplementation(() => () => undefined);
 
     mockUseApp.mockImplementation(() => ({
+      t: (k: string) => k,
       tab: currentTab,
       setTab,
       handleRestart: async () => undefined,

@@ -2,6 +2,10 @@ import React from "react";
 import TestRenderer, { act } from "react-test-renderer";
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("../../src/AppContext", () => ({
+  useApp: () => ({ uiLanguage: "en", t: (k: string) => k }),
+}));
+
 import { StartupFailureView } from "../../src/components/StartupFailureView";
 
 describe("StartupFailureView", () => {

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
+import { useApp } from "../../AppContext";
 import type {
   ConversationMessage,
   StreamEventEnvelope,
@@ -12,6 +13,7 @@ export function ChatContent({
   events: StreamEventEnvelope[];
   messages: ConversationMessage[];
 }) {
+  const { t } = useApp();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const recentExchanges = useMemo(() => {
@@ -76,7 +78,7 @@ export function ChatContent({
     >
       {recentExchanges.length === 0 ? (
         <div className="flex items-center justify-center h-full text-muted text-sm">
-          Waiting for messages...
+          {t("chatcontent.WaitingForMessages")}
         </div>
       ) : (
         recentExchanges.map((exchange) => {

@@ -4,9 +4,8 @@ import type {
   BscTransferExecuteResponse,
   EvmChainBalance,
 } from "../../api-client";
+import { getStablecoinAddress } from "../chainConfig";
 import {
-  BSC_USDC_TOKEN_ADDRESS,
-  BSC_USDT_TOKEN_ADDRESS,
   HEX_ADDRESS_RE,
   mapWalletTradeError,
   type TranslatorFn,
@@ -61,8 +60,8 @@ export function useWalletSendState(args: UseWalletSendStateArgs) {
     ) {
       return fromWallet.contractAddress.trim();
     }
-    if (normalizedAsset === "USDT") return BSC_USDT_TOKEN_ADDRESS;
-    if (normalizedAsset === "USDC") return BSC_USDC_TOKEN_ADDRESS;
+    if (normalizedAsset === "USDT") return getStablecoinAddress("bsc", "USDT");
+    if (normalizedAsset === "USDC") return getStablecoinAddress("bsc", "USDC");
     return null;
   }, [bscChain, sendAsset]);
 

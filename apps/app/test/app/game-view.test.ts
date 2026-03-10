@@ -45,6 +45,7 @@ import { GameView } from "../../src/components/GameView";
 
 function createContext(overrides?: Partial<GameContextStub>): GameContextStub {
   return {
+    t: (k: string) => k,
     activeGameApp: "@elizaos/app-hyperscape",
     activeGameDisplayName: "Hyperscape",
     activeGameViewerUrl: "http://localhost:5175/viewer",

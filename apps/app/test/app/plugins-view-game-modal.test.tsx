@@ -132,6 +132,7 @@ function createPlugin(
 
 function baseContext(plugins?: PluginInfo[]) {
   return {
+    t: (k: string) => k,
     plugins: plugins ?? [
       createPlugin("test-plugin", "Test Plugin", "feature"),
       createPlugin("second-plugin", "Second Plugin", "feature"),

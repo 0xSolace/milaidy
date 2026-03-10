@@ -12,6 +12,7 @@
  * loading state is shown so the placeholder isn't invisible.
  */
 
+import { useApp } from "../AppContext";
 import { useCanvasWindow } from "../hooks/useCanvasWindow";
 
 // ---------------------------------------------------------------------------
@@ -69,6 +70,7 @@ export function CanvasWindowView({
   title,
   className,
 }: CanvasWindowViewProps) {
+  const { t } = useApp();
   const { containerRef, isReady } = useCanvasWindow({ url, enabled, title });
 
   const showLoading = enabled && !isReady;
@@ -86,7 +88,9 @@ export function CanvasWindowView({
       {showLoading && (
         <div className="flex items-center justify-center gap-2 w-full h-full border border-dashed border-border rounded">
           <Spinner />
-          <span className="text-muted text-xs">Loading...</span>
+          <span className="text-muted text-xs">
+            {t("canvaswindowview.Loading")}
+          </span>
         </div>
       )}
     </div>

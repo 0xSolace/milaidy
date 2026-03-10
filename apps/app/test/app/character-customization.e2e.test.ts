@@ -389,6 +389,8 @@ describe("CharacterView UI", () => {
 
     mockUseApp.mockReset();
     mockUseApp.mockImplementation(() => ({
+      uiLanguage: "en",
+      t: (k: string) => k,
       ...state,
       loadCharacter: vi.fn(),
       loadRegistryStatus: vi.fn(),
@@ -527,6 +529,8 @@ describe("Character Edit Integration", () => {
 
     mockUseApp.mockReset();
     mockUseApp.mockImplementation(() => ({
+      uiLanguage: "en",
+      t: (k: string) => k,
       ...state,
       loadCharacter: vi.fn(),
       saveCharacter: vi.fn().mockImplementation(async () => {

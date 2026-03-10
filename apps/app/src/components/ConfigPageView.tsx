@@ -66,14 +66,17 @@ function CloudRpcStatus({
   loginBusy,
   onLogin,
 }: CloudRpcStatusProps) {
+  const { t } = useApp();
   if (connected) {
     return (
       <div className="flex items-center gap-2 text-xs">
         <span className="inline-block w-2 h-2 rounded-full bg-[var(--ok,#16a34a)]" />
-        <span className="font-semibold">Connected to Eliza Cloud</span>
+        <span className="font-semibold">
+          {t("configpageview.ConnectedToElizaC")}
+        </span>
         {credits !== null && (
           <span className="text-[var(--muted)] ml-auto">
-            Credits:{" "}
+            {t("configpageview.Credits")}{" "}
             <span
               className={
                 creditsCritical
@@ -92,7 +95,7 @@ function CloudRpcStatus({
                 rel="noopener noreferrer"
                 className="text-[10px] ml-1.5 text-[var(--accent)]"
               >
-                Top up
+                {t("configpageview.TopUp")}
               </a>
             )}
           </span>
@@ -106,7 +109,7 @@ function CloudRpcStatus({
       <div className="flex items-center gap-2 text-xs">
         <span className="inline-block w-2 h-2 rounded-full bg-[var(--muted)]" />
         <span className="text-[var(--muted)]">
-          Requires Eliza Cloud connection
+          {t("configpageview.RequiresElizaCloud")}
         </span>
       </div>
       <button
@@ -311,6 +314,7 @@ const CLOUD_SERVICE_DEFS: {
 ];
 
 function CloudServicesSection() {
+  const { t } = useApp();
   const [services, setServices] = useState<Record<CloudServiceKey, boolean>>({
     inference: true,
     rpc: true,
@@ -381,16 +385,17 @@ function CloudServicesSection() {
   return (
     <div className="p-4 border border-[var(--border)] bg-[var(--card)] mt-4">
       <div className="flex items-center justify-between mb-3">
-        <div className="font-bold text-sm">Cloud Services</div>
+        <div className="font-bold text-sm">
+          {t("configpageview.CloudServices")}
+        </div>
         {needsRestart && (
           <span className="text-[11px] text-[var(--warning,#f59e0b)] font-medium">
-            Restart required for changes to take effect
+            {t("configpageview.RestartRequiredFor")}
           </span>
         )}
       </div>
       <p className="text-[12px] text-[var(--muted)] mb-4">
-        Choose which ElizaCloud services to use. Disable inference to use your
-        own AI provider keys instead.
+        {t("configpageview.ChooseWhichElizaCl")}
       </p>
       <div className="space-y-2">
         {CLOUD_SERVICE_DEFS.map(({ key, label, description }) => (
@@ -437,6 +442,7 @@ function CloudServicesSection() {
 
 export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
   const {
+    t,
     cloudConnected,
     cloudCredits,
     cloudCreditsLow,
@@ -549,9 +555,11 @@ export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
     <div>
       {!embedded && (
         <>
-          <h2 className="text-lg font-bold mb-1">Config</h2>
+          <h2 className="text-lg font-bold mb-1">
+            {t("configpageview.Config")}
+          </h2>
           <p className="text-[13px] text-[var(--muted)] mb-5">
-            Wallet providers and secrets.
+            {t("configpageview.WalletProvidersAnd")}
           </p>
         </>
       )}
@@ -561,12 +569,14 @@ export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
           ═══════════════════════════════════════════════════════════════ */}
       <div className="p-4 border border-[var(--border)] bg-[var(--card)]">
         <div className="flex items-center justify-between mb-4">
-          <div className="font-bold text-sm">Wallet &amp; RPC</div>
+          <div className="font-bold text-sm">
+            {t("configpageview.WalletAmpRPC")}
+          </div>
           <button
             type="button"
             className="flex items-center gap-1.5 px-2.5 py-1.5 text-[12px] text-[var(--muted)] hover:text-[var(--txt)] bg-transparent border border-[var(--border)] rounded cursor-pointer transition-colors hover:border-[var(--accent)]"
             onClick={() => setSecretsOpen(true)}
-            title="Secrets Vault"
+            title={t("configpageview.SecretsVault1")}
           >
             <svg
               width="13"
@@ -578,18 +588,19 @@ export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
               strokeLinecap="round"
               strokeLinejoin="round"
             >
-              <title>Secrets vault</title>
+              <title>{t("configpageview.SecretsVault")}</title>
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </svg>
-            Secrets
+
+            {t("configpageview.Secrets")}
           </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* BSC */}
           <RpcConfigSection
-            title="BSC"
+            title={t("configpageview.BSC")}
             description="BNB Smart Chain — trading and market feed"
             options={BSC_RPC_OPTIONS}
             selectedProvider={selectedBscRpc}
@@ -603,7 +614,7 @@ export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
 
           {/* EVM */}
           <RpcConfigSection
-            title="EVM"
+            title={t("configpageview.EVM")}
             description="Ethereum, Base, Arbitrum, Optimism, Polygon"
             options={EVM_RPC_OPTIONS}
             selectedProvider={selectedEvmRpc}
@@ -617,7 +628,7 @@ export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
 
           {/* Solana */}
           <RpcConfigSection
-            title="Solana"
+            title={t("configpageview.Solana")}
             description="Solana mainnet tokens and NFTs"
             options={SOLANA_RPC_OPTIONS}
             selectedProvider={selectedSolanaRpc}
@@ -677,18 +688,20 @@ export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
                   strokeLinejoin="round"
                   className="text-[var(--accent)]"
                 >
-                  <title>Secrets vault</title>
+                  <title>{t("configpageview.SecretsVault")}</title>
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                   <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                 </svg>
-                <span className="font-bold text-sm">Secrets Vault</span>
+                <span className="font-bold text-sm">
+                  {t("configpageview.SecretsVault1")}
+                </span>
               </div>
               <button
                 type="button"
                 className="text-[var(--muted)] hover:text-[var(--txt)] text-lg leading-none px-1 bg-transparent border-0 cursor-pointer"
                 onClick={() => setSecretsOpen(false)}
               >
-                &times;
+                {t("configpageview.Times")}
               </button>
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto">

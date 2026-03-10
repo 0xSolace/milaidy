@@ -8,6 +8,7 @@
  */
 
 import { useState } from "react";
+import { useApp } from "../../AppContext";
 import type { StreamSourceType } from "./helpers";
 import { isSupportedStreamUrl, STREAM_SOURCE_LABELS } from "./helpers";
 import { getAllWidgets } from "./overlays/registry";
@@ -215,6 +216,7 @@ export function StreamSettings({
   overlayLayout,
   onClose,
 }: StreamSettingsProps) {
+  const { t } = useApp();
   const [section, setSection] = useState<Section>("channel");
   const [customUrlInput, setCustomUrlInput] = useState(
     streamSource.type === "custom-url" ? (streamSource.url ?? "") : "",
@@ -250,7 +252,7 @@ export function StreamSettings({
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
           <span className="text-[13px] font-semibold text-txt">
-            Stream Settings
+            {t("streamsettings.StreamSettings")}
           </span>
           <button
             type="button"
@@ -274,16 +276,15 @@ export function StreamSettings({
           {section === "channel" && (
             <div className="flex flex-col gap-3">
               <p className="text-[12px] text-muted">
-                Select where to broadcast. To switch channels, stop the stream
-                first.
+                {t("streamsettings.SelectWhereToBroa")}
               </p>
 
               {destinations.length === 0 ? (
                 <div className="text-[12px] text-muted border border-border rounded-lg p-4 text-center">
-                  No streaming destinations configured.
+                  {t("streamsettings.NoStreamingDestina")}
                   <br />
-                  Install a streaming plugin (Twitch, YouTube, Retake.tv, Custom
-                  RTMP) via the Plugins tab.
+
+                  {t("streamsettings.InstallAStreaming")}
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">
@@ -320,7 +321,7 @@ export function StreamSettings({
                         </span>
                         {active && (
                           <span className="ml-auto text-[10px] text-[var(--accent)] font-semibold uppercase tracking-wide">
-                            Active
+                            {t("streamsettings.Active")}
                           </span>
                         )}
                       </button>
@@ -331,7 +332,7 @@ export function StreamSettings({
 
               {streamLive && (
                 <p className="text-[11px] text-[#f59e0b] border border-[#f59e0b]/30 rounded px-3 py-1.5 bg-[#f59e0b]/5">
-                  ⚠ Stream is live. Stop the stream to switch channels.
+                  {t("streamsettings.StreamIsLiveSt")}
                 </p>
               )}
             </div>
@@ -342,20 +343,20 @@ export function StreamSettings({
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <p className="text-[12px] text-muted">
-                  Toggle and configure widgets shown on top of your stream.
+                  {t("streamsettings.ToggleAndConfigure")}
                 </p>
                 <button
                   type="button"
                   onClick={resetLayout}
                   className="text-[11px] text-muted hover:text-danger transition-colors cursor-pointer"
                 >
-                  Reset defaults
+                  {t("streamsettings.ResetDefaults")}
                 </button>
               </div>
 
               {layout.widgets.length === 0 ? (
                 <div className="text-[12px] text-muted border border-border rounded-lg p-4 text-center">
-                  No widgets available. Reload the stream tab.
+                  {t("streamsettings.NoWidgetsAvailable")}
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">
@@ -376,7 +377,7 @@ export function StreamSettings({
           {section === "source" && (
             <div className="flex flex-col gap-3">
               <p className="text-[12px] text-muted">
-                Choose what content is captured and broadcast.
+                {t("streamsettings.ChooseWhatContent")}
               </p>
 
               {(["stream-tab", "game", "custom-url"] as StreamSourceType[]).map(
@@ -440,7 +441,7 @@ export function StreamSettings({
                         >
                           <input
                             type="text"
-                            placeholder="https://your-url.com"
+                            placeholder={t("streamsettings.httpsYourUrlCom")}
                             value={customUrlInput}
                             onChange={(e) => setCustomUrlInput(e.target.value)}
                             className="flex-1 bg-transparent text-txt text-[12px] outline-none placeholder:text-muted/40"
@@ -460,7 +461,7 @@ export function StreamSettings({
                             }}
                             className="px-2 py-1 rounded bg-[var(--accent)]/20 text-[var(--accent)] text-[11px] font-semibold hover:bg-[var(--accent)]/30 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                           >
-                            Use
+                            {t("streamsettings.Use")}
                           </button>
                         </div>
                       )}
@@ -468,7 +469,7 @@ export function StreamSettings({
                         trimmedCustomUrl &&
                         !customUrlValid && (
                           <p className="mt-1 px-1 text-[10px] text-danger">
-                            Custom URLs must start with `http://` or `https://`.
+                            {t("streamsettings.CustomURLsMustSta")}
                           </p>
                         )}
                     </div>

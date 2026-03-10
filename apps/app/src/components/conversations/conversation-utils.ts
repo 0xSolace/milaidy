@@ -4,6 +4,24 @@
 
 import { VRM_COUNT } from "../../AppContext";
 
+export function getLocalizedConversationTitle(
+  title: string | undefined | null,
+  t: (
+    key: string,
+    vars?: Record<string, string | number | boolean | null | undefined>,
+  ) => string,
+): string {
+  if (
+    !title ||
+    title === "New Chat" ||
+    title === "conversations.newChatTitle"
+  ) {
+    const localized = t("conversations.newChatTitle");
+    return localized === "conversations.newChatTitle" ? "New Chat" : localized;
+  }
+  return title;
+}
+
 export const BROWSER_CAPABILITY_PLUGIN_IDS = new Set([
   "browser",
   "browserbase",

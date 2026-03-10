@@ -5,6 +5,7 @@
  */
 
 import { useCallback, useState } from "react";
+import { useApp } from "../AppContext";
 import { client, type PluginParamDef } from "../api-client";
 import type { ConfigUiHint } from "../types";
 import type { JsonSchemaObject } from "./config-catalog";
@@ -39,6 +40,7 @@ export function ApiKeyConfig({
   handlePluginConfigSave,
   loadPlugins,
 }: ApiKeyConfigProps) {
+  const { t } = useApp();
   const [pluginFieldValues, setPluginFieldValues] = useState<
     Record<string, Record<string, string>>
   >({});
@@ -134,11 +136,11 @@ export function ApiKeyConfig({
     <div className="mt-4 pt-4 border-t border-[var(--border)]">
       <div className="flex justify-between items-center mb-3">
         <div className="text-xs font-semibold">
-          {selectedProvider.name} Settings
+          {selectedProvider.name} {t("apikeyconfig.Settings")}
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-[var(--muted)]">
-            {setCount}/{params.length} configured
+            {setCount}/{params.length} {t("apikeyconfig.configured")}
           </span>
           <span
             className="text-[11px] px-2 py-[3px] border"

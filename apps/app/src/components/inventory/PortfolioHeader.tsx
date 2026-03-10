@@ -1,15 +1,15 @@
 /**
- * Portfolio header block: total USD value, BNB sub-balance,
- * receive button, address, status dots, and inline BSC error.
+ * Portfolio header block: total USD value, native gas-token sub-balance,
+ * receive button, address, status dots, and inline chain error.
  */
 
-import type { createTranslator } from "../../i18n";
+import { useApp } from "../../AppContext";
+import type { ChainConfig } from "../chainConfig";
 import { CopyableAddress } from "./CopyableAddress";
 import { BSC_GAS_READY_THRESHOLD, formatBalance } from "./constants";
 import { StatusDot } from "./StatusDot";
 
 export interface PortfolioHeaderProps {
-  t: ReturnType<typeof createTranslator>;
   totalUsd: number;
   bscNativeBalance: string | null;
   evmAddr: string | null;
@@ -18,18 +18,13 @@ export interface PortfolioHeaderProps {
   gasReady: boolean;
   bscChainError: string | null;
   hasManagedBscRpc: boolean;
-  copyToClipboard: (text: string) => Promise<void>;
-  setActionNotice: (
-    text: string,
-    tone?: "info" | "success" | "error",
-    ttlMs?: number,
-  ) => void;
   loadBalances: () => Promise<void> | void;
   goToRpcSettings: () => void;
+  /** Optional chain config — when provided, displays that chain's name/symbol instead of BSC defaults. */
+  chainConfig?: ChainConfig;
 }
 
 export function PortfolioHeader({
-  t,
   totalUsd,
   bscNativeBalance,
   evmAddr,
@@ -38,18 +33,24 @@ export function PortfolioHeader({
   gasReady,
   bscChainError,
   hasManagedBscRpc,
-  copyToClipboard,
-  setActionNotice,
   loadBalances,
   goToRpcSettings,
+  chainConfig,
 }: PortfolioHeaderProps) {
+  const { t, copyToClipboard, setActionNotice } = useApp();
+  const networkLabel = chainConfig
+    ? `${chainConfig.name} Mainnet`
+    : t("wallet.bscMainnet");
+  const nativeSymbol = chainConfig?.nativeSymbol ?? "BNB";
+  const gasThreshold =
+    chainConfig?.gasReadyThreshold ?? BSC_GAS_READY_THRESHOLD;
   return (
     <div className="wt__portfolio">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <div className="wt__portfolio-label">{t("wallet.portfolio")}</div>
-            <span className="wt__network-badge">{t("wallet.bscMainnet")}</span>
+            <span className="wt__network-badge">{networkLabel}</span>
           </div>
           <div className="wt__portfolio-value" data-testid="bsc-balance-value">
             {totalUsd > 0
@@ -58,7 +59,7 @@ export function PortfolioHeader({
           </div>
           {bscNativeBalance !== null && (
             <div className="wt__bnb-sub">
-              {formatBalance(bscNativeBalance)} BNB
+              {formatBalance(bscNativeBalance)} {nativeSymbol}
             </div>
           )}
         </div>
@@ -124,7 +125,7 @@ export function PortfolioHeader({
               ? t("wallet.status.tradeReadyTitle")
               : rpcReady
                 ? t("wallet.status.tradeNeedGasTitle", {
-                    threshold: BSC_GAS_READY_THRESHOLD,
+                    threshold: gasThreshold,
                   })
                 : t("wallet.status.tradeFeedRequired")
           }
@@ -133,7 +134,9 @@ export function PortfolioHeader({
       {/* Inline BSC error with retry */}
       {bscChainError && (
         <div className="wt__error-inline mt-2">
-          <span className="wt__error-inline-text">BSC: {bscChainError}</span>
+          <span className="wt__error-inline-text">
+            {t("portfolioheader.BSC")} {bscChainError}
+          </span>
           <button
             type="button"
             className="wt__error-retry"
@@ -152,8 +155,7 @@ export function PortfolioHeader({
             {t("wallet.setup.rpcNotConfigured")}
           </div>
           <div className="text-[var(--muted)] leading-relaxed">
-            Connect via Eliza Cloud or configure a custom BSC RPC provider
-            (NodeReal / QuickNode) to enable trading.
+            {t("portfolioheader.ConnectViaElizaCl")}
           </div>
           <div className="mt-2">
             <button
@@ -161,7 +163,7 @@ export function PortfolioHeader({
               className="px-3 py-1 border border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-foreground)] cursor-pointer text-[11px] font-mono hover:bg-[var(--accent-hover)] hover:border-[var(--accent-hover)]"
               onClick={goToRpcSettings}
             >
-              Configure RPC
+              {t("portfolioheader.ConfigureRPC")}
             </button>
           </div>
         </div>

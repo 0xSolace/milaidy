@@ -6,6 +6,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useApp } from "../AppContext";
 import {
   client,
   type OnboardingOptions,
@@ -78,6 +79,7 @@ export function ProviderSwitcher({
   setState,
   setTab,
 }: ProviderSwitcherProps) {
+  const { t } = useApp();
   /* ── Model selection state ─────────────────────────────────────── */
   const [modelOptions, setModelOptions] = useState<
     OnboardingOptions["models"] | null
@@ -463,7 +465,7 @@ export function ProviderSwitcher({
     return (
       <div className="p-4 border border-[var(--warning,#f39c12)] bg-[var(--card)]">
         <div className="text-xs text-[var(--warning,#f39c12)]">
-          No AI providers available. Install a provider plugin from the{" "}
+          {t("providerswitcher.NoAIProvidersAvai")}{" "}
           <button
             type="button"
             className="text-[var(--accent)] underline"
@@ -471,9 +473,9 @@ export function ProviderSwitcher({
               setTab("plugins");
             }}
           >
-            Plugins
+            {t("providerswitcher.Plugins")}
           </button>{" "}
-          page.
+          {t("providerswitcher.page")}
         </div>
       </div>
     );
@@ -487,7 +489,7 @@ export function ProviderSwitcher({
           htmlFor="provider-switcher-select"
           className="block text-xs font-semibold mb-1.5 text-[var(--muted)]"
         >
-          Select AI Provider
+          {t("providerswitcher.SelectAIProvider")}
         </label>
         <select
           id="provider-switcher-select"
@@ -524,8 +526,7 @@ export function ProviderSwitcher({
           ))}
         </select>
         <p className="text-[11px] text-[var(--muted)] mt-1.5">
-          Choose your preferred AI provider. This affects how the agent
-          processes and responds to messages.
+          {t("providerswitcher.ChooseYourPreferre")}
         </p>
       </div>
 
@@ -538,7 +539,7 @@ export function ProviderSwitcher({
                 <div className="flex items-center gap-2">
                   <span className="inline-block w-2 h-2 rounded-full bg-[var(--ok,#16a34a)]" />
                   <span className="text-xs font-semibold">
-                    Logged into Eliza Cloud
+                    {t("providerswitcher.LoggedIntoElizaCl")}
                   </span>
                 </div>
                 <button
@@ -561,7 +562,9 @@ export function ProviderSwitcher({
                 )}
                 {cloudCredits !== null && (
                   <span>
-                    <span className="text-[var(--muted)]">Credits:</span>{" "}
+                    <span className="text-[var(--muted)]">
+                      {t("providerswitcher.Credits")}
+                    </span>{" "}
                     <span
                       className={
                         cloudCreditsCritical
@@ -579,7 +582,7 @@ export function ProviderSwitcher({
                       rel="noopener noreferrer"
                       className="text-[11px] ml-2 text-[var(--accent)]"
                     >
-                      Top up
+                      {t("providerswitcher.TopUp")}
                     </a>
                   </span>
                 )}
@@ -656,12 +659,12 @@ export function ProviderSwitcher({
               <div className="flex items-center justify-end gap-2 mt-3">
                 {modelSaving && (
                   <span className="text-[11px] text-[var(--muted)]">
-                    Saving &amp; restarting...
+                    {t("providerswitcher.SavingAmpRestart")}
                   </span>
                 )}
                 {modelSaveSuccess && (
                   <span className="text-[11px] text-[var(--ok,#16a34a)]">
-                    Saved — restarting agent
+                    {t("providerswitcher.SavedRestartingA")}
                   </span>
                 )}
               </div>
@@ -670,8 +673,7 @@ export function ProviderSwitcher({
             <div>
               {cloudLoginBusy ? (
                 <div className="text-xs text-[var(--muted)]">
-                  Waiting for browser authentication... A new tab should have
-                  opened.
+                  {t("providerswitcher.WaitingForBrowser")}
                 </div>
               ) : (
                 <>
@@ -685,10 +687,10 @@ export function ProviderSwitcher({
                     className="btn text-xs py-[5px] px-3.5 font-bold !mt-0"
                     onClick={() => void handleCloudLogin()}
                   >
-                    Log in to Eliza Cloud
+                    {t("providerswitcher.LogInToElizaClou")}
                   </button>
                   <div className="text-[11px] text-[var(--muted)] mt-1.5">
-                    Opens a browser window to authenticate.
+                    {t("providerswitcher.OpensABrowserWind")}
                   </div>
                 </>
               )}
@@ -714,15 +716,17 @@ export function ProviderSwitcher({
       {/* pi-ai settings */}
       {!isCloudSelected && isPiAiSelected && (
         <div className="mt-4 pt-4 border-t border-[var(--border)]">
-          <div className="text-xs font-semibold mb-2">Pi (pi-ai) Settings</div>
+          <div className="text-xs font-semibold mb-2">
+            {t("providerswitcher.PiPiAiSettings")}
+          </div>
           <div className="text-[11px] text-[var(--muted)] mb-2">
-            Uses local credentials from ~/.pi/agent/auth.json.
+            {t("providerswitcher.UsesLocalCredentia")}
           </div>
           <label
             htmlFor="pi-ai-model-override"
             className="block text-[11px] text-[var(--muted)] mb-1"
           >
-            Primary model override (optional)
+            {t("providerswitcher.PrimaryModelOverri")}
           </label>
 
           {piAiModelOptions && piAiModelOptions.length > 0 ? (
@@ -743,7 +747,7 @@ export function ProviderSwitcher({
                 className="w-full px-2.5 py-[8px] border border-[var(--border)] bg-[var(--card)] text-[13px] transition-colors focus:border-[var(--accent)] focus:outline-none"
               >
                 <option value="">
-                  Use pi default model
+                  {t("providerswitcher.UsePiDefaultModel")}
                   {piAiDefaultModelSpec ? ` (${piAiDefaultModelSpec})` : ""}
                 </option>
                 {piAiModelOptions.map((model) => (
@@ -751,7 +755,9 @@ export function ProviderSwitcher({
                     {model.name} ({model.provider})
                   </option>
                 ))}
-                <option value="__custom__">Custom model spec…</option>
+                <option value="__custom__">
+                  {t("providerswitcher.CustomModelSpec")}
+                </option>
               </select>
 
               {piAiModelSelectValue === "__custom__" && (
@@ -759,7 +765,7 @@ export function ProviderSwitcher({
                   type="text"
                   value={piAiModelSpec}
                   onChange={(e) => setPiAiModelSpec(e.target.value)}
-                  placeholder="provider/model (e.g. anthropic/claude-sonnet-4.5)"
+                  placeholder={t("providerswitcher.providerModelEG")}
                   className="w-full mt-2 px-2.5 py-[8px] border border-[var(--border)] bg-[var(--card)] text-[13px] transition-colors focus:border-[var(--accent)] focus:outline-none"
                 />
               )}
@@ -770,19 +776,19 @@ export function ProviderSwitcher({
               type="text"
               value={piAiModelSpec}
               onChange={(e) => setPiAiModelSpec(e.target.value)}
-              placeholder="provider/model (e.g. anthropic/claude-sonnet-4.5)"
+              placeholder={t("providerswitcher.providerModelEG")}
               className="w-full px-2.5 py-[8px] border border-[var(--border)] bg-[var(--card)] text-[13px] transition-colors focus:border-[var(--accent)] focus:outline-none"
             />
           )}
           <div className="flex items-center justify-end gap-2 mt-3">
             {piAiSaving && (
               <span className="text-[11px] text-[var(--muted)]">
-                Saving &amp; restarting...
+                {t("providerswitcher.SavingAmpRestart")}
               </span>
             )}
             {piAiSaveSuccess && (
               <span className="text-[11px] text-[var(--ok,#16a34a)]">
-                Saved — restarting agent
+                {t("providerswitcher.SavedRestartingA")}
               </span>
             )}
             <button

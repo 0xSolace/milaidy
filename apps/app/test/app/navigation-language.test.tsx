@@ -26,6 +26,7 @@ describe("Nav language switching", () => {
 
   it("renders english labels by default", async () => {
     mockUseApp.mockReturnValue({
+      t: (k: string) => k,
       tab: "chat",
       setTab: vi.fn(),
       uiLanguage: "en",
@@ -48,6 +49,7 @@ describe("Nav language switching", () => {
 
   it("renders chinese labels when uiLanguage is zh-CN", async () => {
     mockUseApp.mockReturnValue({
+      t: (k: string) => k,
       tab: "chat",
       setTab: vi.fn(),
       uiLanguage: "zh-CN",
@@ -70,6 +72,7 @@ describe("Nav language switching", () => {
 
   it("shows companion tab in native shell mode", async () => {
     mockUseApp.mockReturnValue({
+      t: (k: string) => k,
       tab: "chat",
       setTab: vi.fn(),
       uiLanguage: "en",

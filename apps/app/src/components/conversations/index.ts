@@ -8,4 +8,3 @@ export {
   isNonChatModelLabel,
   resolveProviderLabel,
 } from "./conversation-utils";
-export { GameModalFooter } from "./GameModalFooter";

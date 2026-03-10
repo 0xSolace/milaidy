@@ -235,7 +235,12 @@ describe("AppsView", () => {
   it("loads apps and launches iframe viewer flow", async () => {
     const setState = vi.fn<AppsContextStub["setState"]>();
     const setActionNotice = vi.fn<AppsContextStub["setActionNotice"]>();
-    mockUseApp.mockReturnValue({ setState, setActionNotice });
+    mockUseApp.mockReturnValue({
+      uiLanguage: "en",
+      t: (k: string) => k,
+      setState,
+      setActionNotice,
+    });
     const app = createApp("@elizaos/app-hyperscape", "Hyperscape", "Arena");
     mockClientFns.listApps.mockResolvedValue([app]);
     mockClientFns.launchApp.mockResolvedValue(
@@ -284,7 +289,12 @@ describe("AppsView", () => {
   it("shows auth warning when postMessage auth payload is missing", async () => {
     const setState = vi.fn<AppsContextStub["setState"]>();
     const setActionNotice = vi.fn<AppsContextStub["setActionNotice"]>();
-    mockUseApp.mockReturnValue({ setState, setActionNotice });
+    mockUseApp.mockReturnValue({
+      uiLanguage: "en",
+      t: (k: string) => k,
+      setState,
+      setActionNotice,
+    });
     const app = createApp("@elizaos/app-hyperscape", "Hyperscape", "Arena");
     mockClientFns.listApps.mockResolvedValue([app]);
     mockClientFns.launchApp.mockResolvedValue(
@@ -320,7 +330,12 @@ describe("AppsView", () => {
   it("opens non-viewer launches in a new tab and resets active game state", async () => {
     const setState = vi.fn<AppsContextStub["setState"]>();
     const setActionNotice = vi.fn<AppsContextStub["setActionNotice"]>();
-    mockUseApp.mockReturnValue({ setState, setActionNotice });
+    mockUseApp.mockReturnValue({
+      uiLanguage: "en",
+      t: (k: string) => k,
+      setState,
+      setActionNotice,
+    });
     const app = createApp("@elizaos/app-babylon", "Babylon", "Wallet app");
     mockClientFns.listApps.mockResolvedValue([app]);
     mockClientFns.launchApp.mockResolvedValue(
@@ -360,7 +375,12 @@ describe("AppsView", () => {
   it("reports popup-blocked errors and launch failures", async () => {
     const setState = vi.fn<AppsContextStub["setState"]>();
     const setActionNotice = vi.fn<AppsContextStub["setActionNotice"]>();
-    mockUseApp.mockReturnValue({ setState, setActionNotice });
+    mockUseApp.mockReturnValue({
+      uiLanguage: "en",
+      t: (k: string) => k,
+      setState,
+      setActionNotice,
+    });
     const app = createApp("@elizaos/app-babylon", "Babylon", "Wallet app");
     mockClientFns.listApps.mockResolvedValue([app]);
     mockClientFns.launchApp
@@ -403,7 +423,12 @@ describe("AppsView", () => {
   it("refreshes list and applies search filtering", async () => {
     const setState = vi.fn<AppsContextStub["setState"]>();
     const setActionNotice = vi.fn<AppsContextStub["setActionNotice"]>();
-    mockUseApp.mockReturnValue({ setState, setActionNotice });
+    mockUseApp.mockReturnValue({
+      uiLanguage: "en",
+      t: (k: string) => k,
+      setState,
+      setActionNotice,
+    });
     const appOne = createApp("@elizaos/app-hyperscape", "Hyperscape", "Arena");
     const appTwo = createApp("@elizaos/app-babylon", "Babylon", "Wallet");
     mockClientFns.listApps.mockResolvedValue([appOne, appTwo]);
@@ -452,7 +477,12 @@ describe("AppsView", () => {
   it("wires Hyperscape controls for message + command + telemetry routes", async () => {
     const setState = vi.fn<AppsContextStub["setState"]>();
     const setActionNotice = vi.fn<AppsContextStub["setActionNotice"]>();
-    mockUseApp.mockReturnValue({ setState, setActionNotice });
+    mockUseApp.mockReturnValue({
+      uiLanguage: "en",
+      t: (k: string) => k,
+      setState,
+      setActionNotice,
+    });
     const app = createApp("@elizaos/app-hyperscape", "Hyperscape", "Arena");
     mockClientFns.listApps.mockResolvedValue([app]);
     mockClientFns.listHyperscapeEmbeddedAgents.mockResolvedValue({
@@ -560,7 +590,12 @@ describe("AppsView", () => {
   it("opens app details and can return to the app list", async () => {
     const setState = vi.fn<AppsContextStub["setState"]>();
     const setActionNotice = vi.fn<AppsContextStub["setActionNotice"]>();
-    mockUseApp.mockReturnValue({ setState, setActionNotice });
+    mockUseApp.mockReturnValue({
+      uiLanguage: "en",
+      t: (k: string) => k,
+      setState,
+      setActionNotice,
+    });
     const appOne = createApp("@elizaos/app-hyperscape", "Hyperscape", "Arena");
     const appTwo = createApp("@elizaos/app-babylon", "Babylon", "Wallet");
     mockClientFns.listApps.mockResolvedValue([appOne, appTwo]);

@@ -4,6 +4,7 @@
 
 import { X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useApp } from "../../AppContext";
 
 interface TooltipProps {
   children: React.ReactNode;
@@ -171,6 +172,7 @@ export function Spotlight({
   onPrev,
   onSkip,
 }: SpotlightProps) {
+  const { t } = useApp();
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
 
   useEffect(() => {
@@ -216,14 +218,14 @@ export function Spotlight({
       >
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs text-muted font-medium">
-            Step {step} of {totalSteps}
+            {t("tooltips.Step")} {step} of {totalSteps}
           </span>
           <button
             type="button"
             onClick={onSkip}
             className="text-xs text-muted hover:text-txt"
           >
-            Skip tour
+            {t("tooltips.SkipTour")}
           </button>
         </div>
 
@@ -237,7 +239,7 @@ export function Spotlight({
             disabled={step === 1}
             className="px-4 py-2 text-sm border border-border rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-bg-hover transition-colors"
           >
-            Previous
+            {t("tooltips.Previous")}
           </button>
 
           <div className="flex gap-1">

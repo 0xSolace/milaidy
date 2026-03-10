@@ -597,7 +597,7 @@ export const CHANNEL_PLUGIN_MAP: Readonly<Record<string, string>> = {
   feishu: "@elizaos/plugin-feishu",
   matrix: "@elizaos/plugin-matrix",
   nostr: "@elizaos/plugin-nostr",
-  retake: "@milady/plugin-retake",
+  retake: "@elizaos/plugin-retake",
   blooio: "@elizaos/plugin-blooio",
   twitch: "@elizaos/plugin-twitch",
 };
@@ -650,12 +650,12 @@ const OPTIONAL_PLUGIN_MAP: Readonly<Record<string, string>> = {
   piAi: PI_AI_PLUGIN_PACKAGE,
   x402: "@elizaos/plugin-x402",
   "coding-agent": "@elizaos/plugin-agent-orchestrator",
-  "streaming-base": "@milady/plugin-streaming-base",
-  "twitch-streaming": "@milady/plugin-twitch-streaming",
-  "youtube-streaming": "@milady/plugin-youtube-streaming",
+  "streaming-base": "@elizaos/plugin-streaming-base",
+  "twitch-streaming": "@elizaos/plugin-twitch-streaming",
+  "youtube-streaming": "@elizaos/plugin-youtube-streaming",
   "custom-rtmp": "@milady/plugin-custom-rtmp",
-  "pumpfun-streaming": "@milady/plugin-pumpfun-streaming",
-  "x-streaming": "@milady/plugin-x-streaming",
+  "pumpfun-streaming": "@elizaos/plugin-pumpfun-streaming",
+  "x-streaming": "@elizaos/plugin-x-streaming",
 };
 
 function looksLikePlugin(value: unknown): value is Plugin {
@@ -1105,9 +1105,9 @@ const WORKSPACE_PLUGIN_OVERRIDES = new Set<string>([
   // "@elizaos/plugin-trajectory-logger",
   // "@elizaos/plugin-plugin-manager",
   // "@elizaos/plugin-media-generation",
-  "@milady/plugin-twitch-streaming",
-  "@milady/plugin-youtube-streaming",
-  "@milady/plugin-retake",
+  "@elizaos/plugin-twitch-streaming",
+  "@elizaos/plugin-youtube-streaming",
+  "@elizaos/plugin-retake",
 ]);
 
 function getWorkspacePluginOverridePath(pluginName: string): string | null {
@@ -1162,7 +1162,7 @@ export function resolveMiladyPluginImportSpecifier(
 }
 
 export function shouldIgnoreMissingPluginExport(pluginName: string): boolean {
-  return pluginName === "@milady/plugin-streaming-base";
+  return pluginName === "@elizaos/plugin-streaming-base";
 }
 
 // ---------------------------------------------------------------------------
