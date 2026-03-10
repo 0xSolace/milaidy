@@ -33,7 +33,6 @@ import { KnowledgeView } from "./components/KnowledgeView";
 import { LifoSandboxView } from "./components/LifoSandboxView";
 import { LoadingScreen } from "./components/LoadingScreen";
 
-import { Nav } from "./components/Nav";
 import { OnboardingWizard } from "./components/OnboardingWizard";
 import { PairingView } from "./components/PairingView";
 import { SaveCommandModal } from "./components/SaveCommandModal";
@@ -42,7 +41,6 @@ import { ShellOverlays } from "./components/ShellOverlays";
 import { StartupFailureView } from "./components/StartupFailureView";
 import { StreamView } from "./components/StreamView";
 import { SystemWarningBanner } from "./components/SystemWarningBanner";
-import { TerminalPanel } from "./components/TerminalPanel";
 import { BugReportProvider, useBugReportState } from "./hooks/useBugReport";
 import { useContextMenu } from "./hooks/useContextMenu";
 import { useLifoAutoPopout } from "./hooks/useLifoAutoPopout";
@@ -182,8 +180,8 @@ export function App() {
     agentStatus?.state === "running"
       ? "bg-ok shadow-[0_0_8px_color-mix(in_srgb,var(--ok)_60%,transparent)]"
       : agentStatus?.state === "paused" ||
-        agentStatus?.state === "starting" ||
-        agentStatus?.state === "restarting"
+          agentStatus?.state === "starting" ||
+          agentStatus?.state === "restarting"
         ? "bg-warn"
         : agentStatus?.state === "error"
           ? "bg-danger"
@@ -192,10 +190,11 @@ export function App() {
     <div className="flex items-center gap-2 w-max">
       <button
         type="button"
-        className={`inline-flex items-center gap-2 px-3 py-2 border rounded-md text-[12px] font-semibold transition-all cursor-pointer ${mobileConversationsOpen
+        className={`inline-flex items-center gap-2 px-3 py-2 border rounded-md text-[12px] font-semibold transition-all cursor-pointer ${
+          mobileConversationsOpen
             ? "border-accent bg-accent-subtle text-accent"
             : "border-border bg-card text-txt hover:border-accent hover:text-accent"
-          }`}
+        }`}
         onClick={() => {
           setMobileAutonomousOpen(false);
           setMobileConversationsOpen(true);
@@ -225,10 +224,11 @@ export function App() {
       </button>
       <button
         type="button"
-        className={`inline-flex items-center gap-2 px-3 py-2 border rounded-md text-[12px] font-semibold transition-all cursor-pointer ${mobileAutonomousOpen
+        className={`inline-flex items-center gap-2 px-3 py-2 border rounded-md text-[12px] font-semibold transition-all cursor-pointer ${
+          mobileAutonomousOpen
             ? "border-accent bg-accent-subtle text-accent"
             : "border-border bg-card text-txt hover:border-accent hover:text-accent"
-          }`}
+        }`}
         onClick={() => {
           setMobileConversationsOpen(false);
           setMobileAutonomousOpen(true);
@@ -382,15 +382,13 @@ export function App() {
       {tab === "stream" ? (
         <div className="flex flex-col flex-1 min-h-0 w-full font-body text-txt bg-bg">
           <Header />
-          <Nav />
           <main className="flex-1 min-h-0 overflow-hidden">
             <StreamView />
           </main>
         </div>
       ) : isChat ? (
         <div className="flex flex-col flex-1 min-h-0 w-full font-body text-txt bg-bg">
-          <Header />
-          <Nav mobileLeft={mobileChatControls} />
+          <Header mobileLeft={mobileChatControls} />
           <div className="flex flex-1 min-h-0 relative">
             {isChatMobileLayout ? (
               <>
@@ -434,18 +432,17 @@ export function App() {
               }}
             />
           </div>
-          <TerminalPanel />
+          {/* <TerminalPanel /> */}
         </div>
       ) : (
         <div className="flex flex-col flex-1 min-h-0 w-full font-body text-txt bg-bg">
           <Header />
-          <Nav />
           <main
             className={`flex-1 min-h-0 py-4 px-3 xl:py-6 xl:px-5 ${isAdvancedTab ? "overflow-hidden" : "overflow-y-auto"}`}
           >
             <ViewRouter />
           </main>
-          <TerminalPanel />
+          {/* <TerminalPanel /> */}
         </div>
       )}
       {/* Persistent game overlay — stays visible across all tabs */}

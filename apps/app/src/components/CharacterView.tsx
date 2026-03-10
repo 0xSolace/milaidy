@@ -121,15 +121,10 @@ export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
     registryRegistering,
     registryError,
     dropStatus,
-    mintInProgress,
-    mintResult,
-    mintError,
-    mintShiny,
     loadRegistryStatus,
     registerOnChain,
     syncRegistryProfile,
     loadDropStatus,
-    mintFromDrop,
     walletConfig,
   } = useApp();
 

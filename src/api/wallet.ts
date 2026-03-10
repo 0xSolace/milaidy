@@ -239,8 +239,8 @@ function generateSolanaKeypair(): { privateKey: string; publicKey: string } {
   };
 }
 
-export function deriveSolanaAddress(privateKeyBase58: string): string {
-  const secretBytes = base58Decode(privateKeyBase58);
+export function deriveSolanaAddress(privateKeyString: string): string {
+  const secretBytes = decodeSolanaPrivateKey(privateKeyString);
   if (secretBytes.length === 64) return base58Encode(secretBytes.subarray(32));
   if (secretBytes.length === 32) {
     // Derive pubkey from 32-byte seed
@@ -296,6 +296,17 @@ function base58Decode(str: string): Buffer {
   return zeros > 0 ? Buffer.concat([Buffer.alloc(zeros), bytes]) : bytes;
 }
 
+function decodeSolanaPrivateKey(key: string): Buffer {
+  if (key.startsWith("[") && key.endsWith("]")) {
+    try {
+      return Buffer.from(JSON.parse(key));
+    } catch {
+      throw new Error("Invalid JSON array format");
+    }
+  }
+  return base58Decode(key);
+}
+
 // ── Key validation ────────────────────────────────────────────────────
 
 const HEX_RE = /^[0-9a-fA-F]+$/;
@@ -335,7 +346,7 @@ export function validateEvmPrivateKey(key: string): KeyValidationResult {
 
 export function validateSolanaPrivateKey(key: string): KeyValidationResult {
   try {
-    const bytes = base58Decode(key);
+    const bytes = decodeSolanaPrivateKey(key);
     if (bytes.length !== 64 && bytes.length !== 32) {
       return {
         valid: false,
