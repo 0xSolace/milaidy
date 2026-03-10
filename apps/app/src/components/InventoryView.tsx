@@ -40,7 +40,7 @@ export function InventoryView({ inModal }: { inModal?: boolean } = {}) {
     walletError,
     loadBalances,
     loadNfts,
-    cloudConnected,
+    miladyCloudConnected,
     setTab,
     setState,
     setActionNotice,
@@ -65,7 +65,7 @@ export function InventoryView({ inModal }: { inModal?: boolean } = {}) {
     cfg?.alchemyKeySet || cfg?.ankrKeySet || cfg?.infuraKeySet,
   );
   const hasWalletIdentity = Boolean(
-    cloudConnected ||
+    miladyCloudConnected ||
       walletAddresses?.evmAddress ||
       walletAddresses?.solanaAddress ||
       walletConfig?.evmAddress ||

@@ -6,7 +6,7 @@ import type {
   AppLaunchResult,
   AppViewerAuthMessage,
   RegistryAppInfo,
-} from "../../src/api-client";
+} from "@milady/app-core/api";
 
 interface AppsContextStub {
   setState: (
@@ -37,7 +37,7 @@ const { mockClientFns, mockUseApp } = vi.hoisted(() => ({
   mockUseApp: vi.fn(),
 }));
 
-vi.mock("../../src/api-client", () => ({
+vi.mock("@milady/app-core/api", () => ({
   client: mockClientFns,
 }));
 vi.mock("../../src/AppContext", () => ({
@@ -198,6 +198,8 @@ describe("AppsView", () => {
     mockClientFns.listInstalledApps.mockResolvedValue([]);
   });
 
+  const tStub = (k: string) => k;
+
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -235,9 +237,17 @@ describe("AppsView", () => {
   it("loads apps and launches iframe viewer flow", async () => {
     const setState = vi.fn<AppsContextStub["setState"]>();
     const setActionNotice = vi.fn<AppsContextStub["setActionNotice"]>();
+    const t = (k: string) => {
+      if (k === "appsview.Active") return "Active";
+      if (k === "appsview.Back") return "Back";
+      if (k === "appsview.Refresh") return "Refresh";
+      if (k === "appsview.ActiveOnly") return "Active Only";
+      if (k === "appsview.SaySomethingToSel") return "Say something to selected agent...";
+      return k;
+    };
     mockUseApp.mockReturnValue({
       uiLanguage: "en",
-      t: (k: string) => k,
+      t,
       setState,
       setActionNotice,
     });
@@ -291,7 +301,7 @@ describe("AppsView", () => {
     const setActionNotice = vi.fn<AppsContextStub["setActionNotice"]>();
     mockUseApp.mockReturnValue({
       uiLanguage: "en",
-      t: (k: string) => k,
+      t: tStub,
       setState,
       setActionNotice,
     });
@@ -332,7 +342,7 @@ describe("AppsView", () => {
     const setActionNotice = vi.fn<AppsContextStub["setActionNotice"]>();
     mockUseApp.mockReturnValue({
       uiLanguage: "en",
-      t: (k: string) => k,
+      t: tStub,
       setState,
       setActionNotice,
     });
@@ -377,7 +387,7 @@ describe("AppsView", () => {
     const setActionNotice = vi.fn<AppsContextStub["setActionNotice"]>();
     mockUseApp.mockReturnValue({
       uiLanguage: "en",
-      t: (k: string) => k,
+      t: tStub,
       setState,
       setActionNotice,
     });
@@ -425,7 +435,7 @@ describe("AppsView", () => {
     const setActionNotice = vi.fn<AppsContextStub["setActionNotice"]>();
     mockUseApp.mockReturnValue({
       uiLanguage: "en",
-      t: (k: string) => k,
+      t: tStub,
       setState,
       setActionNotice,
     });
@@ -452,7 +462,7 @@ describe("AppsView", () => {
     const root = tree?.root;
     expect(root.findAll((node) => text(node) === "Hyperscape").length).toBe(1);
     expect(root.findAll((node) => text(node) === "Babylon").length).toBe(1);
-    expect(root.findAll((node) => text(node) === "Active").length).toBe(1);
+    expect(root.findAll((node) => text(node) === "appsview.Active").length).toBe(1);
     expect(root.findAll((node) => text(node) === ">").length).toBe(2);
 
     const searchInput = root.findByType("input");
@@ -463,7 +473,7 @@ describe("AppsView", () => {
     expect(root.findAll((node) => text(node) === "Babylon").length).toBe(0);
 
     await act(async () => {
-      await findButtonByText(root, "Refresh").props.onClick();
+      await findButtonByText(root, "appsview.Refresh").props.onClick();
     });
     expect(mockClientFns.listApps).toHaveBeenCalledTimes(2);
 
@@ -479,7 +489,7 @@ describe("AppsView", () => {
     const setActionNotice = vi.fn<AppsContextStub["setActionNotice"]>();
     mockUseApp.mockReturnValue({
       uiLanguage: "en",
-      t: (k: string) => k,
+      t: tStub,
       setState,
       setActionNotice,
     });
@@ -557,7 +567,7 @@ describe("AppsView", () => {
 
     const messageInput = findTextareaByPlaceholder(
       tree?.root,
-      "Say something to selected agent...",
+      "appsview.SaySomethingToSel",
     );
     await act(async () => {
       messageInput.props.onChange({ target: { value: "hello there" } });
@@ -572,7 +582,7 @@ describe("AppsView", () => {
 
     const commandDataInput = findTextareaByPlaceholder(
       tree?.root,
-      '{"target":[0,0,0]}',
+      "appsview.Target000",
     );
     await act(async () => {
       commandDataInput.props.onChange({
@@ -592,7 +602,7 @@ describe("AppsView", () => {
     const setActionNotice = vi.fn<AppsContextStub["setActionNotice"]>();
     mockUseApp.mockReturnValue({
       uiLanguage: "en",
-      t: (k: string) => k,
+      t: tStub,
       setState,
       setActionNotice,
     });
@@ -609,7 +619,7 @@ describe("AppsView", () => {
     await act(async () => {
       findButtonByTitle(tree?.root, "Open Babylon").props.onClick();
     });
-    expect(tree?.root.findAll((node) => text(node) === "Back").length).toBe(1);
+    expect(tree?.root.findAll((node) => text(node) === "appsview.Back").length).toBe(1);
     expect(
       tree?.root.findAll((node) => text(node) === "Hyperscape").length,
     ).toBe(0);
@@ -618,7 +628,7 @@ describe("AppsView", () => {
     );
 
     await act(async () => {
-      findButtonByText(tree?.root, "Back").props.onClick();
+      findButtonByText(tree?.root, "appsview.Back").props.onClick();
     });
     expect(
       tree?.root.findAll((node) => text(node) === "Hyperscape").length,

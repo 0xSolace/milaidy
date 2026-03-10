@@ -1,12 +1,15 @@
-import { Bot, Check, Cpu, Settings2 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useApp } from "../../AppContext";
 import {
   type AgentAutomationMode,
   client,
   type TradePermissionMode,
-} from "../../api-client";
-import { dispatchWindowEvent, SELF_STATUS_SYNC_EVENT } from "../../events";
+} from "@milady/app-core/api";
+import {
+  dispatchWindowEvent,
+  SELF_STATUS_SYNC_EVENT,
+} from "@milady/app-core/events";
+import { Bot, Check, Cpu, Settings2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useApp } from "../../AppContext";
 
 export interface AgentModeDropdownProps {
   variant?: "native" | "companion";
@@ -193,18 +196,33 @@ export function AgentModeDropdown({
 
   const isCompanion = variant === "companion";
   const theme = {
-    panelBg: isCompanion ? "bg-black/80 backdrop-blur-xl border-white/10" : "bg-bg-elevated border-border",
+    panelBg: isCompanion
+      ? "bg-black/80 backdrop-blur-xl border-white/10"
+      : "bg-bg-elevated border-border",
     textStrong: isCompanion ? "text-white/90" : "text-txt-strong",
     textMuted: isCompanion ? "text-white/60" : "text-muted",
     textAccent: isCompanion ? "text-white/90" : "text-accent",
-    cardBg: isCompanion ? "bg-black/40 border-white/10" : "bg-bg-accent border-border",
-    btnBase: "flex-1 py-1.5 px-2 text-[11px] font-medium rounded-md transition-all",
-    btnActive: isCompanion ? "bg-white/20 text-white shadow-sm" : "bg-bg shadow-sm text-txt-strong",
-    btnInactive: isCompanion ? "text-white/60 hover:text-white hover:bg-white/5" : "text-muted hover:text-txt",
-    btnCardBase: "flex-1 flex flex-col items-center justify-center py-2 px-1 text-[11px] font-medium rounded-md transition-all",
-    btnCardActive: isCompanion ? "bg-white/20 shadow-sm border border-white/30 text-white font-semibold" : "bg-bg shadow-sm border border-accent/20 text-accent font-semibold",
-    btnCardInactive: isCompanion ? "text-white/60 hover:bg-white/10 hover:text-white" : "text-muted hover:bg-bg/50 hover:text-txt",
-    listBtnBase: "flex items-center justify-between w-full py-1.5 px-3 text-[11px] font-medium rounded-md transition-all",
+    cardBg: isCompanion
+      ? "bg-black/40 border-white/10"
+      : "bg-bg-accent border-border",
+    btnBase:
+      "flex-1 py-1.5 px-2 text-[11px] font-medium rounded-md transition-all",
+    btnActive: isCompanion
+      ? "bg-white/20 text-white shadow-sm"
+      : "bg-bg shadow-sm text-txt-strong",
+    btnInactive: isCompanion
+      ? "text-white/60 hover:text-white hover:bg-white/5"
+      : "text-muted hover:text-txt",
+    btnCardBase:
+      "flex-1 flex flex-col items-center justify-center py-2 px-1 text-[11px] font-medium rounded-md transition-all",
+    btnCardActive: isCompanion
+      ? "bg-white/20 shadow-sm border border-white/30 text-white font-semibold"
+      : "bg-bg shadow-sm border border-accent/20 text-accent font-semibold",
+    btnCardInactive: isCompanion
+      ? "text-white/60 hover:bg-white/10 hover:text-white"
+      : "text-muted hover:bg-bg/50 hover:text-txt",
+    listBtnBase:
+      "flex items-center justify-between w-full py-1.5 px-3 text-[11px] font-medium rounded-md transition-all",
     divider: isCompanion ? "border-white/10" : "border-border",
   };
 
@@ -256,7 +274,9 @@ export function AgentModeDropdown({
 
             <div className="space-y-3">
               <div className="space-y-2">
-                <span className={`text-xs font-medium ${isCompanion ? "text-white/80" : "text-txt"}`}>
+                <span
+                  className={`text-xs font-medium ${isCompanion ? "text-white/80" : "text-txt"}`}
+                >
                   {t("chat.modal.responseMode")}
                 </span>
                 <div className={`flex p-1 rounded-lg border ${theme.cardBg}`}>
@@ -285,10 +305,14 @@ export function AgentModeDropdown({
               </div>
 
               <div className="space-y-2">
-                <span className={`text-xs font-medium ${isCompanion ? "text-white/80" : "text-txt"}`}>
+                <span
+                  className={`text-xs font-medium ${isCompanion ? "text-white/80" : "text-txt"}`}
+                >
                   {t("permissions.automationMode")}
                 </span>
-                <div className={`flex p-1 rounded-lg border gap-1 ${theme.cardBg}`}>
+                <div
+                  className={`flex p-1 rounded-lg border gap-1 ${theme.cardBg}`}
+                >
                   <button
                     type="button"
                     className={`${theme.btnCardBase} ${automationMode === "connectors-only" ? theme.btnCardActive : theme.btnCardInactive}`}
@@ -315,10 +339,14 @@ export function AgentModeDropdown({
               </div>
 
               <div className="space-y-2">
-                <span className={`text-xs font-medium ${isCompanion ? "text-white/80" : "text-txt"}`}>
+                <span
+                  className={`text-xs font-medium ${isCompanion ? "text-white/80" : "text-txt"}`}
+                >
                   {t("permissions.tradeMode")}
                 </span>
-                <div className={`flex flex-col p-1 rounded-lg border gap-1 ${theme.cardBg}`}>
+                <div
+                  className={`flex flex-col p-1 rounded-lg border gap-1 ${theme.cardBg}`}
+                >
                   <button
                     type="button"
                     className={`${theme.listBtnBase} ${tradeMode === "user-sign-only" ? theme.btnActive : theme.btnInactive}`}
@@ -329,7 +357,9 @@ export function AgentModeDropdown({
                     data-testid="chat-game-trade-user-sign"
                   >
                     {t("permissions.trade.userSign")}
-                    {tradeMode === "user-sign-only" && <Check className={`w-3.5 h-3.5 ${theme.textAccent}`} />}
+                    {tradeMode === "user-sign-only" && (
+                      <Check className={`w-3.5 h-3.5 ${theme.textAccent}`} />
+                    )}
                   </button>
                   <button
                     type="button"
@@ -341,7 +371,9 @@ export function AgentModeDropdown({
                     data-testid="chat-game-trade-manual"
                   >
                     {t("permissions.trade.manual")}
-                    {tradeMode === "manual-local-key" && <Check className={`w-3.5 h-3.5 ${theme.textAccent}`} />}
+                    {tradeMode === "manual-local-key" && (
+                      <Check className={`w-3.5 h-3.5 ${theme.textAccent}`} />
+                    )}
                   </button>
                   <button
                     type="button"
@@ -353,13 +385,17 @@ export function AgentModeDropdown({
                     data-testid="chat-game-trade-agent"
                   >
                     {t("permissions.trade.agent")}
-                    {tradeMode === "agent-auto" && <Check className={`w-3.5 h-3.5 ${theme.textAccent}`} />}
+                    {tradeMode === "agent-auto" && (
+                      <Check className={`w-3.5 h-3.5 ${theme.textAccent}`} />
+                    )}
                   </button>
                 </div>
               </div>
             </div>
 
-            <p className={`text-[10px] text-center pt-2 border-t ${theme.textMuted} ${theme.divider}`}>
+            <p
+              className={`text-[10px] text-center pt-2 border-t ${theme.textMuted} ${theme.divider}`}
+            >
               {t("chat.modal.tradeModeHint")}
             </p>
           </div>

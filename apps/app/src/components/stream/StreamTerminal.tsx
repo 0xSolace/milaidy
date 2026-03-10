@@ -1,6 +1,6 @@
+import { client } from "@milady/app-core/api";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useApp } from "../../AppContext";
-import { client } from "../../api-client";
 
 interface TerminalLine {
   id: string;

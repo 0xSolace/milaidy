@@ -6,10 +6,10 @@
  *   2. Secrets (modal)
  */
 
+import { client } from "@milady/app-core/api";
+import type { ConfigUiHint } from "@milady/app-core/types";
 import { useCallback, useEffect, useState } from "react";
 import { useApp } from "../AppContext";
-import { client } from "../api-client";
-import type { ConfigUiHint } from "../types";
 import type { JsonSchemaObject } from "./config-catalog";
 import { ConfigRenderer, defaultRegistry } from "./config-renderer";
 import { SecretsView } from "./SecretsView";
@@ -443,12 +443,12 @@ function CloudServicesSection() {
 export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
   const {
     t,
-    cloudConnected,
-    cloudCredits,
-    cloudCreditsLow,
-    cloudCreditsCritical,
-    cloudTopUpUrl,
-    cloudLoginBusy,
+    miladyCloudConnected,
+    miladyCloudCredits,
+    miladyCloudCreditsLow,
+    miladyCloudCreditsCritical,
+    miladyCloudTopUpUrl,
+    miladyCloudLoginBusy,
     walletConfig,
     walletApiKeySaving,
     handleWalletApiKeySave,
@@ -542,12 +542,12 @@ export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
   };
 
   const cloudStatusProps = {
-    connected: cloudConnected,
-    credits: cloudCredits,
-    creditsLow: cloudCreditsLow,
-    creditsCritical: cloudCreditsCritical,
-    topUpUrl: cloudTopUpUrl,
-    loginBusy: cloudLoginBusy,
+    connected: miladyCloudConnected,
+    credits: miladyCloudCredits,
+    creditsLow: miladyCloudCreditsLow,
+    creditsCritical: miladyCloudCreditsCritical,
+    topUpUrl: miladyCloudTopUpUrl,
+    loginBusy: miladyCloudLoginBusy,
     onLogin: () => void handleCloudLogin(),
   };
 
@@ -656,7 +656,7 @@ export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
       {/* ═══════════════════════════════════════════════════════════════
           2. CLOUD SERVICES
           ═══════════════════════════════════════════════════════════════ */}
-      {cloudConnected && <CloudServicesSection />}
+      {miladyCloudConnected && <CloudServicesSection />}
 
       {/* ── Secrets modal ── */}
       {secretsOpen && (

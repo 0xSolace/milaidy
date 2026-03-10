@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef } from "react";
-import { useApp } from "../../AppContext";
 import type {
   ConversationMessage,
   StreamEventEnvelope,
-} from "../../api-client";
+} from "@milady/app-core/api";
+import { useEffect, useMemo, useRef } from "react";
+import { useApp } from "../../AppContext";
 import { CHANNEL_COLORS, getEventSource, getEventText } from "./helpers";
 
 export function ChatContent({

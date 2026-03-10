@@ -1,5 +1,5 @@
+import { normalizeLanguage } from "@milady/app-core/i18n";
 import { getVrmPreviewUrl, getVrmUrl, useApp } from "../../AppContext";
-import { normalizeLanguage } from "../../i18n";
 import { OnboardingVrmAvatar } from "./OnboardingVrmAvatar";
 
 export function LanguageStep() {

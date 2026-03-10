@@ -73,7 +73,8 @@ export class VrmCameraManager {
     cameraProfile: CameraProfile,
     lookAtTarget: THREE.Vector3,
   ): void {
-    if (cameraProfile !== "companion" && cameraProfile !== "companion_close") return;
+    if (cameraProfile !== "companion" && cameraProfile !== "companion_close")
+      return;
 
     const bounds = new THREE.Box3().setFromObject(vrm.scene);
     if (bounds.isEmpty()) return;
@@ -112,8 +113,8 @@ export class VrmCameraManager {
 
     if (cameraProfile === "companion_close") {
       distance = distance * 0.35; // Closer camera
-      lookAtLift = size.y * 0.35; // Look at face/head height
-      cameraLift = 0;  // Point straight on, no downward angle
+      lookAtLift = size.y * 0.28; // Look at neck/upper chest height
+      cameraLift = 0; // Point straight on, no downward angle
     }
 
     lookAtTarget.set(center.x, center.y + lookAtLift, center.z);

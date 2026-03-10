@@ -304,7 +304,7 @@ vi.mock("../../src/AppContext", async () => {
   };
 });
 
-vi.mock("../../src/api-client", () => ({
+vi.mock("@milady/app-core/api", () => ({
   client: {
     getPlugins: vi.fn().mockResolvedValue([]),
     togglePlugin: vi.fn().mockResolvedValue({ ok: true }),

@@ -2,13 +2,13 @@
 import React from "react";
 import TestRenderer, { act } from "react-test-renderer";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { PluginInfo } from "../../src/api-client";
+import type { PluginInfo } from "@milady/app-core/api";
 
 const mockUseApp = vi.fn();
-const mockOnWsEvent = vi.fn(() => () => {});
+const mockOnWsEvent = vi.fn(() => () => { });
 const mockHandlePluginToggle = vi.fn();
-const mockLoadPlugins = vi.fn(async () => {});
-const mockHandlePluginConfigSave = vi.fn(async () => {});
+const mockLoadPlugins = vi.fn(async () => { });
+const mockHandlePluginConfigSave = vi.fn(async () => { });
 const mockSetActionNotice = vi.fn();
 const mockSetState = vi.fn();
 const mockTestPluginConnection = vi.fn(async () => ({
@@ -66,7 +66,7 @@ vi.mock("../../src/AppContext", () => ({
   useApp: () => mockUseApp(),
 }));
 
-vi.mock("../../src/api-client", () => ({
+vi.mock("@milady/app-core/api", () => ({
   client: {
     onWsEvent: (...args: unknown[]) => mockOnWsEvent(...args),
     installRegistryPlugin: vi.fn(),
@@ -163,7 +163,7 @@ describe("PluginsView game modal", () => {
     mockSetState.mockReset();
     mockTestPluginConnection.mockReset();
 
-    mockOnWsEvent.mockReturnValue(() => {});
+    mockOnWsEvent.mockReturnValue(() => { });
     mockLoadPlugins.mockResolvedValue(undefined);
     mockHandlePluginToggle.mockResolvedValue(undefined);
     mockHandlePluginConfigSave.mockResolvedValue(undefined);
@@ -335,7 +335,7 @@ describe("PluginsView game modal", () => {
         node.type === "button" &&
         typeof node.props.className === "string" &&
         node.props.className.includes("plugins-game-action-btn") &&
-        text(node).includes("Test Connection"),
+        node.children.some((c) => c === "pluginsview.TestConnection"),
     )[0];
     await act(async () => {
       await testConnectionBtn.props.onClick();
@@ -402,7 +402,7 @@ describe("PluginsView game modal", () => {
     });
 
     expect(
-      tree?.root.findAll((node) => hasClass(node, "plugins-link-btn")).length,
+      tree?.root.findAll((node) => node.type === "a" || node.type === "button" && text(node).includes("Setup guide")).length,
     ).toBeGreaterThan(0);
 
     await act(async () => {

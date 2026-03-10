@@ -2,6 +2,13 @@
  * Root App component — routing shell.
  */
 
+import { ErrorBoundary } from "@milady/app-core/components";
+import type { Tab } from "@milady/app-core/navigation";
+import {
+  APPS_ENABLED,
+  COMPANION_ENABLED,
+  pathForTab,
+} from "@milady/app-core/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getVrmUrl, useApp } from "./AppContext";
 import { AdvancedPageView } from "./components/AdvancedPageView";
@@ -25,12 +32,12 @@ import { InventoryView } from "./components/InventoryView";
 import { KnowledgeView } from "./components/KnowledgeView";
 import { LifoSandboxView } from "./components/LifoSandboxView";
 import { LoadingScreen } from "./components/LoadingScreen";
+import { CloudDashboard as MiladyCloudDashboard } from "./components/MiladyCloudDashboard";
 import { Nav } from "./components/Nav";
 import { OnboardingWizard } from "./components/OnboardingWizard";
 import { PairingView } from "./components/PairingView";
 import { SaveCommandModal } from "./components/SaveCommandModal";
 import { SettingsView } from "./components/SettingsView";
-import { ErrorBoundary } from "./components/shared/ErrorBoundary";
 import { ShellOverlays } from "./components/ShellOverlays";
 import { StartupFailureView } from "./components/StartupFailureView";
 import { StreamView } from "./components/StreamView";
@@ -41,8 +48,6 @@ import { useContextMenu } from "./hooks/useContextMenu";
 import { useLifoAutoPopout } from "./hooks/useLifoAutoPopout";
 import { useStreamPopoutNavigation } from "./hooks/useStreamPopoutNavigation";
 import { isLifoPopoutMode, isLifoPopoutValue } from "./lifo-popout";
-import type { Tab } from "./navigation";
-import { APPS_ENABLED, COMPANION_ENABLED, pathForTab } from "./navigation";
 
 const CHAT_MOBILE_BREAKPOINT_PX = 1024;
 
@@ -98,6 +103,8 @@ function ViewRouter() {
       case "voice":
       case "settings":
         return <SettingsView />;
+      case "cloud":
+        return <MiladyCloudDashboard />;
       default:
         return <ChatView />;
     }
@@ -148,7 +155,7 @@ export function App() {
   const [customActionsPanelOpen, setCustomActionsPanelOpen] = useState(false);
   const [customActionsEditorOpen, setCustomActionsEditorOpen] = useState(false);
   const [editingAction, setEditingAction] = useState<
-    import("./api-client").CustomActionDef | null
+    import("@milady/app-core/api").CustomActionDef | null
   >(null);
   const [isChatMobileLayout, setIsChatMobileLayout] = useState(() =>
     typeof window !== "undefined"

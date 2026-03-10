@@ -1,5 +1,9 @@
+import type {
+  SandboxBrowserEndpoints,
+  SandboxWindowInfo,
+} from "@milady/app-core/api";
+import { Button } from "@milady/ui";
 import { useApp } from "../AppContext";
-import type { SandboxBrowserEndpoints, SandboxWindowInfo } from "../api-client";
 
 interface LifoMonitorPanelProps {
   monitorOnline: boolean;
@@ -57,17 +61,18 @@ export function LifoMonitorPanel({
             >
               {monitorOnline ? "live" : "offline"}
             </span>
-            <button
-              type="button"
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => {
                 setNoVncFailed(false);
                 void refreshMonitorMeta();
                 void refreshScreenPreview();
               }}
-              className="px-2.5 py-1 rounded-md border border-border bg-card text-[11px] text-txt hover:border-accent hover:text-accent transition-colors"
+              className="h-7 px-2.5 py-1 text-[11px] shadow-sm hover:border-accent hover:text-accent"
             >
               {t("lifomonitorpanel.Refresh")}
-            </button>
+            </Button>
           </div>
         </div>
 

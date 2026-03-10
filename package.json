@@ -155,7 +155,7 @@
     "@elizaos/plugin-ollama": "next",
     "@elizaos/plugin-openai": "alpha",
     "@elizaos/plugin-openrouter": "next",
-    "@elizaos/plugin-pdf": "next",
+    "@elizaos/plugin-pdf": "alpha",
     "@elizaos/plugin-personality": "next",
     "@elizaos/plugin-pi-ai": "next",
     "@elizaos/plugin-plugin-manager": "next",

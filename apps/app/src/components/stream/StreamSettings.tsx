@@ -9,6 +9,7 @@
 
 import { useState } from "react";
 import { useApp } from "../../AppContext";
+import { Button, Input, Checkbox, Switch } from "@milady/ui";
 import type { StreamSourceType } from "./helpers";
 import { isSupportedStreamUrl, STREAM_SOURCE_LABELS } from "./helpers";
 import { getAllWidgets } from "./overlays/registry";
@@ -49,13 +50,11 @@ function ConfigField({
       return (
         <label
           key={fieldKey}
-          className="flex items-center gap-2 text-[12px] text-txt"
+          className="flex items-center gap-2 text-[12px] text-txt cursor-pointer"
         >
-          <input
-            type="checkbox"
+          <Checkbox
             checked={Boolean(value)}
-            onChange={(e) => onChange(fieldKey, e.target.checked)}
-            className="accent-[var(--accent)]"
+            onCheckedChange={(checked) => onChange(fieldKey, !!checked)}
           />
           {field.label}
         </label>
@@ -64,7 +63,7 @@ function ConfigField({
       return (
         <label key={fieldKey} className="flex flex-col gap-0.5">
           <span className="text-[11px] text-muted">{field.label}</span>
-          <input
+          <Input
             type="number"
             min={field.min}
             max={field.max}
@@ -72,7 +71,7 @@ function ConfigField({
               typeof value === "number" ? value : (field.default as number)
             }
             onChange={(e) => onChange(fieldKey, Number(e.target.value))}
-            className="bg-bg-muted border border-border text-txt text-[12px] rounded px-2 py-1 outline-none focus:border-accent w-full"
+            className="h-8 bg-bg-muted border-border text-xs rounded px-2"
           />
         </label>
       );
@@ -109,13 +108,13 @@ function ConfigField({
       return (
         <label key={fieldKey} className="flex flex-col gap-0.5">
           <span className="text-[11px] text-muted">{field.label}</span>
-          <input
+          <Input
             type="text"
             value={
               typeof value === "string" ? value : String(field.default ?? "")
             }
             onChange={(e) => onChange(fieldKey, e.target.value)}
-            className="bg-bg-muted border border-border text-txt text-[12px] rounded px-2 py-1 outline-none focus:border-accent w-full"
+            className="h-8 bg-bg-muted border-border text-xs rounded px-2"
           />
         </label>
       );
@@ -143,22 +142,11 @@ function WidgetRow({
     <div className="border border-border rounded-lg overflow-hidden">
       <div className="flex items-center gap-2 px-3 py-2 bg-[rgba(255,255,255,0.03)]">
         {/* Toggle */}
-        <button
-          type="button"
-          onClick={onToggle}
-          className={`relative w-8 h-4 rounded-full transition-colors flex-shrink-0 cursor-pointer ${
-            instance.enabled
-              ? "bg-[var(--accent)]"
-              : "bg-[rgba(255,255,255,0.12)]"
-          }`}
+        <Switch
+          checked={instance.enabled}
+          onCheckedChange={onToggle}
           title={instance.enabled ? "Disable widget" : "Enable widget"}
-        >
-          <span
-            className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${
-              instance.enabled ? "translate-x-4" : "translate-x-0.5"
-            }`}
-          />
-        </button>
+        />
 
         <div className="flex-1 min-w-0">
           <div className="text-[12px] font-medium text-txt truncate">
@@ -172,13 +160,14 @@ function WidgetRow({
         </div>
 
         {hasConfig && (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setExpanded((x) => !x)}
-            className="text-muted hover:text-txt text-[10px] px-1.5 py-0.5 rounded bg-bg-muted cursor-pointer"
+            className="text-muted hover:text-txt text-[10px] h-6 px-1.5 py-0 bg-bg-muted"
           >
             {expanded ? "▲ config" : "▼ config"}
-          </button>
+          </Button>
         )}
       </div>
 
@@ -227,17 +216,17 @@ export function StreamSettings({
   const { layout, toggleWidget, updateWidget, resetLayout } = overlayLayout;
 
   const navBtn = (id: Section, label: string) => (
-    <button
-      type="button"
+    <Button
+      variant={section === id ? "default" : "ghost"}
+      size="sm"
       onClick={() => setSection(id)}
-      className={`px-3 py-1.5 text-[12px] font-medium rounded transition-colors cursor-pointer ${
-        section === id
-          ? "bg-[var(--accent)]/20 text-[var(--accent)]"
+      className={`px-3 py-1.5 text-[12px] font-medium rounded transition-colors h-auto ${section === id
+          ? "bg-accent/20 text-accent hover:bg-accent/30"
           : "text-muted hover:text-txt hover:bg-bg-muted"
-      }`}
+        }`}
     >
       {label}
-    </button>
+    </Button>
   );
 
   return (
@@ -254,13 +243,14 @@ export function StreamSettings({
           <span className="text-[13px] font-semibold text-txt">
             {t("streamsettings.StreamSettings")}
           </span>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={onClose}
-            className="text-muted hover:text-txt transition-colors cursor-pointer text-lg leading-none"
+            className="text-muted hover:text-txt transition-colors text-lg leading-none p-1 h-auto"
           >
             ×
-          </button>
+          </Button>
         </div>
 
         {/* Nav */}
@@ -291,40 +281,38 @@ export function StreamSettings({
                   {destinations.map((d) => {
                     const active = d.id === activeDestination?.id;
                     return (
-                      <button
+                      <Button
                         key={d.id}
-                        type="button"
                         disabled={streamLive}
+                        variant="outline"
                         title={
                           streamLive
                             ? "Stop stream to change channel"
                             : undefined
                         }
                         onClick={() => onDestinationChange(d.id)}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-lg border transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-left ${
-                          active
-                            ? "border-[var(--accent)]/60 bg-[var(--accent)]/10"
-                            : "border-border bg-[rgba(255,255,255,0.03)] hover:border-[var(--accent)]/30 hover:bg-[rgba(255,255,255,0.05)]"
-                        }`}
+                        className={`w-full flex items-center justify-start gap-3 px-4 py-3 h-auto rounded-lg border transition-colors disabled:opacity-50 text-left ${active
+                            ? "border-accent/60 bg-accent/10"
+                            : "border-border bg-white/[0.03] hover:border-accent/30 hover:bg-white/[0.05]"
+                          }`}
                       >
                         <span
-                          className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
-                            active
-                              ? "bg-[var(--accent)] shadow-[0_0_6px_var(--accent)]"
+                          className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${active
+                              ? "bg-accent shadow-[0_0_6px_theme(colors.accent.DEFAULT)]"
                               : "bg-muted/30"
-                          }`}
+                            }`}
                         />
                         <span
-                          className={`text-[13px] font-medium ${active ? "text-[var(--accent)]" : "text-txt"}`}
+                          className={`text-[13px] font-medium ${active ? "text-accent" : "text-txt"}`}
                         >
                           {d.name}
                         </span>
                         {active && (
-                          <span className="ml-auto text-[10px] text-[var(--accent)] font-semibold uppercase tracking-wide">
+                          <span className="ml-auto text-[10px] text-accent font-semibold uppercase tracking-wide">
                             {t("streamsettings.Active")}
                           </span>
                         )}
-                      </button>
+                      </Button>
                     );
                   })}
                 </div>
@@ -345,13 +333,14 @@ export function StreamSettings({
                 <p className="text-[12px] text-muted">
                   {t("streamsettings.ToggleAndConfigure")}
                 </p>
-                <button
-                  type="button"
+                <Button
+                  variant="link"
+                  size="sm"
                   onClick={resetLayout}
-                  className="text-[11px] text-muted hover:text-danger transition-colors cursor-pointer"
+                  className="text-[11px] text-muted hover:text-danger transition-colors p-0 h-auto"
                 >
                   {t("streamsettings.ResetDefaults")}
-                </button>
+                </Button>
               </div>
 
               {layout.widgets.length === 0 ? (
@@ -388,8 +377,8 @@ export function StreamSettings({
 
                   return (
                     <div key={st}>
-                      <button
-                        type="button"
+                      <Button
+                        variant="outline"
                         disabled={disabled}
                         onClick={() => {
                           if (st !== "custom-url") {
@@ -399,22 +388,20 @@ export function StreamSettings({
                             );
                           }
                         }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-left ${
-                          active && st !== "custom-url"
-                            ? "border-[var(--accent)]/60 bg-[var(--accent)]/10"
-                            : "border-border bg-[rgba(255,255,255,0.03)] hover:border-[var(--accent)]/30 hover:bg-[rgba(255,255,255,0.05)]"
-                        }`}
+                        className={`w-full h-auto flex items-center justify-start gap-3 px-4 py-3 rounded-lg border transition-colors text-left ${active && st !== "custom-url"
+                            ? "border-accent/60 bg-accent/10"
+                            : "border-border bg-white/[0.03] hover:border-accent/30 hover:bg-white/[0.05]"
+                          }`}
                       >
                         <span
-                          className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
-                            active && st !== "custom-url"
-                              ? "bg-[var(--accent)]"
+                          className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${active && st !== "custom-url"
+                              ? "bg-accent"
                               : "bg-muted/30"
-                          }`}
+                            }`}
                         />
                         <div>
                           <div
-                            className={`text-[13px] font-medium ${active && st !== "custom-url" ? "text-[var(--accent)]" : "text-txt"}`}
+                            className={`text-[13px] font-medium ${active && st !== "custom-url" ? "text-accent" : "text-txt"}`}
                           >
                             {STREAM_SOURCE_LABELS[st]}
                           </div>
@@ -429,40 +416,39 @@ export function StreamSettings({
                               "Broadcast from a custom HTTP(S) URL"}
                           </div>
                         </div>
-                      </button>
+                      </Button>
 
                       {st === "custom-url" && (
                         <div
-                          className={`mt-1 flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
-                            active
-                              ? "border-[var(--accent)]/60 bg-[var(--accent)]/10"
-                              : "border-border bg-[rgba(255,255,255,0.03)]"
-                          }`}
+                          className={`mt-1 flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors ${active
+                              ? "border-accent/60 bg-accent/10"
+                              : "border-border bg-white/[0.03]"
+                            }`}
                         >
-                          <input
-                            type="text"
+                          <Input
                             placeholder={t("streamsettings.httpsYourUrlCom")}
                             value={customUrlInput}
                             onChange={(e) => setCustomUrlInput(e.target.value)}
-                            className="flex-1 bg-transparent text-txt text-[12px] outline-none placeholder:text-muted/40"
+                            className="flex-1 bg-transparent border-none p-0 h-auto text-xs focus-visible:ring-0 shadow-none placeholder:text-muted/40"
                             onKeyDown={(e) => {
                               if (e.key === "Enter" && customUrlValid) {
                                 onSourceChange("custom-url", trimmedCustomUrl);
                               }
                             }}
                           />
-                          <button
-                            type="button"
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             disabled={!customUrlValid}
                             onClick={() => {
                               if (customUrlValid) {
                                 onSourceChange("custom-url", trimmedCustomUrl);
                               }
                             }}
-                            className="px-2 py-1 rounded bg-[var(--accent)]/20 text-[var(--accent)] text-[11px] font-semibold hover:bg-[var(--accent)]/30 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="px-2 py-1 h-auto bg-accent/20 text-accent text-[11px] font-semibold hover:bg-accent/30 transition-colors"
                           >
                             {t("streamsettings.Use")}
-                          </button>
+                          </Button>
                         </div>
                       )}
                       {st === "custom-url" &&

@@ -5,7 +5,7 @@ import type {
   AgentStatus,
   StreamEventEnvelope,
   WorkbenchOverview,
-} from "../../src/api-client";
+} from "@milady/app-core/api";
 import type { AutonomyRunHealthMap } from "../../src/autonomy-events";
 
 interface AutonomousPanelContextStub {

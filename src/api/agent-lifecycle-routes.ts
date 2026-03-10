@@ -22,7 +22,7 @@ export interface AgentLifecycleRouteState {
 
 export interface AgentLifecycleRouteContext
   extends RouteRequestMeta,
-  Pick<RouteHelpers, "json"> {
+    Pick<RouteHelpers, "json"> {
   state: AgentLifecycleRouteState;
 }
 

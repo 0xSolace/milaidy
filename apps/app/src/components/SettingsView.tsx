@@ -12,6 +12,16 @@
  *   8. Advanced — export/import, extension, danger zone
  */
 
+import { LANGUAGES } from "@milady/app-core/components";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  SectionCard,
+} from "@milady/ui";
 import {
   AlertTriangle,
   Bot,
@@ -38,14 +48,6 @@ import { ConfigPageView } from "./ConfigPageView";
 import { MediaSettingsSection } from "./MediaSettingsSection";
 import { PermissionsSection } from "./PermissionsSection";
 import { ProviderSwitcher } from "./ProviderSwitcher";
-import { LANGUAGES } from "./shared/LanguageDropdown";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  SectionCard,
-} from "@milady/ui";
 import { VoiceConfigView } from "./VoiceConfigView";
 
 interface SettingsSectionDef {
@@ -163,12 +165,12 @@ function SettingsSidebar({
         {/* Search - Desktop */}
         <div className="relative mb-4 hidden lg:block">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-          <input
+          <Input
             type="text"
             placeholder={t("settings.searchPlaceholder")}
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full pl-10 pr-3 py-2.5 text-sm border border-border/50 bg-bg/50 rounded-xl focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent placeholder:text-muted transition-all shadow-inner"
+            className="w-full pl-10 rounded-xl bg-bg/50 border-border/50 h-10 text-sm shadow-inner"
           />
         </div>
 
@@ -234,15 +236,16 @@ function UpdatesSection() {
             {updateStatus?.currentVersion || `${t("common.loading")}...`}
           </div>
         </div>
-        <button
-          type="button"
+        <Button
+          variant="default"
+          size="sm"
+          className="rounded-xl shadow-sm"
           onClick={() => void loadUpdateStatus(true)}
           disabled={updateLoading}
-          className="flex items-center gap-2 px-4 py-2 bg-accent text-accent-fg rounded-xl font-medium text-sm hover:shadow-[0_0_15px_rgba(var(--accent),0.4)] transition-all cursor-pointer disabled:opacity-50 disabled:shadow-none"
         >
           {updateLoading && <Loader2 className="w-4 h-4 animate-spin" />}
           {updateLoading ? t("settings.checking") : t("settings.checkNow")}
-        </button>
+        </Button>
       </div>
 
       {updateStatus?.updateAvailable && (
@@ -390,18 +393,19 @@ function AdvancedSection() {
                   {t("settings.resetAgentHint")}
                 </div>
               </div>
-              <button
-                type="button"
+              <Button
+                variant="destructive"
+                size="sm"
+                className="rounded-xl shadow-sm"
                 onClick={() => {
                   const confirmed = window.confirm(
                     t("settings.resetConfirmMessage"),
                   );
                   if (confirmed) void handleReset();
                 }}
-                className="px-4 py-2 border border-danger/50 bg-danger/5 text-danger rounded-xl text-sm font-bold hover:bg-danger hover:text-danger-fg transition-all cursor-pointer shadow-sm"
               >
                 {t("settings.resetEverything")}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -409,7 +413,9 @@ function AdvancedSection() {
 
       <Dialog
         open={exportModalOpen}
-        onOpenChange={(open) => { if (!open) closeExportModal(); }}
+        onOpenChange={(open) => {
+          if (!open) closeExportModal();
+        }}
       >
         <DialogContent>
           <DialogHeader>
@@ -423,13 +429,13 @@ function AdvancedSection() {
               >
                 {t("settingsview.Password")}
               </label>
-              <input
+              <Input
                 id="settings-export-password"
                 type="password"
                 value={exportPassword}
                 onChange={(e) => setState("exportPassword", e.target.value)}
                 placeholder={t("settingsview.EnterExportPasswor")}
-                className="w-full rounded-lg border border-border bg-bg px-3 py-2.5 text-sm text-txt focus:outline-none focus:ring-2 focus:ring-accent/50"
+                className="rounded-lg bg-bg"
               />
               <label className="flex items-center gap-2 text-sm text-muted">
                 <input
@@ -456,22 +462,24 @@ function AdvancedSection() {
             )}
 
             <div className="flex items-center justify-end gap-2 pt-1">
-              <button
-                type="button"
-                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-txt transition-colors hover:bg-bg-hover"
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-lg"
                 onClick={closeExportModal}
               >
                 {t("common.cancel")}
-              </button>
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg transition-opacity hover:opacity-90 disabled:opacity-50"
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                className="rounded-lg"
                 disabled={exportBusy}
                 onClick={() => void handleAgentExport()}
               >
                 {exportBusy && <Loader2 className="w-4 h-4 animate-spin" />}
                 {t("settings.export")}
-              </button>
+              </Button>
             </div>
           </div>
         </DialogContent>
@@ -479,7 +487,9 @@ function AdvancedSection() {
 
       <Dialog
         open={importModalOpen}
-        onOpenChange={(open) => { if (!open) closeImportModal(); }}
+        onOpenChange={(open) => {
+          if (!open) closeImportModal();
+        }}
       >
         <DialogContent>
           <DialogHeader>
@@ -521,13 +531,13 @@ function AdvancedSection() {
               >
                 {t("settingsview.Password")}
               </label>
-              <input
+              <Input
                 id="settings-import-password"
                 type="password"
                 value={importPassword}
                 onChange={(e) => setState("importPassword", e.target.value)}
                 placeholder={t("settingsview.EnterImportPasswor")}
-                className="w-full rounded-lg border border-border bg-bg px-3 py-2.5 text-sm text-txt focus:outline-none focus:ring-2 focus:ring-accent/50"
+                className="rounded-lg bg-bg"
               />
             </div>
 
@@ -543,22 +553,24 @@ function AdvancedSection() {
             )}
 
             <div className="flex items-center justify-end gap-2 pt-1">
-              <button
-                type="button"
-                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-txt transition-colors hover:bg-bg-hover"
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-lg"
                 onClick={closeImportModal}
               >
                 {t("common.cancel")}
-              </button>
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg transition-opacity hover:opacity-90 disabled:opacity-50"
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                className="rounded-lg"
                 disabled={importBusy}
                 onClick={() => void handleAgentImport()}
               >
                 {importBusy && <Loader2 className="w-4 h-4 animate-spin" />}
                 {t("settings.import")}
-              </button>
+              </Button>
             </div>
           </div>
         </DialogContent>
@@ -582,17 +594,17 @@ export function SettingsView({
   const contentRef = useRef<HTMLDivElement>(null);
 
   const {
-    // Cloud
-    cloudEnabled,
-    cloudConnected,
-    cloudCredits,
-    cloudCreditsLow,
-    cloudCreditsCritical,
-    cloudTopUpUrl,
-    cloudUserId,
-    cloudLoginBusy,
-    cloudLoginError,
-    cloudDisconnecting,
+    // Milady Cloud
+    miladyCloudEnabled: miladyCloudEnabled,
+    miladyCloudConnected: miladyCloudConnected,
+    miladyCloudCredits: miladyCloudCredits,
+    miladyCloudCreditsLow: miladyCloudCreditsLow,
+    miladyCloudCreditsCritical: miladyCloudCreditsCritical,
+    miladyCloudTopUpUrl: miladyCloudTopUpUrl,
+    miladyCloudUserId: miladyCloudUserId,
+    miladyCloudLoginBusy: miladyCloudLoginBusy,
+    miladyCloudLoginError: miladyCloudLoginError,
+    miladyCloudDisconnecting: miladyCloudDisconnecting,
     // Plugins
     plugins,
     pluginSaving,
@@ -720,7 +732,11 @@ export function SettingsView({
                     }`}
                   onClick={() => {
                     setUiLanguage(lang.id);
-                    setActionNotice(t("settings.languageSaved"), "success", 2200);
+                    setActionNotice(
+                      t("settings.languageSaved"),
+                      "success",
+                      2200,
+                    );
                   }}
                 >
                   <span className="text-sm">{lang.flag}</span>
@@ -740,16 +756,16 @@ export function SettingsView({
           className="p-4 sm:p-5 lg:p-6"
         >
           <ProviderSwitcher
-            cloudEnabled={cloudEnabled}
-            cloudConnected={cloudConnected}
-            cloudCredits={cloudCredits}
-            cloudCreditsLow={cloudCreditsLow}
-            cloudCreditsCritical={cloudCreditsCritical}
-            cloudTopUpUrl={cloudTopUpUrl}
-            cloudUserId={cloudUserId}
-            cloudLoginBusy={cloudLoginBusy}
-            cloudLoginError={cloudLoginError}
-            cloudDisconnecting={cloudDisconnecting}
+            miladyCloudEnabled={miladyCloudEnabled}
+            miladyCloudConnected={miladyCloudConnected}
+            miladyCloudCredits={miladyCloudCredits}
+            miladyCloudCreditsLow={miladyCloudCreditsLow}
+            miladyCloudCreditsCritical={miladyCloudCreditsCritical}
+            miladyCloudTopUpUrl={miladyCloudTopUpUrl}
+            miladyCloudUserId={miladyCloudUserId}
+            miladyCloudLoginBusy={miladyCloudLoginBusy}
+            miladyCloudLoginError={miladyCloudLoginError}
+            miladyCloudDisconnecting={miladyCloudDisconnecting}
             plugins={plugins}
             pluginSaving={pluginSaving}
             pluginSaveSuccess={pluginSaveSuccess}

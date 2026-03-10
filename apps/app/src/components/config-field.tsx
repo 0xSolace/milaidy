@@ -9,10 +9,10 @@
  *  - ConfigField wrapper component (label + renderer + help + errors)
  */
 
+import type { DynamicValue } from "@milady/app-core/types";
 import { ChevronDown, X } from "lucide-react";
 import React, { useCallback, useRef, useState } from "react";
 import { useApp } from "../AppContext";
-import type { DynamicValue } from "../types";
 import type { FieldRenderer, FieldRenderProps } from "./config-catalog";
 import { resolveDynamic } from "./config-catalog";
 

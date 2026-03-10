@@ -5,15 +5,16 @@
  * Supports filtering, search, export, and clearing trajectories.
  */
 
-import { useCallback, useEffect, useState } from "react";
-import { useApp } from "../AppContext";
 import {
   client,
   type TrajectoryConfig,
   type TrajectoryListResult,
   type TrajectoryRecord,
   type TrajectoryStats,
-} from "../api-client";
+} from "@milady/app-core/api";
+import { Button, Input } from "@milady/ui";
+import { useCallback, useEffect, useState } from "react";
+import { useApp } from "../AppContext";
 import {
   formatTrajectoryDuration,
   formatTrajectoryTimestamp,
@@ -204,22 +205,24 @@ export function TrajectoriesView({
             </span>
           </div>
           <div className="ml-auto flex items-center gap-2">
+            {/* biome-ignore lint/a11y/noLabelWithoutControl: Custom <Button> component inside <label> */}
             <label className="flex items-center gap-1.5">
               <span className="text-muted">
                 {t("trajectoriesview.Logging")}
               </span>
-              <button
-                type="button"
-                className={`px-2 py-0.5 text-[11px] border rounded ${
+              <Button
+                variant="outline"
+                size="sm"
+                className={`h-6 px-2 py-0.5 text-[11px] shadow-sm ${
                   config?.enabled
-                    ? "bg-success/20 border-success text-success"
-                    : "bg-warn/20 border-warn text-warn"
+                    ? "bg-success/20 border-success text-success hover:bg-success/30"
+                    : "bg-warn/20 border-warn text-warn hover:bg-warn/30"
                 }`}
                 onClick={handleEnableLogging}
                 disabled={config?.enabled}
               >
                 {config?.enabled ? "ON" : "ENABLE"}
-              </button>
+              </Button>
             </label>
           </div>
         </div>
@@ -227,10 +230,10 @@ export function TrajectoriesView({
 
       {/* Filters row */}
       <div className="flex flex-wrap gap-1.5 items-center">
-        <input
+        <Input
           type="text"
           placeholder={t("trajectoriesview.Search")}
-          className="text-xs px-3 py-1.5 border border-border bg-card text-txt w-48"
+          className="h-8 px-3 py-1.5 text-xs bg-card border-border w-48 shadow-sm"
           value={searchQuery}
           onChange={(e) => {
             setSearchQuery(e.target.value);
@@ -271,34 +274,37 @@ export function TrajectoriesView({
         )}
 
         {hasActiveFilters && (
-          <button
-            type="button"
-            className="text-xs px-3 py-1.5 border border-border bg-card text-txt cursor-pointer hover:border-accent hover:text-accent"
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-3 py-1.5 text-xs bg-card text-txt hover:text-accent shadow-sm"
             onClick={handleClearFilters}
           >
             {t("trajectoriesview.ClearFilters")}
-          </button>
+          </Button>
         )}
 
         <div className="ml-auto flex gap-1.5">
-          <button
-            type="button"
-            className="text-xs px-3 py-1.5 border border-border bg-card text-txt cursor-pointer hover:border-accent hover:text-accent"
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-3 py-1.5 text-xs bg-card text-txt hover:text-accent shadow-sm"
             onClick={() => void loadTrajectories()}
             disabled={loading}
           >
             {loading ? "Loading..." : "Refresh"}
-          </button>
+          </Button>
 
           <div className="relative group">
-            <button
-              type="button"
-              className="text-xs px-3 py-1.5 border border-border bg-card text-txt cursor-pointer hover:border-accent hover:text-accent"
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-3 py-1.5 text-xs bg-card text-txt hover:text-accent shadow-sm"
               disabled={exporting || trajectories.length === 0}
             >
               {exporting ? "Exporting..." : "Export"}
-            </button>
-            <div className="absolute right-0 mt-1 hidden group-hover:block bg-card border border-border shadow-lg z-10">
+            </Button>
+            <div className="absolute right-0 mt-1 hidden group-hover:block bg-card border border-border shadow-lg z-10 w-48">
               <button
                 type="button"
                 className="block w-full text-left text-xs px-3 py-1.5 hover:bg-muted/20"
@@ -330,14 +336,15 @@ export function TrajectoriesView({
             </div>
           </div>
 
-          <button
-            type="button"
-            className="text-xs px-3 py-1.5 border border-danger/50 bg-card text-danger cursor-pointer hover:border-danger hover:bg-danger/10"
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-3 py-1.5 text-xs bg-card text-danger border-danger/50 hover:bg-danger/10 hover:border-danger shadow-sm"
             onClick={handleClearAll}
             disabled={clearing || stats?.totalTrajectories === 0}
           >
             {clearing ? "Clearing..." : "Clear All"}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -455,22 +462,24 @@ export function TrajectoriesView({
             {Math.min((page + 1) * pageSize, total)} of {total}
           </span>
           <div className="flex gap-1">
-            <button
-              type="button"
-              className="px-2 py-1 border border-border bg-card disabled:opacity-50"
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 py-1 text-xs bg-card disabled:opacity-50 shadow-sm"
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={page === 0}
             >
               {t("trajectoriesview.Prev")}
-            </button>
-            <button
-              type="button"
-              className="px-2 py-1 border border-border bg-card disabled:opacity-50"
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 py-1 text-xs bg-card disabled:opacity-50 shadow-sm"
               onClick={() => setPage((p) => p + 1)}
               disabled={page >= totalPages - 1}
             >
               {t("trajectoriesview.Next")}
-            </button>
+            </Button>
           </div>
         </div>
       )}

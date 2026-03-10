@@ -11,6 +11,7 @@
  * Activity feed runs along the right sidebar. Chat ticker at the bottom.
  */
 
+import { client, isApiError } from "@milady/app-core/api";
 import {
   type CSSProperties,
   useCallback,
@@ -20,7 +21,6 @@ import {
   useState,
 } from "react";
 import { useApp } from "../AppContext";
-import { client, isApiError } from "../api-client";
 import { ActivityFeed } from "./stream/ActivityFeed";
 import { AvatarPip } from "./stream/AvatarPip";
 import { ChatContent } from "./stream/ChatContent";

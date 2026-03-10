@@ -1,7 +1,7 @@
+import type { CodingAgentSession } from "@milady/app-core/api";
+import { client } from "@milady/app-core/api";
 import { useEffect, useState } from "react";
 import { useApp } from "../AppContext";
-import type { CodingAgentSession } from "../api-client";
-import { client } from "../api-client";
 import { XTerminal } from "./XTerminal";
 
 /** Agent type display labels. */

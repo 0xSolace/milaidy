@@ -1,7 +1,7 @@
+import type { StreamEventEnvelope } from "@milady/app-core/api";
+import { formatTime } from "@milady/app-core/components";
 import { useMemo } from "react";
 import { useApp } from "../../AppContext";
-import type { StreamEventEnvelope } from "../../api-client";
-import { formatTime } from "../shared/format";
 import { getEventText } from "./helpers";
 
 export function IdleContent({ events }: { events: StreamEventEnvelope[] }) {

@@ -1,11 +1,12 @@
-import { ChevronDown, ChevronRight } from "lucide-react";
-import { useEffect, useState } from "react";
-import { useApp } from "../AppContext";
 import {
   type CustomActionDef,
   type CustomActionHandler,
   client,
-} from "../api-client";
+} from "@milady/app-core/api";
+import { Button } from "@milady/ui";
+import { ChevronDown, ChevronRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useApp } from "../AppContext";
 
 interface CustomActionEditorProps {
   open: boolean;
@@ -210,14 +211,14 @@ function parseGeneratedAction(payload: unknown): {
       url,
       headers: parseHeaders(rawHttp.headers).length
         ? parseHeaders(rawHttp.headers).reduce<Record<string, string>>(
-            (acc, item) => {
-              if (item.key) {
-                acc[item.key] = item.value;
-              }
-              return acc;
-            },
-            {},
-          )
+          (acc, item) => {
+            if (item.key) {
+              acc[item.key] = item.value;
+            }
+            return acc;
+          },
+          {},
+        )
         : undefined,
       bodyTemplate: toNonEmptyString(rawHttp.bodyTemplate),
     };
@@ -380,9 +381,9 @@ export function CustomActionEditor({
         setHttpHeaders(
           Object.keys(headers).length > 0
             ? Object.entries(headers).map(([key, value]) => ({
-                key,
-                value,
-              }))
+              key,
+              value,
+            }))
             : [{ key: "", value: "" }],
         );
         setHttpBody(handler.bodyTemplate || "");
@@ -440,9 +441,9 @@ export function CustomActionEditor({
       setHttpHeaders(
         handler.headers
           ? Object.entries(handler.headers).map(([key, value]) => ({
-              key,
-              value,
-            }))
+            key,
+            value,
+          }))
           : [{ key: "", value: "" }],
       );
     } else if (parsed.handlerType === "shell") {
@@ -714,13 +715,14 @@ export function CustomActionEditor({
           <h2 className="flex-1 text-sm font-medium text-txt">
             {action ? "Edit Custom Action" : "New Custom Action"}
           </h2>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted text-xl leading-none"
             onClick={onClose}
-            className="text-muted hover:text-txt text-xl leading-none cursor-pointer"
           >
             {t("customactioneditor.Times")}
-          </button>
+          </Button>
         </div>
 
         {/* Body */}
@@ -753,14 +755,15 @@ export function CustomActionEditor({
                   placeholder={t("customactioneditor.eGCheckIfAWebs")}
                   className="flex-1 bg-surface border border-border px-2 py-1.5 text-sm text-txt placeholder:text-muted/50 outline-none focus:border-accent"
                 />
-                <button
-                  type="button"
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="whitespace-nowrap"
                   onClick={handleGenerate}
                   disabled={generating || !aiPrompt.trim()}
-                  className="px-3 py-1.5 text-xs border border-accent bg-accent text-white hover:opacity-90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                 >
                   {generating ? "Generating..." : "Generate"}
-                </button>
+                </Button>
               </div>
               <span className="text-xs text-muted/70">
                 {t("customactioneditor.TheAgentWillGener")}
@@ -830,11 +833,10 @@ export function CustomActionEditor({
                     setHandlerType(type);
                     setFormError("");
                   }}
-                  className={`px-3 py-1.5 text-xs border cursor-pointer ${
-                    handlerType === type
-                      ? "border-accent bg-accent text-white"
-                      : "border-border text-muted hover:text-txt"
-                  }`}
+                  className={`px-3 py-1.5 text-xs border cursor-pointer ${handlerType === type
+                    ? "border-accent bg-accent text-white"
+                    : "border-border text-muted hover:text-txt"
+                    }`}
                 >
                   {type === "http"
                     ? "HTTP Request"
@@ -1097,30 +1099,30 @@ export function CustomActionEditor({
         {/* Footer */}
         <div className="flex justify-end gap-2 px-5 py-3 border-t border-border">
           {testExpanded && (
-            <button
-              type="button"
+            <Button
+              variant="outline"
+              size="sm"
               onClick={handleTest}
               disabled={testing || !action?.id}
-              className="px-3 py-1.5 text-xs border border-border text-muted hover:text-txt cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {testing ? "Testing..." : "Test"}
-            </button>
+            </Button>
           )}
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="sm"
             onClick={onClose}
-            className="px-3 py-1.5 text-xs border border-border text-muted hover:text-txt cursor-pointer"
           >
             {t("customactioneditor.Cancel")}
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="default"
+            size="sm"
             onClick={() => void handleSave()}
             disabled={saving}
-            className="px-3 py-1.5 text-xs border border-accent bg-accent text-white hover:opacity-90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? "Saving..." : "Save"}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

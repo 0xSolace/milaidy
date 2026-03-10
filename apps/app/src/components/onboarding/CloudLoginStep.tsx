@@ -3,10 +3,10 @@ import { useApp } from "../../AppContext";
 export function CloudLoginStep() {
   const {
     t,
-    cloudConnected,
-    cloudUserId,
-    cloudLoginBusy,
-    cloudLoginError,
+    miladyCloudConnected: miladyCloudConnected,
+    miladyCloudUserId: miladyCloudUserId,
+    miladyCloudLoginBusy: miladyCloudLoginBusy,
+    miladyCloudLoginError: miladyCloudLoginError,
     handleCloudLogin,
   } = useApp();
 
@@ -17,14 +17,14 @@ export function CloudLoginStep() {
           {t("onboardingwizard.CloudLogin")}
         </h2>
       </div>
-      {cloudConnected ? (
+      {miladyCloudConnected ? (
         <div className="max-w-[600px] mx-auto">
           <p className="text-txt mb-2">
             {t("onboardingwizard.LoggedInSuccessful")}
           </p>
-          {cloudUserId && (
+          {miladyCloudUserId && (
             <p className="text-muted text-sm">
-              {t("onboardingwizard.UserID")} {cloudUserId}
+              {t("onboardingwizard.UserID")} {miladyCloudUserId}
             </p>
           )}
         </div>
@@ -37,19 +37,19 @@ export function CloudLoginStep() {
             type="button"
             className="px-6 py-2 border border-accent bg-accent text-accent-fg text-sm cursor-pointer hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed mt-5"
             onClick={handleCloudLogin}
-            disabled={cloudLoginBusy}
+            disabled={miladyCloudLoginBusy}
           >
-            {cloudLoginBusy ? (
+            {miladyCloudLoginBusy ? (
               <span className="flex items-center justify-center gap-2">
                 <span className="inline-block w-5 h-5 border-2 border-border border-t-accent rounded-full animate-spin" />
                 {t("onboardingwizard.LoggingIn")}
               </span>
             ) : (
-              "Login to Eliza Cloud"
+              "Login to Milady Cloud"
             )}
           </button>
-          {cloudLoginError && (
-            <p className="text-danger text-[13px] mt-2.5">{cloudLoginError}</p>
+          {miladyCloudLoginError && (
+            <p className="text-danger text-[13px] mt-2.5">{miladyCloudLoginError}</p>
           )}
         </div>
       )}

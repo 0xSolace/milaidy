@@ -5,7 +5,7 @@ export type CloudSourceMode = "cloud" | "own-key";
 export function CloudSourceModeToggle({
   mode,
   onChange,
-  cloudLabel = "Eliza Cloud",
+  cloudLabel = "Milady Cloud",
   ownKeyLabel = "Own API Key",
 }: {
   mode: CloudSourceMode;
@@ -17,22 +17,20 @@ export function CloudSourceModeToggle({
     <div className="flex border border-[var(--border)]">
       <button
         type="button"
-        className={`px-3 py-1.5 text-xs font-semibold cursor-pointer transition-colors ${
-          mode === "cloud"
+        className={`px-3 py-1.5 text-xs font-semibold cursor-pointer transition-colors ${mode === "cloud"
             ? "bg-[var(--accent)] text-[var(--accent-foreground)]"
             : "bg-[var(--card)] text-[var(--muted)] hover:text-[var(--text)]"
-        }`}
+          }`}
         onClick={() => onChange("cloud")}
       >
         {cloudLabel}
       </button>
       <button
         type="button"
-        className={`px-3 py-1.5 text-xs font-semibold cursor-pointer transition-colors border-l border-[var(--border)] ${
-          mode === "own-key"
+        className={`px-3 py-1.5 text-xs font-semibold cursor-pointer transition-colors border-l border-[var(--border)] ${mode === "own-key"
             ? "bg-[var(--accent)] text-[var(--accent-foreground)]"
             : "bg-[var(--card)] text-[var(--muted)] hover:text-[var(--text)]"
-        }`}
+          }`}
         onClick={() => onChange("own-key")}
       >
         {ownKeyLabel}
@@ -43,7 +41,7 @@ export function CloudSourceModeToggle({
 
 export function CloudConnectionStatus({
   connected,
-  connectedText = "Connected to Eliza Cloud",
+  connectedText = "Connected to Milady Cloud",
   disconnectedText,
 }: {
   connected: boolean;

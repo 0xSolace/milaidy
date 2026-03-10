@@ -5,14 +5,14 @@
  * in a split view layout (side-by-side on desktop, stacked on mobile).
  */
 
-import { ChevronDown, ChevronRight } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { useApp } from "../AppContext";
 import {
   client,
   type TrajectoryDetailResult,
   type TrajectoryLlmCall,
-} from "../api-client";
+} from "@milady/app-core/api";
+import { ChevronDown, ChevronRight } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { useApp } from "../AppContext";
 import {
   formatTrajectoryDuration,
   formatTrajectoryTimestamp,

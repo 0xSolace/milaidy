@@ -1,6 +1,15 @@
+import type { Tab } from "@milady/app-core/navigation";
+import {
+  Book,
+  Bug,
+  Code,
+  Phone,
+  Settings,
+  Star,
+  User,
+  Wallet,
+} from "lucide-react";
 import type React from "react";
-import { User, Star, Book, Phone, Bug, Wallet, Settings, Code } from "lucide-react";
-import type { Tab } from "../../navigation";
 import type { TranslatorFn } from "./walletUtils";
 
 export function CompanionHubNav({
@@ -29,7 +38,9 @@ export function CompanionHubNav({
             <User className="w-6 h-6" strokeWidth={1.5} />
           </div>
         </button>
-        <span className="text-[10px] sm:text-xs font-bold tracking-widest text-white/50 uppercase transition-colors duration-300 group-hover:text-white drop-shadow-md leading-none text-right">{t("nav.character")}</span>
+        <span className="text-[10px] sm:text-xs font-bold tracking-widest text-white/50 uppercase transition-colors duration-300 group-hover:text-white drop-shadow-md leading-none text-right">
+          {t("nav.character")}
+        </span>
       </div>
 
       {/* Talents */}
@@ -49,7 +60,9 @@ export function CompanionHubNav({
             <Star className="w-6 h-6" strokeWidth={1.5} />
           </div>
         </button>
-        <span className="text-[10px] sm:text-xs font-bold tracking-widest text-white/50 uppercase transition-colors duration-300 group-hover:text-white drop-shadow-md leading-none text-right">{t("nav.talents")}</span>
+        <span className="text-[10px] sm:text-xs font-bold tracking-widest text-white/50 uppercase transition-colors duration-300 group-hover:text-white drop-shadow-md leading-none text-right">
+          {t("nav.talents")}
+        </span>
       </div>
 
       {/* Knowledge */}
@@ -69,7 +82,9 @@ export function CompanionHubNav({
             <Book className="w-6 h-6" strokeWidth={1.5} />
           </div>
         </button>
-        <span className="text-[10px] sm:text-xs font-bold tracking-widest text-white/50 uppercase transition-colors duration-300 group-hover:text-white drop-shadow-md leading-none text-right">{t("nav.knowledge")}</span>
+        <span className="text-[10px] sm:text-xs font-bold tracking-widest text-white/50 uppercase transition-colors duration-300 group-hover:text-white drop-shadow-md leading-none text-right">
+          {t("nav.knowledge")}
+        </span>
       </div>
 
       {/* Channels */}
@@ -89,7 +104,9 @@ export function CompanionHubNav({
             <Phone className="w-6 h-6" strokeWidth={1.5} />
           </div>
         </button>
-        <span className="text-[10px] sm:text-xs font-bold tracking-widest text-white/50 uppercase transition-colors duration-300 group-hover:text-white drop-shadow-md leading-none text-right">{t("nav.channels")}</span>
+        <span className="text-[10px] sm:text-xs font-bold tracking-widest text-white/50 uppercase transition-colors duration-300 group-hover:text-white drop-shadow-md leading-none text-right">
+          {t("nav.channels")}
+        </span>
       </div>
 
       {/* Plugins */}
@@ -109,7 +126,9 @@ export function CompanionHubNav({
             <Bug className="w-6 h-6" strokeWidth={1.5} />
           </div>
         </button>
-        <span className="text-[10px] sm:text-xs font-bold tracking-widest text-white/50 uppercase transition-colors duration-300 group-hover:text-white drop-shadow-md leading-none text-right">{t("nav.plugins")}</span>
+        <span className="text-[10px] sm:text-xs font-bold tracking-widest text-white/50 uppercase transition-colors duration-300 group-hover:text-white drop-shadow-md leading-none text-right">
+          {t("nav.plugins")}
+        </span>
       </div>
 
       {/* Apps — commented out, will be re-enabled later
@@ -149,7 +168,9 @@ export function CompanionHubNav({
             <Wallet className="w-6 h-6" strokeWidth={1.5} />
           </div>
         </button>
-        <span className="text-[10px] sm:text-xs font-bold tracking-widest text-white/50 uppercase transition-colors duration-300 group-hover:text-white drop-shadow-md leading-none text-right">{t("nav.wallets") || "Wallets"}</span>
+        <span className="text-[10px] sm:text-xs font-bold tracking-widest text-white/50 uppercase transition-colors duration-300 group-hover:text-white drop-shadow-md leading-none text-right">
+          {t("nav.wallets") || "Wallets"}
+        </span>
       </div>
 
       {/* Stream — commented out, will be re-enabled later
@@ -209,7 +230,9 @@ export function CompanionHubNav({
             <Settings className="w-6 h-6" strokeWidth={1.5} />
           </div>
         </button>
-        <span className="text-[10px] sm:text-xs font-bold tracking-widest text-white/50 uppercase transition-colors duration-300 group-hover:text-white drop-shadow-md leading-none text-right">{t("nav.settings")}</span>
+        <span className="text-[10px] sm:text-xs font-bold tracking-widest text-white/50 uppercase transition-colors duration-300 group-hover:text-white drop-shadow-md leading-none text-right">
+          {t("nav.settings")}
+        </span>
       </div>
 
       {/* Advanced */}
@@ -229,7 +252,9 @@ export function CompanionHubNav({
             <Code className="w-6 h-6" strokeWidth={1.5} />
           </div>
         </button>
-        <span className="text-[10px] sm:text-xs font-bold tracking-widest text-white/50 uppercase transition-colors duration-300 group-hover:text-white drop-shadow-md leading-none text-right">{t("nav.advanced")}</span>
+        <span className="text-[10px] sm:text-xs font-bold tracking-widest text-white/50 uppercase transition-colors duration-300 group-hover:text-white drop-shadow-md leading-none text-right">
+          {t("nav.advanced")}
+        </span>
       </div>
     </nav>
   );

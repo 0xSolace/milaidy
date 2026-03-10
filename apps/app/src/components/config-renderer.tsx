@@ -11,6 +11,7 @@
  *   - Prompt generation: registry.catalog.prompt() for AI system prompts
  */
 
+import type { ConfigUiHint } from "@milady/app-core/types";
 import React, {
   forwardRef,
   useCallback,
@@ -19,7 +20,6 @@ import React, {
   useState,
 } from "react";
 import { useApp } from "../AppContext";
-import type { ConfigUiHint } from "../types";
 import type {
   FieldRegistry,
   FieldRenderer,

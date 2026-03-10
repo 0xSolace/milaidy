@@ -1,3 +1,4 @@
+import { resolveAppAssetUrl } from "@milady/app-core/utils";
 import {
   MToonMaterialLoaderPlugin,
   type VRM,
@@ -7,7 +8,6 @@ import {
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { resolveAppAssetUrl } from "../../asset-url";
 import {
   type AnimationLoaderContext,
   loadEmoteClip,
@@ -361,7 +361,8 @@ export class VrmEngine {
           this.cameraProfile,
           targetLookAt,
           targetPos,
-          (c) => this.cameraManager.applyInteractionMode(c, this.interactionMode),
+          (c) =>
+            this.cameraManager.applyInteractionMode(c, this.interactionMode),
         );
       } else if (this.controls) {
         this.cameraManager.applyCameraProfileToCamera(
@@ -748,12 +749,24 @@ export class VrmEngine {
       const t = this.transitionProgress;
       const ease = t * t * (3.0 - 2.0 * t);
 
-      camera.position.lerpVectors(this.transitionStartPos, this.transitionTargetPos, ease);
+      camera.position.lerpVectors(
+        this.transitionStartPos,
+        this.transitionTargetPos,
+        ease,
+      );
       this.baseCameraPosition.copy(camera.position);
 
-      this.lookAtTarget.lerpVectors(this.transitionStartLookAt, this.transitionTargetLookAt, ease);
+      this.lookAtTarget.lerpVectors(
+        this.transitionStartLookAt,
+        this.transitionTargetLookAt,
+        ease,
+      );
 
-      camera.fov = THREE.MathUtils.lerp(this.transitionStartFov, this.transitionTargetFov, ease);
+      camera.fov = THREE.MathUtils.lerp(
+        this.transitionStartFov,
+        this.transitionTargetFov,
+        ease,
+      );
       camera.updateProjectionMatrix();
 
       if (this.controls) {

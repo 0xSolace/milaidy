@@ -3,10 +3,10 @@ import TestRenderer, { act } from "react-test-renderer";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockUseApp = vi.fn();
-const mockOnWsEvent = vi.fn(() => () => {});
+const mockOnWsEvent = vi.fn(() => () => { });
 const mockHandlePluginToggle = vi.fn();
-const mockLoadPlugins = vi.fn(async () => {});
-const mockHandlePluginConfigSave = vi.fn(async () => {});
+const mockLoadPlugins = vi.fn(async () => { });
+const mockHandlePluginConfigSave = vi.fn(async () => { });
 const mockSetActionNotice = vi.fn();
 const mockSetState = vi.fn();
 
@@ -14,7 +14,7 @@ vi.mock("../../src/AppContext", () => ({
   useApp: () => mockUseApp(),
 }));
 
-vi.mock("../../src/api-client", () => ({
+vi.mock("@milady/app-core/api", () => ({
   client: {
     onWsEvent: (...args: unknown[]) => mockOnWsEvent(...args),
     installRegistryPlugin: vi.fn(),
@@ -73,10 +73,10 @@ describe("PluginsView restart-aware toggles", () => {
     mockHandlePluginConfigSave.mockReset();
     mockSetActionNotice.mockReset();
     mockSetState.mockReset();
-    mockOnWsEvent.mockReturnValue(() => {});
+    mockOnWsEvent.mockReturnValue(() => { });
     mockLoadPlugins.mockResolvedValue(undefined);
     mockHandlePluginConfigSave.mockResolvedValue(undefined);
-    mockSetState.mockImplementation(() => {});
+    mockSetState.mockImplementation(() => { });
     mockUseApp.mockReturnValue(baseContext());
   });
 
@@ -99,7 +99,7 @@ describe("PluginsView restart-aware toggles", () => {
     expect(getToggle().props.disabled).toBe(false);
 
     await act(async () => {
-      getToggle().props.onClick({ stopPropagation: () => {} });
+      getToggle().props.onClick({ stopPropagation: () => { } });
     });
 
     expect(mockHandlePluginToggle).toHaveBeenCalledTimes(1);
@@ -110,12 +110,12 @@ describe("PluginsView restart-aware toggles", () => {
         (node) =>
           typeof node.props.className === "string" &&
           node.props.className.includes("border-accent") &&
-          node.children.join("").includes("Applying plugin change"),
+          node.children.join("").includes("pluginsview.ApplyingPluginChan"),
       ).length,
     ).toBeGreaterThan(0);
 
     await act(async () => {
-      getToggle().props.onClick({ stopPropagation: () => {} });
+      getToggle().props.onClick({ stopPropagation: () => { } });
     });
     expect(mockHandlePluginToggle).toHaveBeenCalledTimes(1);
 

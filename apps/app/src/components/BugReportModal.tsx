@@ -1,7 +1,9 @@
+import { useTimeout } from "../hooks/useTimeout";
+import { client } from "@milady/app-core/api";
+import { Button, Input } from "@milady/ui";
 import { ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useApp } from "../AppContext";
-import { client } from "../api-client";
 import { useBugReport } from "../hooks/useBugReport";
 
 const ENV_OPTIONS = ["macOS", "Windows", "Linux", "Other"] as const;
@@ -40,6 +42,8 @@ async function copyText(text: string): Promise<boolean> {
 }
 
 export function BugReportModal() {
+  const { setTimeout } = useTimeout();
+
   const { t } = useApp();
   const { isOpen, close } = useBugReport();
   const [form, setForm] = useState<BugReportForm>(EMPTY_FORM);
@@ -81,7 +85,7 @@ export function BugReportModal() {
                     : "Other",
           }));
       })
-      .catch(() => {});
+      .catch(() => { });
     setTimeout(() => descRef.current?.focus(), 50);
 
     return () => {
@@ -176,8 +180,9 @@ export function BugReportModal() {
 
   const labelClass = "block text-[11px] font-bold text-muted mb-1";
   const inputClass =
-    "w-full px-3 py-2 border border-border bg-bg text-sm text-txt outline-none focus:border-accent transition-colors font-body";
-  const textareaClass = `${inputClass} resize-y min-h-[60px]`;
+    "w-full h-9 px-3 py-2 bg-bg text-sm text-txt shadow-sm transition-colors font-body";
+  const textareaClass =
+    "w-full px-3 py-2 border border-border bg-bg text-sm text-txt shadow-sm focus-visible:ring-1 focus-visible:ring-accent transition-colors font-body resize-y min-h-[60px]";
   const canSubmit =
     form.description.trim() && form.stepsToReproduce.trim() && !submitting;
 
@@ -204,13 +209,14 @@ export function BugReportModal() {
             <span className="font-bold text-sm flex-1">
               {t("bugreportmodal.BugReportSubmitted")}
             </span>
-            <button
-              type="button"
-              className="text-muted hover:text-txt text-lg leading-none px-1 cursor-pointer"
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-muted hover:text-txt h-6 w-6"
               onClick={close}
             >
               {t("bugreportmodal.Times")}
-            </button>
+            </Button>
           </div>
           <div className="px-5 py-6 text-center">
             <p className="text-sm text-txt mb-3">
@@ -226,13 +232,14 @@ export function BugReportModal() {
             </a>
           </div>
           <div className="flex justify-end px-5 py-3 border-t border-border">
-            <button
-              type="button"
+            <Button
+              variant="outline"
+              size="sm"
               onClick={close}
-              className="px-4 py-1.5 border border-border text-sm text-muted hover:text-txt cursor-pointer"
+              className="px-4 py-1.5 shadow-sm"
             >
               {t("bugreportmodal.Close")}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -247,13 +254,14 @@ export function BugReportModal() {
           <span className="font-bold text-sm flex-1">
             {t("bugreportmodal.ReportABug")}
           </span>
-          <button
-            type="button"
-            className="text-muted hover:text-txt text-lg leading-none px-1 cursor-pointer"
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted hover:text-txt h-6 w-6"
             onClick={close}
           >
             {t("bugreportmodal.Times")}
-          </button>
+          </Button>
         </div>
 
         {/* Body */}
@@ -315,7 +323,7 @@ export function BugReportModal() {
             <label className={`${labelClass} flex-1`}>
               {t("bugreportmodal.Environment")}
               <select
-                className={inputClass}
+                className={`${inputClass} border border-border focus-visible:ring-1 focus-visible:ring-accent`}
                 value={form.environment}
                 onChange={(e) => updateField("environment", e.target.value)}
               >
@@ -327,10 +335,10 @@ export function BugReportModal() {
                 ))}
               </select>
             </label>
+            {/* biome-ignore lint/a11y/noLabelWithoutControl: Custom <Input> component is inside <label> */}
             <label className={`${labelClass} flex-1`}>
               {t("bugreportmodal.NodeVersion")}
-              <input
-                type="text"
+              <Input
                 className={inputClass}
                 placeholder={t("bugreportmodal.22X")}
                 value={form.nodeVersion}
@@ -339,10 +347,10 @@ export function BugReportModal() {
             </label>
           </div>
 
+          {/* biome-ignore lint/a11y/noLabelWithoutControl: Custom <Input> component is inside <label> */}
           <label className={labelClass}>
             {t("bugreportmodal.ModelProvider")}
-            <input
-              type="text"
+            <Input
               className={inputClass}
               placeholder={t("bugreportmodal.AnthropicOpenAI")}
               value={form.modelProvider}
@@ -352,9 +360,10 @@ export function BugReportModal() {
 
           {/* Collapsible Logs */}
           <div>
-            <button
-              type="button"
-              className="text-[11px] font-bold text-muted hover:text-txt cursor-pointer flex items-center gap-1"
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-auto p-0 text-[11px] font-bold text-muted hover:text-txt hover:bg-transparent cursor-pointer flex items-center gap-1"
               onClick={() => setShowLogs(!showLogs)}
             >
               <ChevronRight
@@ -363,7 +372,7 @@ export function BugReportModal() {
               />
 
               {t("bugreportmodal.Logs")}
-            </button>
+            </Button>
             {showLogs && (
               <textarea
                 className={`${textareaClass} mt-1 font-mono text-xs`}
@@ -378,30 +387,33 @@ export function BugReportModal() {
 
         {/* Footer */}
         <div className="flex items-center justify-between gap-2 px-5 py-3 border-t border-border shrink-0">
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="sm"
             onClick={close}
-            className="px-3 py-1.5 border border-border text-sm text-muted hover:text-txt cursor-pointer"
+            className="px-3 py-1.5 shadow-sm"
           >
             {t("bugreportmodal.Cancel")}
-          </button>
+          </Button>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
+            <Button
+              variant="outline"
+              size="sm"
               onClick={handleCopyAndOpen}
               disabled={!canSubmit}
-              className="px-3 py-1.5 border border-border text-sm text-muted hover:text-txt cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-3 py-1.5 shadow-sm"
             >
               {copied ? "Copied!" : "Copy & Open GitHub"}
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
               onClick={handleSubmit}
               disabled={!canSubmit}
-              className="px-3 py-1.5 border border-accent bg-accent text-white text-sm cursor-pointer hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-3 py-1.5 shadow-sm"
             >
               {submitting ? "Submitting..." : "Submit"}
-            </button>
+            </Button>
           </div>
         </div>
       </div>

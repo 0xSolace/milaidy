@@ -1,6 +1,6 @@
+import { COMMAND_PALETTE_EVENT } from "@milady/app-core/events";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useApp } from "../AppContext";
-import { COMMAND_PALETTE_EVENT } from "../events";
 import { useBugReport } from "../hooks/useBugReport";
 import {
   buildCommandPaletteCommands,
@@ -236,11 +236,10 @@ export function CommandPalette() {
               <button
                 type="button"
                 key={cmd.id}
-                className={`w - full px - 4 py - 2.5 cursor - pointer flex justify - between items - center text - left text - sm font - body ${
-                  idx === commandActiveIndex
+                className={`w-full px-4 py-2.5 cursor-pointer flex justify-between items-center text-left text-sm font-body ${idx === commandActiveIndex
                     ? "bg-bg-hover"
                     : "hover:bg-bg-hover"
-                } `}
+                  }`}
                 onClick={() => {
                   cmd.action();
                   closeCommandPalette();

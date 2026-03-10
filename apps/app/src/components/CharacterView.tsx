@@ -9,22 +9,29 @@
  *   + Save bar at bottom
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useApp } from "../AppContext";
-import { type CharacterData, client, type VoiceConfig } from "../api-client";
-import { resolveApiUrl } from "../asset-url";
-import { dispatchWindowEvent, VOICE_CONFIG_UPDATED_EVENT } from "../events";
-import type { ConfigUiHint } from "../types";
-import { AvatarSelector } from "./AvatarSelector";
-import type { JsonSchemaObject } from "./config-catalog";
-import { ConfigRenderer, defaultRegistry } from "./config-renderer";
-import { TagEditor } from "./shared/TagEditor";
-import { ThemedSelect } from "./shared/ThemedSelect";
+import {
+  type CharacterData,
+  client,
+  type VoiceConfig,
+} from "@milady/app-core/api";
+import {
+  dispatchWindowEvent,
+  VOICE_CONFIG_UPDATED_EVENT,
+} from "@milady/app-core/events";
+import { useTimeout } from "../hooks/useTimeout";
+import type { ConfigUiHint } from "@milady/app-core/types";
+import { resolveApiUrl } from "@milady/app-core/utils";
 import {
   PREMADE_VOICES,
   sanitizeApiKey,
   type VoicePreset,
-} from "./shared/voice-types";
+} from "@milady/app-core/voice";
+import { Button, Input, TagEditor, Textarea, ThemedSelect } from "@milady/ui";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useApp } from "../AppContext";
+import { AvatarSelector } from "./AvatarSelector";
+import type { JsonSchemaObject } from "./config-catalog";
+import { ConfigRenderer, defaultRegistry } from "./config-renderer";
 
 const DEFAULT_ELEVEN_FAST_MODEL = "eleven_flash_v2_5";
 
@@ -91,6 +98,8 @@ function parseImportedMessageExamples(
 /* ── CharacterView ──────────────────────────────────────────────────── */
 
 export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
+  const { setTimeout } = useTimeout();
+
   const {
     characterData,
     characterDraft,
@@ -488,15 +497,10 @@ export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
 
   /* ── Helpers ────────────────────────────────────────────────────── */
   const sectionCls = inModal
-    ? "mt-4 p-4 border border-[var(--border)] bg-[rgba(255,255,255,0.04)] backdrop-blur-sm rounded-xl"
-    : "mt-4 p-4 border border-[var(--border)] bg-[var(--card)]";
-  const inputCls =
-    "px-2.5 py-1.5 border border-[var(--border)] bg-[var(--card)] text-xs focus:border-[var(--accent)] focus:outline-none";
-  const textareaCls = `${inputCls} font-inherit resize-y leading-relaxed`;
-  const labelCls = "font-semibold text-xs";
-  const hintCls = "text-[11px] text-[var(--muted)]";
-  const tinyBtnCls =
-    "text-[10px] px-1.5 py-0.5 border border-[var(--border)] bg-[var(--card)] cursor-pointer hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors disabled:opacity-40";
+    ? "mt-4 p-5 border border-border/40 bg-card/40 backdrop-blur-xl rounded-2xl shadow-sm"
+    : "mt-4 p-5 border border-border/40 bg-card/40 backdrop-blur-xl rounded-2xl shadow-sm";
+  const labelCls = "font-medium text-xs text-muted mb-1 block";
+  const hintCls = "text-[11px] text-muted";
 
   /* Hidden file input for import */
   const fileInput = (
@@ -559,42 +563,47 @@ export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
 
           {hasWallet && !isRegistered && dropLive && !userMinted && (
             <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-2 px-3 py-2 border border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)]">
-                <span className="text-xs font-bold text-[var(--accent)]">
+              <div className="flex items-center gap-2 px-3 py-2 border border-accent/40 bg-accent/10 rounded-xl shadow-inner backdrop-blur-md">
+                <span className="text-xs font-bold text-accent tracking-widest drop-shadow-[0_0_8px_rgba(var(--accent),0.4)]">
                   {t("characterview.MINTISLIVE")}
                 </span>
-                <span className="text-[11px] text-[var(--muted)]">
+                <span className="text-[11px] text-muted font-medium">
                   {t("characterview.MiladyMaker")}
                   {(dropStatus?.currentSupply ?? 0) + 1} of{" "}
                   {dropStatus?.maxSupply ?? 2138}
                 </span>
               </div>
-              <div className="text-[12px] text-[var(--muted)]">
+              <div className="text-[12px] text-muted leading-relaxed">
                 {t("characterview.ClaimYourLimitedE")}{" "}
-                {dropStatus?.maxSupply ?? 2138} {t("characterview.total")}{" "}
-                {(dropStatus?.maxSupply ?? 2138) -
-                  (dropStatus?.currentSupply ?? 0)}{" "}
+                <strong className="text-txt">
+                  {dropStatus?.maxSupply ?? 2138}
+                </strong>{" "}
+                {t("characterview.total")}{" "}
+                <strong className="text-accent">
+                  {(dropStatus?.maxSupply ?? 2138) -
+                    (dropStatus?.currentSupply ?? 0)}
+                </strong>{" "}
                 {t("characterview.remaining")}
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  className="btn text-xs py-[5px] px-4 !mt-0"
+              <div className="flex items-center gap-3 mt-1">
+                <Button
+                  variant="default"
                   disabled={mintInProgress}
                   onClick={() => void mintFromDrop(false)}
+                  className="font-bold tracking-wide shadow-[0_0_15px_rgba(var(--accent),0.2)] hover:shadow-[0_0_20px_rgba(var(--accent),0.4)] transition-all"
                 >
                   {mintInProgress && !mintShiny ? "minting..." : "free mint"}
-                </button>
-                <button
-                  type="button"
-                  className="btn text-xs py-[5px] px-4 !mt-0"
+                </Button>
+                <Button
+                  variant="outline"
                   disabled={mintInProgress}
                   onClick={() => void mintFromDrop(true)}
+                  className="font-bold border-border/50 bg-bg/50 backdrop-blur-md hover:border-accent hover:text-accent transition-all shadow-sm"
                 >
                   {mintInProgress && mintShiny
                     ? "minting..."
                     : "shiny mint (0.1 ETH)"}
-                </button>
+                </Button>
               </div>
               {mintError && (
                 <span className="text-xs text-[var(--danger,#e74c3c)]">
@@ -602,7 +611,7 @@ export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
                 </span>
               )}
               {mintResult && (
-                <div className="text-xs text-[var(--ok,#16a34a)]">
+                <div className="text-xs text-green-400 bg-green-400/10 px-3 py-2 rounded-lg border border-green-400/20">
                   {t("characterview.MintedToken")}
                   {mintResult.agentId} {t("characterview.MiladyMaker1")}
                   {mintResult.mintNumber}
@@ -611,7 +620,7 @@ export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
                     href={`https://etherscan.io/tx/${mintResult.txHash}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="underline text-[var(--accent)]"
+                    className="underline text-accent hover:opacity-80 transition-opacity"
                   >
                     {t("characterview.viewTx")}
                   </a>
@@ -619,126 +628,130 @@ export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
               )}
             </div>
           )}
-
-          {isRegistered &&
-            (() => {
-              const currentName = characterDraft?.name || d.name || "";
-              const onChainName = registryStatus.agentName || "";
-              const nameOutOfSync =
-                currentName && onChainName && currentName !== onChainName;
-              return (
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2 text-[12px]">
-                    <span className="text-[var(--ok,#16a34a)] font-semibold">
-                      {t("characterview.Registered")}
-                    </span>
-                    <span className="text-[var(--muted)]">|</span>
-                    <span>
-                      {t("characterview.Token")}
-                      {registryStatus.tokenId}
-                    </span>
-                    <span className="text-[var(--muted)]">|</span>
-                    <span>{onChainName}</span>
-                  </div>
-                  {nameOutOfSync && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] text-[var(--warn,#f59e0b)]">
-                        {t("characterview.OnChainName")}
-                        {onChainName}
-                        {t("characterview.DiffersFrom")}
-                        {currentName}"
-                      </span>
-                      <button
-                        type="button"
-                        className="text-[10px] px-2 py-0.5 border border-[var(--accent)] text-[var(--accent)] bg-transparent cursor-pointer hover:bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] transition-colors"
-                        disabled={registryRegistering}
-                        onClick={() => void syncRegistryProfile()}
-                      >
-                        {registryRegistering ? "syncing..." : "sync to chain"}
-                      </button>
-                    </div>
-                  )}
-                  {registryError && (
-                    <span className="text-xs text-[var(--danger,#e74c3c)]">
-                      {registryError}
-                    </span>
-                  )}
-                  <a
-                    href={`https://etherscan.io/token/${registryStatus.walletAddress}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[11px] underline text-[var(--accent)]"
-                  >
-                    {t("characterview.viewOnEtherscan")}
-                  </a>
-                </div>
-              );
-            })()}
-
-          {hasWallet && userMinted && !isRegistered && (
-            <div className="text-[12px] text-[var(--ok,#16a34a)]">
-              {t("characterview.MintedFromCollecti")}
-            </div>
-          )}
         </div>
       )}
 
+      {isRegistered &&
+        (() => {
+          const currentName = characterDraft?.name || d.name || "";
+          const onChainName = registryStatus.agentName || "";
+          const nameOutOfSync =
+            currentName && onChainName && currentName !== onChainName;
+          return (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2 text-[12px]">
+                <span className="text-green-400 font-bold tracking-wide">
+                  {t("characterview.Registered")}
+                </span>
+                <span className="text-muted/50">|</span>
+                <span className="text-muted font-medium">
+                  {t("characterview.Token")}
+                  {registryStatus.tokenId}
+                </span>
+                <span className="text-muted/50">|</span>
+                <span className="text-txt font-semibold">{onChainName}</span>
+              </div>
+              {nameOutOfSync && (
+                <div className="flex items-center gap-3 bg-amber-400/10 border border-amber-400/20 px-3 py-2 rounded-lg">
+                  <span className="text-[11px] text-amber-400/80 font-medium tracking-wide">
+                    {t("characterview.OnChainName")}{" "}
+                    <strong className="text-amber-400">{onChainName}</strong>{" "}
+                    {t("characterview.DiffersFrom")}{" "}
+                    <strong className="text-amber-400">{currentName}"</strong>
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-[10px] h-6 px-2.5 border-amber-400/50 text-amber-400 hover:bg-amber-400/20 transition-all font-bold"
+                    disabled={registryRegistering}
+                    onClick={() => void syncRegistryProfile()}
+                  >
+                    {registryRegistering ? "syncing..." : "sync to chain"}
+                  </Button>
+                </div>
+              )}
+              {registryError && (
+                <span className="text-xs text-[var(--danger,#e74c3c)]">
+                  {registryError}
+                </span>
+              )}
+              <a
+                href={`https://etherscan.io/token/${registryStatus.walletAddress}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] underline text-[var(--accent)]"
+              >
+                {t("characterview.viewOnEtherscan")}
+              </a>
+            </div>
+          );
+        })()}
+
+      {hasWallet && userMinted && !isRegistered && (
+        <div className="text-[12px] text-[var(--ok,#16a34a)]">
+          {t("characterview.MintedFromCollecti")}
+        </div>
+      )}
       {/* ═══ SECTION 1: IDENTITY + PERSONALITY ═══ */}
       <div className={sectionCls}>
         {/* Header row: title + action buttons */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="font-bold text-sm">
+        <div className="flex items-center justify-between mb-5 border-b border-border/40 pb-3">
+          <div className="font-bold text-sm tracking-wide text-txt">
             {t("characterview.IdentityPersonali")}
           </div>
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              className={tinyBtnCls}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-[11px] font-medium border-border/50 bg-bg/50 backdrop-blur-sm shadow-inner hover:text-accent hover:border-accent/40 transition-all"
               onClick={() => void loadCharacter()}
               disabled={characterLoading}
             >
               {characterLoading ? "loading..." : "reload"}
-            </button>
-            <button
-              type="button"
-              className={tinyBtnCls}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-[11px] font-medium border-border/50 bg-bg/50 backdrop-blur-sm shadow-inner hover:text-accent hover:border-accent/40 transition-all"
               onClick={() => fileInputRef.current?.click()}
               title={t("characterview.importCharacterJso")}
             >
               {t("characterview.import")}
-            </button>
-            <button
-              className={tinyBtnCls}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-[11px] font-medium border-border/50 bg-bg/50 backdrop-blur-sm shadow-inner hover:text-accent hover:border-accent/40 transition-all"
               onClick={handleExport}
               title={t("characterview.exportAsCharacter")}
-              type="button"
             >
               {t("characterview.export")}
-            </button>
+            </Button>
           </div>
         </div>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-5">
           {/* Name */}
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("characterview.name")}</span>
-            <div className="flex items-center gap-2 max-w-[280px]">
-              <input
+            <div className="flex items-center gap-3 max-w-[320px]">
+              <Input
                 type="text"
                 value={d.name ?? ""}
                 maxLength={50}
                 placeholder={t("characterview.agentName")}
                 onChange={(e) => handleFieldEdit("name", e.target.value)}
-                className={`${inputCls} flex-1 text-[13px]`}
+                className="flex-1 bg-bg/50 backdrop-blur-md border-border/50 shadow-inner focus-visible:ring-accent/50 focus-visible:border-accent h-9 rounded-xl transition-all"
               />
-              <button
-                type="button"
-                className={tinyBtnCls}
+              <Button
+                variant="secondary"
+                size="sm"
+                className="h-9 px-4 font-bold border border-white/5 shadow-sm hover:shadow-[0_0_10px_rgba(255,255,255,0.1)] transition-all rounded-xl"
                 onClick={() => void handleRandomName()}
                 title={t("characterview.randomName")}
               >
                 {t("characterview.random")}
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -775,25 +788,26 @@ export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
           </div>
 
           {/* About me + adjectives + topics */}
-          <div className="mt-1 grid grid-cols-1 md:grid-cols-[1.2fr_1fr_1fr] gap-4">
-            <div className="flex flex-col gap-1 h-[220px]">
+          <div className="mt-1 grid grid-cols-1 md:grid-cols-[1.2fr_1fr_1fr] gap-5">
+            <div className="flex flex-col gap-2 h-[220px]">
               <div className="flex items-center justify-between">
                 <span className={labelCls}>{t("characterview.aboutMe")}</span>
-                <button
-                  type="button"
-                  className={tinyBtnCls}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-[10px] font-bold text-accent hover:bg-accent/10 border border-transparent hover:border-accent/30 transition-all rounded-md"
                   onClick={() => void handleGenerate("bio")}
                   disabled={generating === "bio"}
                 >
                   {generating === "bio" ? "generating..." : "regenerate"}
-                </button>
+                </Button>
               </div>
-              <textarea
+              <Textarea
                 value={bioText}
                 rows={4}
                 placeholder={t("characterview.describeWhoYourAg")}
                 onChange={(e) => handleFieldEdit("bio", e.target.value)}
-                className={`${textareaCls} flex-1 min-h-0`}
+                className="flex-1 min-h-[160px] bg-bg/50 backdrop-blur-md border-border/50 shadow-inner focus-visible:ring-accent/50 focus-visible:border-accent rounded-xl text-sm leading-relaxed p-3 custom-scrollbar"
               />
             </div>
             <TagEditor
@@ -815,27 +829,28 @@ export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
           </div>
 
           {/* System prompt below */}
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-2 mt-2">
             <div className="flex items-center justify-between">
               <span className={labelCls}>
                 {t("characterview.directionsAndThing")}
               </span>
-              <button
-                type="button"
-                className={tinyBtnCls}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-[10px] font-bold text-accent hover:bg-accent/10 border border-transparent hover:border-accent/30 transition-all rounded-md"
                 onClick={() => void handleGenerate("system")}
                 disabled={generating === "system"}
               >
                 {generating === "system" ? "generating..." : "regenerate"}
-              </button>
+              </Button>
             </div>
-            <textarea
+            <Textarea
               value={d.system ?? ""}
               rows={5}
               maxLength={10000}
               placeholder={t("characterview.writeInFirstPerso")}
               onChange={(e) => handleFieldEdit("system", e.target.value)}
-              className={`${textareaCls} font-[var(--mono)]`}
+              className="font-mono bg-bg/50 backdrop-blur-md border-border/50 shadow-inner focus-visible:ring-accent/50 focus-visible:border-accent rounded-xl text-xs leading-relaxed p-3 custom-scrollbar"
             />
           </div>
         </div>
@@ -843,26 +858,27 @@ export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
 
       {/* ═══ SECTION 2: STYLE ═══ */}
       <div className={sectionCls}>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-1.5">
-            <div className="font-bold text-sm">
+        <div className="flex items-center justify-between mb-4 border-b border-border/40 pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
+            <div className="font-bold text-sm tracking-wide text-txt">
               {t("characterview.StyleRules")}
             </div>
-            <span className="font-normal text-[11px] text-[var(--muted)]">
+            <span className="font-medium text-[11px] text-muted tracking-wide bg-black/10 px-2 py-0.5 rounded-full border border-white/5">
               {t("characterview.CommunicationGuid")}
             </span>
           </div>
-          <button
-            type="button"
-            className={tinyBtnCls}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-[11px] font-bold border-border/50 bg-bg/50 backdrop-blur-sm shadow-inner hover:text-accent hover:border-accent/40 transition-all text-accent"
             onClick={() => void handleGenerate("style", "replace")}
             disabled={generating === "style"}
           >
             {generating === "style" ? "generating..." : "regenerate"}
-          </button>
+          </Button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
           {(["all", "chat", "post"] as const).map((key) => {
             const val =
               key === "all"
@@ -871,16 +887,16 @@ export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
                   ? styleChatText
                   : stylePostText;
             return (
-              <div key={key} className="flex flex-col gap-1">
-                <span className="font-semibold text-[11px] text-[var(--muted)]">
+              <div key={key} className="flex flex-col gap-2">
+                <span className="font-bold text-[11px] text-muted uppercase tracking-widest pl-1">
                   {key}
                 </span>
-                <textarea
+                <Textarea
                   value={val}
-                  rows={3}
+                  rows={4}
                   placeholder={`${key} style rules, one per line`}
                   onChange={(e) => handleStyleEdit(key, e.target.value)}
-                  className={textareaCls}
+                  className="bg-bg/50 backdrop-blur-md border-border/50 shadow-inner focus-visible:ring-accent/50 focus-visible:border-accent rounded-xl text-xs leading-relaxed p-3 custom-scrollbar"
                 />
               </div>
             );
@@ -890,25 +906,26 @@ export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
 
       {/* ═══ SECTION 3: EXAMPLES ═══ */}
       <div className={sectionCls}>
-        <div className="font-bold text-sm mb-3">
+        <div className="font-bold text-sm mb-4 border-b border-border/40 pb-3 text-txt tracking-wide">
           {t("characterview.Examples")}
         </div>
 
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-5">
           {/* Chat Examples */}
           <details className="group">
-            <summary className="flex items-center gap-1.5 cursor-pointer select-none text-xs font-semibold list-none [&::-webkit-details-marker]:hidden">
-              <span className="inline-block transition-transform group-open:rotate-90">
+            <summary className="flex items-center gap-2 cursor-pointer select-none text-xs font-bold list-none [&::-webkit-details-marker]:hidden">
+              <span className="inline-block transition-transform group-open:rotate-90 text-accent">
                 &#9654;
               </span>
 
               {t("characterview.chatExamples")}
-              <span className="font-normal text-[var(--muted)]">
+              <span className="font-medium text-[11px] text-muted bg-black/10 px-2 py-0.5 rounded-full border border-white/5 ml-1">
                 {t("characterview.HowTheAgentResp")}
               </span>
-              <button
-                type="button"
-                className={`${tinyBtnCls} ml-auto`}
+              <Button
+                variant="outline"
+                size="sm"
+                className="ml-auto h-7 text-[11px] font-bold border-border/50 bg-bg/50 backdrop-blur-sm shadow-inner hover:text-accent hover:border-accent/40 transition-all text-accent"
                 onClick={(e) => {
                   e.preventDefault();
                   void handleGenerate("chatExamples", "replace");
@@ -916,23 +933,24 @@ export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
                 disabled={generating === "chatExamples"}
               >
                 {generating === "chatExamples" ? "generating..." : "generate"}
-              </button>
+              </Button>
             </summary>
-            <div className="flex flex-col gap-2 mt-3">
+            <div className="flex flex-col gap-3 mt-4">
               {(d.messageExamples ?? []).map((convo, ci) => (
                 <div
                   key={convo.examples
                     .map((msg) => `${msg.name}:${msg.content?.text ?? ""}`)
                     .join("|")}
-                  className="p-2.5 border border-[var(--border)] bg-[var(--bg-muted)]"
+                  className="p-4 border border-border/40 bg-black/10 rounded-xl shadow-inner backdrop-blur-sm"
                 >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[10px] text-[var(--muted)] font-semibold">
+                  <div className="flex items-center justify-between mb-3 border-b border-border/30 pb-2">
+                    <span className="text-[11px] text-muted font-bold tracking-widest uppercase">
                       {t("characterview.conversation")} {ci + 1}
                     </span>
-                    <button
-                      type="button"
-                      className="text-[10px] text-[var(--muted)] hover:text-[var(--danger,#e74c3c)] cursor-pointer"
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-[10px] text-muted hover:text-danger hover:bg-danger/10 font-bold transition-all"
                       onClick={() => {
                         const updated = [...(d.messageExamples ?? [])];
                         updated.splice(ci, 1);
@@ -940,41 +958,45 @@ export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
                       }}
                     >
                       {t("characterview.remove")}
-                    </button>
+                    </Button>
                   </div>
-                  {convo.examples.map((msg, mi) => (
-                    <div
-                      key={`${msg.name}:${msg.content?.text ?? ""}`}
-                      className="flex gap-2 mb-1 last:mb-0"
-                    >
-                      <span
-                        className={`text-[10px] font-semibold shrink-0 w-16 pt-0.5 ${msg.name === "{{user1}}" ? "text-[var(--muted)]" : "text-[var(--accent)]"}`}
+                  <div className="flex flex-col gap-2">
+                    {convo.examples.map((msg, mi) => (
+                      <div
+                        key={`${msg.name}:${msg.content?.text ?? ""}`}
+                        className="flex gap-3 items-center"
                       >
-                        {msg.name === "{{user1}}" ? "user" : "agent"}
-                      </span>
-                      <input
-                        type="text"
-                        value={msg.content?.text ?? ""}
-                        onChange={(e) => {
-                          const updated = [...(d.messageExamples ?? [])];
-                          const convoClone = {
-                            examples: [...updated[ci].examples],
-                          };
-                          convoClone.examples[mi] = {
-                            ...convoClone.examples[mi],
-                            content: { text: e.target.value },
-                          };
-                          updated[ci] = convoClone;
-                          handleFieldEdit("messageExamples", updated);
-                        }}
-                        className={`${inputCls} flex-1`}
-                      />
-                    </div>
-                  ))}
+                        <span
+                          className={`text-[11px] font-bold shrink-0 w-12 text-right uppercase tracking-wider ${msg.name === "{{user1}}" ? "text-muted" : "text-accent"}`}
+                        >
+                          {msg.name === "{{user1}}" ? "user" : "agent"}
+                        </span>
+                        <Input
+                          type="text"
+                          value={msg.content?.text ?? ""}
+                          onChange={(e) => {
+                            const updated = [...(d.messageExamples ?? [])];
+                            const convoClone = {
+                              examples: [...updated[ci].examples],
+                            };
+                            convoClone.examples[mi] = {
+                              ...convoClone.examples[mi],
+                              content: { text: e.target.value },
+                            };
+                            updated[ci] = convoClone;
+                            handleFieldEdit("messageExamples", updated);
+                          }}
+                          className="flex-1 bg-bg/50 backdrop-blur-md border-border/50 shadow-inner focus-visible:ring-accent/50 focus-visible:border-accent h-9 rounded-lg transition-all text-xs"
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
               {(d.messageExamples ?? []).length === 0 && (
-                <div className={`${hintCls} py-2`}>
+                <div
+                  className={`${hintCls} py-3 bg-black/5 rounded-xl border border-white/5 text-center`}
+                >
                   {t("characterview.noChatExamplesYet")}
                 </div>
               )}
@@ -983,18 +1005,19 @@ export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
 
           {/* Post Examples */}
           <details className="group">
-            <summary className="flex items-center gap-1.5 cursor-pointer select-none text-xs font-semibold list-none [&::-webkit-details-marker]:hidden">
-              <span className="inline-block transition-transform group-open:rotate-90">
+            <summary className="flex items-center gap-2 cursor-pointer select-none text-xs font-bold list-none [&::-webkit-details-marker]:hidden">
+              <span className="inline-block transition-transform group-open:rotate-90 text-accent">
                 &#9654;
               </span>
 
               {t("characterview.postExamples")}
-              <span className="font-normal text-[var(--muted)]">
+              <span className="font-medium text-[11px] text-muted bg-black/10 px-2 py-0.5 rounded-full border border-white/5 ml-1">
                 {t("characterview.SocialMediaVoice")}
               </span>
-              <button
-                type="button"
-                className={`${tinyBtnCls} ml-auto`}
+              <Button
+                variant="outline"
+                size="sm"
+                className="ml-auto h-7 text-[11px] font-bold border-border/50 bg-bg/50 backdrop-blur-sm shadow-inner hover:text-accent hover:border-accent/40 transition-all text-accent"
                 onClick={(e) => {
                   e.preventDefault();
                   void handleGenerate("postExamples", "replace");
@@ -1002,12 +1025,12 @@ export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
                 disabled={generating === "postExamples"}
               >
                 {generating === "postExamples" ? "generating..." : "generate"}
-              </button>
+              </Button>
             </summary>
-            <div className="flex flex-col gap-1.5 mt-3">
+            <div className="flex flex-col gap-2 mt-4">
               {(d.postExamples ?? []).map((post: string, pi: number) => (
-                <div key={post} className="flex gap-2 items-start">
-                  <input
+                <div key={post} className="flex gap-2 items-center">
+                  <Input
                     type="text"
                     value={post}
                     onChange={(e) => {
@@ -1015,36 +1038,40 @@ export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
                       updated[pi] = e.target.value;
                       handleFieldEdit("postExamples", updated);
                     }}
-                    className={`${inputCls} flex-1`}
+                    className="flex-1 bg-bg/50 backdrop-blur-md border-border/50 shadow-inner focus-visible:ring-accent/50 focus-visible:border-accent h-9 rounded-lg transition-all text-xs"
                   />
-                  <button
-                    type="button"
-                    className="text-[10px] text-[var(--muted)] hover:text-[var(--danger,#e74c3c)] cursor-pointer shrink-0 py-1.5"
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted hover:text-danger hover:bg-danger/10"
                     onClick={() => {
                       const updated = [...(d.postExamples ?? [])];
                       updated.splice(pi, 1);
                       handleFieldEdit("postExamples", updated);
                     }}
                   >
-                    {t("characterview.Times")}
-                  </button>
+                    ×
+                  </Button>
                 </div>
               ))}
               {(d.postExamples ?? []).length === 0 && (
-                <div className={`${hintCls} py-2`}>
+                <div
+                  className={`${hintCls} py-3 bg-black/5 rounded-xl border border-white/5 text-center`}
+                >
                   {t("characterview.noPostExamplesYet")}
                 </div>
               )}
-              <button
-                type="button"
-                className="text-[11px] text-[var(--muted)] hover:text-[var(--accent)] cursor-pointer self-start mt-0.5"
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-[11px] font-bold text-accent hover:bg-accent/10 border border-transparent hover:border-accent/30 transition-all rounded-md mt-1 self-start"
                 onClick={() => {
                   const updated = [...(d.postExamples ?? []), ""];
                   handleFieldEdit("postExamples", updated);
                 }}
               >
-                {t("characterview.AddPost")}
-              </button>
+                + {t("characterview.AddPost")}
+              </Button>
             </div>
           </details>
         </div>
@@ -1052,21 +1079,23 @@ export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
 
       {/* ═══ SECTION 4: VOICE ═══ */}
       <div className={sectionCls}>
-        <div className="font-bold text-sm mb-3">{t("characterview.Voice")}</div>
+        <div className="font-bold text-sm mb-4 border-b border-border/40 pb-3 text-txt tracking-wide">
+          {t("characterview.Voice")}
+        </div>
 
         {voiceLoading ? (
-          <div className="text-center py-4 text-[var(--muted)] text-[13px]">
+          <div className="text-center py-8 text-muted text-[13px] bg-black/5 rounded-xl border border-white/5 animate-pulse">
             {t("characterview.LoadingVoiceConfig")}
           </div>
         ) : (
-          <div className="flex flex-col gap-4">
-            <div className="text-xs text-[var(--muted)]">
+          <div className="flex flex-col gap-5">
+            <div className="text-xs text-muted/80 leading-relaxed max-w-lg">
               {t("characterview.ChooseTheSpeaking")}
             </div>
 
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-2">
               <span className={labelCls}>{t("characterview.voice")}</span>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <ThemedSelect
                   value={
                     selectedPresetId === "custom"
@@ -1125,50 +1154,52 @@ export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
                   );
                   if (!activePreset) return null;
                   return voiceTesting ? (
-                    <button
-                      className={tinyBtnCls}
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="h-9 px-4 font-bold rounded-xl shadow-sm"
                       onClick={handleStopTest}
-                      type="button"
                     >
                       {t("characterview.stop")}
-                    </button>
+                    </Button>
                   ) : (
-                    <button
-                      type="button"
-                      className={tinyBtnCls}
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="h-9 px-4 font-bold border border-white/5 shadow-sm hover:shadow-[0_0_10px_rgba(255,255,255,0.1)] transition-all rounded-xl"
                       onClick={() => handleTestVoice(activePreset.previewUrl)}
                     >
                       {t("characterview.preview")}
-                    </button>
+                    </Button>
                   );
                 })()}
               </div>
             </div>
 
             {selectedPresetId === "custom" && (
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-2">
                 <span className={labelCls}>{t("characterview.voiceID")}</span>
-                <input
+                <Input
                   type="text"
                   value={voiceConfig.elevenlabs?.voiceId ?? ""}
                   placeholder={t("characterview.pasteElevenLabsVoi")}
                   onChange={(e) =>
                     handleVoiceFieldChange("voiceId", e.target.value)
                   }
-                  className={`${inputCls} w-full font-[var(--mono)] text-[13px]`}
+                  className="w-full font-mono text-[13px] bg-bg/50 backdrop-blur-md border-border/50 shadow-inner focus-visible:ring-accent/50 focus-visible:border-accent h-9 rounded-xl transition-all"
                 />
               </div>
             )}
 
             <details className="group">
-              <summary className="flex items-center gap-1.5 cursor-pointer select-none text-xs font-semibold list-none [&::-webkit-details-marker]:hidden">
-                <span className="inline-block transition-transform group-open:rotate-90">
+              <summary className="flex items-center gap-2 cursor-pointer select-none text-xs font-bold list-none [&::-webkit-details-marker]:hidden bg-black/5 p-3 rounded-xl border border-white/5 hover:bg-black/10 transition-colors">
+                <span className="inline-block transition-transform group-open:rotate-90 text-accent">
                   &#9654;
                 </span>
 
                 {t("characterview.advancedVoiceSetti")}
               </summary>
-              <div className="mt-3">
+              <div className="mt-4 p-4 border border-border/20 rounded-xl bg-black/10 shadow-inner">
                 <ConfigRenderer
                   schema={
                     {
@@ -1262,10 +1293,10 @@ export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
               </div>
             </details>
 
-            <div className="flex items-center gap-3 mt-2 pt-3 border-t border-[var(--border)]">
-              <button
-                type="button"
-                className={`btn text-xs py-[5px] px-4 !mt-0 ${voiceSaveSuccess ? "!bg-[var(--ok,#16a34a)] !border-[var(--ok,#16a34a)]" : ""}`}
+            <div className="flex items-center gap-3 mt-4 pt-4 border-t border-border/40">
+              <Button
+                size="sm"
+                className={`font-bold tracking-wide rounded-xl shadow-sm hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-all ${voiceSaveSuccess ? "bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30" : ""}`}
                 onClick={() => void handleVoiceSave()}
                 disabled={voiceSaving}
               >
@@ -1274,9 +1305,9 @@ export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
                   : voiceSaveSuccess
                     ? "saved"
                     : "save voice"}
-              </button>
+              </Button>
               {voiceSaveError && (
-                <span className="text-xs text-[var(--danger,#e74c3c)]">
+                <span className="text-xs text-danger font-medium">
                   {voiceSaveError}
                 </span>
               )}
@@ -1287,25 +1318,25 @@ export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
 
       {/* ═══ SAVE BAR ═══ */}
       <div className={sectionCls}>
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            className="btn text-[13px] py-2 px-6 !mt-0"
-            disabled={characterSaving}
-            onClick={() => void handleSaveCharacter()}
-          >
-            {characterSaving ? "saving..." : "save character"}
-          </button>
+        <div className="flex items-center justify-end gap-4">
           {characterSaveSuccess && (
-            <span className="text-xs text-[var(--ok,#16a34a)]">
+            <span className="text-xs text-green-400 font-bold bg-green-400/10 px-3 py-1.5 rounded-lg border border-green-400/20">
               {characterSaveSuccess}
             </span>
           )}
           {characterSaveError && (
-            <span className="text-xs text-[var(--danger,#e74c3c)]">
+            <span className="text-xs text-danger bg-danger/10 px-3 py-1.5 rounded-lg border border-danger/20 font-medium">
               {characterSaveError}
             </span>
           )}
+          <Button
+            size="lg"
+            className="font-bold tracking-wider px-8 shadow-[0_0_15px_rgba(var(--accent),0.2)] hover:shadow-[0_0_20px_rgba(var(--accent),0.4)] transition-all text-[13px] rounded-xl"
+            disabled={characterSaving}
+            onClick={() => void handleSaveCharacter()}
+          >
+            {characterSaving ? "saving..." : "SAVE CHARACTER"}
+          </Button>
         </div>
       </div>
     </div>

@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useApp } from "../AppContext";
 import { ConversationListItem } from "./conversations/ConversationListItem";
 
-export type ConversationsSidebarVariant = "default" | "game-modal";
+type ConversationsSidebarVariant = "default" | "game-modal";
 
 interface ConversationsSidebarProps {
   mobile?: boolean;
@@ -124,7 +124,9 @@ export function ConversationsSidebar({
 
       <div
         className={
-          isGameModal ? "p-3 border-b border-white/10 shrink-0" : "p-3 border-b border-border"
+          isGameModal
+            ? "p-3 border-b border-white/10 shrink-0"
+            : "p-3 border-b border-border"
         }
       >
         <button
@@ -145,7 +147,9 @@ export function ConversationsSidebar({
 
       <div
         className={
-          isGameModal ? "flex-1 overflow-y-auto p-2 space-y-1 min-h-0 custom-scrollbar" : "flex-1 overflow-y-auto py-1"
+          isGameModal
+            ? "flex-1 overflow-y-auto p-2 space-y-1 min-h-0 custom-scrollbar"
+            : "flex-1 overflow-y-auto py-1"
         }
       >
         {sortedConversations.length === 0 ? (

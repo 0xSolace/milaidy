@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useApp } from "../AppContext";
 import {
   client,
   type SecurityAuditEntry,
   type SecurityAuditEventType,
   type SecurityAuditFilter,
   type SecurityAuditSeverity,
-} from "../api-client";
-import { formatDateTime } from "./shared/format";
+} from "@milady/app-core/api";
+import { formatDateTime } from "@milady/app-core/components";
+import { Button, Input } from "@milady/ui";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useApp } from "../AppContext";
 
 const EVENT_TYPES: SecurityAuditEventType[] = [
   "sandbox_mode_transition",
@@ -182,29 +183,30 @@ export function SecurityAuditView() {
           ))}
         </select>
 
-        <input
+        <Input
           type="text"
-          className="text-xs px-3 py-1.5 border border-border bg-card text-txt min-w-56"
+          className="text-xs px-3 py-1.5 h-8 border-border bg-card text-txt min-w-56 shadow-sm"
           placeholder={t("securityauditview.SinceEpochMsOrI")}
           value={sinceFilter}
           onChange={(event) => setSinceFilter(event.target.value)}
           aria-label="Since timestamp"
         />
 
-        <input
+        <Input
           type="number"
           min={MIN_LIMIT}
           max={MAX_LIMIT}
-          className="text-xs px-3 py-1.5 border border-border bg-card text-txt w-24"
+          className="text-xs px-3 py-1.5 h-8 border-border bg-card text-txt w-24 shadow-sm"
           value={limitFilter}
           onChange={(event) => setLimitFilter(event.target.value)}
           aria-label="Limit"
         />
 
         {hasFilters && (
-          <button
-            type="button"
-            className="text-xs px-3 py-1.5 border border-border bg-card text-txt cursor-pointer hover:border-accent hover:text-accent"
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs px-3 py-1.5 h-8 bg-card text-txt hover:text-accent shadow-sm"
             onClick={() => {
               setTypeFilter("");
               setSeverityFilter("");
@@ -213,16 +215,17 @@ export function SecurityAuditView() {
             }}
           >
             {t("securityauditview.ClearFilters")}
-          </button>
+          </Button>
         )}
 
-        <button
-          type="button"
-          className="text-xs px-3 py-1.5 border border-border bg-card text-txt cursor-pointer hover:border-accent hover:text-accent"
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-xs px-3 py-1.5 h-8 bg-card text-txt hover:text-accent shadow-sm"
           onClick={() => void refresh()}
         >
           {t("securityauditview.Refresh")}
-        </button>
+        </Button>
 
         <label className="ml-auto inline-flex items-center gap-2 text-xs text-muted">
           <input

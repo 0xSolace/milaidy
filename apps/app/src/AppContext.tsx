@@ -5,58 +5,6 @@
  */
 
 import {
-  type ActionNotice,
-  AGENT_READY_TIMEOUT_MS,
-  AGENT_TRANSFER_MIN_PASSWORD_LENGTH,
-  AppContext,
-  type AppContextValue,
-  type AppState,
-  asApiLikeError,
-  type ChatTurnUsage,
-  computeStreamingDelta,
-  formatSearchBullet,
-  formatStartupErrorDetail,
-  type GamePostMessageAuthPayload,
-  LIFECYCLE_MESSAGES,
-  type LifecycleAction,
-  type LoadConversationMessagesResult,
-  loadAvatarIndex,
-  loadChatAvatarVisible,
-  loadChatMode,
-  loadChatVoiceMuted,
-  loadUiLanguage,
-  loadUiShellMode,
-  normalizeAvatarIndex,
-  normalizeCustomActionName,
-  normalizeUiShellMode,
-  ONBOARDING_PERMISSION_LABELS,
-  type OnboardingNextOptions,
-  type OnboardingStep,
-  parseAgentStatusEvent,
-  parseCustomActionParams,
-  parseProactiveMessageEvent,
-  parseSlashCommandInput,
-  parseStreamEventEnvelopeEvent,
-  type StartupErrorState,
-  type StartupPhase,
-  saveAvatarIndex,
-  saveChatAvatarVisible,
-  saveChatMode,
-  saveChatVoiceMuted,
-  saveUiLanguage,
-  saveUiShellMode,
-  shouldApplyFinalStreamText,
-  type UiShellMode,
-} from "@milady/app-core/state";
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import {
   type AgentStartupDiagnostics,
   type AgentStatus,
   type BscTradeExecuteRequest,
@@ -111,8 +59,68 @@ import {
   type WalletTradingProfileWindow,
   type WhitelistStatus,
   type WorkbenchOverview,
-} from "./api-client";
-import { resolveApiUrl } from "./asset-url";
+} from "@milady/app-core/api";
+import { getBackendStartupTimeoutMs } from "@milady/app-core/bridge";
+import {
+  createTranslator,
+  normalizeLanguage,
+  t as translateText,
+  type UiLanguage,
+} from "@milady/app-core/i18n";
+import { pathForTab, type Tab, tabFromPath } from "@milady/app-core/navigation";
+import {
+  type ActionNotice,
+  AGENT_READY_TIMEOUT_MS,
+  AGENT_TRANSFER_MIN_PASSWORD_LENGTH,
+  AppContext,
+  type AppContextValue,
+  type AppState,
+  asApiLikeError,
+  type ChatTurnUsage,
+  computeStreamingDelta,
+  formatSearchBullet,
+  formatStartupErrorDetail,
+  type GamePostMessageAuthPayload,
+  LIFECYCLE_MESSAGES,
+  type LifecycleAction,
+  type LoadConversationMessagesResult,
+  loadAvatarIndex,
+  loadChatAvatarVisible,
+  loadChatMode,
+  loadChatVoiceMuted,
+  loadUiLanguage,
+  loadUiShellMode,
+  normalizeAvatarIndex,
+  normalizeCustomActionName,
+  normalizeUiShellMode,
+  ONBOARDING_PERMISSION_LABELS,
+  type OnboardingNextOptions,
+  type OnboardingStep,
+  parseAgentStatusEvent,
+  parseCustomActionParams,
+  parseProactiveMessageEvent,
+  parseSlashCommandInput,
+  parseStreamEventEnvelopeEvent,
+  type StartupErrorState,
+  type StartupPhase,
+  saveAvatarIndex,
+  saveChatAvatarVisible,
+  saveChatMode,
+  saveChatVoiceMuted,
+  saveUiLanguage,
+  saveUiShellMode,
+  shouldApplyFinalStreamText,
+  type UiShellMode,
+} from "@milady/app-core/state";
+import { resolveApiUrl } from "@milady/app-core/utils";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   type AutonomyEventStore,
   type AutonomyRunHealthMap,
@@ -121,20 +129,12 @@ import {
   markPendingAutonomyGapsPartial,
   mergeAutonomyEvents,
 } from "./autonomy-events";
-import { getBackendStartupTimeoutMs } from "./bridge/electrobun-runtime";
 import {
   expandSavedCustomCommand,
   loadSavedCustomCommands,
   normalizeSlashCommandName,
 } from "./chat-commands";
-import {
-  createTranslator,
-  normalizeLanguage,
-  t as translateText,
-  type UiLanguage,
-} from "./i18n";
 import { isLifoPopoutMode } from "./lifo-popout";
-import { pathForTab, type Tab, tabFromPath } from "./navigation";
 import { getMissingOnboardingPermissions } from "./onboarding-permissions";
 import { mapServerTasksToSessions } from "./pty-session-hydrate";
 
@@ -197,6 +197,7 @@ export {
   useApp,
   VRM_COUNT,
 } from "@milady/app-core/state";
+
 import { ConfirmModal, useConfirm } from "@milady/app-core/components";
 
 // ── Provider ───────────────────────────────────────────────────────────
@@ -469,19 +470,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     client.saveStreamSettings({ avatarIndex: normalized }).catch(() => { });
   }, []);
 
-  // --- Cloud ---
-  const [cloudEnabled, setCloudEnabled] = useState(false);
-  const [cloudConnected, setCloudConnected] = useState(false);
-  const [cloudCredits, setCloudCredits] = useState<number | null>(null);
-  const [cloudCreditsLow, setCloudCreditsLow] = useState(false);
-  const [cloudCreditsCritical, setCloudCreditsCritical] = useState(false);
-  const [cloudTopUpUrl, setCloudTopUpUrl] = useState(
-    "https://www.elizacloud.ai/dashboard/settings?tab=billing",
+  // --- Milady Cloud ---
+  const [miladyCloudEnabled, setMiladyCloudEnabled] = useState(false);
+  const [miladyCloudConnected, setMiladyCloudConnected] = useState(false);
+  const [miladyCloudCredits, setMiladyCloudCredits] = useState<number | null>(null);
+  const [miladyCloudCreditsLow, setMiladyCloudCreditsLow] = useState(false);
+  const [miladyCloudCreditsCritical, setMiladyCloudCreditsCritical] = useState(false);
+  const [miladyCloudTopUpUrl, setMiladyCloudTopUpUrl] = useState(
+    "/cloud/billing",
   );
-  const [cloudUserId, setCloudUserId] = useState<string | null>(null);
-  const [cloudLoginBusy, setCloudLoginBusy] = useState(false);
-  const [cloudLoginError, setCloudLoginError] = useState<string | null>(null);
-  const [cloudDisconnecting, setCloudDisconnecting] = useState(false);
+  const [miladyCloudUserId, setMiladyCloudUserId] = useState<string | null>(null);
+  const [miladyCloudLoginBusy, setMiladyCloudLoginBusy] = useState(false);
+  const [miladyCloudLoginError, setMiladyCloudLoginError] = useState<string | null>(null);
+  const [miladyCloudDisconnecting, setMiladyCloudDisconnecting] = useState(false);
 
   // --- Updates ---
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null);
@@ -596,7 +597,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [onboardingSubscriptionTab, setOnboardingSubscriptionTab] = useState<
     "token" | "oauth"
   >("token");
-  const [onboardingElizaCloudTab, setOnboardingElizaCloudTab] = useState<
+  const [onboardingMiladyCloudTab, setOnboardingMiladyCloudTab] = useState<
     "login" | "apikey"
   >("login");
   const [onboardingSelectedChains, setOnboardingSelectedChains] = useState<
@@ -681,8 +682,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // --- Refs for timers ---
   const actionNoticeTimer = useRef<number | null>(null);
-  const cloudPollInterval = useRef<number | null>(null);
-  const cloudLoginPollTimer = useRef<number | null>(null);
+  const miladyCloudPollInterval = useRef<number | null>(null);
+  const miladyCloudLoginPollTimer = useRef<number | null>(null);
   const prevAgentStateRef = useRef<string | null>(null);
   const lifecycleBusyRef = useRef(false);
   const lifecycleActionRef = useRef<LifecycleAction | null>(null);
@@ -701,7 +702,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   /** Synchronous lock for wallet API key save to prevent duplicate clicks in the same tick. */
   const walletApiKeySavingRef = useRef(false);
   /** Synchronous lock for cloud login action to prevent duplicate clicks in the same tick. */
-  const cloudLoginBusyRef = useRef(false);
+  const miladyCloudLoginBusyRef = useRef(false);
   /** Synchronous lock for update channel changes to prevent duplicate submits. */
   const updateChannelSavingRef = useRef(false);
   /** Synchronous lock for onboarding completion submit to prevent duplicate clicks. */
@@ -1331,36 +1332,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const pollCloudCredits = useCallback(async () => {
     const cloudStatus = await client.getCloudStatus().catch(() => null);
     if (!cloudStatus) {
-      setCloudConnected(false);
-      setCloudCredits(null);
-      setCloudCreditsLow(false);
-      setCloudCreditsCritical(false);
+      setMiladyCloudConnected(false);
+      setMiladyCloudCredits(null);
+      setMiladyCloudCreditsLow(false);
+      setMiladyCloudCreditsCritical(false);
       return;
     }
     // A cached cloud API key represents a completed login and should be shared
     // across all views, even before runtime CLOUD_AUTH fully initializes.
     const isConnected = Boolean(cloudStatus.connected || cloudStatus.hasApiKey);
-    setCloudEnabled(Boolean(cloudStatus.enabled ?? false));
-    setCloudConnected(Boolean(isConnected));
-    setCloudUserId(cloudStatus.userId ?? null);
-    if (cloudStatus.topUpUrl) setCloudTopUpUrl(cloudStatus.topUpUrl);
+    setMiladyCloudEnabled(Boolean(cloudStatus.enabled ?? false));
+    setMiladyCloudConnected(isConnected);
+    setMiladyCloudUserId(cloudStatus.userId ?? null);
+    if (cloudStatus.topUpUrl) setMiladyCloudTopUpUrl(cloudStatus.topUpUrl);
     if (isConnected) {
       const credits = await client.getCloudCredits().catch(() => null);
       if (credits && typeof credits.balance === "number") {
-        setCloudCredits(credits.balance);
-        setCloudCreditsLow(credits.low ?? false);
-        setCloudCreditsCritical(credits.critical ?? false);
-        if (credits.topUpUrl) setCloudTopUpUrl(credits.topUpUrl);
+        setMiladyCloudCredits(credits.balance);
+        setMiladyCloudCreditsLow(credits.low ?? false);
+        setMiladyCloudCreditsCritical(credits.critical ?? false);
+        if (credits.topUpUrl) setMiladyCloudTopUpUrl(credits.topUpUrl);
       } else {
-        setCloudCredits(null);
-        setCloudCreditsLow(false);
-        setCloudCreditsCritical(false);
-        if (credits?.topUpUrl) setCloudTopUpUrl(credits.topUpUrl);
+        setMiladyCloudCredits(null);
+        setMiladyCloudCreditsLow(false);
+        setMiladyCloudCreditsCritical(false);
+        if (credits?.topUpUrl) setMiladyCloudTopUpUrl(credits.topUpUrl);
       }
     } else {
-      setCloudCredits(null);
-      setCloudCreditsLow(false);
-      setCloudCreditsCritical(false);
+      setMiladyCloudCredits(null);
+      setMiladyCloudCreditsLow(false);
+      setMiladyCloudCreditsCritical(false);
     }
   }, []);
 
@@ -1444,7 +1445,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (action === "resume") {
       const confirmed = await confirmModal({
         title: "Enable Autonomous Mode",
-        message: "Are you sure you want to enable autonomous mode? Auto mode runs the agent continuously and can be expensive.",
+        message:
+          "Are you sure you want to enable autonomous mode? Auto mode runs the agent continuously and can be expensive.",
         confirmLabel: "Enable",
       });
       if (!confirmed) return;
@@ -1471,6 +1473,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [
     agentStatus,
     beginLifecycleAction,
+    confirmModal,
     finishLifecycleAction,
     setActionNotice,
   ]);
@@ -1764,7 +1767,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         const customAction = customActions.find(
           (action) =>
-            normalizeCustomActionName(action.name).toLowerCase() === slash.name,
+            `/${normalizeCustomActionName(action.name).toLowerCase()}` === slash.name,
         );
         if (customAction) {
           const { params, missingRequired } = parseCustomActionParams(
@@ -3192,7 +3195,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }> = [];
     if (isLocalMode) {
       for (const chain of onboardingSelectedChains) {
-        const rpcProvider = onboardingRpcSelections[chain] || "elizacloud";
+        const rpcProvider = onboardingRpcSelections[chain] || "miladycloud";
         const rpcApiKey =
           onboardingRpcKeys[`${chain}:${rpcProvider}`] || undefined;
         inventoryProviders.push({ chain, rpcProvider, rpcApiKey });
@@ -3292,21 +3295,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setTab,
   ]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: setState and onboardingStyle are stable/managed elsewhere
+  // biome-ignore lint/correctness/useExhaustiveDependencies: t is stable but defined later
   const handleOnboardingNext = useCallback(
     async (options?: OnboardingNextOptions) => {
       const opts = onboardingOptions;
       switch (onboardingStep) {
         case "welcome":
-          // Skip name step — default name is "Eliza"
-          setOnboardingStep("ownerName");
-          break;
-        case "name":
-          // Legacy fallback — should not reach here
-          setOnboardingStep("ownerName");
-          break;
-        case "ownerName":
-          // Skip avatar and style steps — use defaults
+        case "language":
           // Auto-select first style if none chosen
           if (!onboardingStyle && onboardingOptions?.styles?.length) {
             setState(
@@ -3324,23 +3319,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             setOnboardingStep("setupMode");
           }
           break;
-        case "avatar":
-          // Legacy fallback
-          setOnboardingStep("setupMode");
-          break;
-        case "style": {
-          // Legacy fallback
-          if (
-            dropStatus?.dropEnabled &&
-            !dropStatus.userHasMinted &&
-            !dropStatus.mintedOut
-          ) {
-            setOnboardingStep("mint");
-          } else {
-            setOnboardingStep("setupMode");
-          }
-          break;
-        }
+
         case "mint":
           setOnboardingStep("setupMode");
           break;
@@ -3373,11 +3352,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setOnboardingStep("modelSelection");
           break;
         case "modelSelection":
-          if (cloudConnected) {
-            setOnboardingStep("connectors");
-          } else {
-            setOnboardingStep("cloudLogin");
+          if (miladyCloudConnected) {
+            setTab("chat");
+            break;
           }
+          setOnboardingStep("cloudLogin");
           break;
         case "cloudLogin":
           setOnboardingStep("connectors");
@@ -3433,34 +3412,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
       onboardingOptions,
       onboardingRunMode,
       onboardingSetupMode,
-      cloudConnected,
+      miladyCloudConnected,
       setActionNotice,
       handleOnboardingFinish,
       dropStatus?.dropEnabled,
       dropStatus?.userHasMinted,
       dropStatus?.mintedOut,
+      setTab,
     ],
   );
 
   const handleOnboardingBack = useCallback(() => {
+    if (onboardingRunMode === "cloud") {
+      if (miladyCloudLoginPollTimer.current) {
+        clearInterval(miladyCloudLoginPollTimer.current);
+        miladyCloudLoginPollTimer.current = null;
+      }
+      miladyCloudLoginBusyRef.current = false;
+      setMiladyCloudLoginBusy(false);
+      setMiladyCloudLoginError(null);
+    }
+
     switch (onboardingStep) {
-      case "name":
-        // Legacy fallback
-        setOnboardingStep("welcome");
-        break;
-      case "ownerName":
-        setOnboardingStep("welcome");
-        break;
-      case "avatar":
-        // Legacy fallback
-        setOnboardingStep("ownerName");
-        break;
-      case "style":
-        // Legacy fallback
-        setOnboardingStep("ownerName");
-        break;
       case "mint":
-        setOnboardingStep("ownerName");
+        setOnboardingStep("welcome"); // or "language" if enabled
         break;
       case "setupMode":
         if (
@@ -3470,7 +3445,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ) {
           setOnboardingStep("mint");
         } else {
-          setOnboardingStep("ownerName");
+          setOnboardingStep("welcome");
         }
         break;
       case "runMode":
@@ -3484,13 +3459,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         break;
       case "cloudLogin":
         setOnboardingStep("modelSelection");
-        if (cloudLoginPollTimer.current) {
-          clearInterval(cloudLoginPollTimer.current);
-          cloudLoginPollTimer.current = null;
-        }
-        cloudLoginBusyRef.current = false;
-        setCloudLoginBusy(false);
-        setCloudLoginError(null);
         break;
       case "dockerSetup":
         setOnboardingStep("runMode");
@@ -3510,7 +3478,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       case "connectors":
         // Go back to whichever path we came from
         if (onboardingRunMode === "cloud") {
-          setOnboardingStep("modelSelection");
+          setOnboardingStep("cloudLogin");
         } else {
           setOnboardingStep("inventorySetup");
         }
@@ -3535,105 +3503,103 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ── Cloud ──────────────────────────────────────────────────────────
 
   const handleCloudLogin = useCallback(async () => {
-    if (cloudLoginBusyRef.current || cloudLoginBusy) return;
-    cloudLoginBusyRef.current = true;
-    setCloudLoginBusy(true);
-    setCloudLoginError(null);
+    if (miladyCloudLoginBusyRef.current || miladyCloudLoginBusy) return;
+    miladyCloudLoginBusyRef.current = true;
+    setMiladyCloudLoginBusy(true);
+    setMiladyCloudLoginError(null);
     try {
       const resp = await client.cloudLogin();
-      if (!resp.ok) throw new Error("Failed to start login session");
-      // Use desktop IPC to open in the system browser — window.open() is
-      // a no-op in WKWebView (Electrobun) for external URLs.
-      const electronApi = (
-        window as {
-          electron?: {
-            ipcRenderer: {
-              invoke: (ch: string, p?: unknown) => Promise<unknown>;
-            };
-          };
-        }
-      ).electron;
-      if (electronApi?.ipcRenderer) {
-        await electronApi.ipcRenderer.invoke("desktop:openExternal", {
-          url: resp.browserUrl,
-        });
-      } else {
-        window.open(resp.browserUrl, "_blank");
+      if (!resp.ok) {
+        setMiladyCloudLoginError(resp.error || "Failed to start Milady Cloud login");
+        miladyCloudLoginBusyRef.current = false;
+        setMiladyCloudLoginBusy(false);
+        return;
       }
-      // Poll for completion
-      let attempts = 0;
-      cloudLoginPollTimer.current = window.setInterval(async () => {
-        attempts++;
-        if (attempts > 120) {
-          if (cloudLoginPollTimer.current)
-            clearInterval(cloudLoginPollTimer.current);
-          setCloudLoginError("Login timed out. Please try again.");
-          cloudLoginBusyRef.current = false;
-          setCloudLoginBusy(false);
-          return;
+
+      // Open login in browser
+      if (resp.browserUrl) {
+        // Use desktop IPC to open in the system browser — window.open() is
+        // a no-op in WKWebView (Electrobun) for external URLs.
+        const electronApi = (
+          window as {
+            electron?: {
+              ipcRenderer: {
+                invoke: (ch: string, p?: unknown) => Promise<unknown>;
+              };
+            };
+          }
+        ).electron;
+        if (electronApi?.ipcRenderer) {
+          await electronApi.ipcRenderer.invoke("desktop:openExternal", {
+            url: resp.browserUrl,
+          });
+        } else {
+          window.open(resp.browserUrl, "_blank");
         }
+      }
+
+      // Start polling
+      miladyCloudLoginPollTimer.current = window.setInterval(async () => {
         try {
+          if (!miladyCloudLoginPollTimer.current) return;
           const poll = await client.cloudLoginPoll(resp.sessionId);
           if (poll.status === "authenticated") {
-            if (cloudLoginPollTimer.current)
-              clearInterval(cloudLoginPollTimer.current);
-            cloudLoginBusyRef.current = false;
-            setCloudLoginBusy(false);
-            // Immediately reflect the login in the UI — don't wait for the
-            // background poll which may race with the config save.
-            setCloudConnected(true);
-            setCloudEnabled(true);
-            setActionNotice(
-              "Logged in to Eliza Cloud successfully.",
-              "success",
-              6000,
-            );
+            if (miladyCloudLoginPollTimer.current)
+              clearInterval(miladyCloudLoginPollTimer.current);
+            miladyCloudLoginPollTimer.current = null;
+            miladyCloudLoginBusyRef.current = false;
+            setMiladyCloudLoginBusy(false);
+            setMiladyCloudConnected(true);
+            setMiladyCloudEnabled(true);
+            setActionNotice("Logged in to Milady Cloud successfully.", "success", 6000);
             void loadWalletConfig();
             // Delay the credit fetch slightly so the backend has time to
             // persist the API key before we query cloud status / credits.
             setTimeout(() => void pollCloudCredits(), 2000);
           } else if (poll.status === "expired" || poll.status === "error") {
-            if (cloudLoginPollTimer.current)
-              clearInterval(cloudLoginPollTimer.current);
-            setCloudLoginError(
-              poll.error ?? "Session expired. Please try again.",
+            if (miladyCloudLoginPollTimer.current)
+              clearInterval(miladyCloudLoginPollTimer.current);
+            miladyCloudLoginPollTimer.current = null;
+            setMiladyCloudLoginError(
+              poll.error ?? "Login session expired. Please try again.",
             );
-            cloudLoginBusyRef.current = false;
-            setCloudLoginBusy(false);
+            miladyCloudLoginBusyRef.current = false;
+            setMiladyCloudLoginBusy(false);
           }
-        } catch {
-          /* keep trying */
+        } catch (pollErr) {
+          // Keep polling unless explicit failure
+          console.error("Milady Cloud login poll error:", pollErr);
         }
       }, 1000);
     } catch (err) {
-      setCloudLoginError(err instanceof Error ? err.message : "Login failed");
-      cloudLoginBusyRef.current = false;
-      setCloudLoginBusy(false);
+      setMiladyCloudLoginError(err instanceof Error ? err.message : "Milady Cloud login failed");
+      miladyCloudLoginBusyRef.current = false;
+      setMiladyCloudLoginBusy(false);
     }
-  }, [cloudLoginBusy, setActionNotice, pollCloudCredits, loadWalletConfig]);
+  }, [miladyCloudLoginBusy, setActionNotice, pollCloudCredits, loadWalletConfig]);
 
   const handleCloudDisconnect = useCallback(async () => {
     if (
       !confirm(
-        "Disconnect from Eliza Cloud? The agent will need a local AI provider to continue working.",
+        "Disconnect from Milady Cloud? The agent will need a local AI provider to continue working.",
       )
     )
       return;
-    setCloudDisconnecting(true);
+    setMiladyCloudDisconnecting(true);
     try {
       await client.cloudDisconnect();
-      setCloudEnabled(false);
-      setCloudConnected(false);
-      setCloudCredits(null);
-      setCloudUserId(null);
-      setActionNotice("Disconnected from Eliza Cloud.", "success");
+      setMiladyCloudEnabled(false);
+      setMiladyCloudConnected(false);
+      setMiladyCloudCredits(null);
+      setMiladyCloudUserId(null);
+      setActionNotice("Disconnected from Milady Cloud.", "success");
     } catch (err) {
       setActionNotice(
-        `Disconnect failed: ${err instanceof Error ? err.message : "error"}`,
+        `Failed to disconnect: ${err instanceof Error ? err.message : err}`,
         "error",
       );
     } finally {
-      setCloudDisconnecting(false);
+      setMiladyCloudDisconnecting(false);
     }
   }, [setActionNotice]);
 
@@ -3835,11 +3801,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         onboardingBlooioPhoneNumber: setOnboardingBlooioPhoneNumber,
         onboardingGithubToken: setOnboardingGithubToken,
         onboardingSubscriptionTab: setOnboardingSubscriptionTab,
-        onboardingElizaCloudTab: setOnboardingElizaCloudTab,
+        onboardingMiladyCloudTab: setOnboardingMiladyCloudTab,
         onboardingRpcKeys: setOnboardingRpcKeys,
         onboardingAvatar: setOnboardingAvatar,
         onboardingRestarting: setOnboardingRestarting,
-        cloudEnabled: setCloudEnabled,
+        miladyCloudEnabled: setMiladyCloudEnabled,
         selectedVrmIndex: setSelectedVrmIndex,
         customVrmUrl: setCustomVrmUrl,
         customBackgroundUrl: setCustomBackgroundUrl,
@@ -3911,6 +3877,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let unbindProactiveMessages: (() => void) | null = null;
     let handleVisibilityRef: (() => void) | null = null;
     let unbindWsReconnect: (() => void) | null = null;
+    let unbindSystemWarnings: (() => void) | null = null;
+    let unbindRestartRequired: (() => void) | null = null;
     let cancelled = false;
     const describeBackendFailure = (
       err: unknown,
@@ -4359,12 +4327,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
 
       // Surface system-level warnings (connector failures, wiring exhaustion, etc.)
-      client.onWsEvent("system-warning", (data: Record<string, unknown>) => {
+      unbindSystemWarnings = client.onWsEvent("system-warning", (data: Record<string, unknown>) => {
         const message = typeof data.message === "string" ? data.message : "";
         if (message) {
-          setSystemWarnings((prev) =>
-            prev.includes(message) ? prev : [...prev, message],
-          );
+          setSystemWarnings((prev) => {
+            if (prev.includes(message)) return prev;
+            const next = [...prev, message];
+            if (next.length > 50) next.splice(0, next.length - 50);
+            return next;
+          });
         }
       });
 
@@ -4411,7 +4382,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           }
         },
       );
-      client.onWsEvent("restart-required", (data: Record<string, unknown>) => {
+      unbindRestartRequired = client.onWsEvent("restart-required", (data: Record<string, unknown>) => {
         if (Array.isArray(data.reasons)) {
           setPendingRestartReasons(
             data.reasons.filter((el): el is string => typeof el === "string"),
@@ -4703,11 +4674,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
 
       // Cloud polling
-      pollCloudCredits();
-      cloudPollInterval.current = window.setInterval(
-        () => pollCloudCredits(),
-        60_000,
-      );
+      if (miladyCloudConnected) {
+        pollCloudCredits();
+        miladyCloudPollInterval.current = window.setInterval(
+          () => pollCloudCredits(),
+          60_000,
+        );
+      }
 
       // Load tab from URL — use hash in file:// mode (Electron packaged builds)
       const navPath =
@@ -4756,14 +4729,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
       window.removeEventListener(navEvent, handleNavChange);
-      if (cloudPollInterval.current) clearInterval(cloudPollInterval.current);
-      if (cloudLoginPollTimer.current)
-        clearInterval(cloudLoginPollTimer.current);
+      if (miladyCloudPollInterval.current) clearInterval(miladyCloudPollInterval.current);
+      if (miladyCloudLoginPollTimer.current)
+        clearInterval(miladyCloudLoginPollTimer.current);
       unbindStatus?.();
       unbindAgentEvents?.();
       unbindHeartbeatEvents?.();
       unbindProactiveMessages?.();
       unbindWsReconnect?.();
+      unbindSystemWarnings?.();
+      unbindRestartRequired?.();
       if (handleVisibilityRef)
         document.removeEventListener("visibilitychange", handleVisibilityRef);
       client.disconnectWs();
@@ -4937,16 +4912,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     selectedVrmIndex,
     customVrmUrl,
     customBackgroundUrl,
-    cloudEnabled,
-    cloudConnected,
-    cloudCredits,
-    cloudCreditsLow,
-    cloudCreditsCritical,
-    cloudTopUpUrl,
-    cloudUserId,
-    cloudLoginBusy,
-    cloudLoginError,
-    cloudDisconnecting,
+    miladyCloudEnabled,
+    miladyCloudConnected,
+    miladyCloudCredits,
+    miladyCloudCreditsLow,
+    miladyCloudCreditsCritical,
+    miladyCloudTopUpUrl,
+    miladyCloudUserId,
+    miladyCloudLoginBusy,
+    miladyCloudLoginError,
+    miladyCloudDisconnecting,
     updateStatus,
     updateLoading,
     updateChannelSaving,
@@ -5011,7 +4986,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     onboardingBlooioPhoneNumber,
     onboardingGithubToken,
     onboardingSubscriptionTab,
-    onboardingElizaCloudTab,
+    onboardingMiladyCloudTab,
     onboardingSelectedChains,
     onboardingRpcSelections,
     onboardingRpcKeys,

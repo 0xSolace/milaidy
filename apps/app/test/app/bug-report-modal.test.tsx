@@ -13,11 +13,15 @@ const { mockUseBugReport, mockClient } = vi.hoisted(() => ({
   },
 }));
 
+vi.mock("@milady/app-core/hooks", () => ({
+  useBugReport: () => mockUseBugReport(),
+}));
+
 vi.mock("../../src/hooks/useBugReport", () => ({
   useBugReport: () => mockUseBugReport(),
 }));
 
-vi.mock("../../src/api-client", () => ({
+vi.mock("@milady/app-core/api", () => ({
   client: mockClient,
 }));
 

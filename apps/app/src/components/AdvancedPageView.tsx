@@ -13,9 +13,9 @@
  *   - Logs: Runtime log viewer
  */
 
+import type { Tab } from "@milady/app-core/navigation";
 import React, { type ReactNode, useState } from "react";
 import { useApp } from "../AppContext";
-import type { Tab } from "../navigation";
 import { CustomActionsView } from "./CustomActionsView";
 import { DatabasePageView } from "./DatabasePageView";
 import { FineTuningView } from "./FineTuningView";

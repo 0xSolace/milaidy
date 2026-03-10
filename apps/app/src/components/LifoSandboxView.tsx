@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "../styles/xterm.css";
-import { useApp } from "../AppContext";
 import {
   client,
   type SandboxBrowserEndpoints,
   type SandboxWindowInfo,
-} from "../api-client";
+} from "@milady/app-core/api";
+import { pathForTab } from "@milady/app-core/navigation";
+import { useApp } from "../AppContext";
 import { useLifoSync } from "../hooks/useLifoSync";
 import {
   buildLifoPopoutUrl,
@@ -21,7 +22,6 @@ import {
   type LifoRuntime,
   normalizeTerminalText,
 } from "../lifo-runtime";
-import { pathForTab } from "../navigation";
 import { LifoMonitorPanel } from "./LifoMonitorPanel";
 
 interface TerminalOutputEvent {

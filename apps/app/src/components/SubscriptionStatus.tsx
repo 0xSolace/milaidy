@@ -4,9 +4,11 @@
  * Extracted from SettingsView.tsx for decomposition (P2 §10).
  */
 
+import { useTimeout } from "../hooks/useTimeout";
+import { client } from "@milady/app-core/api";
+import { Button, Input } from "@milady/ui";
 import { useCallback, useRef, useState } from "react";
 import { useApp } from "../AppContext";
-import { client } from "../api-client";
 
 function formatRequestError(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -15,13 +17,13 @@ function formatRequestError(err: unknown): string {
 
 function normalizeOpenAICallbackInput(input: string):
   | {
-      ok: true;
-      code: string;
-    }
+    ok: true;
+    code: string;
+  }
   | {
-      ok: false;
-      error: string;
-    } {
+    ok: false;
+    error: string;
+  } {
   const trimmed = input.trim();
   if (!trimmed) {
     return {
@@ -94,6 +96,8 @@ export function SubscriptionStatus({
   handleSelectSubscription,
   loadSubscriptionStatus,
 }: SubscriptionStatusProps) {
+  const { setTimeout } = useTimeout();
+
   const { t } = useApp();
   const [subscriptionTab, setSubscriptionTab] = useState<"token" | "oauth">(
     "token",
@@ -314,9 +318,10 @@ export function SubscriptionStatus({
               </span>
             </div>
             {anthropicConnected && (
-              <button
-                type="button"
-                className="btn text-xs py-[3px] px-3 !mt-0 !bg-transparent !border-[var(--border)] !text-[var(--muted)]"
+              <Button
+                variant="outline"
+                size="sm"
+                className="!mt-0"
                 onClick={() =>
                   void handleDisconnectSubscription("anthropic-subscription")
                 }
@@ -327,7 +332,7 @@ export function SubscriptionStatus({
                 {subscriptionDisconnecting === "anthropic-subscription"
                   ? "Disconnecting..."
                   : "Disconnect"}
-              </button>
+              </Button>
             )}
           </div>
 
@@ -340,22 +345,20 @@ export function SubscriptionStatus({
           <div className="flex items-center gap-4 border-b border-[var(--border)] mb-3">
             <button
               type="button"
-              className={`text-xs pb-2 border-b-2 ${
-                subscriptionTab === "token"
+              className={`text-xs pb-2 border-b-2 ${subscriptionTab === "token"
                   ? "border-[var(--accent)] text-[var(--accent)]"
                   : "border-transparent text-[var(--muted)] hover:text-[var(--text)]"
-              }`}
+                }`}
               onClick={() => setSubscriptionTab("token")}
             >
               {t("subscriptionstatus.SetupToken")}
             </button>
             <button
               type="button"
-              className={`text-xs pb-2 border-b-2 ${
-                subscriptionTab === "oauth"
+              className={`text-xs pb-2 border-b-2 ${subscriptionTab === "oauth"
                   ? "border-[var(--accent)] text-[var(--accent)]"
                   : "border-transparent text-[var(--muted)] hover:text-[var(--text)]"
-              }`}
+                }`}
               onClick={() => setSubscriptionTab("oauth")}
             >
               {t("subscriptionstatus.OAuthLogin")}
@@ -370,7 +373,7 @@ export function SubscriptionStatus({
               >
                 {t("subscriptionstatus.SetupToken")}
               </label>
-              <input
+              <Input
                 id="subscription-setup-token-input"
                 type="password"
                 placeholder={t("subscriptionstatus.skAntOat01")}
@@ -380,7 +383,7 @@ export function SubscriptionStatus({
                   setSetupTokenSuccess(false);
                   setAnthropicError("");
                 }}
-                className="w-full px-2.5 py-1.5 border border-[var(--border)] bg-[var(--card)] text-xs font-[var(--mono)] focus:border-[var(--accent)] focus:outline-none"
+                className="bg-card text-xs font-mono"
               />
               <div className="text-[11px] text-[var(--muted)] mt-2 whitespace-pre-line">
                 {
@@ -393,14 +396,15 @@ export function SubscriptionStatus({
                 </div>
               )}
               <div className="flex items-center justify-between mt-3">
-                <button
-                  type="button"
-                  className="btn text-xs py-[5px] px-3.5 !mt-0"
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="!mt-0"
                   disabled={setupTokenSaving || !setupTokenValue.trim()}
                   onClick={() => void handleSaveSetupToken()}
                 >
                   {setupTokenSaving ? "Saving..." : "Save Token"}
-                </button>
+                </Button>
                 <div className="flex items-center gap-2">
                   {setupTokenSaving && (
                     <span className="text-[11px] text-[var(--muted)]">
@@ -421,13 +425,14 @@ export function SubscriptionStatus({
             </div>
           ) : !anthropicOAuthStarted ? (
             <div>
-              <button
-                type="button"
-                className="btn text-xs py-[5px] px-3.5 !mt-0"
+              <Button
+                variant="default"
+                size="sm"
+                className="!mt-0"
                 onClick={() => void handleAnthropicStart()}
               >
                 {t("subscriptionstatus.LoginWithAnthropic")}
-              </button>
+              </Button>
               <div className="text-[11px] text-[var(--muted)] mt-1.5">
                 {t("subscriptionstatus.RequiresClaudePro")}
               </div>
@@ -442,7 +447,7 @@ export function SubscriptionStatus({
               <div className="text-xs text-[var(--muted)] mb-2">
                 {t("subscriptionstatus.AfterLoggingInCo")}
               </div>
-              <input
+              <Input
                 type="text"
                 placeholder={t("subscriptionstatus.PasteTheAuthorizat")}
                 value={anthropicCode}
@@ -450,7 +455,7 @@ export function SubscriptionStatus({
                   setAnthropicCode(e.target.value);
                   setAnthropicError("");
                 }}
-                className="w-full px-2.5 py-1.5 border border-[var(--border)] bg-[var(--card)] text-xs focus:border-[var(--accent)] focus:outline-none"
+                className="bg-card text-xs"
               />
               {anthropicError && (
                 <div className="text-[11px] text-[var(--danger,#e74c3c)] mt-2">
@@ -458,24 +463,26 @@ export function SubscriptionStatus({
                 </div>
               )}
               <div className="flex items-center gap-2 mt-2">
-                <button
-                  type="button"
-                  className="btn text-xs py-[5px] px-3.5 !mt-0"
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="!mt-0"
                   disabled={anthropicExchangeBusy || !anthropicCode.trim()}
                   onClick={() => void handleAnthropicExchange()}
                 >
                   {anthropicExchangeBusy ? "Connecting..." : "Connect"}
-                </button>
-                <button
-                  type="button"
-                  className="btn text-xs py-[5px] px-3.5 !mt-0 !bg-transparent !border-[var(--border)] !text-[var(--muted)]"
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="!mt-0"
                   onClick={() => {
                     setAnthropicOAuthStarted(false);
                     setAnthropicCode("");
                   }}
                 >
                   {t("subscriptionstatus.StartOver")}
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -501,9 +508,10 @@ export function SubscriptionStatus({
               </span>
             </div>
             {openaiConnected && (
-              <button
-                type="button"
-                className="btn text-xs py-[3px] px-3 !mt-0 !bg-transparent !border-[var(--border)] !text-[var(--muted)]"
+              <Button
+                variant="outline"
+                size="sm"
+                className="!mt-0"
                 onClick={() =>
                   void handleDisconnectSubscription("openai-subscription")
                 }
@@ -512,7 +520,7 @@ export function SubscriptionStatus({
                 {subscriptionDisconnecting === "openai-subscription"
                   ? "Disconnecting..."
                   : "Disconnect"}
-              </button>
+              </Button>
             )}
           </div>
 
@@ -528,13 +536,14 @@ export function SubscriptionStatus({
             </div>
           ) : !openaiOAuthStarted ? (
             <div>
-              <button
-                type="button"
-                className="btn text-xs py-[5px] px-3.5 !mt-0"
+              <Button
+                variant="default"
+                size="sm"
+                className="!mt-0"
                 onClick={() => void handleOpenAIStart()}
               >
                 {t("subscriptionstatus.LoginWithOpenAI")}
-              </button>
+              </Button>
               <div className="text-[11px] text-[var(--muted)] mt-1.5">
                 {t("subscriptionstatus.RequiresChatGPTPlu")}
               </div>
@@ -548,9 +557,9 @@ export function SubscriptionStatus({
                 </code>
                 {t("subscriptionstatus.CopyTheEntireU")}
               </div>
-              <input
+              <Input
                 type="text"
-                className="w-full mt-2 px-2.5 py-1.5 border border-[var(--border)] bg-[var(--card)] text-xs focus:border-[var(--accent)] focus:outline-none"
+                className="mt-2 bg-card text-xs"
                 placeholder={t("subscriptionstatus.httpLocalhost145")}
                 value={openaiCallbackUrl}
                 onChange={(e) => {
@@ -564,24 +573,26 @@ export function SubscriptionStatus({
                 </div>
               )}
               <div className="flex items-center gap-2 mt-2">
-                <button
-                  type="button"
-                  className="btn text-xs py-[5px] px-3.5 !mt-0"
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="!mt-0"
                   disabled={openaiExchangeBusy || !openaiCallbackUrl.trim()}
                   onClick={() => void handleOpenAIExchange()}
                 >
                   {openaiExchangeBusy ? "Completing..." : "Complete Login"}
-                </button>
-                <button
-                  type="button"
-                  className="btn text-xs py-[5px] px-3.5 !mt-0 !bg-transparent !border-[var(--border)] !text-[var(--muted)]"
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="!mt-0"
                   onClick={() => {
                     setOpenaiOAuthStarted(false);
                     setOpenaiCallbackUrl("");
                   }}
                 >
                   {t("subscriptionstatus.StartOver")}
-                </button>
+                </Button>
               </div>
             </div>
           )}

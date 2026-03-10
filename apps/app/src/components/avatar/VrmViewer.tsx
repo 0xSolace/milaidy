@@ -5,8 +5,8 @@
  * the `mouthOpen` prop. Sized to fill its parent container.
  */
 
+import { resolveAppAssetUrl } from "@milady/app-core/utils";
 import { useEffect, useRef } from "react";
-import { resolveAppAssetUrl } from "../../asset-url";
 import {
   type CameraProfile,
   type InteractionMode,

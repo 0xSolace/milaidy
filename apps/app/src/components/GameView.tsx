@@ -8,11 +8,12 @@
  * - Connection status indicator
  */
 
+import { client, type LogEntry } from "@milady/app-core/api";
+import { formatTime } from "@milady/app-core/components";
+import { Button, Input } from "@milady/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "../AppContext";
-import { client, type LogEntry } from "../api-client";
 import { useRetakeCapture } from "../hooks/useRetakeCapture";
-import { formatTime } from "./shared/format";
 
 const DEFAULT_VIEWER_SANDBOX = "allow-scripts allow-same-origin allow-popups";
 const READY_EVENT_BY_AUTH_TYPE: Record<string, string> = {
@@ -35,7 +36,10 @@ const TAG_COLORS: Record<string, { bg: string; fg: string }> = {
   websocket: { bg: "rgba(20, 184, 166, 0.15)", fg: "rgb(20, 184, 166)" },
 };
 
+import { useTimeout } from "../hooks/useTimeout";
+
 export function GameView() {
+  const { setTimeout } = useTimeout();
   const {
     activeGameApp,
     activeGameDisplayName,
@@ -256,16 +260,17 @@ export function GameView() {
     return (
       <div className="flex items-center justify-center py-10 text-muted italic">
         {t("game.noActiveSession")}{" "}
-        <button
-          type="button"
+        <Button
+          variant="default"
+          size="sm"
           onClick={() => {
             setState("tab", "apps");
             setState("appsSubTab", "browse");
           }}
-          className="text-xs px-3 py-1 bg-accent text-accent-fg border border-accent cursor-pointer hover:bg-accent-hover disabled:opacity-40 ml-2"
+          className="ml-2 font-bold tracking-wide shadow-sm"
         >
           {t("game.backToApps")}
-        </button>
+        </Button>
       </div>
     );
   }
@@ -275,24 +280,26 @@ export function GameView() {
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
         <span className="font-bold text-xs">{t("game.agentActivity")}</span>
         <span className="flex-1" />
-        <button
-          type="button"
-          className="text-[10px] px-2 py-0.5 border border-border bg-card cursor-pointer hover:border-accent"
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-6 text-[10px] px-2 py-0 border-border bg-card hover:border-accent"
           onClick={() => void loadLogs()}
         >
           {t("common.refresh")}
-        </button>
-        <button
-          type="button"
-          className="text-[10px] px-2 py-0.5 border border-border bg-card cursor-pointer hover:border-accent"
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-6 text-[10px] px-2 py-0 border-border bg-card hover:border-accent"
           onClick={() => setShowLogsPanel(false)}
         >
           {t("common.hide")}
-        </button>
+        </Button>
       </div>
       {/* Chat input for sending commands to agent */}
       <div className="flex items-center gap-2 px-2 py-2 border-b border-border">
-        <input
+        <Input
           type="text"
           value={chatInput}
           onChange={(e) => setChatInput(e.target.value)}
@@ -303,17 +310,18 @@ export function GameView() {
             }
           }}
           placeholder={t("game.chatPlaceholder")}
-          className="flex-1 px-2 py-1 text-xs border border-border bg-bg rounded-none focus:border-accent focus:outline-none"
+          className="flex-1 h-8 text-xs bg-bg focus-visible:ring-accent"
           disabled={sendingChat}
         />
-        <button
-          type="button"
+        <Button
+          variant="default"
+          size="sm"
           onClick={handleSendChat}
           disabled={sendingChat || !chatInput.trim()}
-          className="text-xs px-2 py-1 bg-accent text-accent-fg border border-accent cursor-pointer hover:bg-accent-hover disabled:opacity-40"
+          className="h-8 shadow-sm font-bold tracking-wide"
         >
           {sendingChat ? "..." : t("common.send")}
-        </button>
+        </Button>
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto p-2 text-[11px] font-mono">
         {gameLogs.length === 0 ? (
@@ -331,13 +339,12 @@ export function GameView() {
                   {formatTime(entry.timestamp, { fallback: "—" })}
                 </span>
                 <span
-                  className={`font-semibold text-[10px] uppercase ${
-                    entry.level === "error"
-                      ? "text-danger"
-                      : entry.level === "warn"
-                        ? "text-warn"
-                        : "text-muted"
-                  }`}
+                  className={`font-semibold text-[10px] uppercase ${entry.level === "error"
+                    ? "text-danger"
+                    : entry.level === "warn"
+                      ? "text-warn"
+                      : "text-muted"
+                    }`}
                 >
                   {entry.level}
                 </span>
@@ -395,38 +402,29 @@ export function GameView() {
         ) : null}
         <span className="flex-1" />
         {/* Toggle logs panel */}
-        <button
-          type="button"
-          className={`text-xs px-3 py-1 border cursor-pointer hover:bg-accent-hover disabled:opacity-40 ${
-            showLogsPanel
-              ? "bg-accent text-accent-fg border-accent"
-              : "bg-card text-txt border-border hover:border-accent"
-          }`}
+        <Button
+          variant={showLogsPanel ? "default" : "outline"}
+          size="sm"
+          className="h-7 text-xs shadow-sm hover:border-accent"
           onClick={() => setShowLogsPanel(!showLogsPanel)}
         >
           {showLogsPanel ? t("game.hideLogs") : t("game.showLogs")}
-        </button>
+        </Button>
         {retakeEnabled && (
-          <button
-            type="button"
-            className={`text-xs px-3 py-1 border cursor-pointer hover:bg-accent-hover disabled:opacity-40 ${
-              retakeCapture
-                ? "bg-accent text-accent-fg border-accent"
-                : "bg-card text-txt border-border hover:border-accent"
-            }`}
+          <Button
+            variant={retakeCapture ? "default" : "outline"}
+            size="sm"
+            className="h-7 text-xs shadow-sm hover:border-accent"
             onClick={() => setRetakeCapture(!retakeCapture)}
             title={t("game.retakeTitle")}
           >
             {retakeCapture ? t("game.stopCapture") : t("game.retakeCapture")}
-          </button>
+          </Button>
         )}
-        <button
-          type="button"
-          className={`text-xs px-3 py-1 border cursor-pointer hover:bg-accent-hover disabled:opacity-40 ${
-            gameOverlayEnabled
-              ? "bg-accent text-accent-fg border-accent"
-              : "bg-card text-txt border-border hover:border-accent"
-          }`}
+        <Button
+          variant={gameOverlayEnabled ? "default" : "outline"}
+          size="sm"
+          className="h-7 text-xs shadow-sm hover:border-accent"
           onClick={() => setState("gameOverlayEnabled", !gameOverlayEnabled)}
           title={
             gameOverlayEnabled
@@ -435,32 +433,35 @@ export function GameView() {
           }
         >
           {gameOverlayEnabled ? t("game.unpinOverlay") : t("game.keepOnTop")}
-        </button>
-        <button
-          type="button"
-          className="text-xs px-3 py-1 bg-accent text-accent-fg border border-accent cursor-pointer hover:bg-accent-hover disabled:opacity-40"
+        </Button>
+        <Button
+          variant="default"
+          size="sm"
+          className="h-7 text-xs shadow-sm"
           onClick={handleOpenInNewTab}
         >
           {t("game.openInNewTab")}
-        </button>
-        <button
-          type="button"
-          className="text-xs px-3 py-1 bg-accent text-accent-fg border border-accent cursor-pointer hover:bg-accent-hover disabled:opacity-40"
+        </Button>
+        <Button
+          variant="default"
+          size="sm"
+          className="h-7 text-xs shadow-sm"
           disabled={stopping}
           onClick={handleStop}
         >
           {stopping ? t("game.stopping") : t("game.stop")}
-        </button>
-        <button
-          type="button"
-          className="text-xs px-3 py-1 bg-accent text-accent-fg border border-accent cursor-pointer hover:bg-accent-hover disabled:opacity-40"
+        </Button>
+        <Button
+          variant="default"
+          size="sm"
+          className="h-7 text-xs shadow-sm"
           onClick={() => {
             setState("tab", "apps");
             setState("appsSubTab", "browse");
           }}
         >
           {t("game.backToApps")}
-        </button>
+        </Button>
       </div>
       <div className="flex-1 min-h-0 flex">
         <div className="flex-1 min-h-0 relative">

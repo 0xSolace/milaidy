@@ -8,8 +8,6 @@
  *   - Status badges (Configured / Needs Setup)
  */
 
-import { useCallback, useEffect, useState } from "react";
-import { useApp } from "../AppContext";
 import {
   type AudioGenProvider,
   client,
@@ -18,7 +16,11 @@ import {
   type MediaMode,
   type VideoProvider,
   type VisionProvider,
-} from "../api-client";
+} from "@milady/app-core/api";
+import { useTimeout } from "../hooks/useTimeout";
+import { Button, Input } from "@milady/ui";
+import { useCallback, useEffect, useState } from "react";
+import { useApp } from "../AppContext";
 import {
   CloudConnectionStatus,
   CloudSourceModeToggle,
@@ -150,8 +152,10 @@ function setNestedValue(
 }
 
 export function MediaSettingsSection() {
+  const { setTimeout } = useTimeout();
+
   const { t } = useApp();
-  const { cloudConnected } = useApp();
+  const { miladyCloudConnected } = useApp();
   const [mediaConfig, setMediaConfig] = useState<MediaConfig>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -240,7 +244,7 @@ export function MediaSettingsSection() {
   const isProviderConfigured = useCallback(
     (category: MediaCategory): boolean => {
       const mode = getMode(category);
-      if (mode === "cloud") return cloudConnected;
+      if (mode === "cloud") return miladyCloudConnected;
 
       const provider = getProvider(category);
       const apiKeyField = getApiKeyField(category, provider);
@@ -252,7 +256,7 @@ export function MediaSettingsSection() {
       );
       return typeof value === "string" && value.length > 0;
     },
-    [getMode, getProvider, mediaConfig, cloudConnected],
+    [getMode, getProvider, mediaConfig, miladyCloudConnected],
   );
 
   if (loading) {
@@ -272,19 +276,20 @@ export function MediaSettingsSection() {
   return (
     <div className="flex flex-col gap-4">
       {/* Category tabs */}
-      <div className="flex border border-[var(--border)]">
+      <div className="flex border border-border">
         {(["image", "video", "audio", "vision"] as MediaCategory[]).map(
           (cat) => {
             const active = activeTab === cat;
             const catConfigured = isProviderConfigured(cat);
             return (
-              <button
+              <Button
                 key={cat}
-                type="button"
-                className={`flex-1 px-3 py-2 text-xs font-semibold cursor-pointer transition-colors border-r last:border-r-0 border-[var(--border)] ${
+                variant={active ? "default" : "ghost"}
+                size="sm"
+                className={`flex-1 h-9 px-3 py-2 text-xs font-semibold rounded-none border-r last:border-r-0 border-border ${
                   active
-                    ? "bg-[var(--accent)] text-[var(--accent-foreground)]"
-                    : "bg-[var(--card)] text-[var(--muted)] hover:text-[var(--text)]"
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted hover:text-txt"
                 }`}
                 onClick={() => setActiveTab(cat)}
               >
@@ -294,7 +299,7 @@ export function MediaSettingsSection() {
                     catConfigured ? "bg-green-500" : "bg-yellow-500"
                   }`}
                 />
-              </button>
+              </Button>
             );
           },
         )}
@@ -334,7 +339,7 @@ export function MediaSettingsSection() {
       {/* Cloud mode status */}
       {currentMode === "cloud" && (
         <CloudConnectionStatus
-          connected={cloudConnected}
+          connected={miladyCloudConnected}
           disconnectedText="Eliza Cloud not connected - configure in Settings -> AI Model"
         />
       )}
@@ -354,13 +359,14 @@ export function MediaSettingsSection() {
               .map((p) => {
                 const active = currentProvider === p.id;
                 return (
-                  <button
+                  <Button
                     key={p.id}
-                    type="button"
-                    className={`px-3 py-2 text-xs cursor-pointer transition-colors border ${
+                    variant="outline"
+                    size="sm"
+                    className={`h-auto px-3 py-2 text-xs font-normal rounded-none border ${
                       active
-                        ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]"
-                        : "border-[var(--border)] bg-[var(--card)] text-[var(--text)] hover:border-[var(--accent)]"
+                        ? "border-accent bg-accent/10 text-accent"
+                        : "border-border bg-card text-txt hover:border-accent"
                     }`}
                     onClick={() =>
                       updateCategoryConfig(activeTab, {
@@ -373,10 +379,10 @@ export function MediaSettingsSection() {
                     }
                   >
                     <div className="font-semibold">{p.label}</div>
-                    <div className="text-[10px] text-[var(--muted)] mt-0.5">
+                    <div className="text-[10px] text-muted mt-0.5">
                       {p.hint}
                     </div>
-                  </button>
+                  </Button>
                 );
               })}
           </div>
@@ -385,9 +391,9 @@ export function MediaSettingsSection() {
           {apiKeyField && (
             <div className="flex flex-col gap-1.5">
               <span className="text-xs font-semibold">{apiKeyField.label}</span>
-              <input
+              <Input
                 type="password"
-                className="px-2.5 py-1.5 border border-[var(--border)] bg-[var(--card)] text-xs focus:border-[var(--accent)] focus:outline-none"
+                className="h-9 px-2.5 py-1.5 bg-card border-border text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-accent"
                 placeholder={
                   getNestedValue(
                     mediaConfig as Record<string, unknown>,
@@ -654,12 +660,12 @@ export function MediaSettingsSection() {
               <span className="text-xs font-semibold">
                 {t("mediasettingssection.MaxDurationSecond")}
               </span>
-              <input
+              <Input
                 type="number"
                 min={0.5}
                 max={22}
                 step={0.5}
-                className="px-2.5 py-1.5 border border-[var(--border)] bg-[var(--card)] text-xs focus:border-[var(--accent)] focus:outline-none w-24"
+                className="h-9 px-2.5 py-1.5 bg-card border-border text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-accent w-24"
                 value={
                   (getNestedValue(
                     mediaConfig as Record<string, unknown>,

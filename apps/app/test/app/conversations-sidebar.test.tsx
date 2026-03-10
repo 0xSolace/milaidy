@@ -33,9 +33,9 @@ function createContext(overrides: Record<string, unknown> = {}) {
     activeConversationId: "conv-1",
     unreadConversations: new Set<string>(),
     handleNewConversation: vi.fn(),
-    handleSelectConversation: vi.fn(async () => {}),
-    handleDeleteConversation: vi.fn(async () => {}),
-    handleRenameConversation: vi.fn(async () => {}),
+    handleSelectConversation: vi.fn(async () => { }),
+    handleDeleteConversation: vi.fn(async () => { }),
+    handleRenameConversation: vi.fn(async () => { }),
     uiLanguage: "en",
     ...overrides,
   };
@@ -47,7 +47,7 @@ function findButtonByText(
 ): TestRenderer.ReactTestInstance {
   return tree.root.find(
     (node) =>
-      node.type === "button" &&
+      (node.type === "button" || typeof node.type === "function") &&
       node.children.some(
         (child) => typeof child === "string" && child === label,
       ),
@@ -60,7 +60,7 @@ describe("ConversationsSidebar", () => {
   });
 
   it("requires explicit confirmation before deleting", async () => {
-    const handleDeleteConversation = vi.fn(async () => {});
+    const handleDeleteConversation = vi.fn(async () => { });
     mockUseApp.mockReturnValue(createContext({ handleDeleteConversation }));
 
     let tree!: TestRenderer.ReactTestRenderer;
@@ -72,16 +72,16 @@ describe("ConversationsSidebar", () => {
       "data-testid": "conv-delete",
     });
     await act(async () => {
-      deleteTrigger.props.onClick({ stopPropagation: () => {} });
+      deleteTrigger.props.onClick({ stopPropagation: () => { } });
     });
 
     expect(handleDeleteConversation).not.toHaveBeenCalled();
-    expect(findButtonByText(tree, "Yes")).toBeDefined();
-    expect(findButtonByText(tree, "No")).toBeDefined();
+    expect(findButtonByText(tree, "conversations.deleteYes")).toBeDefined();
+    expect(findButtonByText(tree, "conversations.deleteNo")).toBeDefined();
   });
 
   it("deletes only after clicking Yes", async () => {
-    const handleDeleteConversation = vi.fn(async () => {});
+    const handleDeleteConversation = vi.fn(async () => { });
     mockUseApp.mockReturnValue(createContext({ handleDeleteConversation }));
 
     let tree!: TestRenderer.ReactTestRenderer;
@@ -93,10 +93,10 @@ describe("ConversationsSidebar", () => {
       "data-testid": "conv-delete",
     });
     await act(async () => {
-      deleteTrigger.props.onClick({ stopPropagation: () => {} });
+      deleteTrigger.props.onClick({ stopPropagation: () => { } });
     });
 
-    const yesButton = findButtonByText(tree, "Yes");
+    const yesButton = findButtonByText(tree, "conversations.deleteYes");
     await act(async () => {
       yesButton.props.onClick();
       await Promise.resolve();

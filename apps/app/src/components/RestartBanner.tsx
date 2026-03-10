@@ -1,6 +1,6 @@
+import { isElectrobunRuntime } from "@milady/app-core/bridge";
 import { useCallback, useState } from "react";
 import { useApp } from "../AppContext";
-import { isElectrobunRuntime } from "../bridge/electrobun-runtime";
 
 export function RestartBanner() {
   const {

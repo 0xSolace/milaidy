@@ -5,8 +5,8 @@ import {
   formatDurationMs,
   formatShortDate,
   formatTime,
-} from "../../src/components/shared/format";
-import { autoLabel } from "../../src/components/shared/labels";
+} from "@milady/app-core/components";
+import { autoLabel } from "@milady/app-core/components";
 
 describe("shared format helpers", () => {
   it("formats bytes with readable units", () => {

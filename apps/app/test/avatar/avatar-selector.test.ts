@@ -11,8 +11,8 @@ import {
 
 describe("Avatar VRM Utilities", () => {
   describe("VRM_COUNT", () => {
-    it("is 33 for all bundled avatars (24 base + 8 official + 1 named)", () => {
-      expect(VRM_COUNT).toBe(33);
+    it("is 25 for all bundled avatars (24 base + 1 named)", () => {
+      expect(VRM_COUNT).toBe(25);
     });
   });
 
@@ -23,8 +23,8 @@ describe("Avatar VRM Utilities", () => {
       }
     });
 
-    it("returns correct path for named VRMs (33)", () => {
-      expect(getVrmUrl(33)).toBe("/vrms/shaw.vrm");
+    it("returns correct path for named VRMs (25)", () => {
+      expect(getVrmUrl(25)).toBe("/vrms/shaw.vrm");
     });
 
     it("clamps invalid indices to avatar 1", () => {
@@ -42,8 +42,8 @@ describe("Avatar VRM Utilities", () => {
       }
     });
 
-    it("returns named VRM preview for named VRMs (33)", () => {
-      expect(getVrmPreviewUrl(33)).toBe("/vrms/previews/shaw.jpg");
+    it("returns named VRM preview for named VRMs (25)", () => {
+      expect(getVrmPreviewUrl(25)).toBe("/vrms/previews/shaw.jpg");
     });
 
     it("clamps invalid preview indices to avatar 1", () => {
@@ -59,13 +59,10 @@ describe("Avatar VRM Utilities", () => {
       expect(getVrmTitle(24)).toBe("MILADY-24");
     });
 
-    it("returns formatted title for official VRMs", () => {
-      expect(getVrmTitle(25)).toBe("OFFICIAL-01");
-      expect(getVrmTitle(32)).toBe("OFFICIAL-08");
-    });
+
 
     it("returns label for named VRMs", () => {
-      expect(getVrmTitle(33)).toBe("SHAW");
+      expect(getVrmTitle(25)).toBe("SHAW");
     });
   });
 });

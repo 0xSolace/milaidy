@@ -331,7 +331,7 @@ vi.mock("../../src/AppContext", async () => {
   };
 });
 
-vi.mock("../../src/api-client", () => ({
+vi.mock("@milady/app-core/api", () => ({
   client: {
     getKnowledgeStats: vi.fn().mockResolvedValue({
       documentCount: 5,

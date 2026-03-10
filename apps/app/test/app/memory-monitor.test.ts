@@ -4,7 +4,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { startMemoryLeakDetector } from "../../src/hooks/useMemoryMonitor";
+import { startMemoryLeakDetector } from "@milady/app-core/hooks";
 
 let mockDateNow = 1000000;
 vi.spyOn(Date, "now").mockImplementation(() => mockDateNow);

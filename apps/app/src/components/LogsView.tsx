@@ -2,10 +2,10 @@
  * Logs view component — logs viewer with filtering.
  */
 
+import type { LogEntry } from "@milady/app-core/api";
+import { formatTime } from "@milady/app-core/components";
 import { useEffect, useMemo, useState } from "react";
 import { useApp } from "../AppContext";
-import type { LogEntry } from "../api-client";
-import { formatTime } from "./shared/format";
 
 /** Per-tag badge colour map. */
 const TAG_COLORS: Record<string, { bg: string; fg: string }> = {

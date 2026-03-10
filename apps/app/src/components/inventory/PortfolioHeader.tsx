@@ -3,6 +3,7 @@
  * receive button, address, status dots, and inline chain error.
  */
 
+import { Button } from "@milady/ui";
 import { useApp } from "../../AppContext";
 import type { ChainConfig } from "../chainConfig";
 import { CopyableAddress } from "./CopyableAddress";
@@ -65,9 +66,10 @@ export function PortfolioHeader({
         </div>
         <div className="flex flex-col items-end gap-2">
           {evmAddr && (
-            <button
-              type="button"
-              className="wt__receive-btn"
+            <Button
+              variant="outline"
+              size="sm"
+              className="wt__receive-btn h-8 px-3 shadow-sm"
               onClick={() => {
                 void copyToClipboard(evmAddr);
                 setActionNotice(t("wallet.addressCopied"), "success", 2400);
@@ -75,7 +77,7 @@ export function PortfolioHeader({
               title={evmAddr}
             >
               {t("wallet.receive")}
-            </button>
+            </Button>
           )}
           {evmAddr && (
             <CopyableAddress address={evmAddr} onCopy={copyToClipboard} />
@@ -137,14 +139,15 @@ export function PortfolioHeader({
           <span className="wt__error-inline-text">
             {t("portfolioheader.BSC")} {bscChainError}
           </span>
-          <button
-            type="button"
-            className="wt__error-retry"
+          <Button
+            variant="ghost"
+            size="sm"
+            className="wt__error-retry h-7 px-2 shadow-sm"
             onClick={() => void loadBalances()}
             title={t("wallet.retryFetchingBsc")}
           >
             {t("common.retry")}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -158,13 +161,14 @@ export function PortfolioHeader({
             {t("portfolioheader.ConnectViaElizaCl")}
           </div>
           <div className="mt-2">
-            <button
-              type="button"
-              className="px-3 py-1 border border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-foreground)] cursor-pointer text-[11px] font-mono hover:bg-[var(--accent-hover)] hover:border-[var(--accent-hover)]"
+            <Button
+              variant="default"
+              size="sm"
+              className="h-8 px-3 text-[11px] font-mono shadow-sm"
               onClick={goToRpcSettings}
             >
               {t("portfolioheader.ConfigureRPC")}
-            </button>
+            </Button>
           </div>
         </div>
       )}

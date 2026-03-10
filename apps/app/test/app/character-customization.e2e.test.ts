@@ -281,7 +281,7 @@ vi.mock("../../src/AppContext", async () => {
   };
 });
 
-vi.mock("../../src/api-client", () => ({
+vi.mock("@milady/app-core/api", () => ({
   client: {
     getCharacter: vi.fn().mockResolvedValue({
       name: "TestAgent",

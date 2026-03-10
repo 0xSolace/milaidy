@@ -4,7 +4,7 @@ import {
   pathForTab,
   tabFromPath,
   titleForTab,
-} from "../../src/navigation";
+} from "@milady/app-core/navigation";
 
 describe("navigation", () => {
   it("maps security tab to path and title", () => {

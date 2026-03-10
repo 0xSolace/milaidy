@@ -1,6 +1,7 @@
+import { type CustomActionDef, client } from "@milady/app-core/api";
+import { Button, Input } from "@milady/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useApp } from "../AppContext";
-import { type CustomActionDef, client } from "../api-client";
 
 interface CustomActionsPanelProps {
   open: boolean;
@@ -139,10 +140,11 @@ export function CustomActionsPanel({
                 {t("customactionspanel.enabled")}
               </p>
             </div>
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={onClose}
-              className="text-muted hover:text-txt transition-colors"
+              className="text-muted hover:text-txt h-7 w-7"
               aria-label="Close panel"
             >
               <svg
@@ -157,24 +159,25 @@ export function CustomActionsPanel({
                 <title>{t("customactionspanel.ClosePanel")}</title>
                 <path d="M12 4L4 12M4 4l8 8" />
               </svg>
-            </button>
+            </Button>
           </div>
 
           <div className="space-y-3 p-3 border-b border-border">
-            <button
-              type="button"
+            <Button
+              variant="default"
+              size="sm"
               onClick={handleCreate}
-              className="w-full bg-accent text-txt hover:bg-accent/90 transition-colors rounded px-3 py-2 text-sm font-medium"
+              className="w-full px-3 py-2 h-9 text-sm font-medium shadow-sm"
             >
               {t("customactionspanel.NewCustomAction")}
-            </button>
+            </Button>
 
             <div className="relative">
-              <input
+              <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder={t("customactionspanel.SearchByNameDesc")}
-                className="w-full bg-surface border border-border px-2 py-1.5 text-xs text-txt placeholder:text-muted/50 outline-none focus:border-accent"
+                className="w-full h-8 bg-surface text-xs placeholder:text-muted/50 shadow-sm focus-visible:ring-1 focus-visible:ring-accent"
               />
             </div>
 
@@ -249,22 +252,24 @@ export function CustomActionsPanel({
                     </label>
 
                     <div className="ml-auto flex items-center gap-2">
-                      <button
-                        type="button"
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => handleEdit(action)}
-                        className="text-xs text-accent hover:text-accent/80 transition-colors"
+                        className="h-6 px-2 text-xs text-accent hover:text-accent/80 hover:bg-accent/10"
                         title={t("customactionspanel.EditAction")}
                       >
                         {t("customactionspanel.Edit")}
-                      </button>
-                      <button
-                        type="button"
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => handleDelete(action)}
-                        className="text-xs text-danger hover:text-danger/80 transition-colors"
+                        className="h-6 px-2 text-xs text-danger hover:text-danger/80 hover:bg-danger/10"
                         title={t("customactionspanel.DeleteAction")}
                       >
                         {t("customactionspanel.Delete")}
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>

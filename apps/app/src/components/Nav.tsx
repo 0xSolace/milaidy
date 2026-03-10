@@ -1,8 +1,8 @@
+import { getTabGroups, type TabGroup } from "@milady/app-core/navigation";
 import { Menu, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useApp } from "../AppContext";
-import { getTabGroups, type TabGroup } from "../navigation";
 
 /** Map static navigation group labels to i18n keys. */
 const NAV_LABEL_I18N_KEY: Record<string, string> = {
@@ -16,6 +16,7 @@ const NAV_LABEL_I18N_KEY: Record<string, string> = {
   Apps: "nav.apps",
   Settings: "nav.settings",
   Advanced: "nav.advanced",
+  Cloud: "nav.cloud",
 };
 
 interface NavProps {

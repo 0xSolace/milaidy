@@ -1,6 +1,7 @@
+import { client } from "@milady/app-core/api";
+import { Button, Input } from "@milady/ui";
 import { useState } from "react";
 import { getVrmPreviewUrl, getVrmUrl, useApp } from "../../AppContext";
-import { client } from "../../api-client";
 
 function formatRequestError(err: unknown): string {
   if (err instanceof Error) {
@@ -13,7 +14,7 @@ import type {
   OpenRouterModelOption,
   PiAiModelOption,
   ProviderOption,
-} from "../../api-client";
+} from "@milady/app-core/api";
 import { getProviderLogo } from "../../provider-logos";
 import { OnboardingVrmAvatar } from "./OnboardingVrmAvatar";
 
@@ -25,13 +26,13 @@ export function LlmProviderStep() {
     onboardingSubscriptionTab,
     onboardingApiKey,
     onboardingPrimaryModel,
-    onboardingElizaCloudTab,
+    onboardingMiladyCloudTab,
     onboardingOpenRouterModel,
     onboardingAvatar,
     customVrmUrl,
-    cloudConnected,
-    cloudLoginBusy,
-    cloudLoginError,
+    miladyCloudConnected,
+    miladyCloudLoginBusy,
+    miladyCloudLoginError,
     handleCloudLogin,
     setState,
   } = useApp();
@@ -166,7 +167,7 @@ export function LlmProviderStep() {
 
   const providers = onboardingOptions?.providers ?? [];
   const cloudProviders = providers.filter(
-    (p: ProviderOption) => p.id === "elizacloud",
+    (p: ProviderOption) => p.id === "miladycloud",
   );
   const subscriptionProviders = providers.filter(
     (p: ProviderOption) =>
@@ -175,14 +176,14 @@ export function LlmProviderStep() {
   const apiProviders = providers.filter(
     (p: ProviderOption) =>
       !subscriptionProviders.some((s) => s.id === p.id) &&
-      p.id !== "elizacloud",
+      p.id !== "miladycloud",
   );
 
   const providerOverrides: Record<
     string,
     { name: string; description?: string }
   > = {
-    elizacloud: { name: "Eliza Cloud" },
+    miladycloud: { name: "Milady Cloud" },
     "anthropic-subscription": {
       name: "Claude Subscription",
       description: "$20-200/mo Claude Pro/Max subscription",
@@ -245,11 +246,10 @@ export function LlmProviderStep() {
       <button
         type="button"
         key={provider.id}
-        className={`${padding} border-[1.5px] cursor-pointer transition-all text-left flex items-center gap-3 rounded-lg ${
-          isSelected
-            ? "border-accent !bg-accent !text-accent-fg shadow-[0_0_0_3px_var(--accent),var(--shadow-md)]"
-            : "border-border bg-card hover:border-border-hover hover:bg-bg-hover hover:shadow-md hover:-translate-y-0.5"
-        }`}
+        className={`${padding} border-[1.5px] cursor-pointer transition-all text-left flex items-center gap-3 rounded-lg ${isSelected
+          ? "border-accent !bg-accent !text-accent-fg shadow-[0_0_0_3px_var(--accent),var(--shadow-md)]"
+          : "border-border bg-card hover:border-border-hover hover:bg-bg-hover hover:shadow-md hover:-translate-y-0.5"
+          }`}
         onClick={() => handleProviderSelect(provider.id)}
       >
         <img
@@ -325,9 +325,10 @@ export function LlmProviderStep() {
             </p>
           )}
         </div>
-        <button
-          type="button"
-          className="ml-2 text-xs text-accent bg-transparent border border-accent/30 px-2.5 py-1 rounded-full cursor-pointer hover:bg-accent/10"
+        <Button
+          variant="outline"
+          size="sm"
+          className="ml-2 rounded-full border-accent/30 text-accent hover:bg-accent/10"
           onClick={() => {
             setState("onboardingProvider", "");
             setState("onboardingApiKey", "");
@@ -335,39 +336,37 @@ export function LlmProviderStep() {
           }}
         >
           {t("onboardingwizard.change")}
-        </button>
+        </Button>
       </div>
 
-      {onboardingProvider === "elizacloud" && (
+      {onboardingProvider === "miladycloud" && (
         <div className="max-w-[600px] mx-auto text-left">
           <div className="flex items-center gap-4 border-b border-border mb-4">
             <button
               type="button"
-              className={`text-sm pb-2 border-b-2 ${
-                onboardingElizaCloudTab === "login"
-                  ? "border-accent text-accent"
-                  : "border-transparent text-muted hover:text-txt"
-              }`}
-              onClick={() => setState("onboardingElizaCloudTab", "login")}
+              className={`text-sm pb-2 border-b-2 ${onboardingMiladyCloudTab === "login"
+                ? "border-accent text-accent"
+                : "border-transparent text-muted hover:text-txt"
+                }`}
+              onClick={() => setState("onboardingMiladyCloudTab", "login")}
             >
               {t("onboardingwizard.Login")}
             </button>
             <button
               type="button"
-              className={`text-sm pb-2 border-b-2 ${
-                onboardingElizaCloudTab === "apikey"
-                  ? "border-accent text-accent"
-                  : "border-transparent text-muted hover:text-txt"
-              }`}
-              onClick={() => setState("onboardingElizaCloudTab", "apikey")}
+              className={`text-sm pb-2 border-b-2 ${onboardingMiladyCloudTab === "apikey"
+                ? "border-accent text-accent"
+                : "border-transparent text-muted hover:text-txt"
+                }`}
+              onClick={() => setState("onboardingMiladyCloudTab", "apikey")}
             >
               {t("onboardingwizard.APIKey")}
             </button>
           </div>
 
-          {onboardingElizaCloudTab === "login" ? (
+          {onboardingMiladyCloudTab === "login" ? (
             <div className="text-center">
-              {cloudConnected ? (
+              {miladyCloudConnected ? (
                 <div className="flex items-center gap-2 px-4 py-2.5 border border-green-500/30 bg-green-500/10 text-green-400 text-sm rounded-lg justify-center">
                   <svg
                     width="16"
@@ -385,13 +384,13 @@ export function LlmProviderStep() {
                   {t("onboardingwizard.connected")}
                 </div>
               ) : (
-                <button
-                  type="button"
-                  className="w-full px-6 py-2.5 border border-accent bg-accent text-accent-fg text-sm cursor-pointer rounded-full hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
+                <Button
+                  variant="default"
+                  className="w-full rounded-full"
                   onClick={handleCloudLogin}
-                  disabled={cloudLoginBusy}
+                  disabled={miladyCloudLoginBusy}
                 >
-                  {cloudLoginBusy ? (
+                  {miladyCloudLoginBusy ? (
                     <span className="flex items-center justify-center gap-2">
                       <span className="inline-block w-4 h-4 border-2 border-border border-t-accent rounded-full animate-spin" />
                       {t("onboardingwizard.connecting")}
@@ -399,11 +398,11 @@ export function LlmProviderStep() {
                   ) : (
                     "connect account"
                   )}
-                </button>
+                </Button>
               )}
-              {cloudLoginError && (
+              {miladyCloudLoginError && (
                 <p className="text-danger text-[13px] mt-2">
-                  {cloudLoginError}
+                  {miladyCloudLoginError}
                 </p>
               )}
               <p className="text-xs text-muted mt-3">
@@ -413,28 +412,28 @@ export function LlmProviderStep() {
           ) : (
             <div>
               <label
-                htmlFor="elizacloud-apikey"
+                htmlFor="miladycloud-apikey"
                 className="block text-sm text-txt mb-1.5"
               >
-                {t("onboardingwizard.ElizaCloudAPIKey")}
+                {t("onboardingwizard.MiladyCloudAPIKey")}
               </label>
-              <input
-                id="elizacloud-apikey"
+              <Input
+                id="miladycloud-apikey"
                 type="password"
                 placeholder={t("onboardingwizard.ec")}
                 value={onboardingApiKey}
                 onChange={handleApiKeyChange}
-                className="w-full px-3 py-2.5 text-sm border border-border rounded-lg bg-card text-txt focus:outline-none focus:ring-2 focus:ring-accent"
+                className="rounded-lg bg-card"
               />
               <p className="text-xs text-muted mt-2">
                 {t("onboardingwizard.UseThisIfBrowser")}{" "}
                 <a
-                  href="https://elizacloud.ai/dashboard/settings"
+                  href="https://miladycloud.ai/dashboard/settings"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-accent hover:underline"
                 >
-                  {t("onboardingwizard.elizacloudAiDashbo")}
+                  {t("onboardingwizard.miladycloudAiDashbo")}
                 </a>
               </p>
             </div>
@@ -447,22 +446,20 @@ export function LlmProviderStep() {
           <div className="flex items-center gap-4 border-b border-border mb-3">
             <button
               type="button"
-              className={`text-sm pb-2 border-b-2 ${
-                onboardingSubscriptionTab === "token"
-                  ? "border-accent text-accent"
-                  : "border-transparent text-muted hover:text-txt"
-              }`}
+              className={`text-sm pb-2 border-b-2 ${onboardingSubscriptionTab === "token"
+                ? "border-accent text-accent"
+                : "border-transparent text-muted hover:text-txt"
+                }`}
               onClick={() => setState("onboardingSubscriptionTab", "token")}
             >
               {t("onboardingwizard.SetupToken")}
             </button>
             <button
               type="button"
-              className={`text-sm pb-2 border-b-2 ${
-                onboardingSubscriptionTab === "oauth"
-                  ? "border-accent text-accent"
-                  : "border-transparent text-muted hover:text-txt"
-              }`}
+              className={`text-sm pb-2 border-b-2 ${onboardingSubscriptionTab === "oauth"
+                ? "border-accent text-accent"
+                : "border-transparent text-muted hover:text-txt"
+                }`}
               onClick={() => setState("onboardingSubscriptionTab", "oauth")}
             >
               {t("onboardingwizard.OAuthLogin")}
@@ -474,12 +471,12 @@ export function LlmProviderStep() {
               <span className="text-[13px] font-bold text-txt-strong block mb-2">
                 {t("onboardingwizard.SetupToken1")}
               </span>
-              <input
+              <Input
                 type="password"
                 value={onboardingApiKey}
                 onChange={handleApiKeyChange}
                 placeholder={t("onboardingwizard.skAntOat01")}
-                className="w-full px-3 py-2 border border-border bg-card text-sm focus:border-accent focus:outline-none"
+                className="bg-card"
               />
               <p className="text-xs text-muted mt-2 whitespace-pre-line">
                 {
@@ -511,13 +508,13 @@ export function LlmProviderStep() {
             </div>
           ) : !anthropicOAuthStarted ? (
             <div className="flex flex-col items-center gap-3">
-              <button
-                type="button"
-                className="w-full max-w-xs px-6 py-3 border border-accent bg-accent text-accent-fg text-sm font-medium cursor-pointer hover:bg-accent-hover transition-colors"
+              <Button
+                variant="default"
+                className="w-full max-w-xs"
                 onClick={() => void handleAnthropicStart()}
               >
                 {t("onboardingwizard.LoginWithAnthropic")}
-              </button>
+              </Button>
               <p className="text-xs text-muted text-center">
                 {t("onboardingwizard.RequiresClaudePro")}
               </p>
@@ -532,24 +529,24 @@ export function LlmProviderStep() {
                 <br />
                 {t("onboardingwizard.CopyAndPasteItBe")}
               </p>
-              <input
+              <Input
                 type="text"
                 placeholder={t("onboardingwizard.PasteTheAuthorizat")}
                 value={anthropicCode}
                 onChange={(e) => setAnthropicCode(e.target.value)}
-                className="w-full max-w-xs px-3 py-2 border border-border bg-card text-sm text-center focus:border-accent focus:outline-none"
+                className="w-full max-w-xs text-center bg-card"
               />
               {anthropicError && (
                 <p className="text-xs text-red-400">{anthropicError}</p>
               )}
-              <button
-                type="button"
+              <Button
+                variant="default"
+                className="w-full max-w-xs"
                 disabled={!anthropicCode}
-                className="w-full max-w-xs px-6 py-2 border border-accent bg-accent text-accent-fg text-sm cursor-pointer hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
                 onClick={() => void handleAnthropicExchange()}
               >
                 {t("onboardingwizard.Connect")}
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -581,13 +578,13 @@ export function LlmProviderStep() {
             </div>
           ) : !openaiOAuthStarted ? (
             <div className="flex flex-col items-center gap-3">
-              <button
-                type="button"
-                className="w-full max-w-xs px-6 py-3 border border-accent bg-accent text-accent-fg text-sm font-medium cursor-pointer hover:bg-accent-hover transition-colors"
+              <Button
+                variant="default"
+                className="w-full max-w-xs"
                 onClick={() => void handleOpenAIStart()}
               >
                 {t("onboardingwizard.LoginWithOpenAI")}
-              </button>
+              </Button>
               <p className="text-xs text-muted text-center">
                 {t("onboardingwizard.RequiresChatGPTPlu")}
               </p>
@@ -608,9 +605,9 @@ export function LlmProviderStep() {
                   {t("onboardingwizard.fromYour")}
                 </p>
               </div>
-              <input
+              <Input
                 type="text"
-                className="w-full px-3 py-2.5 border border-border bg-input text-fg text-sm placeholder:text-muted"
+                className="bg-input"
                 placeholder={t("onboardingwizard.httpLocalhost145")}
                 value={openaiCallbackUrl}
                 onChange={(e) => {
@@ -622,24 +619,22 @@ export function LlmProviderStep() {
                 <p className="text-xs text-red-400">{openaiError}</p>
               )}
               <div className="flex gap-2 justify-center">
-                <button
-                  type="button"
-                  className="px-6 py-2.5 border border-accent bg-accent text-accent-fg text-sm font-medium cursor-pointer hover:bg-accent-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                <Button
+                  variant="default"
                   disabled={!openaiCallbackUrl}
                   onClick={() => void handleOpenAIExchange()}
                 >
                   {t("onboardingwizard.CompleteLogin")}
-                </button>
-                <button
-                  type="button"
-                  className="px-4 py-2.5 border border-border text-muted text-sm cursor-pointer hover:text-fg transition-colors"
+                </Button>
+                <Button
+                  variant="outline"
                   onClick={() => {
                     setOpenaiOAuthStarted(false);
                     setOpenaiCallbackUrl("");
                   }}
                 >
                   {t("onboardingwizard.StartOver")}
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -649,19 +644,19 @@ export function LlmProviderStep() {
       {onboardingProvider &&
         onboardingProvider !== "anthropic-subscription" &&
         onboardingProvider !== "openai-subscription" &&
-        onboardingProvider !== "elizacloud" &&
+        onboardingProvider !== "miladycloud" &&
         onboardingProvider !== "ollama" &&
         onboardingProvider !== "pi-ai" && (
           <div className="text-left">
             <span className="text-[13px] font-bold text-txt-strong block mb-2">
               {t("onboardingwizard.APIKey1")}
             </span>
-            <input
+            <Input
               type="password"
               value={onboardingApiKey}
               onChange={handleApiKeyChange}
               placeholder={t("onboardingwizard.EnterYourAPIKey")}
-              className="w-full px-3 py-2 border border-border bg-card text-sm focus:border-accent focus:outline-none"
+              className="bg-card"
             />
             {apiKeyFormatWarning && (
               <p className="text-xs text-red-400 mt-2">{apiKeyFormatWarning}</p>
@@ -754,11 +749,10 @@ export function LlmProviderStep() {
                   <button
                     type="button"
                     key={model.id}
-                    className={`w-full px-4 py-3 border cursor-pointer transition-colors text-left rounded-lg ${
-                      onboardingOpenRouterModel === model.id
-                        ? "border-accent !bg-accent !text-accent-fg"
-                        : "border-border bg-card hover:border-accent/50"
-                    }`}
+                    className={`w-full px-4 py-3 border cursor-pointer transition-colors text-left rounded-lg ${onboardingOpenRouterModel === model.id
+                      ? "border-accent !bg-accent !text-accent-fg"
+                      : "border-border bg-card hover:border-accent/50"
+                      }`}
                     onClick={() => handleOpenRouterModelSelect(model.id)}
                   >
                     <div className="font-bold text-sm">{model.name}</div>

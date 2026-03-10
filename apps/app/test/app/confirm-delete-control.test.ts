@@ -1,7 +1,7 @@
 import React from "react";
 import TestRenderer, { act } from "react-test-renderer";
 import { describe, expect, it, vi } from "vitest";
-import { ConfirmDeleteControl } from "../../src/components/shared/confirm-delete-control";
+import { ConfirmDeleteControl } from "@milady/app-core/components";
 
 function createSubject(
   overrides: Partial<React.ComponentProps<typeof ConfirmDeleteControl>> = {},

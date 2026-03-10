@@ -1,6 +1,8 @@
+import { useTimeout } from "../hooks/useTimeout";
+import { client } from "@milady/app-core/api";
+import { Button } from "@milady/ui";
 import { useCallback, useEffect, useState } from "react";
 import { useApp } from "../AppContext";
-import { client } from "../api-client";
 import { ConfigSaveFooter } from "./ConfigSaveFooter";
 
 type AgentTab = "claude" | "gemini" | "codex" | "aider";
@@ -79,6 +81,8 @@ const ENV_PREFIX: Record<AgentTab, string> = {
 };
 
 export function CodingAgentSettingsSection() {
+  const { setTimeout } = useTimeout();
+
   const [activeTab, setActiveTab] = useState<AgentTab>("claude");
   const [loading, setLoading] = useState(true);
   const [dirty, setDirty] = useState(false);
@@ -230,7 +234,7 @@ export function CodingAgentSettingsSection() {
           {t("codingagentsettingssection.AgentSelectionStra")}
         </span>
         <select
-          className="px-2.5 py-1.5 border border-[var(--border)] bg-[var(--card)] text-xs focus:border-[var(--accent)] focus:outline-none"
+          className="px-2.5 py-1.5 border border-border bg-card text-xs focus:border-accent focus:outline-none shadow-sm"
           value={selectionStrategy}
           onChange={(e) =>
             setPref("PARALLAX_AGENT_SELECTION_STRATEGY", e.target.value)
@@ -255,7 +259,7 @@ export function CodingAgentSettingsSection() {
             {t("codingagentsettingssection.DefaultAgentType")}
           </span>
           <select
-            className="px-2.5 py-1.5 border border-[var(--border)] bg-[var(--card)] text-xs focus:border-[var(--accent)] focus:outline-none"
+            className="px-2.5 py-1.5 border border-border bg-card text-xs focus:border-accent focus:outline-none shadow-sm"
             value={defaultAgentType}
             onChange={(e) =>
               setPref("PARALLAX_DEFAULT_AGENT_TYPE", e.target.value)
@@ -286,7 +290,7 @@ export function CodingAgentSettingsSection() {
           {t("codingagentsettingssection.DefaultPermissionL")}
         </span>
         <select
-          className="px-2.5 py-1.5 border border-[var(--border)] bg-[var(--card)] text-xs focus:border-[var(--accent)] focus:outline-none"
+          className="px-2.5 py-1.5 border border-border bg-card text-xs focus:border-accent focus:outline-none shadow-sm"
           value={approvalPreset}
           onChange={(e) =>
             setPref("PARALLAX_DEFAULT_APPROVAL_PRESET", e.target.value)
@@ -307,22 +311,23 @@ export function CodingAgentSettingsSection() {
       </div>
 
       {/* Agent tabs */}
-      <div className="flex border border-[var(--border)]">
+      <div className="flex border border-border">
         {(["claude", "gemini", "codex", "aider"] as AgentTab[]).map((agent) => {
           const active = activeTab === agent;
           return (
-            <button
+            <Button
               key={agent}
-              type="button"
-              className={`flex-1 px-3 py-2 text-xs font-semibold cursor-pointer transition-colors border-r last:border-r-0 border-[var(--border)] ${
+              variant={active ? "default" : "ghost"}
+              size="sm"
+              className={`flex-1 h-9 px-3 py-2 text-xs font-semibold rounded-none border-r last:border-r-0 border-border ${
                 active
-                  ? "bg-[var(--accent)] text-[var(--accent-foreground)]"
-                  : "bg-[var(--card)] text-[var(--muted)] hover:text-[var(--text)]"
+                  ? "bg-accent text-accent-foreground"
+                  : "text-muted hover:text-txt"
               }`}
               onClick={() => setActiveTab(agent)}
             >
               {AGENT_LABELS[agent]}
-            </button>
+            </Button>
           );
         })}
       </div>
@@ -334,7 +339,7 @@ export function CodingAgentSettingsSection() {
             {t("codingagentsettingssection.Provider")}
           </span>
           <select
-            className="px-2.5 py-1.5 border border-[var(--border)] bg-[var(--card)] text-xs focus:border-[var(--accent)] focus:outline-none"
+            className="px-2.5 py-1.5 border border-border bg-card text-xs focus:border-accent focus:outline-none shadow-sm"
             value={aiderProvider}
             onChange={(e) => setPref("PARALLAX_AIDER_PROVIDER", e.target.value)}
           >
@@ -358,7 +363,7 @@ export function CodingAgentSettingsSection() {
             {t("codingagentsettingssection.PowerfulModel")}
           </span>
           <select
-            className="px-2.5 py-1.5 border border-[var(--border)] bg-[var(--card)] text-xs focus:border-[var(--accent)] focus:outline-none"
+            className="px-2.5 py-1.5 border border-border bg-card text-xs focus:border-accent focus:outline-none shadow-sm"
             value={powerfulValue}
             onChange={(e) =>
               setPref(`${prefix}_MODEL_POWERFUL`, e.target.value)
@@ -377,7 +382,7 @@ export function CodingAgentSettingsSection() {
             {t("codingagentsettingssection.FastModel")}
           </span>
           <select
-            className="px-2.5 py-1.5 border border-[var(--border)] bg-[var(--card)] text-xs focus:border-[var(--accent)] focus:outline-none"
+            className="px-2.5 py-1.5 border border-border bg-card text-xs focus:border-accent focus:outline-none shadow-sm"
             value={fastValue}
             onChange={(e) => setPref(`${prefix}_MODEL_FAST`, e.target.value)}
           >

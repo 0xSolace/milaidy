@@ -18,7 +18,7 @@ import {
   STOP_EMOTE_EVENT,
   TRAY_ACTION_EVENT,
   VOICE_CONFIG_UPDATED_EVENT,
-} from "../../src/events";
+} from "@milady/app-core/events";
 
 describe("event constants", () => {
   it("exports all expected milady:* event names", () => {

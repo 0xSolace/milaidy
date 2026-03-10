@@ -21,7 +21,7 @@ Grab from **[Releases](https://github.com/milady-ai/milady/releases/latest)**:
 | macOS (Apple Silicon) | [`Milady-arm64.dmg`](https://github.com/milady-ai/milady/releases/latest) | for your overpriced rectangle |
 | macOS (Intel) | [`Milady-x64.dmg`](https://github.com/milady-ai/milady/releases/latest) | boomer mac (why separate arm64/x64: [Build & release](docs/build-and-release.md#macos-why-two-dmgs-arm64-and-x64)) |
 | Windows | [`Milady-Setup.exe`](https://github.com/milady-ai/milady/releases/latest) | for the gamer anons |
-| Linux | [`Milady.AppImage`](https://github.com/milady-ai/milady/releases/latest) / [`.deb`](https://github.com/milady-ai/milady/releases/latest) | I use arch btw |
+| Linux | [`Milady.AppImage`](https://github.com/milady-ai/milady/releases/latest) / [`.deb`](https://github.com/milady-ai/milady/releases/latest) / [Flatpak](#flatpak) | I use arch btw |
 
 Signed and notarized. No Gatekeeper FUD. We're legit.
 
@@ -92,6 +92,18 @@ NPM global:
 ```bash
 npm install -g miladyai
 milady setup
+```
+
+### Flatpak
+
+```bash
+flatpak install flathub ai.milady.Milady
+flatpak run ai.milady.Milady
+```
+
+Or sideload from a [release bundle](https://github.com/milady-ai/milady/releases/latest):
+```bash
+flatpak --user install milady.flatpak
 ```
 
 ### Security: API token
