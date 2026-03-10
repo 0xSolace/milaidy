@@ -91,18 +91,12 @@ export function Header() {
       <div className="flex items-center gap-3 min-w-0">
         {/* Agent Name with Avatar */}
         <div className="flex items-center gap-2 shrink-0 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center shrink-0">
-            <span className="text-accent-fg font-bold text-sm">M</span>
-          </div>
           <div className="min-w-0">
             <span
               className="text-base font-bold text-txt-strong truncate block"
               data-testid="agent-name"
             >
               {name}
-            </span>
-            <span className="text-[10px] text-muted hidden sm:block">
-              {t("header.aiAgent")}
             </span>
           </div>
         </div>
@@ -155,75 +149,75 @@ export function Header() {
               </IconButtonTooltip>
 
               {/* Status & Controls Group */}
+              {/*
               <div className="flex items-center gap-2 shrink-0 bg-bg-accent/50 rounded-lg p-1">
-                {/* Pause/Resume Button */}
-                {state === "restarting" || state === "starting" ? (
-                  <span className="inline-flex items-center justify-center w-11 h-11 text-sm leading-none opacity-60">
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  </span>
-                ) : state === "not_started" || state === "stopped" ? (
-                  <IconButtonTooltip label={t("header.startAgent")}>
-                    <button
-                      type="button"
-                      onClick={() => void handleStart()}
-                      aria-label={t("header.startAgent")}
-                      className={`${iconBtnBase} disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100`}
-                      disabled={lifecycleBusy}
-                    >
-                      <Play className="w-5 h-5" />
-                    </button>
-                  </IconButtonTooltip>
-                ) : (
-                  <IconButtonTooltip
-                    label={
+              {state === "restarting" || state === "starting" ? (
+                <span className="inline-flex items-center justify-center w-11 h-11 text-sm leading-none opacity-60">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                </span>
+              ) : state === "not_started" || state === "stopped" ? (
+                <IconButtonTooltip label={t("header.startAgent")}>
+                  <button
+                    type="button"
+                    onClick={() => void handleStart()}
+                    aria-label={t("header.startAgent")}
+                    className={`${iconBtnBase} disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100`}
+                    disabled={lifecycleBusy}
+                  >
+                    <Play className="w-5 h-5" />
+                  </button>
+                </IconButtonTooltip>
+              ) : (
+                <IconButtonTooltip
+                  label={
+                    state === "paused"
+                      ? t("header.resumeAutonomy")
+                      : t("header.pauseAutonomy")
+                  }
+                  shortcut="Space"
+                >
+                  <button
+                    type="button"
+                    onClick={handlePauseResume}
+                    aria-label={
                       state === "paused"
                         ? t("header.resumeAutonomy")
                         : t("header.pauseAutonomy")
                     }
-                    shortcut="Space"
-                  >
-                    <button
-                      type="button"
-                      onClick={handlePauseResume}
-                      aria-label={
-                        state === "paused"
-                          ? t("header.resumeAutonomy")
-                          : t("header.pauseAutonomy")
-                      }
-                      className={`${iconBtnBase} disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100`}
-                      disabled={pauseResumeDisabled}
-                    >
-                      {pauseResumeBusy ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                      ) : state === "paused" ? (
-                        <Play className="w-5 h-5" />
-                      ) : (
-                        <Pause className="w-5 h-5" />
-                      )}
-                    </button>
-                  </IconButtonTooltip>
-                )}
-
-                {/* Restart Button */}
-                <IconButtonTooltip
-                  label={t("header.restartAgent")}
-                  shortcut="Ctrl+R"
-                >
-                  <button
-                    type="button"
-                    onClick={handleRestart}
-                    aria-label={t("header.restartAgent")}
-                    disabled={lifecycleBusy || state === "restarting"}
                     className={`${iconBtnBase} disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100`}
+                    disabled={pauseResumeDisabled}
                   >
-                    {restartBusy || state === "restarting" ? (
+                    {pauseResumeBusy ? (
                       <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : state === "paused" ? (
+                      <Play className="w-5 h-5" />
                     ) : (
-                      <RotateCcw className="w-5 h-5" />
+                      <Pause className="w-5 h-5" />
                     )}
                   </button>
                 </IconButtonTooltip>
-              </div>
+              )}
+
+              <IconButtonTooltip
+                label={t("header.restartAgent")}
+                shortcut="Ctrl+R"
+              >
+                <button
+                  type="button"
+                  onClick={handleRestart}
+                  aria-label={t("header.restartAgent")}
+                  disabled={lifecycleBusy || state === "restarting"}
+                  className={`${iconBtnBase} disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100`}
+                >
+                  {restartBusy || state === "restarting" ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <RotateCcw className="w-5 h-5" />
+                  )}
+                </button>
+              </IconButtonTooltip>
+            </div>
+            */}
 
               {/* Bug Report */}
               <IconButtonTooltip
@@ -257,6 +251,6 @@ export function Header() {
           </div>
         </div>
       </div>
-    </header>
+    </header >
   );
 }

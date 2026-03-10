@@ -33,6 +33,9 @@ export async function handleAgentLifecycleRoutes(
 
   // ── POST /api/agent/start ─────────────────────────────────────────────
   if (method === "POST" && pathname === "/api/agent/start") {
+    const svc = getAutonomySvc(state.runtime);
+    if (svc) await svc.disableAutonomy();
+
     state.agentState = "paused";
     state.startedAt = Date.now();
     state.model = detectRuntimeModel(state.runtime);

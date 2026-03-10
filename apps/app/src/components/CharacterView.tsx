@@ -560,62 +560,6 @@ export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
               </div>
             </div>
           )}
-
-          {hasWallet && !isRegistered && dropLive && !userMinted && (
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-2 px-3 py-2 border border-accent/40 bg-accent/10 rounded-xl shadow-inner backdrop-blur-md">
-                <span className="text-xs font-bold text-accent tracking-widest drop-shadow-[0_0_8px_rgba(var(--accent),0.4)]">
-                  {t("characterview.MINTISLIVE")}
-                </span>
-                <span className="text-[11px] text-muted font-medium">
-                  {t("characterview.MiladyMaker")}
-                  {(dropStatus?.currentSupply ?? 0) + 1} of{" "}
-                  {dropStatus?.maxSupply ?? 2138}
-                </span>
-              </div>
-              <div className="flex items-center gap-3 mt-1">
-                <Button
-                  variant="default"
-                  disabled={mintInProgress}
-                  onClick={() => void mintFromDrop(false)}
-                  className="font-bold tracking-wide shadow-[0_0_15px_rgba(var(--accent),0.2)] hover:shadow-[0_0_20px_rgba(var(--accent),0.4)] transition-all"
-                >
-                  {mintInProgress && !mintShiny ? "minting..." : "free mint"}
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={mintInProgress}
-                  onClick={() => void mintFromDrop(true)}
-                  className="font-bold border-border/50 bg-bg/50 backdrop-blur-md hover:border-accent hover:text-accent transition-all shadow-sm"
-                >
-                  {mintInProgress && mintShiny
-                    ? "minting..."
-                    : "shiny mint (0.1 ETH)"}
-                </Button>
-              </div>
-              {mintError && (
-                <span className="text-xs text-[var(--danger,#e74c3c)]">
-                  {mintError}
-                </span>
-              )}
-              {mintResult && (
-                <div className="text-xs text-green-400 bg-green-400/10 px-3 py-2 rounded-lg border border-green-400/20">
-                  {t("characterview.MintedToken")}
-                  {mintResult.agentId} {t("characterview.MiladyMaker1")}
-                  {mintResult.mintNumber}
-                  {mintResult.isShiny && " (shiny)"}{" "}
-                  <a
-                    href={`https://etherscan.io/tx/${mintResult.txHash}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline text-accent hover:opacity-80 transition-opacity"
-                  >
-                    {t("characterview.viewTx")}
-                  </a>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       )}
 

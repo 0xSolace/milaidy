@@ -23,7 +23,6 @@ import { LifoSandboxView } from "./LifoSandboxView";
 import { LogsPageView } from "./LogsPageView";
 import { PluginsPageView } from "./PluginsPageView";
 import { RuntimeView } from "./RuntimeView";
-import { SecurityAuditPageView } from "./SecurityAuditPageView";
 import { SkillsView } from "./SkillsView";
 import { TrajectoriesView } from "./TrajectoriesView";
 import { TrajectoryDetailView } from "./TrajectoryDetailView";
@@ -51,11 +50,11 @@ const SUB_TABS: Array<{ id: SubTab; label: string; description: string }> = [
     label: "Triggers",
     description: "Scheduled and event-based automations",
   },
-  {
-    id: "fine-tuning",
-    label: "Fine-Tuning",
-    description: "Dataset and model training workflows",
-  },
+  // {
+  //   id: "fine-tuning",
+  //   label: "Fine-Tuning",
+  //   description: "Dataset and model training workflows",
+  // },
   {
     id: "trajectories",
     label: "Trajectories",
@@ -68,20 +67,15 @@ const SUB_TABS: Array<{ id: SubTab; label: string; description: string }> = [
   },
   {
     id: "database",
-    label: "Databases",
+    label: "Database",
     description: "Tables, media, and vector browser",
   },
-  {
-    id: "lifo",
-    label: "Lifo",
-    description: "Browser-native shell sandbox and file explorer",
-  },
-  { id: "logs", label: "Logs", description: "Runtime and service logs" },
-  {
-    id: "security",
-    label: "Security",
-    description: "Sandbox and policy audit feed",
-  },
+  // {
+  //   id: "lifo",
+  //   label: "Lifo",
+  //   description: "Browser-native shell sandbox and file explorer",
+  // },
+  { id: "logs", label: "Logs", description: "Runtime and service logs" }
 ];
 
 const MODAL_SUB_TABS = SUB_TABS.filter(
@@ -321,8 +315,6 @@ export function AdvancedPageView({ inModal }: { inModal?: boolean } = {}) {
         return <LifoSandboxView />;
       case "logs":
         return <LogsPageView />;
-      case "security":
-        return <SecurityAuditPageView />;
       default:
         return inModal ? <CustomActionsView /> : <PluginsPageView />;
     }
@@ -358,11 +350,10 @@ export function AdvancedPageView({ inModal }: { inModal?: boolean } = {}) {
                 <button
                   type="button"
                   key={subTab.id}
-                  className={`px-4 py-2 text-xs font-medium border-b-2 -mb-px transition-colors ${
-                    isActive
-                      ? "border-accent text-accent"
-                      : "border-transparent text-muted hover:text-txt hover:border-border"
-                  }`}
+                  className={`px-4 py-2 text-xs font-medium border-b-2 -mb-px transition-colors ${isActive
+                    ? "border-accent text-accent"
+                    : "border-transparent text-muted hover:text-txt hover:border-border"
+                    }`}
                   onClick={() => handleSubTabChange(subTab.id)}
                   title={subTab.description}
                 >
@@ -381,15 +372,15 @@ export function AdvancedPageView({ inModal }: { inModal?: boolean } = {}) {
         style={
           inModal
             ? ({
-                "--accent": "#7b8fb5",
-                "--surface": "rgba(255, 255, 255, 0.06)",
-                "--s-accent": "#7b8fb5",
-                "--s-text-accent": "#7b8fb5",
-                "--s-accent-glow": "rgba(123, 143, 181, 0.35)",
-                "--s-accent-subtle": "rgba(123, 143, 181, 0.12)",
-                "--s-grid-line": "rgba(123, 143, 181, 0.02)",
-                "--s-glow-edge": "rgba(123, 143, 181, 0.08)",
-              } as React.CSSProperties)
+              "--accent": "#7b8fb5",
+              "--surface": "rgba(255, 255, 255, 0.06)",
+              "--s-accent": "#7b8fb5",
+              "--s-text-accent": "#7b8fb5",
+              "--s-accent-glow": "rgba(123, 143, 181, 0.35)",
+              "--s-accent-subtle": "rgba(123, 143, 181, 0.12)",
+              "--s-grid-line": "rgba(123, 143, 181, 0.02)",
+              "--s-glow-edge": "rgba(123, 143, 181, 0.08)",
+            } as React.CSSProperties)
             : undefined
         }
       >

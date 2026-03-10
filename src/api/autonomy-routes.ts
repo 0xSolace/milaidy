@@ -29,7 +29,7 @@ export function getAutonomyState(runtime: AgentRuntime | null): {
     enabled:
       typeof statusEnabled === "boolean"
         ? statusEnabled
-        : runtimeEnabled || Boolean(svc),
+        : runtimeEnabled,
     thinking: svc?.isLoopRunning() ?? false,
   };
 }
