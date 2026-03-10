@@ -3200,8 +3200,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ? style.system.replace(/\{\{name\}\}/g, onboardingName)
       : `You are ${onboardingName}, an autonomous AI agent powered by elizaOS. ${onboardingOptions.sharedStyleRules}`;
 
-    const isLocalMode = true;
-
     // Default to local mode
     const apiRunMode = "local";
 

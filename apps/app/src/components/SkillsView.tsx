@@ -772,7 +772,7 @@ function EditSkillModal({
 /* ── Main Skills View ───────────────────────────────────────────────── */
 
 export function SkillsView({ inModal: _inModal }: { inModal?: boolean } = {}) {
-  useTimeout();
+  const { setTimeout: _setTimeout } = useTimeout();
 
   const {
     skills,
