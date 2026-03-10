@@ -1,4 +1,4 @@
-import type { BscTradeTxStatusResponse } from "../../api-client";
+import type { BscTradeTxStatusResponse } from "@milady/app-core/api";
 import { getExplorerTokenUrl } from "../chainConfig";
 
 export type TranslatorFn = (

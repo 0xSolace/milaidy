@@ -327,7 +327,7 @@ describe("collectPluginNames", () => {
     const names = collectPluginNames(config);
 
     expect(names.has("@elizaos/plugin-streaming-base")).toBe(true);
-    expect(names.has("@elizaos/plugin-streaming-base")).toBe(false);
+
   });
 
   it("normalizes cua short IDs in plugins.allow", () => {
@@ -435,7 +435,7 @@ describe("collectPluginNames", () => {
     const names = collectPluginNames(config);
 
     expect(names.has("@elizaos/plugin-streaming-base")).toBe(true);
-    expect(names.has("@elizaos/plugin-streaming-base")).toBe(false);
+
   });
 
   it("uses the Milady x-streaming package when enabled via plugins.entries", () => {
@@ -447,7 +447,7 @@ describe("collectPluginNames", () => {
     const names = collectPluginNames(config);
 
     expect(names.has("@elizaos/plugin-x-streaming")).toBe(true);
-    expect(names.has("@elizaos/plugin-x-streaming")).toBe(false);
+
   });
 
   it("uses @elizaos/plugin-telegram from CHANNEL_PLUGIN_MAP for connectors with plugins.entries", () => {
@@ -901,8 +901,8 @@ describe("autoResolveDiscordAppId", () => {
 
   it("resolves app id from Discord API when token is present", async () => {
     process.env.DISCORD_API_TOKEN = "tok";
-    const infoSpy = vi.spyOn(logger, "info").mockImplementation(() => {});
-    const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {});
+    const infoSpy = vi.spyOn(logger, "info").mockImplementation(() => { });
+    const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => { });
 
     const fetchMock = vi.fn(async () => ({
       ok: true,
@@ -930,7 +930,7 @@ describe("autoResolveDiscordAppId", () => {
 
   it("logs a warning when Discord API responds with an error", async () => {
     process.env.DISCORD_API_TOKEN = "tok";
-    const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => { });
 
     globalThis.fetch = vi.fn(async () => ({
       ok: false,
@@ -947,7 +947,7 @@ describe("autoResolveDiscordAppId", () => {
 
   it("logs a warning when the Discord API request throws", async () => {
     process.env.DISCORD_API_TOKEN = "tok";
-    const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => { });
 
     globalThis.fetch = vi.fn(async () => {
       throw new Error("network down");
@@ -1899,7 +1899,7 @@ describe("resolveMiladyPluginImportSpecifier", () => {
     await fs.writeFile(pluginIndex, "export default {};\n");
 
     const specifier = resolveMiladyPluginImportSpecifier(
-      "@elizaos/plugin-retake",
+      "@milady/plugin-retake",
       pathToFileURL(path.join(runtimeDir, "eliza.ts")).href,
     );
 
@@ -1914,11 +1914,11 @@ describe("resolveMiladyPluginImportSpecifier", () => {
     await fs.mkdir(runtimeDir, { recursive: true });
 
     const specifier = resolveMiladyPluginImportSpecifier(
-      "@elizaos/plugin-x-streaming",
+      "@milady/plugin-x-streaming",
       pathToFileURL(path.join(runtimeDir, "eliza.ts")).href,
     );
 
-    expect(specifier).toBe("@elizaos/plugin-x-streaming");
+    expect(specifier).toBe("@milady/plugin-x-streaming");
 
     await fs.rm(tmpDir, { recursive: true, force: true });
   });
@@ -2057,7 +2057,7 @@ describe("findPluginExport", () => {
       default: {
         name: "rich",
         description: "rich plugin",
-        init: () => {},
+        init: () => { },
         actions: [],
       },
     });
@@ -2422,7 +2422,7 @@ describe("deduplicatePluginActions", () => {
         name: n,
         description: `action ${n}`,
         similes: [],
-        handler: async () => {},
+        handler: async () => { },
         validate: async () => true,
         examples: [],
       })),

@@ -1,7 +1,7 @@
-import type { AgentState } from "../../api-client";
+import type { AgentState } from "@milady/app-core/api";
+import { LanguageDropdown } from "@milady/app-core/components";
 import type { UiLanguage } from "../../i18n/messages";
 import { AgentModeDropdown } from "../shared/AgentModeDropdown";
-import { LanguageDropdown } from "../shared/LanguageDropdown";
 
 import type { TranslatorFn } from "./walletUtils";
 
@@ -37,11 +37,11 @@ export interface CompanionHeaderProps {
   handlePauseResume: () => Promise<void>;
   handleRestart: () => Promise<void>;
   // Cloud
-  cloudEnabled: boolean;
-  cloudConnected: boolean;
-  cloudCredits: number | null;
+  miladyCloudEnabled: boolean;
+  miladyCloudConnected: boolean;
+  miladyCloudCredits: number | null;
   creditColor: string;
-  cloudTopUpUrl: string;
+  miladyCloudTopUpUrl: string;
   // Wallets (display only — full trading panel in separate PR)
   evmShort: string | null;
   solShort: string | null;
@@ -65,11 +65,11 @@ export function CompanionHeader(props: CompanionHeaderProps) {
     pauseResumeDisabled,
     handlePauseResume,
     handleRestart,
-    cloudEnabled,
-    cloudConnected,
-    cloudCredits,
+    miladyCloudEnabled,
+    miladyCloudConnected,
+    miladyCloudCredits,
     creditColor,
-    cloudTopUpUrl,
+    miladyCloudTopUpUrl,
     evmShort,
     solShort,
     handleSwitchToNativeShell,
@@ -80,7 +80,6 @@ export function CompanionHeader(props: CompanionHeaderProps) {
 
   return (
     <header className="relative flex justify-center items-center mb-6 w-full z-10">
-
       {/* Hub Header Elements — centered */}
       <div className="flex items-center gap-3 relative">
         {/* Agent Status */}
@@ -92,9 +91,9 @@ export function CompanionHeader(props: CompanionHeaderProps) {
             {translateAgentState(agentState as string, t)}
           </span>
           {(agentState as string) === "restarting" ||
-            (agentState as string) === "starting" ||
-            (agentState as string) === "not_started" ||
-            (agentState as string) === "stopped" ? (
+          (agentState as string) === "starting" ||
+          (agentState as string) === "not_started" ||
+          (agentState as string) === "stopped" ? (
             <span className="flex items-center justify-center opacity-60 ml-1.5">
               <svg
                 className="animate-spin"
@@ -212,13 +211,13 @@ export function CompanionHeader(props: CompanionHeaderProps) {
         </div>
 
         {/* Cloud Balance */}
-        {(cloudEnabled || cloudConnected) &&
-          (cloudConnected ? (
+        {(miladyCloudEnabled || miladyCloudConnected) &&
+          (miladyCloudConnected ? (
             <a
-              href={cloudTopUpUrl}
+              href={miladyCloudTopUpUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className={`flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] font-medium text-sm tracking-wide transition-all duration-300 hover:bg-white/10 hover:border-white/30 hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:-translate-y-0.5 cursor-pointer ${cloudCredits === null ? "text-white/60" : creditColor}`}
+              className={`flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] font-medium text-sm tracking-wide transition-all duration-300 hover:bg-white/10 hover:border-white/30 hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:-translate-y-0.5 cursor-pointer ${miladyCloudCredits === null ? "text-white/60" : creditColor}`}
             >
               <svg
                 width="12"
@@ -236,9 +235,9 @@ export function CompanionHeader(props: CompanionHeaderProps) {
                 <path d="M12 18V6" />
               </svg>
               <span className="uppercase font-bold tracking-widest text-[10px] sm:text-xs drop-shadow-md">
-                {cloudCredits === null
-                  ? t("header.cloudConnected")
-                  : `$${cloudCredits.toFixed(2)}`}
+                {miladyCloudCredits === null
+                  ? t("header.miladyCloudConnected")
+                  : `$${miladyCloudCredits.toFixed(2)}`}
               </span>
             </a>
           ) : (
@@ -251,7 +250,10 @@ export function CompanionHeader(props: CompanionHeaderProps) {
 
         {/* Wallet addresses (trading panel in separate PR) */}
         {(evmShort || solShort) && (
-          <span className="flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] text-white/90 font-medium text-sm tracking-wide transition-all" data-testid="wallet-address-pill">
+          <span
+            className="flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] text-white/90 font-medium text-sm tracking-wide transition-all"
+            data-testid="wallet-address-pill"
+          >
             <span className="uppercase font-bold tracking-widest text-[10px] sm:text-xs drop-shadow-md">
               {evmShort || solShort}
             </span>
@@ -290,13 +292,44 @@ export function CompanionHeader(props: CompanionHeaderProps) {
               type="button"
               onClick={() => setCameraZoomed((z) => !z)}
               className="flex items-center justify-center w-8 h-8 rounded-full bg-white/5 text-white/80 hover:text-white hover:bg-white/20 border border-transparent hover:border-white/30 transition-all"
-              title={cameraZoomed ? t("companion.zoomOut") : t("companion.zoomIn")}
+              title={
+                cameraZoomed ? t("companion.zoomOut") : t("companion.zoomIn")
+              }
               data-testid="ui-zoom-toggle"
             >
               {cameraZoomed ? (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  <line x1="8" y1="11" x2="14" y2="11" />
+                </svg>
               ) : (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  <line x1="11" y1="8" x2="11" y2="14" />
+                  <line x1="8" y1="11" x2="14" y2="11" />
+                </svg>
               )}
             </button>
           )}

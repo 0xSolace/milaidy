@@ -9,7 +9,7 @@ import type {
   TrajectoryDetailResult,
   TrajectoryListResult,
   TrajectoryStats,
-} from "../../src/api-client";
+} from "@milady/app-core/api";
 
 const { mockUseApp, mockClientFns } = vi.hoisted(() => ({
   mockUseApp: vi.fn(),
@@ -36,7 +36,7 @@ vi.mock("../../src/AppContext", () => ({
   useApp: () => mockUseApp(),
 }));
 
-vi.mock("../../src/api-client", () => ({
+vi.mock("@milady/app-core/api", () => ({
   client: mockClientFns,
 }));
 
@@ -253,8 +253,7 @@ describe("Advanced trajectories/fine-tuning integration", () => {
     const backButton = tree?.root.findAll(
       (node) =>
         node.type === "button" &&
-        Array.isArray(node.children) &&
-        node.children.includes("← Back"),
+        containsText(node, "trajectorydetailview.Back"),
     )[0];
     expect(backButton).toBeDefined();
 
@@ -266,8 +265,7 @@ describe("Advanced trajectories/fine-tuning integration", () => {
     const fineTuningTabButton = tree?.root.findAll(
       (node) =>
         node.type === "button" &&
-        Array.isArray(node.children) &&
-        node.children.includes("Fine-Tuning"),
+        containsText(node, "Fine-Tuning"),
     )[0];
     expect(fineTuningTabButton).toBeDefined();
 

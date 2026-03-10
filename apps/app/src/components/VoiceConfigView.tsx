@@ -8,27 +8,32 @@
  *   - Test functionality
  */
 
-import type { SwabbleConfig } from "@milady/capacitor-swabble";
-import { Swabble } from "@milady/capacitor-swabble";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useApp } from "../AppContext";
 import {
   client,
   type VoiceConfig,
   type VoiceMode,
   type VoiceProvider,
-} from "../api-client";
-import { dispatchWindowEvent, VOICE_CONFIG_UPDATED_EVENT } from "../events";
+} from "@milady/app-core/api";
+import {
+  dispatchWindowEvent,
+  VOICE_CONFIG_UPDATED_EVENT,
+} from "@milady/app-core/events";
+import {
+  PREMADE_VOICES,
+  sanitizeApiKey,
+  VOICE_PROVIDERS,
+} from "@milady/app-core/voice";
+import { useTimeout } from "../hooks/useTimeout";
+import type { SwabbleConfig } from "@milady/capacitor-swabble";
+import { Swabble } from "@milady/capacitor-swabble";
+import { Button, Input } from "@milady/ui";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useApp } from "../AppContext";
 import {
   CloudConnectionStatus,
   CloudSourceModeToggle,
 } from "./CloudSourceControls";
 import { ConfigSaveFooter } from "./ConfigSaveFooter";
-import {
-  PREMADE_VOICES,
-  sanitizeApiKey,
-  VOICE_PROVIDERS,
-} from "./shared/voice-types";
 
 const DEFAULT_ELEVEN_FAST_MODEL = "eleven_flash_v2_5";
 
@@ -36,12 +41,12 @@ const MODEL_SIZES: Array<{
   id: NonNullable<SwabbleConfig["modelSize"]>;
   hint: string;
 }> = [
-  { id: "tiny", hint: "(faster)" },
-  { id: "base", hint: "(recommended)" },
-  { id: "small", hint: "" },
-  { id: "medium", hint: "(accurate)" },
-  { id: "large", hint: "(accurate)" },
-];
+    { id: "tiny", hint: "(faster)" },
+    { id: "base", hint: "(recommended)" },
+    { id: "small", hint: "" },
+    { id: "medium", hint: "(accurate)" },
+    { id: "large", hint: "(accurate)" },
+  ];
 
 function WakeWordSection({
   serverConfig,
@@ -180,15 +185,13 @@ function WakeWordSection({
         <button
           type="button"
           onClick={() => void handleToggle()}
-          className={`relative inline-flex h-5 w-9 cursor-pointer items-center rounded-full transition-colors ${
-            enabled ? "bg-[var(--accent)]" : "bg-[var(--border)]"
-          }`}
+          className={`relative inline-flex h-5 w-9 cursor-pointer items-center rounded-full transition-colors ${enabled ? "bg-[var(--accent)]" : "bg-[var(--border)]"
+            }`}
           aria-label={enabled ? "Disable wake word" : "Enable wake word"}
         >
           <span
-            className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${
-              enabled ? "translate-x-4" : "translate-x-0.5"
-            }`}
+            className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${enabled ? "translate-x-4" : "translate-x-0.5"
+              }`}
           />
         </button>
       </div>
@@ -206,20 +209,21 @@ function WakeWordSection({
             >
               {t}
               {triggers.length > 1 && (
-                <button
-                  type="button"
-                  className="leading-none hover:opacity-70 cursor-pointer"
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="leading-none hover:bg-transparent hover:opacity-70 cursor-pointer h-4 w-4 ml-1"
                   onClick={() => removeTrigger(t)}
                   aria-label={`Remove trigger "${t}"`}
                 >
                   ×
-                </button>
+                </Button>
               )}
             </span>
           ))}
-          <input
+          <Input
             type="text"
-            className="flex-1 min-w-[80px] px-1 text-xs bg-transparent outline-none"
+            className="flex-1 min-w-[80px] h-6 px-1 text-xs bg-transparent border-0 focus-visible:ring-0 shadow-none"
             placeholder={t("voiceconfigview.AddTrigger")}
             value={triggerInput}
             onChange={(e) => setTriggerInput(e.target.value)}
@@ -272,23 +276,20 @@ function WakeWordSection({
           {MODEL_SIZES.map((m) => {
             const active = modelSize === m.id;
             return (
-              <button
+              <Button
                 key={m.id}
-                type="button"
-                className={`flex-1 px-2 py-1.5 text-xs cursor-pointer transition-colors border ${
-                  active
-                    ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]"
-                    : "border-[var(--border)] bg-[var(--card)] text-[var(--text)] hover:border-[var(--accent)]"
-                }`}
+                variant={active ? "default" : "outline"}
+                size="sm"
+                className="flex-1 h-auto flex-col py-1.5"
                 onClick={() => void handleModelSizeChange(m.id)}
               >
                 <div className="font-semibold">{m.id}</div>
                 {m.hint && (
-                  <div className="text-[10px] text-[var(--muted)] mt-0.5">
+                  <div className="text-[10px] opacity-70 mt-0.5">
                     {m.hint}
                   </div>
                 )}
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -311,8 +312,10 @@ function WakeWordSection({
 }
 
 export function VoiceConfigView() {
+  const { setTimeout } = useTimeout();
+
   const { t } = useApp();
-  const { cloudConnected } = useApp();
+  const { miladyCloudConnected } = useApp();
   const [voiceConfig, setVoiceConfig] = useState<VoiceConfig>({});
   const [swabbleServerConfig, setSwabbleServerConfig] =
     useState<Partial<SwabbleConfig> | null>(null);
@@ -363,7 +366,7 @@ export function VoiceConfigView() {
   const providerInfo = VOICE_PROVIDERS.find((p) => p.id === currentProvider);
   const isConfigured =
     currentMode === "cloud"
-      ? cloudConnected
+      ? miladyCloudConnected
       : currentProvider !== "elevenlabs"
         ? true
         : Boolean(voiceConfig.elevenlabs?.apiKey);
@@ -417,10 +420,10 @@ export function VoiceConfigView() {
       const normalizedElevenLabs =
         provider === "elevenlabs"
           ? {
-              ...voiceConfig.elevenlabs,
-              modelId:
-                voiceConfig.elevenlabs?.modelId ?? DEFAULT_ELEVEN_FAST_MODEL,
-            }
+            ...voiceConfig.elevenlabs,
+            modelId:
+              voiceConfig.elevenlabs?.modelId ?? DEFAULT_ELEVEN_FAST_MODEL,
+          }
           : voiceConfig.elevenlabs;
       const sanitizedKey = sanitizeApiKey(normalizedElevenLabs?.apiKey);
       if (normalizedElevenLabs) {
@@ -490,21 +493,18 @@ export function VoiceConfigView() {
           {VOICE_PROVIDERS.map((p) => {
             const active = currentProvider === p.id;
             return (
-              <button
+              <Button
                 key={p.id}
-                type="button"
-                className={`flex-1 px-3 py-2 text-xs cursor-pointer transition-colors border ${
-                  active
-                    ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]"
-                    : "border-[var(--border)] bg-[var(--card)] text-[var(--text)] hover:border-[var(--accent)]"
-                }`}
+                variant={active ? "default" : "outline"}
+                size="sm"
+                className="flex-1 h-auto flex-col py-2"
                 onClick={() => handleProviderChange(p.id)}
               >
                 <div className="font-semibold">{p.label}</div>
-                <div className="text-[10px] text-[var(--muted)] mt-0.5">
+                <div className="text-[10px] opacity-70 mt-0.5">
                   {p.hint}
                 </div>
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -518,11 +518,10 @@ export function VoiceConfigView() {
             : `${providerInfo?.label} — No API key needed`}
         </span>
         <span
-          className={`text-[10px] px-1.5 py-0.5 border ${
-            isConfigured
+          className={`text-[10px] px-1.5 py-0.5 border ${isConfigured
               ? "border-green-600 text-green-600"
               : "border-yellow-600 text-yellow-600"
-          }`}
+            }`}
         >
           {isConfigured ? "Configured" : "Needs Setup"}
         </span>
@@ -545,7 +544,7 @@ export function VoiceConfigView() {
           {/* Cloud mode status */}
           {currentMode === "cloud" && (
             <CloudConnectionStatus
-              connected={cloudConnected}
+              connected={miladyCloudConnected}
               disconnectedText="Eliza Cloud not connected. Connect in Settings."
             />
           )}
@@ -556,9 +555,9 @@ export function VoiceConfigView() {
               <span className="text-xs font-semibold">
                 {t("voiceconfigview.ElevenLabsAPIKey")}
               </span>
-              <input
+              <Input
                 type="password"
-                className="px-2.5 py-1.5 border border-[var(--border)] bg-[var(--card)] text-xs focus:border-[var(--accent)] focus:outline-none"
+                className="bg-card text-xs"
                 placeholder={
                   voiceConfig.elevenlabs?.apiKey
                     ? "API key set"
@@ -593,21 +592,18 @@ export function VoiceConfigView() {
               {PREMADE_VOICES.map((preset) => {
                 const active = selectedVoiceId === preset.voiceId;
                 return (
-                  <button
+                  <Button
                     key={preset.id}
-                    type="button"
-                    className={`px-2 py-1.5 text-xs cursor-pointer transition-colors border text-left ${
-                      active
-                        ? "border-[var(--accent)] bg-[var(--accent)]/10"
-                        : "border-[var(--border)] bg-[var(--card)] hover:border-[var(--accent)]"
-                    }`}
+                    variant={active ? "default" : "outline"}
+                    size="sm"
+                    className="h-auto flex-col items-start py-1.5 px-2 text-left"
                     onClick={() => handleVoiceSelect(preset.voiceId)}
                   >
-                    <div className="font-semibold">{preset.name}</div>
-                    <div className="text-[10px] text-[var(--muted)]">
+                    <div className="font-semibold truncate w-full">{preset.name}</div>
+                    <div className="text-[10px] opacity-70 truncate w-full">
                       {preset.hint}
                     </div>
-                  </button>
+                  </Button>
                 );
               })}
             </div>
@@ -616,18 +612,19 @@ export function VoiceConfigView() {
           {/* Test voice */}
           {selectedPreset && (
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className="px-3 py-1.5 text-xs font-semibold border border-[var(--border)] bg-[var(--card)] cursor-pointer hover:border-[var(--accent)] disabled:opacity-50"
+              <Button
+                variant="outline"
+                size="sm"
+                className="font-semibold"
                 disabled={testing}
                 onClick={() => handleTestVoice(selectedPreset.previewUrl)}
               >
                 {testing ? "Playing..." : `Test ${selectedPreset.name}`}
-              </button>
+              </Button>
               {testing && (
-                <button
-                  type="button"
-                  className="px-2 py-1.5 text-xs border border-[var(--border)] bg-[var(--card)] cursor-pointer hover:border-[var(--accent)]"
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => {
                     if (audioRef.current) {
                       audioRef.current.pause();
@@ -636,7 +633,7 @@ export function VoiceConfigView() {
                   }}
                 >
                   {t("voiceconfigview.Stop")}
-                </button>
+                </Button>
               )}
             </div>
           )}

@@ -2,7 +2,7 @@
 import React, { useEffect } from "react";
 import TestRenderer, { act } from "react-test-renderer";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { StreamEventEnvelope } from "../../src/api-client";
+import type { StreamEventEnvelope } from "@milady/app-core/api";
 
 const { mockClient, wsHandlers } = vi.hoisted(() => {
   const handlers = new Map<string, (data: Record<string, unknown>) => void>();
@@ -118,7 +118,7 @@ const { mockClient, wsHandlers } = vi.hoisted(() => {
   };
 });
 
-vi.mock("../../src/api-client", () => ({
+vi.mock("@milady/app-core/api", () => ({
   client: mockClient,
   SkillScanReportSummary: {},
 }));

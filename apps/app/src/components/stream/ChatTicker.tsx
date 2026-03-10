@@ -1,6 +1,6 @@
+import type { StreamEventEnvelope } from "@milady/app-core/api";
 import { useMemo } from "react";
 import { useApp } from "../../AppContext";
-import type { StreamEventEnvelope } from "../../api-client";
 import { CHANNEL_COLORS } from "./helpers";
 
 export function ChatTicker({ events }: { events: StreamEventEnvelope[] }) {

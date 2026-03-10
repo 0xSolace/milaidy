@@ -4,7 +4,6 @@
 
 import { useState } from "react";
 import { type OnboardingStep, useApp } from "../AppContext";
-import { AvatarStep } from "./onboarding/AvatarStep";
 import { CloudLoginStep } from "./onboarding/CloudLoginStep";
 import { CloudProviderStep } from "./onboarding/CloudProviderStep";
 import { ConnectorsStep } from "./onboarding/ConnectorsStep";
@@ -12,30 +11,25 @@ import { InventorySetupStep } from "./onboarding/InventorySetupStep";
 import { LanguageStep } from "./onboarding/LanguageStep";
 import { LlmProviderStep } from "./onboarding/LlmProviderStep";
 import { ModelSelectionStep } from "./onboarding/ModelSelectionStep";
-import { NameStep } from "./onboarding/NameStep";
-import { OwnerNameStep } from "./onboarding/OwnerNameStep";
 import { PermissionsStep } from "./onboarding/PermissionsStep";
 import { RunModeStep } from "./onboarding/RunModeStep";
 import { SetupModeStep } from "./onboarding/SetupModeStep";
-import { StyleStep } from "./onboarding/StyleStep";
 import { WelcomeStep } from "./onboarding/WelcomeStep";
 
 // Platform detection for mobile — on iOS/Android only cloud mode is available
 export function OnboardingWizard() {
   const {
     onboardingStep,
-    onboardingName,
     onboardingSetupMode,
-    onboardingStyle,
     onboardingRunMode,
     onboardingCloudProvider,
     onboardingSmallModel,
     onboardingLargeModel,
     onboardingProvider,
     onboardingApiKey,
-    onboardingElizaCloudTab,
+    onboardingMiladyCloudTab,
     onboardingRestarting,
-    cloudConnected,
+    miladyCloudConnected: miladyCloudConnected,
     handleOnboardingNext,
     handleOnboardingBack,
     setState,
@@ -48,7 +42,6 @@ export function OnboardingWizard() {
   const QUICK_STEPS: OnboardingStep[] = [
     "welcome",
     "language",
-    "ownerName",
     "setupMode",
     "llmProvider",
     "permissions",
@@ -56,7 +49,6 @@ export function OnboardingWizard() {
   const FULL_STEPS: OnboardingStep[] = [
     "welcome",
     "language",
-    "ownerName",
     "setupMode",
     "runMode",
     "cloudProvider",
@@ -94,14 +86,6 @@ export function OnboardingWizard() {
         return <WelcomeStep />;
       case "language":
         return <LanguageStep />;
-      case "name":
-        return <NameStep />;
-      case "ownerName":
-        return <OwnerNameStep />;
-      case "avatar":
-        return <AvatarStep />;
-      case "style":
-        return <StyleStep />;
       case "setupMode":
         return <SetupModeStep />;
       case "runMode":
@@ -129,14 +113,6 @@ export function OnboardingWizard() {
     switch (onboardingStep) {
       case "welcome":
         return true;
-      case "name":
-        return onboardingName.trim().length > 0;
-      case "ownerName":
-        return true; // optional — user can skip
-      case "avatar":
-        return true; // always valid — defaults to 1
-      case "style":
-        return onboardingStyle.length > 0;
       case "setupMode":
         return onboardingSetupMode !== "";
       case "runMode":
@@ -144,14 +120,14 @@ export function OnboardingWizard() {
       case "dockerSetup":
         return true; // informational step, always valid
       case "cloudProvider":
-        if (onboardingCloudProvider === "elizacloud") return cloudConnected;
+        if (onboardingCloudProvider === "miladycloud") return miladyCloudConnected;
         return onboardingCloudProvider.length > 0;
       case "modelSelection":
         return (
           onboardingSmallModel.length > 0 && onboardingLargeModel.length > 0
         );
       case "cloudLogin":
-        return cloudConnected;
+        return miladyCloudConnected;
       case "llmProvider":
         if (onboardingProvider === "anthropic-subscription") {
           return true;
@@ -159,10 +135,10 @@ export function OnboardingWizard() {
         if (onboardingProvider === "openai-subscription") {
           return true;
         }
-        if (onboardingProvider === "elizacloud") {
+        if (onboardingProvider === "miladycloud") {
           // Allow proceeding if logged in OR if API key is provided
-          return onboardingElizaCloudTab === "login"
-            ? cloudConnected
+          return onboardingMiladyCloudTab === "login"
+            ? miladyCloudConnected
             : onboardingApiKey.trim().length > 0;
         }
         if (onboardingProvider === "ollama" || onboardingProvider === "pi-ai") {

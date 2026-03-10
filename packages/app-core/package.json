@@ -15,7 +15,8 @@
         "./bridge": "./src/bridge/index.ts",
         "./state": "./src/state/index.ts",
         "./components": "./src/components/index.ts",
-        "./utils": "./src/utils/index.ts"
+        "./utils": "./src/utils/index.ts",
+        "./voice": "./src/voice/index.ts"
     },
     "peerDependencies": {
         "react": "^19.0.0",

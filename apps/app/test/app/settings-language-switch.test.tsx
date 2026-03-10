@@ -18,7 +18,7 @@ vi.mock("../../src/AppContext", () => ({
   ],
 }));
 
-vi.mock("../../src/api-client", () => ({
+vi.mock("@milady/app-core/api", () => ({
   client: mockClient,
 }));
 
@@ -50,15 +50,15 @@ function createSettingsContext(
 ): Record<string, unknown> {
   return {
     t: (k: string) => k,
-    cloudEnabled: false,
-    cloudConnected: false,
-    cloudCredits: null,
-    cloudCreditsLow: false,
-    cloudCreditsCritical: false,
-    cloudTopUpUrl: "",
-    cloudUserId: "",
-    cloudLoginBusy: false,
-    cloudLoginError: "",
+    miladyCloudEnabled: false,
+    miladyCloudConnected: false,
+    miladyCloudCredits: null,
+    miladyCloudCreditsLow: false,
+    miladyCloudCreditsCritical: false,
+    miladyCloudTopUpUrl: "",
+    miladyCloudUserId: "",
+    miladyCloudLoginBusy: false,
+    miladyCloudLoginError: "",
     cloudDisconnecting: false,
     plugins: [],
     pluginSaving: false,
@@ -81,22 +81,22 @@ function createSettingsContext(
     importPassword: "",
     importError: "",
     importSuccess: "",
-    loadPlugins: vi.fn(async () => {}),
-    handlePluginToggle: vi.fn(async () => {}),
+    loadPlugins: vi.fn(async () => { }),
+    handlePluginToggle: vi.fn(async () => { }),
     setTheme: vi.fn(),
     setUiLanguage: vi.fn(),
     setTab: vi.fn(),
-    loadUpdateStatus: vi.fn(async () => {}),
-    handleChannelChange: vi.fn(async () => {}),
-    checkExtensionStatus: vi.fn(async () => {}),
-    handlePluginConfigSave: vi.fn(async () => {}),
-    handleAgentExport: vi.fn(async () => {}),
-    handleAgentImport: vi.fn(async () => {}),
-    handleCloudLogin: vi.fn(async () => {}),
-    handleCloudDisconnect: vi.fn(async () => {}),
-    handleReset: vi.fn(async () => {}),
-    handleExportKeys: vi.fn(async () => {}),
-    copyToClipboard: vi.fn(async () => {}),
+    loadUpdateStatus: vi.fn(async () => { }),
+    handleChannelChange: vi.fn(async () => { }),
+    checkExtensionStatus: vi.fn(async () => { }),
+    handlePluginConfigSave: vi.fn(async () => { }),
+    handleAgentExport: vi.fn(async () => { }),
+    handleAgentImport: vi.fn(async () => { }),
+    handleCloudLogin: vi.fn(async () => { }),
+    handleCloudDisconnect: vi.fn(async () => { }),
+    handleReset: vi.fn(async () => { }),
+    handleExportKeys: vi.fn(async () => { }),
+    copyToClipboard: vi.fn(async () => { }),
     setActionNotice: vi.fn(),
     setState: vi.fn(),
     ...overrides,
@@ -118,9 +118,9 @@ describe("Settings language switch", () => {
     mockClient.getOnboardingOptions.mockReset();
     mockClient.getConfig.mockReset();
     class MockIntersectionObserver {
-      observe() {}
-      disconnect() {}
-      unobserve() {}
+      observe() { }
+      disconnect() { }
+      unobserve() { }
     }
     Object.defineProperty(globalThis, "IntersectionObserver", {
       value: MockIntersectionObserver,
@@ -167,14 +167,16 @@ describe("Settings language switch", () => {
     const ctxEn = createSettingsContext();
     mockUseApp.mockReturnValue(ctxEn);
 
-    let tree: TestRenderer.ReactTestRenderer;
+    let tree: TestRenderer.ReactTestRenderer | undefined;
     await act(async () => {
       tree = TestRenderer.create(React.createElement(SettingsView));
     });
 
-    const zhButton = tree?.root.findAll(
-      (node) => node.type === "button" && nodeText(node).trim() === "中",
-    )[0];
+    const zhButton = tree!.root.find(
+      (node) =>
+        node.type === "button" &&
+        nodeText(node).includes("中文"),
+    );
     expect(zhButton).toBeDefined();
 
     await act(async () => {
@@ -185,11 +187,11 @@ describe("Settings language switch", () => {
 
     mockUseApp.mockReturnValue(createSettingsContext({ uiLanguage: "zh-CN" }));
     await act(async () => {
-      tree?.update(React.createElement(SettingsView));
+      tree!.update(React.createElement(SettingsView));
     });
 
-    const allText = nodeText(tree?.root);
-    expect(allText).toContain("设置");
-    expect(allText).toContain("语言");
+    const allText = nodeText(tree!.root);
+    expect(allText).toContain("nav.settings");
+    expect(allText).toContain("settings.language");
   });
 });

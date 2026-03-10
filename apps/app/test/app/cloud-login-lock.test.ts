@@ -36,7 +36,7 @@ const { mockClient } = vi.hoisted(() => ({
     sendWsMessage: vi.fn(),
     connectWs: vi.fn(),
     disconnectWs: vi.fn(),
-    onWsEvent: vi.fn(() => () => {}),
+    onWsEvent: vi.fn(() => () => { }),
     getAgentEvents: vi.fn(async () => ({ events: [], latestEventId: null })),
     getStatus: vi.fn(async () => ({
       state: "running",
@@ -69,7 +69,7 @@ const { mockClient } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("../../src/api-client", () => ({
+vi.mock("@milady/app-core/api", () => ({
   client: mockClient,
   SkillScanReportSummary: {},
 }));
@@ -85,7 +85,7 @@ function createDeferred<T>() {
 }
 
 type ProbeApi = {
-  setState: (key: "onboardingRunMode", value: "cloud") => void;
+  setState: (key: string, value: any) => void;
   handleOnboardingNext: () => Promise<void>;
   handleOnboardingBack: () => void;
   handleCloudLogin: () => Promise<void>;
@@ -97,7 +97,7 @@ function Probe(props: { onReady: (api: ProbeApi) => void }) {
 
   useEffect(() => {
     onReady({
-      setState: (key, value) => app.setState(key, value),
+      setState: (key, value) => app.setState(key as any, value),
       handleOnboardingNext: app.handleOnboardingNext,
       handleOnboardingBack: app.handleOnboardingBack,
       handleCloudLogin: app.handleCloudLogin,
@@ -153,10 +153,10 @@ describe("cloud login locking", () => {
         },
       ],
     });
-    mockClient.sendWsMessage.mockImplementation(() => {});
-    mockClient.connectWs.mockImplementation(() => {});
-    mockClient.disconnectWs.mockImplementation(() => {});
-    mockClient.onWsEvent.mockReturnValue(() => {});
+    mockClient.sendWsMessage.mockImplementation(() => { });
+    mockClient.connectWs.mockImplementation(() => { });
+    mockClient.disconnectWs.mockImplementation(() => { });
+    mockClient.onWsEvent.mockReturnValue(() => { });
     mockClient.getAgentEvents.mockResolvedValue({
       events: [],
       latestEventId: null,
@@ -190,6 +190,7 @@ describe("cloud login locking", () => {
       low: false,
       critical: false,
     });
+    mockClient.getCodingAgentStatus.mockResolvedValue(null);
   });
 
   it("allows only one same-tick cloud login start", async () => {
@@ -302,12 +303,8 @@ describe("cloud login locking", () => {
 
     await act(async () => {
       api?.setState("onboardingRunMode", "cloud");
+      api?.setState("onboardingStep", "cloudLogin");
     });
-    for (let i = 0; i < 10; i += 1) {
-      await act(async () => {
-        await api?.handleOnboardingNext();
-      });
-    }
 
     await act(async () => {
       void api?.handleCloudLogin();

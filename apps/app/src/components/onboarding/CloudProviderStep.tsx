@@ -1,5 +1,5 @@
+import type { CloudProviderOption } from "@milady/app-core/api";
 import { getVrmPreviewUrl, getVrmUrl, useApp } from "../../AppContext";
-import type { CloudProviderOption } from "../../api-client";
 import { OnboardingVrmAvatar } from "./OnboardingVrmAvatar";
 
 export function CloudProviderStep() {
@@ -9,9 +9,9 @@ export function CloudProviderStep() {
     onboardingCloudProvider,
     onboardingAvatar,
     customVrmUrl,
-    cloudConnected,
-    cloudLoginBusy,
-    cloudLoginError,
+    miladyCloudConnected: miladyCloudConnected,
+    miladyCloudLoginBusy: miladyCloudLoginBusy,
+    miladyCloudLoginError: miladyCloudLoginError,
     handleCloudLogin,
     setState,
   } = useApp();
@@ -46,21 +46,19 @@ export function CloudProviderStep() {
             <button
               type="button"
               key={provider.id}
-              className={`w-full px-4 py-3 border cursor-pointer bg-card transition-colors rounded-lg text-left ${
-                onboardingCloudProvider === provider.id
+              className={`w-full px-4 py-3 border cursor-pointer bg-card transition-colors rounded-lg text-left ${onboardingCloudProvider === provider.id
                   ? "border-accent !bg-accent !text-accent-fg"
                   : "border-border hover:border-accent"
-              }`}
+                }`}
               onClick={() => handleCloudProviderSelect(provider.id)}
             >
               <div className="font-bold text-sm">{provider.name}</div>
               {provider.description && (
                 <div
-                  className={`text-xs mt-0.5 ${
-                    onboardingCloudProvider === provider.id
+                  className={`text-xs mt-0.5 ${onboardingCloudProvider === provider.id
                       ? "text-accent-fg/70"
                       : "text-muted"
-                  }`}
+                    }`}
                 >
                   {provider.description}
                 </div>
@@ -69,9 +67,9 @@ export function CloudProviderStep() {
           ),
         )}
       </div>
-      {onboardingCloudProvider === "elizacloud" && (
+      {onboardingCloudProvider === "miladycloud" && (
         <div className="max-w-[600px] mx-auto mt-4">
-          {cloudConnected ? (
+          {miladyCloudConnected ? (
             <div className="flex items-center gap-2 px-4 py-2.5 border border-green-500/30 bg-green-500/10 text-green-400 text-sm rounded-lg justify-center">
               <svg
                 width="16"
@@ -93,9 +91,9 @@ export function CloudProviderStep() {
               type="button"
               className="px-6 py-2.5 border border-accent bg-accent text-accent-fg text-sm cursor-pointer rounded-full hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
               onClick={handleCloudLogin}
-              disabled={cloudLoginBusy}
+              disabled={miladyCloudLoginBusy}
             >
-              {cloudLoginBusy ? (
+              {miladyCloudLoginBusy ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="inline-block w-4 h-4 border-2 border-border border-t-accent rounded-full animate-spin" />
                   {t("onboardingwizard.connecting")}
@@ -105,8 +103,8 @@ export function CloudProviderStep() {
               )}
             </button>
           )}
-          {cloudLoginError && (
-            <p className="text-danger text-[13px] mt-2">{cloudLoginError}</p>
+          {miladyCloudLoginError && (
+            <p className="text-danger text-[13px] mt-2">{miladyCloudLoginError}</p>
           )}
         </div>
       )}

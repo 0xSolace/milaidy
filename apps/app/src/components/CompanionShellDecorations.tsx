@@ -2,8 +2,8 @@
  * Decorative elements and close button for the companion shell overlay.
  */
 
+import type { Tab } from "@milady/app-core/navigation";
 import { useApp } from "../AppContext";
-import type { Tab } from "../navigation";
 import type { TabFlags } from "./companion-shell-styles";
 
 /* ── Decorative elements per tab ───────────────────────────────────── */

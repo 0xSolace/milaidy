@@ -4,8 +4,6 @@
  * Fetches apps from the registry API and shows them as cards.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useApp } from "../AppContext";
 import {
   client,
   type HyperscapeAgentGoalResponse,
@@ -15,7 +13,10 @@ import {
   type HyperscapeQuickActionsResponse,
   type HyperscapeScriptedRole,
   type RegistryAppInfo,
-} from "../api-client";
+} from "@milady/app-core/api";
+import { Button, Input } from "@milady/ui";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useApp } from "../AppContext";
 
 const DEFAULT_VIEWER_SANDBOX = "allow-scripts allow-same-origin allow-popups";
 const HYPERSCAPE_APP_NAME = "@elizaos/app-hyperscape";
@@ -30,7 +31,7 @@ const HYPERSCAPE_COMMAND_OPTIONS = [
   "use",
   "stop",
 ] as const;
-export const PROD_ALLOWED_APPS = new Set(["@iqlabs-official/plugin-clawbal"]);
+const PROD_ALLOWED_APPS = new Set(["@iqlabs-official/plugin-clawbal"]);
 
 export function shouldShowAppInAppsView(
   app: Pick<RegistryAppInfo, "name">,
@@ -549,15 +550,16 @@ export function AppsView() {
 
   const renderHyperscapeControls = () => (
     <div className="flex flex-col gap-3">
-      <button
-        type="button"
+      <Button
+        variant="default"
+        size="sm"
+        className="shadow-sm"
         onClick={handleToggleHyperscapePanel}
-        className="px-3 py-1 text-xs bg-accent text-accent-fg border border-accent cursor-pointer hover:bg-accent-hover self-start"
       >
         {hyperscapePanelOpen
           ? "Hide Hyperscape Controls"
           : "Show Hyperscape Controls"}
-      </button>
+      </Button>
       {hyperscapePanelOpen ? (
         <div className="flex flex-col gap-3">
           {hyperscapeError ? (
@@ -567,17 +569,19 @@ export function AppsView() {
           ) : null}
 
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="px-3 py-1 text-xs bg-accent text-accent-fg border border-accent cursor-pointer hover:bg-accent-hover disabled:opacity-40"
+            <Button
+              variant="default"
+              size="sm"
+              className="shadow-sm"
               disabled={hyperscapeAgentsLoading}
               onClick={() => void loadHyperscapeAgents()}
             >
               {hyperscapeAgentsLoading ? "Refreshing..." : "Refresh Agents"}
-            </button>
-            <button
-              type="button"
-              className="px-3 py-1 text-xs bg-accent text-accent-fg border border-accent cursor-pointer hover:bg-accent-hover disabled:opacity-40"
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
+              className="shadow-sm"
               disabled={
                 hyperscapeTelemetryLoading || !hyperscapeSelectedAgentId
               }
@@ -588,7 +592,7 @@ export function AppsView() {
               {hyperscapeTelemetryLoading
                 ? "Loading telemetry..."
                 : "Refresh Goal + Quick Actions"}
-            </button>
+            </Button>
           </div>
 
           <div className="flex flex-col gap-1">
@@ -624,10 +628,11 @@ export function AppsView() {
 
           <div className="flex flex-wrap gap-2">
             {(["start", "pause", "resume", "stop"] as const).map((action) => (
-              <button
-                type="button"
+              <Button
                 key={action}
-                className="px-3 py-1 text-xs bg-accent text-accent-fg border border-accent cursor-pointer hover:bg-accent-hover disabled:opacity-40"
+                variant="default"
+                size="sm"
+                className="shadow-sm"
                 disabled={
                   !selectedHyperscapeAgent ||
                   hyperscapeBusyAction === `control:${action}`
@@ -637,7 +642,7 @@ export function AppsView() {
                 {hyperscapeBusyAction === `control:${action}`
                   ? `${action}...`
                   : action.charAt(0).toUpperCase() + action.slice(1)}
-              </button>
+              </Button>
             ))}
           </div>
 
@@ -645,14 +650,14 @@ export function AppsView() {
             <div className="font-bold text-xs">
               {t("appsview.CreateEmbeddedAgen")}
             </div>
-            <input
+            <Input
               type="text"
               value={hyperscapeCharacterIdInput}
               onChange={(event) =>
                 setHyperscapeCharacterIdInput(event.target.value)
               }
               placeholder={t("appsview.CharacterID")}
-              className="px-3 py-2 border border-border rounded-md bg-card text-txt text-xs focus:border-accent focus:outline-none"
+              className="h-9 bg-card border-border text-xs"
             />
             <div className="flex flex-wrap gap-2 items-center">
               <select
@@ -682,16 +687,17 @@ export function AppsView() {
 
                 {t("appsview.AutoStart")}
               </span>
-              <button
-                type="button"
-                className="px-3 py-1 text-xs bg-accent text-accent-fg border border-accent cursor-pointer hover:bg-accent-hover disabled:opacity-40"
+              <Button
+                variant="default"
+                size="sm"
+                className="shadow-sm"
                 disabled={hyperscapeBusyAction === "create"}
                 onClick={() => void handleCreateHyperscapeAgent()}
               >
                 {hyperscapeBusyAction === "create"
                   ? "Creating..."
                   : "Create Agent"}
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -706,16 +712,17 @@ export function AppsView() {
               placeholder={t("appsview.SaySomethingToSel")}
               className="px-3 py-2 border border-border rounded-md bg-card text-txt text-xs focus:border-accent focus:outline-none resize-y"
             />
-            <button
-              type="button"
-              className="px-3 py-1 text-xs bg-accent text-accent-fg border border-accent cursor-pointer hover:bg-accent-hover disabled:opacity-40 self-start"
+            <Button
+              variant="default"
+              size="sm"
+              className="shadow-sm self-start"
               disabled={hyperscapeBusyAction === "message"}
               onClick={() => void handleSendHyperscapeMessage()}
             >
               {hyperscapeBusyAction === "message"
                 ? "Sending..."
                 : "Send Message"}
-            </button>
+            </Button>
           </div>
 
           <div className="border border-border p-2 flex flex-col gap-2">
@@ -745,16 +752,17 @@ export function AppsView() {
               placeholder={t("appsview.Target000")}
               className="px-3 py-2 border border-border rounded-md bg-card text-txt text-xs focus:border-accent focus:outline-none resize-y"
             />
-            <button
-              type="button"
-              className="px-3 py-1 text-xs bg-accent text-accent-fg border border-accent cursor-pointer hover:bg-accent-hover disabled:opacity-40 self-start"
+            <Button
+              variant="default"
+              size="sm"
+              className="shadow-sm self-start"
               disabled={hyperscapeBusyAction === "command"}
               onClick={() => void handleSendHyperscapeCommand()}
             >
               {hyperscapeBusyAction === "command"
                 ? "Sending..."
                 : "Send Command"}
-            </button>
+            </Button>
           </div>
 
           <div className="border border-border p-2 flex flex-col gap-2">
@@ -844,20 +852,22 @@ export function AppsView() {
           {t("appsview.ResumeInFullScree")}
         </div>
         <div className="flex flex-wrap gap-2 mt-1">
-          <button
-            type="button"
+          <Button
+            variant="default"
+            size="sm"
+            className="px-4 py-2 shadow-[0_0_15px_rgba(var(--accent),0.3)] hover:shadow-[0_0_20px_rgba(var(--accent),0.5)] rounded-xl"
             onClick={handleOpenCurrentGame}
-            className="px-4 py-2 text-xs font-medium bg-accent text-accent-fg rounded-xl shadow-[0_0_15px_rgba(var(--accent),0.3)] hover:shadow-[0_0_20px_rgba(var(--accent),0.5)] hover:-translate-y-0.5 transition-all cursor-pointer"
           >
             {t("appsview.ResumeFullscreen")}
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-xl shadow-sm"
             onClick={handleOpenCurrentGameInNewTab}
-            className="px-4 py-2 text-xs font-medium bg-bg-accent border border-border/50 text-txt rounded-xl hover:border-accent hover:text-accent hover:-translate-y-0.5 transition-all cursor-pointer shadow-sm"
           >
             {t("appsview.OpenInNewTab")}
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -867,13 +877,14 @@ export function AppsView() {
     return (
       <div>
         <div className="flex items-center gap-2 mb-4">
-          <button
-            type="button"
+          <Button
+            variant="default"
+            size="sm"
+            className="shadow-sm"
             onClick={() => setSelectedAppName(null)}
-            className="px-3 py-1 text-xs bg-accent text-accent-fg border border-accent cursor-pointer hover:bg-accent-hover"
           >
             {t("appsview.Back")}
-          </button>
+          </Button>
           <div className="text-[11px] text-muted break-all">
             {selectedApp.name}
           </div>
@@ -915,31 +926,34 @@ export function AppsView() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="text-xs px-3.5 py-1.5 bg-accent text-accent-fg border border-accent cursor-pointer hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
+            <Button
+              variant="default"
+              size="sm"
+              className="shadow-sm"
               disabled={busyApp === selectedApp.name}
               onClick={() => void handleLaunch(selectedApp)}
             >
               {busyApp === selectedApp.name ? "Launching..." : "Launch"}
-            </button>
+            </Button>
             {selectedAppHasActiveViewer ? (
-              <button
-                type="button"
-                className="text-xs px-3.5 py-1.5 bg-accent text-accent-fg border border-accent cursor-pointer hover:bg-accent-hover"
+              <Button
+                variant="default"
+                size="sm"
+                className="shadow-sm"
                 onClick={handleOpenCurrentGame}
               >
                 {t("appsview.ViewActiveSession")}
-              </button>
+              </Button>
             ) : null}
             {selectedAppHasActiveViewer ? (
-              <button
-                type="button"
-                className="text-xs px-3.5 py-1.5 bg-accent text-accent-fg border border-accent cursor-pointer hover:bg-accent-hover"
+              <Button
+                variant="default"
+                size="sm"
+                className="shadow-sm"
                 onClick={handleOpenCurrentGameInNewTab}
               >
                 {t("appsview.OpenViewerInNewT")}
-              </button>
+              </Button>
             ) : null}
           </div>
 
@@ -1032,30 +1046,32 @@ export function AppsView() {
   return (
     <div>
       <div className="flex gap-3 mb-2">
-        <input
+        <Input
           type="text"
           placeholder={t("appsview.SearchApps")}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="flex-1 px-4 py-2.5 border border-border/50 rounded-xl bg-bg/50 backdrop-blur-sm text-txt text-sm focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none shadow-inner transition-all"
+          className="flex-1 h-10 rounded-xl bg-bg/50 backdrop-blur-sm border-border/50 text-sm shadow-inner"
         />
-        <button
-          type="button"
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-xl shadow-sm h-10"
           onClick={() => void loadApps()}
-          className="px-4 py-2.5 text-sm font-medium bg-bg-accent border border-border/50 text-txt rounded-xl hover:border-accent hover:text-accent transition-all cursor-pointer shadow-sm"
         >
           {t("appsview.Refresh")}
-        </button>
+        </Button>
       </div>
 
       <div className="flex items-center gap-2 mb-4 text-[11px] text-muted">
-        <button
-          type="button"
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-[11px]"
           onClick={() => setShowActiveOnly((current) => !current)}
-          className="px-2.5 py-1 text-[11px] bg-card border border-border cursor-pointer hover:border-accent"
         >
           {showActiveOnly ? "Showing Active" : "Active Only"}
-        </button>
+        </Button>
         <span>
           {activeAppNames.size} {t("appsview.active")}
         </span>
@@ -1121,14 +1137,15 @@ export function AppsView() {
                   {app.description ?? "No description"}
                 </div>
 
-                <button
-                  type="button"
-                  className="text-xs px-4 py-2 mt-2 bg-accent text-accent-fg font-medium cursor-pointer hover:shadow-[0_0_15px_rgba(var(--accent),0.4)] hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:translate-y-0 rounded-xl transition-all self-start"
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="mt-2 rounded-xl shadow-sm self-start"
                   disabled={busyApp === app.name}
                   onClick={() => void handleLaunch(app)}
                 >
                   {busyApp === app.name ? "Launching..." : "Launch"}
-                </button>
+                </Button>
               </div>
             );
           })}

@@ -62,10 +62,6 @@ export type UiShellMode = "companion" | "native";
 export type OnboardingStep =
     | "welcome"
     | "language"
-    | "name"
-    | "ownerName"
-    | "avatar"
-    | "style"
     | "setupMode"
     | "mint"
     | "runMode"
@@ -348,17 +344,17 @@ export interface AppState {
     customVrmUrl: string;
     customBackgroundUrl: string;
 
-    // Cloud
-    cloudEnabled: boolean;
-    cloudConnected: boolean;
-    cloudCredits: number | null;
-    cloudCreditsLow: boolean;
-    cloudCreditsCritical: boolean;
-    cloudTopUpUrl: string;
-    cloudUserId: string | null;
-    cloudLoginBusy: boolean;
-    cloudLoginError: string | null;
-    cloudDisconnecting: boolean;
+    // Milady Cloud
+    miladyCloudEnabled: boolean;
+    miladyCloudConnected: boolean;
+    miladyCloudCredits: number | null;
+    miladyCloudCreditsLow: boolean;
+    miladyCloudCreditsCritical: boolean;
+    miladyCloudTopUpUrl: string;
+    miladyCloudUserId: string | null;
+    miladyCloudLoginBusy: boolean;
+    miladyCloudLoginError: string | null;
+    miladyCloudDisconnecting: boolean;
 
     // Updates
     updateStatus: UpdateStatus | null;
@@ -437,7 +433,7 @@ export interface AppState {
     onboardingBlooioPhoneNumber: string;
     onboardingGithubToken: string;
     onboardingSubscriptionTab: "token" | "oauth";
-    onboardingElizaCloudTab: "login" | "apikey";
+    onboardingMiladyCloudTab: "login" | "apikey";
     onboardingSelectedChains: Set<string>;
     onboardingRpcSelections: Record<string, string>;
     onboardingRpcKeys: Record<string, string>;

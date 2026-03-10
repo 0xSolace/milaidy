@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ConfirmModal,
   useConfirm,
-} from "../../src/components/shared/ConfirmModal";
+} from "@milady/app-core/components";
 
 function findButton(
   root: TestRenderer.ReactTestInstance,

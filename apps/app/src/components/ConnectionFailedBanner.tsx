@@ -1,5 +1,5 @@
+import { isElectrobunRuntime } from "@milady/app-core/bridge";
 import { useApp } from "../AppContext";
-import { isElectrobunRuntime } from "../bridge/electrobun-runtime";
 
 /**
  * Banner shown during WebSocket reconnection attempts (amber) and

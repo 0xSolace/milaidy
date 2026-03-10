@@ -5,7 +5,7 @@
  * to verify HTTP calls without a real server.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MiladyClient } from "../../src/api-client";
+import { MiladyClient } from "@milady/app-core/api";
 
 let fetchMock: ReturnType<typeof vi.fn>;
 let client: MiladyClient;

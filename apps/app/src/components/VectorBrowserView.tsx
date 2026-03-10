@@ -7,10 +7,11 @@
  * Toggle to a 2D scatter-plot graph view of embeddings.
  */
 
+import { client, type QueryResult, type TableInfo } from "@milady/app-core/api";
+import { Button, Input } from "@milady/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { useApp } from "../AppContext";
-import { client, type QueryResult, type TableInfo } from "../api-client";
 
 const PAGE_SIZE = 25;
 const MAX_THREE_PIXEL_RATIO = 2;
@@ -109,11 +110,11 @@ function rowToMemory(row: Record<string, unknown>): MemoryRecord {
     roomId: String(row.roomId ?? row.room_id ?? row.roomID ?? ""),
     entityId: String(
       row.entityId ??
-        row.entity_id ??
-        row.entityID ??
-        row.userId ??
-        row.user_id ??
-        "",
+      row.entity_id ??
+      row.entityID ??
+      row.userId ??
+      row.user_id ??
+      "",
     ),
     type: String(row.type ?? row.memoryType ?? row.memory_type ?? ""),
     createdAt: String(row.createdAt ?? row.created_at ?? row.timestamp ?? ""),
@@ -651,6 +652,7 @@ function VectorGraph3D({
           }
         }
         renderer.dispose();
+        if (renderer.forceContextLoss) renderer.forceContextLoss();
         rendererRef.current = null;
         sceneRef.current = null;
         cameraRef.current = null;
@@ -994,13 +996,14 @@ function MemoryDetailModal({
           <div className="text-xs font-medium text-[var(--txt)]">
             {t("vectorbrowserview.MemoryDetail")}
           </div>
-          <button
-            type="button"
-            className="text-[var(--muted)] hover:text-[var(--txt)] bg-transparent border-0 cursor-pointer text-lg px-2"
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-[var(--muted)] hover:text-[var(--txt)] hover:bg-transparent h-6 w-6 text-lg"
             onClick={onClose}
           >
             ×
-          </button>
+          </Button>
         </div>
 
         {/* Content */}
@@ -1355,21 +1358,21 @@ export function VectorBrowserView() {
         <div className="flex flex-wrap items-center gap-3 mb-4">
           {viewMode === "list" && (
             <div className="flex gap-1">
-              <input
+              <Input
                 type="text"
                 placeholder={t("vectorbrowserview.SearchContent")}
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                className="px-2.5 py-1.5 border border-[var(--border)] bg-[var(--card)] text-[var(--txt)] text-xs w-[220px]"
+                className="w-[220px] bg-card text-xs"
               />
-              <button
-                type="button"
-                className="px-3 py-1.5 text-xs bg-[var(--accent)] text-[var(--accent-foreground)] border border-[var(--accent)] cursor-pointer hover:opacity-80"
+              <Button
+                variant="default"
+                size="sm"
                 onClick={handleSearch}
               >
                 {t("vectorbrowserview.Search")}
-              </button>
+              </Button>
             </div>
           )}
 
@@ -1398,39 +1401,27 @@ export function VectorBrowserView() {
 
           {/* View mode toggle */}
           <div className="flex gap-1 ml-auto">
-            <button
-              type="button"
-              className={`px-3 py-1.5 text-xs cursor-pointer border transition-colors ${
-                viewMode === "list"
-                  ? "bg-[var(--accent)] text-[var(--accent-foreground)] border-[var(--accent)]"
-                  : "bg-transparent text-[var(--muted)] border-[var(--border)] hover:text-[var(--txt)]"
-              }`}
+            <Button
+              variant={viewMode === "list" ? "default" : "outline"}
+              size="sm"
               onClick={() => setViewMode("list")}
             >
               {t("vectorbrowserview.List")}
-            </button>
-            <button
-              type="button"
-              className={`px-3 py-1.5 text-xs cursor-pointer border transition-colors ${
-                viewMode === "graph"
-                  ? "bg-[var(--accent)] text-[var(--accent-foreground)] border-[var(--accent)]"
-                  : "bg-transparent text-[var(--muted)] border-[var(--border)] hover:text-[var(--txt)]"
-              }`}
+            </Button>
+            <Button
+              variant={viewMode === "graph" ? "default" : "outline"}
+              size="sm"
               onClick={() => setViewMode("graph")}
             >
               2D
-            </button>
-            <button
-              type="button"
-              className={`px-3 py-1.5 text-xs cursor-pointer border transition-colors ${
-                viewMode === "3d"
-                  ? "bg-[var(--accent)] text-[var(--accent-foreground)] border-[var(--accent)]"
-                  : "bg-transparent text-[var(--muted)] border-[var(--border)] hover:text-[var(--txt)]"
-              }`}
+            </Button>
+            <Button
+              variant={viewMode === "3d" ? "default" : "outline"}
+              size="sm"
               onClick={() => setViewMode("3d")}
             >
               3D
-            </button>
+            </Button>
           </div>
 
           {viewMode === "list" && (
@@ -1452,16 +1443,16 @@ export function VectorBrowserView() {
             <div className="text-[var(--muted)] text-xs mb-4">
               {t("vectorbrowserview.StartTheAgentToB")}
             </div>
-            <button
-              type="button"
-              className="px-3 py-1.5 text-xs bg-[var(--accent)] text-[var(--accent-foreground)] border border-[var(--accent)] cursor-pointer hover:opacity-80"
+            <Button
+              variant="default"
+              size="sm"
               onClick={() => {
                 setError("");
                 loadTables();
               }}
             >
               {t("vectorbrowserview.RetryConnection")}
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="p-2.5 border border-[var(--danger)] text-[var(--danger)] text-xs mb-3">
@@ -1512,10 +1503,10 @@ export function VectorBrowserView() {
         ) : (
           <div className="flex flex-col gap-2">
             {memories.map((mem) => (
-              <button
-                type="button"
+              <Button
                 key={mem.id || `${mem.content.slice(0, 30)}-${mem.createdAt}`}
-                className="border border-[var(--border)] bg-[var(--card)] p-3 cursor-pointer text-left hover:border-[var(--accent)] transition-colors w-full"
+                variant="outline"
+                className="justify-start items-start text-left h-auto p-3 hover:border-accent w-full flex flex-col"
                 onClick={() => setSelectedMemory(mem)}
               >
                 {/* Content preview */}
@@ -1555,7 +1546,7 @@ export function VectorBrowserView() {
                     <span className="font-mono">[{mem.embedding.length}d]</span>
                   )}
                 </div>
-              </button>
+              </Button>
             ))}
           </div>
         ))}
@@ -1563,25 +1554,25 @@ export function VectorBrowserView() {
       {/* Pagination (list view only) */}
       {viewMode === "list" && totalPages > 1 && (
         <div className="flex items-center justify-center gap-3 mt-4 pb-4">
-          <button
-            type="button"
-            className="px-3 py-1.5 text-xs bg-[var(--accent)] text-[var(--accent-foreground)] border border-[var(--accent)] cursor-pointer hover:opacity-80 disabled:opacity-40 disabled:cursor-default"
+          <Button
+            variant="default"
+            size="sm"
             disabled={page === 0}
             onClick={() => setPage((p) => p - 1)}
           >
             {t("vectorbrowserview.Prev")}
-          </button>
+          </Button>
           <span className="text-[11px] text-[var(--muted)]">
             {t("vectorbrowserview.Page")} {page + 1} of {totalPages}
           </span>
-          <button
-            type="button"
-            className="px-3 py-1.5 text-xs bg-[var(--accent)] text-[var(--accent-foreground)] border border-[var(--accent)] cursor-pointer hover:opacity-80 disabled:opacity-40 disabled:cursor-default"
+          <Button
+            variant="default"
+            size="sm"
             disabled={page >= totalPages - 1}
             onClick={() => setPage((p) => p + 1)}
           >
             {t("vectorbrowserview.Next")}
-          </button>
+          </Button>
         </div>
       )}
 

@@ -1,8 +1,8 @@
-import { getVrmPreviewUrl, getVrmUrl, useApp } from "../../AppContext";
 import type {
   InventoryProviderOption,
   RpcProviderOption,
-} from "../../api-client";
+} from "@milady/app-core/api";
+import { getVrmPreviewUrl, getVrmUrl, useApp } from "../../AppContext";
 import { OnboardingVrmAvatar } from "./OnboardingVrmAvatar";
 
 export function InventorySetupStep() {
@@ -14,9 +14,9 @@ export function InventorySetupStep() {
     onboardingRpcKeys,
     onboardingAvatar,
     customVrmUrl,
-    cloudConnected,
-    cloudLoginBusy,
-    cloudLoginError,
+    miladyCloudConnected,
+    miladyCloudLoginBusy,
+    miladyCloudLoginError,
     handleCloudLogin,
     setState,
   } = useApp();
@@ -70,8 +70,8 @@ export function InventorySetupStep() {
         {onboardingOptions?.inventoryProviders.map(
           (provider: InventoryProviderOption) => {
             const selectedRpc =
-              onboardingRpcSelections[provider.id] ?? "elizacloud";
-            const isElizaCloudRpc = selectedRpc === "elizacloud";
+              onboardingRpcSelections[provider.id] ?? "miladycloud";
+            const isElizaCloudRpc = selectedRpc === "miladycloud";
             return (
               <div
                 key={provider.id}
@@ -111,7 +111,7 @@ export function InventorySetupStep() {
                     </select>
                     {isElizaCloudRpc ? (
                       <div className="mt-3">
-                        {cloudConnected ? (
+                        {miladyCloudConnected ? (
                           <div className="flex items-center gap-2 px-4 py-2.5 border border-green-500/30 bg-green-500/10 text-green-400 text-sm rounded-lg w-fit">
                             <svg
                               width="16"
@@ -137,9 +137,9 @@ export function InventorySetupStep() {
                               type="button"
                               className="px-6 py-2.5 border border-accent bg-accent text-accent-fg text-sm cursor-pointer rounded-full hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
                               onClick={handleCloudLogin}
-                              disabled={cloudLoginBusy}
+                              disabled={miladyCloudLoginBusy}
                             >
-                              {cloudLoginBusy ? (
+                              {miladyCloudLoginBusy ? (
                                 <span className="flex items-center justify-center gap-2">
                                   <span className="inline-block w-4 h-4 border-2 border-border border-t-accent rounded-full animate-spin" />
                                   {t("onboardingwizard.connecting")}
@@ -148,9 +148,9 @@ export function InventorySetupStep() {
                                 "connect account"
                               )}
                             </button>
-                            {cloudLoginError && (
+                            {miladyCloudLoginError && (
                               <p className="text-danger text-[13px] mt-2">
-                                {cloudLoginError}
+                                {miladyCloudLoginError}
                               </p>
                             )}
                           </div>

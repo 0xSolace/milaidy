@@ -190,7 +190,7 @@ function createContext(
     inventoryChainFocus: "bsc" | "all";
     walletBalances: ReturnType<typeof createWalletBalances> | null;
     walletConfig: ReturnType<typeof createWalletConfig> | null;
-    cloudConnected: boolean;
+    miladyCloudConnected: boolean;
     walletError: string | null;
   }>,
 ) {
@@ -210,7 +210,7 @@ function createContext(
     inventoryCollapseOtherEvm: true,
     inventoryCollapseSolana: true,
     walletError: null,
-    cloudConnected: true,
+    miladyCloudConnected: true,
     loadBalances: vi.fn(async () => {}),
     loadNfts: vi.fn(async () => {}),
     getBscTradePreflight: vi.fn(async () => createPreflight(true)),
@@ -396,7 +396,7 @@ describe("InventoryView BSC-first", () => {
 
   it("shows managed RPC setup guidance when no providers are available", async () => {
     const ctx = createContext({
-      cloudConnected: false,
+      miladyCloudConnected: false,
       walletConfig: {
         ...createWalletConfig(),
         alchemyKeySet: false,

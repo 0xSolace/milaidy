@@ -2,10 +2,12 @@
  * Enhanced chat message component with actions and better UX.
  */
 
+import { useTimeout } from "../hooks/useTimeout";
+import type { ConversationMessage } from "@milady/app-core/api";
+import { Button } from "@milady/ui";
 import { Check, Copy, RefreshCw, Trash2 } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useApp } from "../AppContext";
-import type { ConversationMessage } from "../api-client";
 import { MessageContent } from "./MessageContent";
 
 interface ChatMessageProps {
@@ -37,6 +39,8 @@ export function ChatMessage({
   onRetry,
   onDelete,
 }: ChatMessageProps) {
+  const { setTimeout } = useTimeout();
+
   const { t } = useApp();
   const [copied, setCopied] = useState(false);
   const [showActions, setShowActions] = useState(false);
@@ -127,15 +131,16 @@ export function ChatMessage({
                 {t("chatmessage.ResponseInterrupte")}
               </span>
               {onRetry && (
-                <button
-                  type="button"
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => onRetry(message.id)}
-                  className="flex items-center gap-1 px-2 py-0.5 text-xs text-danger border border-danger/40 rounded hover:bg-danger/10 transition-colors"
+                  className="flex items-center gap-1 px-2 py-0.5 h-6 text-xs text-danger border-danger/40 rounded hover:bg-danger/10 hover:text-danger transition-colors"
                 >
                   <RefreshCw className="w-3 h-3" />
 
                   {t("chatmessage.Retry")}
-                </button>
+                </Button>
               )}
             </div>
           )}
@@ -144,10 +149,11 @@ export function ChatMessage({
           <div
             className={`absolute ${isUser ? "left-0 -translate-x-full" : "right-0 translate-x-full"} top-0 flex items-center gap-1 p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${showActions ? "opacity-100" : ""}`}
           >
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={handleCopy}
-              className="p-1.5 rounded-md text-muted hover:text-txt hover:bg-bg-hover transition-colors"
+              className="w-7 h-7 rounded-md text-muted hover:text-txt hover:bg-bg-hover transition-colors"
               title={copied ? "Copied!" : "Copy message"}
               aria-label={copied ? "Copied to clipboard" : "Copy message"}
             >
@@ -156,30 +162,32 @@ export function ChatMessage({
               ) : (
                 <Copy className="w-3.5 h-3.5" />
               )}
-            </button>
+            </Button>
 
             {!isUser && onRetry && (
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => onRetry(message.id)}
-                className="p-1.5 rounded-md text-muted hover:text-accent hover:bg-bg-hover transition-colors"
+                className="w-7 h-7 rounded-md text-muted hover:text-accent hover:bg-bg-hover transition-colors"
                 title={t("chatmessage.RetryMessage")}
                 aria-label="Retry message"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-              </button>
+              </Button>
             )}
 
             {onDelete && (
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => onDelete(message.id)}
-                className="p-1.5 rounded-md text-muted hover:text-danger hover:bg-danger/10 transition-colors"
+                className="w-7 h-7 rounded-md text-muted hover:text-danger hover:bg-danger/10 transition-colors"
                 title={t("chatmessage.DeleteMessage")}
                 aria-label="Delete message"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -276,13 +284,14 @@ export function ChatEmptyState({ agentName }: { agentName: string }) {
       <div className="flex flex-wrap justify-center gap-2">
         {["Hello!", "How are you?", "Tell me a joke", "Help me with..."].map(
           (suggestion) => (
-            <button
+            <Button
               key={suggestion}
-              type="button"
-              className="px-3 py-1.5 text-sm border border-border bg-bg rounded-full text-muted hover:border-accent hover:text-accent transition-colors"
+              variant="outline"
+              size="sm"
+              className="px-3 py-1.5 h-7 text-xs rounded-full text-muted border-border bg-bg hover:border-accent hover:text-accent transition-colors"
             >
               {suggestion}
-            </button>
+            </Button>
           ),
         )}
       </div>

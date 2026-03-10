@@ -3,7 +3,15 @@ import TestRenderer, { act } from "react-test-renderer";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/AppContext", () => ({
-  useApp: () => ({ uiLanguage: "en", t: (k: string) => k }),
+  useApp: () => ({
+    uiLanguage: "en",
+    t: (k: string) => {
+      if (k === "startupfailureview.StartupFailed") return "Startup Failed:";
+      if (k === "startupfailureview.ThisOriginDoesNot") return "This origin does not host the agent backend.";
+      if (k === "startupfailureview.OpenApp") return "Open App";
+      return k;
+    }
+  }),
 }));
 
 import { StartupFailureView } from "../../src/components/StartupFailureView";

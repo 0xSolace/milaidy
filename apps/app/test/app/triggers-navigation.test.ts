@@ -4,7 +4,7 @@ import {
   pathForTab,
   tabFromPath,
   titleForTab,
-} from "../../src/navigation";
+} from "@milady/app-core/navigation";
 
 describe("navigation", () => {
   test("resolves path and title for advanced tabs and triggers", () => {

@@ -1,14 +1,15 @@
-import { ChevronDown, ChevronRight } from "lucide-react";
-import { useMemo, useState } from "react";
-import { useApp } from "../AppContext";
 import type {
   StreamEventEnvelope,
   TriggerSummary,
   WorkbenchTask,
   WorkbenchTodo,
-} from "../api-client";
+} from "@milady/app-core/api";
+import { formatTime } from "@milady/app-core/components";
+import { Button } from "@milady/ui";
+import { ChevronDown, ChevronRight } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useApp } from "../AppContext";
 import { CodingAgentsSection } from "./CodingAgentsSection";
-import { formatTime } from "./shared/format";
 
 function getEventText(event: StreamEventEnvelope): string {
   const payload = event.payload as Record<
@@ -97,10 +98,6 @@ export function AutonomousPanel({
     workbenchTasksAvailable,
     workbenchTriggersAvailable,
     workbenchTodosAvailable,
-    chatAvatarVisible,
-    chatAgentVoiceMuted,
-    chatAvatarSpeaking,
-    setState,
   } = useApp();
 
   const [tasksCollapsed, setTasksCollapsed] = useState(false);
@@ -167,14 +164,15 @@ export function AutonomousPanel({
           </div>
         </div>
         {mobile && (
-          <button
-            type="button"
-            className="inline-flex items-center justify-center w-7 h-7 border border-border bg-card text-sm text-muted cursor-pointer hover:border-accent hover:text-accent transition-colors shrink-0"
+          <Button
+            variant="ghost"
+            size="icon"
+            className="w-7 h-7 text-muted hover:text-accent border border-border bg-card shrink-0"
             onClick={onClose}
             aria-label="Close autonomous panel"
           >
             {t("autonomouspanel.Times")}
-          </button>
+          </Button>
         )}
       </div>
 
@@ -271,9 +269,9 @@ export function AutonomousPanel({
           )}
 
           <div className="border-b border-border">
-            <button
-              type="button"
-              className="flex justify-between items-center px-3 py-2 cursor-pointer hover:bg-bg-hover text-xs font-semibold uppercase tracking-wide text-muted w-full"
+            <Button
+              variant="ghost"
+              className="flex justify-between items-center px-3 py-2 h-auto rounded-none hover:bg-bg-hover text-xs font-semibold uppercase tracking-wide text-muted w-full"
               onClick={() => setEventsCollapsed(!eventsCollapsed)}
             >
               <span>
@@ -287,7 +285,7 @@ export function AutonomousPanel({
                   <ChevronDown className="w-3 h-3" />
                 )}
               </span>
-            </button>
+            </Button>
             {!eventsCollapsed && (
               <div className="px-3 pb-2 max-h-[320px] overflow-y-auto space-y-2">
                 {events.length === 0 ? (
@@ -356,9 +354,9 @@ export function AutonomousPanel({
             <>
               {workbenchTasksAvailable && (
                 <div className="border-b border-border">
-                  <button
-                    type="button"
-                    className="flex justify-between items-center px-3 py-2 cursor-pointer hover:bg-bg-hover text-xs font-semibold uppercase tracking-wide text-muted w-full"
+                  <Button
+                    variant="ghost"
+                    className="flex justify-between items-center px-3 py-2 h-auto rounded-none hover:bg-bg-hover text-xs font-semibold uppercase tracking-wide text-muted w-full"
                     onClick={() => setTasksCollapsed(!tasksCollapsed)}
                   >
                     <span>
@@ -372,7 +370,7 @@ export function AutonomousPanel({
                         <ChevronDown className="w-3 h-3" />
                       )}
                     </span>
-                  </button>
+                  </Button>
                   {!tasksCollapsed && (
                     <div className="px-3 py-2">
                       {tasks.length === 0 ? (
@@ -390,10 +388,11 @@ export function AutonomousPanel({
                             />
                             <div className="flex-1 min-w-0">
                               <div
-                                className={`text-txt-strong ${task.isCompleted
+                                className={`text-txt-strong ${
+                                  task.isCompleted
                                     ? "line-through opacity-60"
                                     : ""
-                                  }`}
+                                }`}
                               >
                                 {task.name}
                               </div>
@@ -420,9 +419,9 @@ export function AutonomousPanel({
 
               {workbenchTriggersAvailable && (
                 <div className="border-b border-border">
-                  <button
-                    type="button"
-                    className="flex justify-between items-center px-3 py-2 cursor-pointer hover:bg-bg-hover text-xs font-semibold uppercase tracking-wide text-muted w-full"
+                  <Button
+                    variant="ghost"
+                    className="flex justify-between items-center px-3 py-2 h-auto rounded-none hover:bg-bg-hover text-xs font-semibold uppercase tracking-wide text-muted w-full"
                     onClick={() => setTriggersCollapsed(!triggersCollapsed)}
                   >
                     <span>
@@ -436,7 +435,7 @@ export function AutonomousPanel({
                         <ChevronDown className="w-3 h-3" />
                       )}
                     </span>
-                  </button>
+                  </Button>
                   {!triggersCollapsed && (
                     <div className="px-3 py-2">
                       {triggers.length === 0 ? (
@@ -464,9 +463,9 @@ export function AutonomousPanel({
 
               {workbenchTodosAvailable && (
                 <div className="border-b border-border">
-                  <button
-                    type="button"
-                    className="flex justify-between items-center px-3 py-2 cursor-pointer hover:bg-bg-hover text-xs font-semibold uppercase tracking-wide text-muted w-full"
+                  <Button
+                    variant="ghost"
+                    className="flex justify-between items-center px-3 py-2 h-auto rounded-none hover:bg-bg-hover text-xs font-semibold uppercase tracking-wide text-muted w-full"
                     onClick={() => setTodosCollapsed(!todosCollapsed)}
                   >
                     <span>
@@ -480,7 +479,7 @@ export function AutonomousPanel({
                         <ChevronDown className="w-3 h-3" />
                       )}
                     </span>
-                  </button>
+                  </Button>
                   {!todosCollapsed && (
                     <div className="px-3 py-2">
                       {todos.length === 0 ? (
@@ -500,10 +499,11 @@ export function AutonomousPanel({
                               className="mt-0.5"
                             />
                             <div
-                              className={`flex-1 text-txt ${todo.isCompleted
+                              className={`flex-1 text-txt ${
+                                todo.isCompleted
                                   ? "line-through opacity-60"
                                   : ""
-                                }`}
+                              }`}
                             >
                               {todo.name}
                             </div>

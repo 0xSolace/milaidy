@@ -13,13 +13,14 @@ function findByTestId(
   return root.find((node) => node.props["data-testid"] === testId);
 }
 
+const mockSetActionNotice = vi.fn();
 vi.mock("../../src/AppContext", () => ({
-  useApp: () => ({ t: (_k: string) => "Latest quote" }),
+  useApp: () => ({ t: (_k: string) => "Latest quote", setActionNotice: mockSetActionNotice, copyToClipboard: vi.fn().mockResolvedValue(undefined) }),
 }));
 
 describe("BscTradePanel", () => {
   it("surfaces preflight failures from the toolbar button", async () => {
-    const setActionNotice = vi.fn();
+    const setActionNotice = mockSetActionNotice;
     const getBscTradePreflight = vi.fn().mockResolvedValue({
       ok: false,
       reasons: ["RPC missing"],
@@ -33,8 +34,7 @@ describe("BscTradePanel", () => {
           bnbBalance: 0,
           trackedTokens: [],
           onAddToken: vi.fn(),
-          copyToClipboard: vi.fn().mockResolvedValue(undefined),
-          setActionNotice,
+
           getBscTradePreflight,
           getBscTradeQuote: vi.fn(),
         }),
@@ -61,7 +61,7 @@ describe("BscTradePanel", () => {
   });
 
   it("quotes the current trade inputs from the toolbar button", async () => {
-    const setActionNotice = vi.fn();
+    const setActionNotice = mockSetActionNotice;
     const getBscTradePreflight = vi.fn().mockResolvedValue({
       ok: true,
       reasons: [],
@@ -83,8 +83,7 @@ describe("BscTradePanel", () => {
           bnbBalance: 1,
           trackedTokens: [],
           onAddToken: vi.fn(),
-          copyToClipboard: vi.fn().mockResolvedValue(undefined),
-          setActionNotice,
+
           getBscTradePreflight,
           getBscTradeQuote,
         }),

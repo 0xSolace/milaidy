@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveApiUrl, resolveAppAssetUrl } from "../../src/asset-url";
+import { resolveApiUrl, resolveAppAssetUrl } from "@milady/app-core/utils";
 
 describe("resolveAppAssetUrl", () => {
   it("returns root-relative path when runtime URL context is unavailable", () => {

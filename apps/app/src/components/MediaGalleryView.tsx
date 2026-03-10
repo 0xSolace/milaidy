@@ -6,9 +6,10 @@
  * APIs (getDatabaseTables, executeDatabaseQuery).
  */
 
+import { client, type QueryResult } from "@milady/app-core/api";
+import { Button, Input } from "@milady/ui";
 import { useCallback, useEffect, useState } from "react";
 import { useApp } from "../AppContext";
-import { client, type QueryResult } from "../api-client";
 
 type MediaType = "all" | "image" | "video" | "audio";
 
@@ -214,27 +215,28 @@ export function MediaGalleryView() {
     <div>
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
-        <input
+        <Input
           type="text"
           placeholder={t("mediagalleryview.SearchMedia")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="px-2.5 py-1.5 border border-[var(--border)] bg-[var(--card)] text-[var(--txt)] text-xs w-[200px]"
+          className="px-2.5 py-1.5 h-8 text-xs w-[200px] shadow-sm bg-[var(--card)]"
         />
         <div className="flex gap-1">
           {FILTER_CHIPS.map((chip) => (
-            <button
-              type="button"
+            <Button
+              variant={filter === chip.id ? "default" : "outline"}
+              size="sm"
               key={chip.id}
-              className={`px-3 py-1 text-xs cursor-pointer border transition-colors ${
+              className={`px-3 py-1 h-7 text-xs shadow-sm transition-colors ${
                 filter === chip.id
-                  ? "bg-[var(--accent)] text-[var(--accent-foreground)] border-[var(--accent)]"
-                  : "bg-transparent text-[var(--muted)] border-[var(--border)] hover:text-[var(--txt)]"
+                  ? ""
+                  : "bg-transparent text-[var(--muted)] hover:text-[var(--txt)] border-[var(--border)]"
               }`}
               onClick={() => setFilter(chip.id)}
             >
               {chip.label}
-            </button>
+            </Button>
           ))}
         </div>
         <span className="text-[11px] text-[var(--muted)] ml-auto">

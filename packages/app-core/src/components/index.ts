@@ -1,5 +1,6 @@
 export * from "./ConfirmModal";
 export * from "./ErrorBoundary";
+export * from "./LanguageDropdown";
 export * from "./confirm-delete-control";
 export * from "./format";
 export * from "./labels";

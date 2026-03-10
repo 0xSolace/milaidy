@@ -1,5 +1,5 @@
+import type { Tab } from "@milady/app-core/navigation";
 import { describe, expect, it } from "vitest";
-import type { Tab } from "../navigation";
 import {
   ACCENT_COLORS,
   accentSubtleVar,

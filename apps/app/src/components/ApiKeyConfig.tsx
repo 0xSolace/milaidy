@@ -4,13 +4,14 @@
  * Extracted from SettingsView.tsx for decomposition (P2 §10).
  */
 
+import { useTimeout } from "../hooks/useTimeout";
+import { client, type PluginParamDef } from "@milady/app-core/api";
+import { autoLabel } from "@milady/app-core/components";
+import type { ConfigUiHint } from "@milady/app-core/types";
 import { useCallback, useState } from "react";
 import { useApp } from "../AppContext";
-import { client, type PluginParamDef } from "../api-client";
-import type { ConfigUiHint } from "../types";
 import type { JsonSchemaObject } from "./config-catalog";
 import { ConfigRenderer, defaultRegistry } from "./config-renderer";
-import { autoLabel } from "./shared/labels";
 
 interface ProviderPlugin {
   id: string;
@@ -40,6 +41,8 @@ export function ApiKeyConfig({
   handlePluginConfigSave,
   loadPlugins,
 }: ApiKeyConfigProps) {
+  const { setTimeout } = useTimeout();
+
   const { t } = useApp();
   const [pluginFieldValues, setPluginFieldValues] = useState<
     Record<string, Record<string, string>>

@@ -1,9 +1,3 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  parsePositiveFloat,
-  parsePositiveInteger,
-} from "../../../../src/utils/number-parsing";
-import { useApp } from "../AppContext";
 import {
   client,
   type StartTrainingOptions,
@@ -12,11 +6,18 @@ import {
   type TrainingJobRecord,
   type TrainingModelRecord,
   type TrainingStatus,
-  type TrainingStreamEvent,
   type TrainingTrajectoryDetail,
   type TrainingTrajectoryList,
-} from "../api-client";
-import { formatTime } from "./shared/format";
+  type TrainingStreamEvent,
+} from "@milady/app-core/api";
+import { formatTime } from "@milady/app-core/components";
+import { Button, Input } from "@milady/ui";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  parsePositiveFloat,
+  parsePositiveInteger,
+} from "../../../../src/utils/number-parsing";
+import { useApp } from "../AppContext";
 
 const TRAINING_EVENT_KINDS = new Set<TrainingStreamEvent["kind"]>([
   "job_started",
@@ -503,15 +504,16 @@ export function FineTuningView() {
               {t("finetuningview.BuildDatasetsFrom")}
             </p>
           </div>
-          <button
-            type="button"
-            className="px-3 py-1 text-xs border border-border hover:border-accent"
+          <Button
+            variant="outline"
+            size="sm"
+            className="px-3 py-1 h-7 text-xs shadow-sm hover:border-accent"
             onClick={() => {
               void refreshAll();
             }}
           >
             {t("finetuningview.RefreshAll")}
-          </button>
+          </Button>
         </div>
         {errorMessage && (
           <div className="mt-3 text-xs text-danger border border-danger p-2">
@@ -550,15 +552,16 @@ export function FineTuningView() {
           <h3 className="text-sm font-bold">
             {t("finetuningview.Trajectories")}
           </h3>
-          <button
-            type="button"
-            className="px-2 py-1 text-xs border border-border hover:border-accent"
+          <Button
+            variant="outline"
+            size="sm"
+            className="px-2 py-1 h-6 text-xs shadow-sm hover:border-accent"
             onClick={() => {
               void loadTrajectories();
             }}
           >
             {t("finetuningview.Refresh")}
-          </button>
+          </Button>
         </div>
         {!trajectoryList.available ? (
           <div className="text-xs text-muted">
@@ -581,10 +584,10 @@ export function FineTuningView() {
                     </div>
                   ) : (
                     trajectoryList.trajectories.map((trajectory) => (
-                      <button
-                        type="button"
+                      <Button
+                        variant="ghost"
                         key={trajectory.trajectoryId}
-                        className="w-full text-left px-2 py-2 border-b border-border hover:bg-bg-hover text-xs"
+                        className="w-full h-auto text-left justify-start flex-col items-start px-2 py-2 border-b border-border rounded-none hover:bg-bg-hover text-xs"
                         onClick={() => {
                           void loadTrajectoryDetail(trajectory.trajectoryId);
                         }}
@@ -598,7 +601,7 @@ export function FineTuningView() {
                           {trajectory.totalReward ?? "n/a"} ·{" "}
                           {formatDate(trajectory.createdAt)}
                         </div>
-                      </button>
+                      </Button>
                     ))
                   )}
                 </div>
@@ -657,37 +660,39 @@ export function FineTuningView() {
           {t("finetuningview.Datasets1")}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
-          <input
-            className="px-2 py-1 border border-border bg-bg text-sm"
+          <Input
+            className="px-2 py-1 h-8 text-sm bg-bg border-border focus-visible:ring-accent"
             value={buildLimit}
             onChange={(event) => setBuildLimit(event.target.value)}
             placeholder={t("finetuningview.LimitTrajectories")}
           />
-          <input
-            className="px-2 py-1 border border-border bg-bg text-sm"
+          <Input
+            className="px-2 py-1 h-8 text-sm bg-bg border-border focus-visible:ring-accent"
             value={buildMinCalls}
             onChange={(event) => setBuildMinCalls(event.target.value)}
             placeholder={t("finetuningview.MinLLMCallsPerTr")}
           />
-          <button
-            type="button"
-            className="px-3 py-1 text-xs border border-border hover:border-accent disabled:opacity-50"
+          <Button
+            variant="outline"
+            size="sm"
+            className="px-3 py-1 h-8 text-xs shadow-sm hover:border-accent disabled:opacity-50"
             disabled={datasetBuilding}
             onClick={() => {
               void handleBuildDataset();
             }}
           >
             {datasetBuilding ? "Building..." : "Build Dataset"}
-          </button>
-          <button
-            type="button"
-            className="px-3 py-1 text-xs border border-border hover:border-accent"
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="px-3 py-1 h-8 text-xs shadow-sm hover:border-accent"
             onClick={() => {
               void loadDatasets();
             }}
           >
             {t("finetuningview.RefreshDatasets")}
-          </button>
+          </Button>
         </div>
         <div className="space-y-2 max-h-52 overflow-auto">
           {datasets.length === 0 ? (
@@ -745,52 +750,54 @@ export function FineTuningView() {
             <option value="mlx">{t("finetuningview.mlx")}</option>
             <option value="cuda">{t("finetuningview.cuda")}</option>
           </select>
-          <input
-            className="px-2 py-1 border border-border bg-bg text-sm"
+          <Input
+            className="px-2 py-1 h-8 text-sm bg-bg border-border focus-visible:ring-accent"
             value={startModel}
             onChange={(event) => setStartModel(event.target.value)}
             placeholder={t("finetuningview.BaseModelOptional")}
           />
-          <input
-            className="px-2 py-1 border border-border bg-bg text-sm"
+          <Input
+            className="px-2 py-1 h-8 text-sm bg-bg border-border focus-visible:ring-accent"
             value={startIterations}
             onChange={(event) => setStartIterations(event.target.value)}
             placeholder={t("finetuningview.IterationsOptional")}
           />
-          <input
-            className="px-2 py-1 border border-border bg-bg text-sm"
+          <Input
+            className="px-2 py-1 h-8 text-sm bg-bg border-border focus-visible:ring-accent"
             value={startBatchSize}
             onChange={(event) => setStartBatchSize(event.target.value)}
             placeholder={t("finetuningview.BatchSizeOptional")}
           />
-          <input
-            className="px-2 py-1 border border-border bg-bg text-sm"
+          <Input
+            className="px-2 py-1 h-8 text-sm bg-bg border-border focus-visible:ring-accent"
             value={startLearningRate}
             onChange={(event) => setStartLearningRate(event.target.value)}
             placeholder={t("finetuningview.LearningRateOptio")}
           />
         </div>
         <div className="flex gap-2 mb-3">
-          <button
-            type="button"
-            className="px-3 py-1 text-xs border border-border hover:border-accent disabled:opacity-50"
+          <Button
+            variant="outline"
+            size="sm"
+            className="px-3 py-1 h-8 text-xs shadow-sm hover:border-accent disabled:opacity-50"
             disabled={startingJob || Boolean(activeRunningJob)}
             onClick={() => {
               void handleStartJob();
             }}
           >
             {startingJob ? "Starting..." : "Start Training Job"}
-          </button>
-          <button
-            type="button"
-            className="px-3 py-1 text-xs border border-border hover:border-accent"
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="px-3 py-1 h-8 text-xs shadow-sm hover:border-accent"
             onClick={() => {
               void loadJobs();
               void loadStatus();
             }}
           >
             {t("finetuningview.RefreshJobs")}
-          </button>
+          </Button>
           {activeRunningJob && (
             <div className="text-xs text-warn flex items-center">
               {t("finetuningview.ActiveJob")}{" "}
@@ -808,22 +815,22 @@ export function FineTuningView() {
               jobs.map((job) => (
                 <div
                   key={job.id}
-                  className={`px-2 py-2 border-b border-border text-xs ${
-                    selectedJobId === job.id ? "bg-bg-hover" : ""
-                  }`}
+                  className={`px-2 py-2 border-b border-border text-xs ${selectedJobId === job.id ? "bg-bg-hover" : ""
+                    }`}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      className="font-mono text-left hover:text-accent"
+                    <Button
+                      variant="link"
+                      className="font-mono text-left w-auto h-auto p-0 justify-start"
                       onClick={() => setSelectedJobId(job.id)}
                     >
                       {job.id}
-                    </button>
+                    </Button>
                     {(job.status === "running" || job.status === "queued") && (
-                      <button
-                        type="button"
-                        className="px-2 py-0.5 border border-border hover:border-danger text-[11px] disabled:opacity-50"
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="px-2 py-0.5 h-6 text-[11px] border-border hover:border-danger hover:bg-danger/10 text-danger shadow-sm disabled:opacity-50"
                         disabled={cancellingJobId === job.id}
                         onClick={() => {
                           void handleCancelJob(job.id);
@@ -832,7 +839,7 @@ export function FineTuningView() {
                         {cancellingJobId === job.id
                           ? "Cancelling..."
                           : "Cancel"}
-                      </button>
+                      </Button>
                     )}
                   </div>
                   <div className="text-muted mt-1">
@@ -889,14 +896,13 @@ export function FineTuningView() {
               </div>
             ) : (
               models.map((model) => (
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
                   key={model.id}
-                  className={`w-full text-left px-2 py-2 border-b border-border text-xs ${
-                    selectedModelId === model.id
-                      ? "bg-bg-hover"
-                      : "hover:bg-bg-hover"
-                  }`}
+                  className={`w-full h-auto text-left justify-start flex-col items-start px-2 py-2 border-b border-border rounded-none text-xs ${selectedModelId === model.id
+                    ? "bg-bg-hover"
+                    : "hover:bg-bg-hover"
+                    }`}
                   onClick={() => setSelectedModelId(model.id)}
                 >
                   <div className="font-mono">
@@ -912,7 +918,7 @@ export function FineTuningView() {
                       ? ` · ${formatDate(model.benchmark.lastRunAt)}`
                       : ""}
                   </div>
-                </button>
+                </Button>
               ))
             )}
           </div>
@@ -941,27 +947,28 @@ export function FineTuningView() {
                   </span>
                 </div>
 
-                <input
-                  className="w-full px-2 py-1 border border-border bg-bg text-sm"
+                <Input
+                  className="w-full px-2 py-1 h-8 text-sm bg-bg border-border focus-visible:ring-accent"
                   value={importModelName}
                   onChange={(event) => setImportModelName(event.target.value)}
                   placeholder={t("finetuningview.OllamaModelNameO")}
                 />
-                <input
-                  className="w-full px-2 py-1 border border-border bg-bg text-sm"
+                <Input
+                  className="w-full px-2 py-1 h-8 text-sm bg-bg border-border focus-visible:ring-accent"
                   value={importBaseModel}
                   onChange={(event) => setImportBaseModel(event.target.value)}
                   placeholder={t("finetuningview.BaseModelForOllam")}
                 />
-                <input
-                  className="w-full px-2 py-1 border border-border bg-bg text-sm"
+                <Input
+                  className="w-full px-2 py-1 h-8 text-sm bg-bg border-border focus-visible:ring-accent"
                   value={importOllamaUrl}
                   onChange={(event) => setImportOllamaUrl(event.target.value)}
                   placeholder={t("finetuningview.OllamaURL")}
                 />
-                <button
-                  type="button"
-                  className="px-3 py-1 text-xs border border-border hover:border-accent disabled:opacity-50"
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="px-3 py-1 h-8 text-xs shadow-sm hover:border-accent disabled:opacity-50"
                   disabled={modelAction === `import:${selectedModel.id}`}
                   onClick={() => {
                     void handleImportSelectedModel();
@@ -970,10 +977,10 @@ export function FineTuningView() {
                   {modelAction === `import:${selectedModel.id}`
                     ? "Importing..."
                     : "Import To Ollama"}
-                </button>
+                </Button>
 
-                <input
-                  className="w-full px-2 py-1 border border-border bg-bg text-sm"
+                <Input
+                  className="w-full px-2 py-1 h-8 text-sm bg-bg border-border focus-visible:ring-accent"
                   value={activateProviderModel}
                   onChange={(event) =>
                     setActivateProviderModel(event.target.value)
@@ -981,9 +988,10 @@ export function FineTuningView() {
                   placeholder={t("finetuningview.ProviderModelEG")}
                 />
                 <div className="flex gap-2">
-                  <button
-                    type="button"
-                    className="px-3 py-1 text-xs border border-border hover:border-accent disabled:opacity-50"
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="px-3 py-1 h-8 text-xs shadow-sm hover:border-accent disabled:opacity-50"
                     disabled={modelAction === `activate:${selectedModel.id}`}
                     onClick={() => {
                       void handleActivateSelectedModel();
@@ -992,10 +1000,11 @@ export function FineTuningView() {
                     {modelAction === `activate:${selectedModel.id}`
                       ? "Activating..."
                       : "Activate Model"}
-                  </button>
-                  <button
-                    type="button"
-                    className="px-3 py-1 text-xs border border-border hover:border-accent disabled:opacity-50"
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="px-3 py-1 h-8 text-xs shadow-sm hover:border-accent disabled:opacity-50"
                     disabled={modelAction === `benchmark:${selectedModel.id}`}
                     onClick={() => {
                       void handleBenchmarkSelectedModel();
@@ -1004,10 +1013,11 @@ export function FineTuningView() {
                     {modelAction === `benchmark:${selectedModel.id}`
                       ? "Benchmarking..."
                       : "Benchmark"}
-                  </button>
-                  <button
-                    type="button"
-                    className="px-3 py-1 text-xs border border-border hover:border-accent disabled:opacity-50"
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="px-3 py-1 h-8 text-xs shadow-sm hover:border-accent disabled:opacity-50"
                     disabled={modelAction === `smoke:${selectedModel.id}`}
                     onClick={() => {
                       void handleSmokeTestSelectedModel();
@@ -1016,7 +1026,7 @@ export function FineTuningView() {
                     {modelAction === `smoke:${selectedModel.id}`
                       ? "Testing..."
                       : "Run Smoke Prompt"}
-                  </button>
+                  </Button>
                 </div>
                 {smokeResult && (
                   <textarea

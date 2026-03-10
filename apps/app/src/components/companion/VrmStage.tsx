@@ -1,9 +1,13 @@
+import { client } from "@milady/app-core/api";
+import { STOP_EMOTE_EVENT } from "@milady/app-core/events";
+import { resolveAppAssetUrl } from "@milady/app-core/utils";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { client } from "../../api-client";
-import { resolveAppAssetUrl } from "../../asset-url";
-import { STOP_EMOTE_EVENT } from "../../events";
 import { AvatarLoader } from "../avatar/AvatarLoader";
-import type { CameraProfile, VrmEngine, VrmEngineState } from "../avatar/VrmEngine";
+import type {
+  CameraProfile,
+  VrmEngine,
+  VrmEngineState,
+} from "../avatar/VrmEngine";
 import { VrmViewer } from "../avatar/VrmViewer";
 import { BubbleEmote } from "../BubbleEmote";
 import type { TranslatorFn } from "./walletUtils";

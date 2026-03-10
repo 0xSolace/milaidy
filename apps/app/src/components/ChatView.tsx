@@ -6,6 +6,14 @@
  * Input row at bottom with mic + textarea + send button.
  */
 
+import {
+  client,
+  type ImageAttachment,
+  type VoiceConfig,
+} from "@milady/app-core/api";
+import { useTimeout } from "../hooks/useTimeout";
+import { VOICE_CONFIG_UPDATED_EVENT } from "@milady/app-core/events";
+import { Button, Textarea } from "@milady/ui";
 import { Mic, Paperclip, Send, Smile, Square } from "lucide-react";
 import {
   type ChangeEvent,
@@ -18,14 +26,11 @@ import {
   useState,
 } from "react";
 import { getVrmPreviewUrl, useApp } from "../AppContext";
-import { client, type ImageAttachment, type VoiceConfig } from "../api-client";
-import { VOICE_CONFIG_UPDATED_EVENT } from "../events";
 import {
   useVoiceChat,
   type VoicePlaybackStartEvent,
 } from "../hooks/useVoiceChat";
 import { AgentActivityBox } from "./AgentActivityBox";
-
 import { ChatEmptyState, ChatMessage, TypingIndicator } from "./ChatMessage";
 import { MessageContent } from "./MessageContent";
 
@@ -57,9 +62,15 @@ export function isRoutineCodingAgentMessage(msg: {
   );
 }
 
-export type ChatViewVariant = "default" | "game-modal";
+type ChatViewVariant = "default" | "game-modal";
 
-function GameModalMessage({ msg, children }: { msg: any; children: React.ReactNode }) {
+function GameModalMessage({
+  msg,
+  children,
+}: {
+  msg: { timestamp?: number; role?: string };
+  children: React.ReactNode;
+}) {
   const [faded, setFaded] = useState(false);
   useEffect(() => {
     if (!msg.timestamp) return;
@@ -74,7 +85,9 @@ function GameModalMessage({ msg, children }: { msg: any; children: React.ReactNo
 
   const isUser = msg.role === "user";
   return (
-    <div className={`flex w-full transition-opacity duration-1000 ${faded ? "opacity-0 pointer-events-none" : "opacity-100"} ${isUser ? "justify-end" : "justify-start"}`}>
+    <div
+      className={`flex w-full transition-opacity duration-1000 ${faded ? "opacity-0 pointer-events-none" : "opacity-100"} ${isUser ? "justify-end" : "justify-start"}`}
+    >
       {children}
     </div>
   );
@@ -85,6 +98,8 @@ interface ChatViewProps {
 }
 
 export function ChatView({ variant = "default" }: ChatViewProps) {
+  const { setTimeout } = useTimeout();
+
   const isGameModal = variant === "game-modal";
   const {
     agentStatus,
@@ -463,9 +478,18 @@ export function ChatView({ variant = "default" }: ChatViewProps) {
             {chatSending && !chatFirstTokenReceived && (
               <div className="flex w-full justify-start">
                 <div className="max-w-[85%] rounded-2xl rounded-bl-sm px-4 py-3 bg-black/30 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-white/50 animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <span className="w-1.5 h-1.5 rounded-full bg-white/50 animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <span className="w-1.5 h-1.5 rounded-full bg-white/50 animate-bounce" style={{ animationDelay: "300ms" }} />
+                  <span
+                    className="w-1.5 h-1.5 rounded-full bg-white/50 animate-bounce"
+                    style={{ animationDelay: "0ms" }}
+                  />
+                  <span
+                    className="w-1.5 h-1.5 rounded-full bg-white/50 animate-bounce"
+                    style={{ animationDelay: "150ms" }}
+                  />
+                  <span
+                    className="w-1.5 h-1.5 rounded-full bg-white/50 animate-bounce"
+                    style={{ animationDelay: "300ms" }}
+                  />
                 </div>
               </div>
             )}
@@ -582,12 +606,13 @@ export function ChatView({ variant = "default" }: ChatViewProps) {
         <div className="mt-auto pt-4 relative" style={{ zIndex: 1 }}>
           <div className="relative flex items-end min-h-[52px] gap-1 transition-all">
             {/* Mic button */}
-            <button
-              type="button"
-              className={`flex shrink-0 items-center justify-center w-[46px] h-[46px] mb-1.5 rounded-full transition-all cursor-pointer ${voice.isListening
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`flex shrink-0 items-center justify-center w-[46px] h-[46px] mb-1.5 rounded-full transition-all ${voice.isListening
                 ? "bg-accent/20 text-accent"
                 : "bg-transparent text-white/50 hover:bg-white/10 hover:text-white"
-                } ${isComposerLocked ? "opacity-50 cursor-not-allowed" : ""}`}
+                } ${isComposerLocked ? "opacity-50" : ""}`}
               onClick={voice.toggleListening}
               aria-label={
                 isAgentStarting
@@ -598,20 +623,23 @@ export function ChatView({ variant = "default" }: ChatViewProps) {
               }
               disabled={isComposerLocked}
             >
-              <Mic className={`w-5 h-5 ${voice.isListening ? "animate-pulse" : ""}`} />
-            </button>
+              <Mic
+                className={`w-5 h-5 ${voice.isListening ? "animate-pulse" : ""}`}
+              />
+            </Button>
 
             {/* Emote picker toggle */}
-            <button
-              type="button"
-              className={`flex shrink-0 items-center justify-center w-[46px] h-[46px] mb-1.5 rounded-full bg-transparent text-white/50 hover:bg-white/10 hover:text-white transition-all cursor-pointer ${isComposerLocked ? "opacity-50 cursor-not-allowed" : ""}`}
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`flex shrink-0 items-center justify-center w-[46px] h-[46px] mb-1.5 rounded-full bg-transparent text-white/50 hover:bg-white/10 hover:text-white transition-all ${isComposerLocked ? "opacity-50" : ""}`}
               onClick={openEmotePicker}
               disabled={isComposerLocked}
               aria-label={t("chat.openEmotePicker")}
               title={t("chatview.EmotesE")}
             >
               <Smile className="w-5 h-5" />
-            </button>
+            </Button>
 
             {/* Input */}
             {voice.isListening && voice.interimTranscript ? (
@@ -620,9 +648,9 @@ export function ChatView({ variant = "default" }: ChatViewProps) {
               </div>
             ) : (
               <div className="flex-1 relative flex items-center bg-black/40 rounded-2xl focus-within:ring-2 focus-within:ring-accent/10 transition-all min-h-[52px]">
-                <textarea
+                <Textarea
                   ref={textareaRef}
-                  className="w-full min-w-0 px-4 py-3 bg-transparent border-none text-[15px] leading-relaxed text-white resize-none overflow-y-hidden max-h-[150px] focus:outline-none focus:ring-0 placeholder:text-white/30 font-[var(--font-chat)] disabled:opacity-50"
+                  className="w-full min-w-0 px-4 py-3 bg-transparent border-none text-[15px] leading-relaxed text-white resize-none overflow-y-hidden max-h-[150px] focus-visible:ring-0 placeholder:text-white/30 font-[var(--font-chat)] disabled:opacity-50"
                   rows={1}
                   aria-label="Chat message"
                   placeholder={
@@ -640,22 +668,24 @@ export function ChatView({ variant = "default" }: ChatViewProps) {
 
             {/* Send / Stop */}
             {chatSending ? (
-              <button
-                type="button"
-                className="flex shrink-0 items-center justify-center w-[46px] h-[46px] mb-1.5 rounded-full bg-danger/20 text-danger hover:bg-danger/30 transition-all cursor-pointer ml-1"
+              <Button
+                variant="destructive"
+                size="icon"
+                className="flex shrink-0 items-center justify-center w-[46px] h-[46px] mb-1.5 rounded-full bg-danger/20 text-danger hover:bg-danger/30 transition-all ml-1"
                 onClick={handleChatStop}
               >
                 <Square className="w-4 h-4 fill-current" />
-              </button>
+              </Button>
             ) : (
-              <button
-                type="button"
-                className="flex shrink-0 items-center justify-center w-[46px] h-[46px] mb-1.5 rounded-full bg-accent text-accent-fg transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ml-1 hover:shadow-[0_0_15px_rgba(240,178,50,0.4)]"
+              <Button
+                variant="default"
+                size="icon"
+                className="flex shrink-0 items-center justify-center w-[46px] h-[46px] mb-1.5 rounded-full bg-accent text-accent-fg transition-all disabled:opacity-40 ml-1 hover:shadow-[0_0_15px_rgba(240,178,50,0.4)]"
                 onClick={() => void handleChatSend()}
                 disabled={isComposerLocked || !chatInput.trim()}
               >
                 <Send className="w-5 h-5" />
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -666,11 +696,12 @@ export function ChatView({ variant = "default" }: ChatViewProps) {
           style={{ zIndex: 1 }}
         >
           {/* Paperclip / image attach button */}
-          <button
-            type="button"
-            className={`h-[38px] w-[38px] shrink-0 flex items-center justify-center border rounded cursor-pointer transition-all duration-200 hover:shadow-sm self-end ${chatPendingImages.length > 0
-              ? "border-accent bg-accent/10 text-accent"
-              : "border-border bg-card text-muted hover:border-accent hover:text-accent"
+          <Button
+            variant={chatPendingImages.length > 0 ? "secondary" : "ghost"}
+            size="icon"
+            className={`h-[38px] w-[38px] shrink-0 ${chatPendingImages.length > 0
+              ? "bg-accent/10 sm:hover:bg-accent/20 border-accent/20 text-accent/80 hover:text-accent shadow-sm"
+              : "text-muted hover:bg-black/5 hover:text-txt"
               }`}
             onClick={() => fileInputRef.current?.click()}
             aria-label="Attach image"
@@ -678,15 +709,16 @@ export function ChatView({ variant = "default" }: ChatViewProps) {
             disabled={isComposerLocked}
           >
             <Paperclip className="w-4 h-4" />
-          </button>
+          </Button>
 
           {/* Mic button — user voice input */}
           {voice.supported && (
-            <button
-              type="button"
-              className={`h-[38px] w-[38px] flex-shrink-0 flex items-center justify-center border rounded cursor-pointer transition-all self-end ${voice.isListening
-                ? "bg-accent border-accent text-accent-fg shadow-[0_0_10px_rgba(124,58,237,0.4)] animate-pulse"
-                : "border-border bg-card text-muted hover:border-accent hover:text-accent"
+            <Button
+              variant={voice.isListening ? "default" : "ghost"}
+              size="icon"
+              className={`h-[38px] w-[38px] shrink-0 ${voice.isListening
+                ? "bg-accent shadow-[0_0_10px_rgba(124,58,237,0.4)] animate-pulse"
+                : "text-muted hover:bg-black/5 hover:text-txt"
                 }`}
               onClick={voice.toggleListening}
               aria-label={
@@ -711,25 +743,26 @@ export function ChatView({ variant = "default" }: ChatViewProps) {
               ) : (
                 <Mic className="w-4 h-4" />
               )}
-            </button>
+            </Button>
           )}
 
           {/* Emote picker toggle */}
-          <button
-            type="button"
-            className="h-[38px] w-[38px] shrink-0 flex items-center justify-center border border-border bg-card text-muted rounded cursor-pointer transition-all duration-200 hover:border-accent hover:text-accent hover:shadow-sm self-end"
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-[38px] w-[38px] shrink-0 text-muted hover:bg-black/5 hover:text-txt transition-colors"
             onClick={openEmotePicker}
             disabled={isComposerLocked}
             aria-label={t("chat.openEmotePicker")}
             title={t("chatview.EmotesE")}
           >
             <Smile className="w-4 h-4" />
-          </button>
+          </Button>
 
           {/* Textarea / live transcript */}
           {voice.isListening && voice.interimTranscript ? (
             <div
-              className="flex-1 min-w-0 px-3 py-2 border border-accent bg-card text-txt text-[15px] leading-[1.7] min-h-[38px] flex items-center"
+              className="flex-1 min-w-0 px-3 py-2 border border-accent bg-card text-txt text-[15px] leading-[1.7] min-h-[38px] flex items-center rounded-md"
               style={{ fontFamily: "var(--font-chat)" }}
             >
               <span className="text-muted italic">
@@ -737,9 +770,9 @@ export function ChatView({ variant = "default" }: ChatViewProps) {
               </span>
             </div>
           ) : (
-            <textarea
+            <Textarea
               ref={textareaRef}
-              className="flex-1 min-w-0 px-3 py-2 border border-border bg-card text-txt text-[15px] leading-[1.7] resize-none overflow-y-hidden min-h-[38px] max-h-[200px] focus:border-accent focus:outline-none"
+              className="flex-1 min-w-0 px-3 py-2 bg-card/60 backdrop-blur-md border border-border/40 focus-visible:ring-accent text-txt text-[15px] leading-[1.7] resize-none overflow-y-hidden min-h-[38px] max-h-[200px]"
               style={{ fontFamily: "var(--font-chat)" }}
               rows={1}
               aria-label="Chat message"
@@ -759,39 +792,39 @@ export function ChatView({ variant = "default" }: ChatViewProps) {
 
           {/* Send / Stop */}
           {chatSending ? (
-            <button
-              type="button"
-              className="h-[38px] shrink-0 px-3 sm:px-4 py-2 border border-danger bg-danger/10 text-danger text-sm cursor-pointer hover:bg-danger/20 transition-all duration-200 hover:shadow-sm self-end flex items-center gap-1.5"
+            <Button
+              variant="destructive"
+              className="h-[38px] shrink-0 px-3 sm:px-4 py-2 text-sm shadow-sm gap-1.5"
               onClick={handleChatStop}
               title={t("chat.stopGeneration")}
             >
               <Square className="w-3 h-3 fill-current" />
               <span>{t("chat.stop")}</span>
-            </button>
+            </Button>
           ) : voice.isSpeaking ? (
-            <button
-              type="button"
-              className="h-[38px] shrink-0 px-3 sm:px-4 py-2 border border-danger bg-danger/10 text-danger text-sm cursor-pointer hover:bg-danger/20 transition-all duration-200 hover:shadow-sm self-end flex items-center gap-1.5"
+            <Button
+              variant="destructive"
+              className="h-[38px] shrink-0 px-3 sm:px-4 py-2 text-sm shadow-sm gap-1.5"
               onClick={stopSpeaking}
               title={t("chat.stopSpeaking")}
             >
               <Square className="w-3 h-3 fill-current" />
               <span>{t("chat.stopVoice")}</span>
-            </button>
+            </Button>
           ) : (
-            <button
-              type="button"
-              className="h-[38px] shrink-0 px-4 sm:px-5 py-2 border border-accent bg-accent text-accent-fg text-sm cursor-pointer hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-sm self-end flex items-center gap-1.5"
+            <Button
+              variant="default"
+              className="h-[38px] shrink-0 px-4 sm:px-5 py-2 text-sm shadow-sm gap-1.5 font-bold tracking-wide"
               onClick={() => void handleChatSend()}
               disabled={isComposerLocked || !chatInput.trim()}
               aria-label={t("chat.send")}
               title={isAgentStarting ? t("chat.agentStarting") : t("chat.send")}
             >
               <Send className="w-4 h-4" />
-              <span>
+              <span className="hidden sm:inline">
                 {isAgentStarting ? t("chat.agentStarting") : t("chat.send")}
               </span>
-            </button>
+            </Button>
           )}
         </div>
       )}

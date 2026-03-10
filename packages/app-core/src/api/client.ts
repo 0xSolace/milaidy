@@ -1187,6 +1187,7 @@ export interface CloudLoginResponse {
   ok: boolean;
   sessionId: string;
   browserUrl: string;
+  error?: string;
 }
 export interface CloudLoginPollResponse {
   status: "pending" | "authenticated" | "expired" | "error";

@@ -3,7 +3,7 @@ import React from "react";
 import type { ReactTestInstance } from "react-test-renderer";
 import TestRenderer, { act } from "react-test-renderer";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { pathForTab, tabFromPath } from "../../src/navigation";
+import { pathForTab, tabFromPath } from "@milady/app-core/navigation";
 
 const { mockUseApp } = vi.hoisted(() => ({
   mockUseApp: vi.fn(),
@@ -17,6 +17,9 @@ const { mockIsLifoPopoutMode } = vi.hoisted(() => ({
 
 vi.mock("../../src/AppContext", () => ({
   useApp: () => mockUseApp(),
+  getVrmUrl: vi.fn(),
+  getVrmPreviewUrl: vi.fn(),
+  getVrmTitle: vi.fn(),
 }));
 
 vi.mock("../../src/components/Header", () => ({

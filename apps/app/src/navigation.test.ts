@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import {
   ALL_TAB_GROUPS,
   getTabGroups,
@@ -6,7 +5,8 @@ import {
   type Tab,
   tabFromPath,
   titleForTab,
-} from "./navigation";
+} from "@milady/app-core/navigation";
+import { describe, expect, it } from "vitest";
 
 describe("tabFromPath", () => {
   it("maps core tabs", () => {
@@ -120,7 +120,6 @@ describe("tab groups", () => {
     const groupedTabs = new Set(ALL_TAB_GROUPS.flatMap((group) => group.tabs));
     const expectedTabs: Tab[] = [
       "chat",
-      "companion",
       "stream",
       "apps",
       "character",

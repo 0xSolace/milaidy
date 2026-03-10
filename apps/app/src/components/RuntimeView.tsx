@@ -7,15 +7,15 @@
  * - Explicit load order metadata
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useApp } from "../AppContext";
 import {
   client,
   type RuntimeDebugSnapshot,
   type RuntimeOrderItem,
   type RuntimeServiceOrderItem,
-} from "../api-client";
-import { formatDateTime } from "./shared/format";
+} from "@milady/app-core/api";
+import { formatDateTime } from "@milady/app-core/components";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useApp } from "../AppContext";
 
 type RuntimeSectionKey =
   | "runtime"

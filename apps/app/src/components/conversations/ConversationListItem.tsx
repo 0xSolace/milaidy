@@ -33,6 +33,7 @@ interface ConversationListItemProps {
   onSetConfirmDelete: (id: string) => void;
 }
 
+import { Button, Input } from "@milady/ui";
 import { Edit2, Trash2 } from "lucide-react";
 
 export function ConversationListItem({
@@ -61,22 +62,24 @@ export function ConversationListItem({
       key={conv.id}
       data-testid="conv-item"
       data-active={isActive || undefined}
-      className={`${isGameModal
+      className={`${
+        isGameModal
           ? "group relative flex items-center gap-3 w-full p-2.5 rounded-xl cursor-pointer transition-all border border-transparent"
           : "flex items-center px-3 py-2 gap-2 cursor-pointer transition-colors border-l-[3px]"
-        } ${isActive
+      } ${
+        isActive
           ? isGameModal
             ? "bg-accent/15 border-accent/30 shadow-[0_0_15px_rgba(240,178,50,0.1)]"
             : "bg-bg-hover border-l-accent"
           : isGameModal
             ? "hover:bg-white/5 hover:border-white/10"
             : "border-l-transparent hover:bg-bg-hover"
-        }`}
+      }`}
     >
       {isEditing ? (
-        <input
+        <Input
           ref={inputRef}
-          className="w-full px-1.5 py-1 border border-accent rounded bg-card text-txt text-[13px] outline-none"
+          className="w-full h-8 px-1.5 border-accent bg-card text-txt text-[13px] shadow-sm focus-visible:ring-1 focus-visible:ring-accent"
           value={editingTitle}
           onChange={(e) => onEditingTitleChange(e.target.value)}
           onBlur={() => void onEditSubmit(conv.id)}
@@ -85,12 +88,13 @@ export function ConversationListItem({
         />
       ) : (
         <>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
             className={
               isGameModal
-                ? "flex flex-col flex-1 min-w-0 text-left cursor-pointer outline-none border-none bg-transparent m-0 p-0"
-                : "flex items-center gap-2 flex-1 min-w-0 bg-transparent border-0 p-0 m-0 text-left cursor-pointer"
+                ? "flex flex-col flex-1 min-w-0 text-left cursor-pointer h-auto p-0 rounded-none bg-transparent border-none"
+                : "flex items-center gap-2 flex-1 min-w-0 bg-transparent border-0 p-0 m-0 text-left h-auto cursor-pointer rounded-none"
             }
             onClick={() => onSelect(conv.id)}
             onDoubleClick={() => onDoubleClick(conv)}
@@ -106,7 +110,11 @@ export function ConversationListItem({
             )}
 
             <div
-              className={isGameModal ? "flex-1 min-w-0 flex flex-col gap-1 w-full" : "flex-1 min-w-0"}
+              className={
+                isGameModal
+                  ? "flex-1 min-w-0 flex flex-col gap-1 w-full"
+                  : "flex-1 min-w-0"
+              }
             >
               <span
                 className={
@@ -127,15 +135,16 @@ export function ConversationListItem({
                 {formatRelativeTime(conv.updatedAt, t)}
               </span>
             </div>
-          </button>
+          </Button>
 
           {/* Rename button (game-modal always visible, default on hover) */}
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="icon"
             className={
               isGameModal
                 ? `flex items-center justify-center w-7 h-7 rounded-lg bg-transparent text-white/40 opacity-0 group-hover:opacity-100 transition-all cursor-pointer hover:bg-white/10 hover:text-white`
-                : "opacity-0 group-hover:opacity-100 transition-opacity border-none bg-transparent text-muted hover:text-accent cursor-pointer text-sm px-1 py-0.5 rounded flex-shrink-0"
+                : "opacity-0 group-hover:opacity-100 h-7 w-7 text-muted hover:text-accent"
             }
             onClick={(e) => {
               e.stopPropagation();
@@ -144,14 +153,15 @@ export function ConversationListItem({
             title={t("conversations.rename")}
           >
             {isGameModal ? <Edit2 className="w-3.5 h-3.5" /> : "\u270E"}
-          </button>
+          </Button>
 
           {/* Delete with confirm (default variant) or direct delete (game-modal) */}
           {isGameModal ? (
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="icon"
               data-testid="conv-delete"
-              className="flex items-center justify-center w-7 h-7 rounded-lg bg-transparent text-white/40 opacity-0 group-hover:opacity-100 transition-all cursor-pointer hover:bg-danger/20 hover:text-danger"
+              className="flex items-center justify-center w-7 h-7 rounded-lg bg-transparent text-white/40 opacity-0 group-hover:opacity-100 transition-all hover:bg-danger/20 hover:text-danger"
               onClick={(e) => {
                 e.stopPropagation();
                 void onDelete(conv.id);
@@ -159,34 +169,37 @@ export function ConversationListItem({
               title={t("conversations.delete")}
             >
               <Trash2 className="w-3.5 h-3.5" />
-            </button>
+            </Button>
           ) : confirmDeleteId === conv.id ? (
             <div className="flex items-center gap-1.5 flex-shrink-0">
               <span className="text-[10px] text-danger">
                 {t("conversations.deleteConfirm")}
               </span>
-              <button
-                type="button"
-                className="px-1.5 py-0.5 text-[10px] border border-danger bg-danger text-white cursor-pointer hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+              <Button
+                variant="destructive"
+                size="sm"
+                className="h-6 px-1.5 py-0.5 text-[10px] text-white shadow-sm disabled:opacity-50"
                 onClick={() => void onConfirmDelete(conv.id)}
                 disabled={deletingId === conv.id}
               >
                 {deletingId === conv.id ? "..." : t("conversations.deleteYes")}
-              </button>
-              <button
-                type="button"
-                className="px-1.5 py-0.5 text-[10px] border border-border bg-card text-muted cursor-pointer hover:border-accent hover:text-accent disabled:opacity-50 disabled:cursor-not-allowed"
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-6 px-1.5 py-0.5 text-[10px] text-muted shadow-sm hover:border-accent hover:text-accent disabled:opacity-50"
                 onClick={() => onCancelDelete()}
                 disabled={deletingId === conv.id}
               >
                 {t("conversations.deleteNo")}
-              </button>
+              </Button>
             </div>
           ) : (
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="icon"
               data-testid="conv-delete"
-              className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity border-none bg-transparent text-muted hover:text-danger hover:bg-destructive-subtle cursor-pointer text-sm px-1 py-0.5 rounded flex-shrink-0"
+              className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 h-7 w-7 text-muted hover:text-danger hover:bg-destructive-subtle"
               onClick={(e) => {
                 e.stopPropagation();
                 onSetConfirmDelete(conv.id);
@@ -194,7 +207,7 @@ export function ConversationListItem({
               title={t("conversations.delete")}
             >
               {t("conversationlistitem.Times")}
-            </button>
+            </Button>
           )}
         </>
       )}

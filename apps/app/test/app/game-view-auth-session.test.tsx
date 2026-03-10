@@ -2,7 +2,7 @@
 import React from "react";
 import TestRenderer, { act } from "react-test-renderer";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { AppViewerAuthMessage, LogEntry } from "../../src/api-client";
+import type { AppViewerAuthMessage, LogEntry } from "@milady/app-core/api";
 
 interface GameContextStub {
   activeGameApp: string;
@@ -35,7 +35,7 @@ const { mockClientFns, mockUseApp } = vi.hoisted(() => ({
   mockUseApp: vi.fn(),
 }));
 
-vi.mock("../../src/api-client", () => ({
+vi.mock("@milady/app-core/api", () => ({
   client: mockClientFns,
 }));
 vi.mock("../../src/AppContext", () => ({

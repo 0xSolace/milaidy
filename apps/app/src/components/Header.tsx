@@ -1,7 +1,8 @@
+import { LanguageDropdown } from "@milady/app-core/components";
+import { IconTooltip as IconButtonTooltip } from "@milady/ui";
 import {
   AlertTriangle,
   Bug,
-  Check,
   CircleDollarSign,
   Loader2,
   Monitor,
@@ -14,18 +15,16 @@ import { useEffect, useState } from "react";
 import { useApp } from "../AppContext";
 import { useBugReport } from "../hooks/useBugReport";
 import { AgentModeDropdown } from "./shared/AgentModeDropdown";
-import { LanguageDropdown } from "./shared/LanguageDropdown";
-import { IconTooltip as IconButtonTooltip } from "./shared/tooltips";
 
 export function Header() {
   const {
     agentStatus,
-    cloudEnabled,
-    cloudConnected,
-    cloudCredits,
-    cloudCreditsCritical,
-    cloudCreditsLow,
-    cloudTopUpUrl,
+    miladyCloudEnabled: miladyCloudEnabled,
+    miladyCloudConnected: miladyCloudConnected,
+    miladyCloudCredits: miladyCloudCredits,
+    miladyCloudCreditsCritical: miladyCloudCreditsCritical,
+    miladyCloudCreditsLow: miladyCloudCreditsLow,
+    miladyCloudTopUpUrl: miladyCloudTopUpUrl,
     lifecycleBusy,
     lifecycleAction,
     handlePauseResume,
@@ -62,9 +61,9 @@ export function Header() {
   const pauseResumeDisabled =
     lifecycleBusy || state === "restarting" || state === "starting";
 
-  const creditColor = cloudCreditsCritical
+  const creditColor = miladyCloudCreditsCritical
     ? "border-danger text-danger bg-danger/10"
-    : cloudCreditsLow
+    : miladyCloudCreditsLow
       ? "border-warn text-warn bg-warn/10"
       : "border-ok text-ok bg-ok/10";
 
@@ -113,21 +112,20 @@ export function Header() {
           {/* Scrollable controls */}
           <div className="overflow-x-auto scrollbar-hide min-w-0">
             <div className="flex items-center gap-2 w-max ml-auto pr-0.5">
-
               {/* Cloud Credits */}
-              {(cloudEnabled || cloudConnected) &&
-                (cloudConnected ? (
+              {(miladyCloudEnabled || miladyCloudConnected) &&
+                (miladyCloudConnected ? (
                   <a
-                    href={cloudTopUpUrl}
+                    href={miladyCloudTopUpUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`inline-flex shrink-0 items-center gap-1.5 px-2.5 py-1.5 h-9 border rounded-md font-mono text-[11px] sm:text-xs no-underline transition-all duration-200 hover:border-accent hover:text-accent hover:shadow-sm ${cloudCredits === null ? "border-muted text-muted" : creditColor}`}
+                    className={`inline-flex shrink-0 items-center gap-1.5 px-2.5 py-1.5 h-9 border rounded-md font-mono text-[11px] sm:text-xs no-underline transition-all duration-200 hover:border-accent hover:text-accent hover:shadow-sm ${miladyCloudCredits === null ? "border-muted text-muted" : creditColor}`}
                     title={t("header.CloudCreditsBalanc")}
                   >
                     <CircleDollarSign className="w-3.5 h-3.5" />
-                    {cloudCredits === null
-                      ? t("header.cloudConnected")
-                      : `$${cloudCredits.toFixed(2)}`}
+                    {miladyCloudCredits === null
+                      ? t("header.miladyCloudConnected")
+                      : `$${miladyCloudCredits.toFixed(2)}`}
                   </a>
                 ) : (
                   <span className="inline-flex shrink-0 items-center gap-1 px-2.5 py-1.5 h-9 border border-danger text-danger bg-danger/10 rounded-md font-mono text-[11px] sm:text-xs">
@@ -228,7 +226,10 @@ export function Header() {
               </div>
 
               {/* Bug Report */}
-              <IconButtonTooltip label={t("header.reportBug")} shortcut="Shift+?">
+              <IconButtonTooltip
+                label={t("header.reportBug")}
+                shortcut="Shift+?"
+              >
                 <button
                   type="button"
                   onClick={openBugReport}

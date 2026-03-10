@@ -1,4 +1,4 @@
-import { resolveAppAssetUrl } from "../../asset-url";
+import { resolveAppAssetUrl } from "@milady/app-core/utils";
 
 type OnboardingVrmAvatarProps = {
   vrmPath: string;

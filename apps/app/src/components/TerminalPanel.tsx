@@ -5,6 +5,8 @@
  * a collapsible bottom panel with command output. Auto-opens when a command starts.
  */
 
+import { client } from "@milady/app-core/api";
+import { Button } from "@milady/ui";
 import {
   ChevronUp,
   Maximize2,
@@ -22,7 +24,6 @@ import {
   useState,
 } from "react";
 import { useApp } from "../AppContext";
-import { client } from "../api-client";
 
 export interface TerminalPanelHandle {
   /** Programmatically run a command via the API. */
@@ -164,10 +165,10 @@ export const TerminalPanel = forwardRef<TerminalPanelHandle>(
     if (minimized && open) {
       return (
         <div className="border-t border-border bg-bg-elevated">
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            className="w-full flex items-center justify-between px-4 py-2 h-auto rounded-none hover:bg-bg-hover"
             onClick={handleToggleMinimize}
-            className="w-full flex items-center justify-between px-4 py-2 hover:bg-bg-hover transition-colors"
           >
             <div className="flex items-center gap-2">
               <Terminal className="w-4 h-4 text-accent" />
@@ -181,7 +182,7 @@ export const TerminalPanel = forwardRef<TerminalPanelHandle>(
               )}
             </div>
             <ChevronUp className="w-4 h-4 text-muted" />
-          </button>
+          </Button>
         </div>
       );
     }
@@ -190,10 +191,10 @@ export const TerminalPanel = forwardRef<TerminalPanelHandle>(
     if (!open) {
       return (
         <div className="border-t border-border bg-bg">
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            className="w-full flex items-center justify-center gap-2 px-4 py-1.5 h-auto rounded-none hover:bg-bg-hover text-[11px] text-muted"
             onClick={() => setOpen(true)}
-            className="w-full flex items-center justify-center gap-2 px-4 py-1.5 hover:bg-bg-hover transition-colors text-[11px] text-muted"
           >
             <Terminal className="w-3.5 h-3.5" />
             <span>{t("terminalpanel.ShowTerminal")}</span>
@@ -205,7 +206,7 @@ export const TerminalPanel = forwardRef<TerminalPanelHandle>(
             <span className="ml-1 text-[10px] opacity-60">
               {t("terminalpanel.CtrlShiftT")}
             </span>
-          </button>
+          </Button>
         </div>
       );
     }
@@ -227,19 +228,21 @@ export const TerminalPanel = forwardRef<TerminalPanelHandle>(
 
           {/* Action buttons */}
           <div className="flex items-center gap-1">
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={handleClear}
-              className="p-1.5 text-muted hover:text-txt hover:bg-bg-hover rounded transition-colors"
+              className="h-7 w-7 text-muted hover:text-txt hover:bg-bg-hover"
               title={t("terminalpanel.ClearTerminal")}
             >
               <Trash2 className="w-3.5 h-3.5" />
-            </button>
+            </Button>
 
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={handleToggleMinimize}
-              className="p-1.5 text-muted hover:text-txt hover:bg-bg-hover rounded transition-colors"
+              className="h-7 w-7 text-muted hover:text-txt hover:bg-bg-hover"
               title={minimized ? "Maximize" : "Minimize"}
             >
               {minimized ? (
@@ -247,16 +250,17 @@ export const TerminalPanel = forwardRef<TerminalPanelHandle>(
               ) : (
                 <Minimize2 className="w-3.5 h-3.5" />
               )}
-            </button>
+            </Button>
 
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={handleClose}
-              className="p-1.5 text-muted hover:text-danger hover:bg-danger/10 rounded transition-colors"
+              className="h-7 w-7 text-muted hover:text-danger hover:bg-danger/10"
               title={t("terminalpanel.CloseTerminal")}
             >
               <X className="w-3.5 h-3.5" />
-            </button>
+            </Button>
           </div>
         </div>
 

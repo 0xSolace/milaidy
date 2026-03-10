@@ -3,7 +3,7 @@ import { StrictMode } from "react";
 import TestRenderer, { act } from "react-test-renderer";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/asset-url", () => ({
+vi.mock("@milady/app-core/utils", () => ({
   resolveAppAssetUrl: (path: string) => path,
 }));
 

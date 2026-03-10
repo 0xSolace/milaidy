@@ -8,9 +8,9 @@
  * STT: Web Speech API (SpeechRecognition) for user voice input.
  */
 
+import type { VoiceConfig } from "@milady/app-core/api";
+import { resolveApiUrl } from "@milady/app-core/utils";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { VoiceConfig } from "../api-client";
-import { resolveApiUrl } from "../asset-url";
 
 // ── Speech Recognition types ──────────────────────────────────────────
 
@@ -367,6 +367,10 @@ export function useVoiceChat(options: VoiceChatOptions): VoiceChatState {
     synthRef.current = window.speechSynthesis ?? null;
   }, []);
 
+  useEffect(() => {
+    elevenCacheRef.current.clear();
+  }, [options.voiceConfig]);
+
   // ── Mouth animation loop ──────────────────────────────────────────
 
   useEffect(() => {
@@ -553,7 +557,7 @@ export function useVoiceChat(options: VoiceChatOptions): VoiceChatState {
           await ctx.resume();
         } catch {
           // Force a fresh context if resume fails
-          ctx.close().catch(() => {});
+          ctx.close().catch(() => { });
           ctx = new AudioContext();
           audioCtxRef.current = ctx;
         }
@@ -590,7 +594,7 @@ export function useVoiceChat(options: VoiceChatOptions): VoiceChatState {
         };
         const apiToken =
           typeof window !== "undefined" &&
-          typeof window.__MILADY_API_TOKEN__ === "string"
+            typeof window.__MILADY_API_TOKEN__ === "string"
             ? window.__MILADY_API_TOKEN__.trim()
             : "";
 
@@ -924,8 +928,8 @@ export function useVoiceChat(options: VoiceChatOptions): VoiceChatState {
           const elConfig = voiceConfigRef.current?.elevenlabs;
           const cacheKey =
             voiceConfigRef.current?.provider === "elevenlabs" &&
-            voiceConfigRef.current?.mode !== "cloud" &&
-            elConfig
+              voiceConfigRef.current?.mode !== "cloud" &&
+              elConfig
               ? makeElevenCacheKey(firstSentence, elConfig)
               : undefined;
 

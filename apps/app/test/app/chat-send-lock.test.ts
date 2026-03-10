@@ -83,7 +83,7 @@ const { mockClient } = vi.hoisted(() => ({
     sendWsMessage: vi.fn(),
     connectWs: vi.fn(),
     disconnectWs: vi.fn(),
-    onWsEvent: vi.fn(() => () => {}),
+    onWsEvent: vi.fn(() => () => { }),
     getAgentEvents: vi.fn(async () => ({ events: [], latestEventId: null })),
     getStatus: vi.fn(async () => ({
       state: "running",
@@ -104,7 +104,7 @@ const { mockClient } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("../../src/api-client", () => ({
+vi.mock("@milady/app-core/api", () => ({
   client: mockClient,
   SkillScanReportSummary: {},
 }));
@@ -254,10 +254,10 @@ describe("chat send locking", () => {
       memories: [],
       knowledge: [],
     });
-    mockClient.sendWsMessage.mockImplementation(() => {});
-    mockClient.connectWs.mockImplementation(() => {});
-    mockClient.disconnectWs.mockImplementation(() => {});
-    mockClient.onWsEvent.mockReturnValue(() => {});
+    mockClient.sendWsMessage.mockImplementation(() => { });
+    mockClient.connectWs.mockImplementation(() => { });
+    mockClient.disconnectWs.mockImplementation(() => { });
+    mockClient.onWsEvent.mockReturnValue(() => { });
     mockClient.getAgentEvents.mockResolvedValue({
       events: [],
       latestEventId: null,
@@ -280,6 +280,7 @@ describe("chat send locking", () => {
       triggers: [],
       todos: [],
     });
+    mockClient.getCodingAgentStatus.mockResolvedValue(null);
   });
 
   it("allows only one same-tick chat send request", async () => {

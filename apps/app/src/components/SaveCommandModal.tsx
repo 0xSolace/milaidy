@@ -2,6 +2,7 @@
  * Modal for naming and saving a custom /command from selected text.
  */
 
+import { Button, Input } from "@milady/ui";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useApp } from "../AppContext";
 
@@ -89,14 +90,15 @@ export function SaveCommandModal({
           <span id={dialogTitleId} className="font-bold text-sm flex-1">
             {t("savecommandmodal.SaveAsCommand")}
           </span>
-          <button
-            type="button"
-            className="text-muted hover:text-txt text-lg leading-none px-1 cursor-pointer"
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted hover:text-txt h-6 w-6"
             onClick={onClose}
             aria-label="Close dialog"
           >
             {t("savecommandmodal.Times")}
-          </button>
+          </Button>
         </div>
 
         {/* Body */}
@@ -110,7 +112,7 @@ export function SaveCommandModal({
           </label>
           <div className="flex items-center gap-1">
             <span className="text-sm text-muted">/</span>
-            <input
+            <Input
               id={inputId}
               ref={inputRef}
               type="text"
@@ -124,7 +126,7 @@ export function SaveCommandModal({
               aria-labelledby={inputLabelId}
               aria-describedby={error ? inputErrorId : undefined}
               aria-invalid={error ? "true" : undefined}
-              className="flex-1 bg-surface border border-border px-2 py-1.5 text-sm text-txt placeholder:text-muted/50 outline-none focus:border-accent"
+              className="flex-1 h-8 bg-surface border-border text-sm shadow-sm focus-visible:ring-1 focus-visible:ring-accent"
             />
           </div>
           {error && (
@@ -143,20 +145,22 @@ export function SaveCommandModal({
 
         {/* Footer */}
         <div className="flex justify-end gap-2 px-5 py-3 border-t border-border">
-          <button
-            type="button"
-            className="px-3 py-1.5 text-xs border border-border text-muted hover:text-txt cursor-pointer"
+          <Button
+            variant="outline"
+            size="sm"
+            className="px-3 py-1.5 h-8 text-xs shadow-sm"
             onClick={onClose}
           >
             {t("savecommandmodal.Cancel")}
-          </button>
-          <button
-            type="button"
-            className="px-3 py-1.5 text-xs border border-accent bg-accent text-white hover:opacity-90 cursor-pointer"
+          </Button>
+          <Button
+            variant="default"
+            size="sm"
+            className="px-3 py-1.5 h-8 text-xs shadow-sm"
             onClick={handleSubmit}
           >
             {t("savecommandmodal.Save")}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

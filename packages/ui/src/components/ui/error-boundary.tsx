@@ -1,4 +1,5 @@
 import * as React from "react"
+import { Button } from "./button"
 
 export interface ErrorBoundaryProps {
     children: React.ReactNode
@@ -37,13 +38,15 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
                 <div className="flex flex-col items-center justify-center gap-3 p-6 text-center border border-destructive/30 bg-destructive/5 rounded-md">
                     <p className="text-sm font-semibold text-destructive">Something went wrong</p>
                     <p className="text-xs text-muted max-w-sm">{this.state.error.message}</p>
-                    <button
+                    <Button
                         type="button"
-                        className="rounded-md border border-border px-3 py-1.5 text-xs hover:bg-bg-hover transition-colors"
+                        variant="outline"
+                        size="sm"
+                        className="rounded-md text-xs"
                         onClick={this.resetErrorBoundary}
                     >
                         Try Again
-                    </button>
+                    </Button>
                 </div>
             )
         }

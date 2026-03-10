@@ -10,6 +10,15 @@
  */
 
 import {
+  type AllPermissionsState,
+  client,
+  type PermissionStatus,
+  type PluginInfo,
+  type SystemPermissionId,
+} from "@milady/app-core/api";
+import { StatusBadge, Switch } from "@milady/app-core/components";
+import { Button } from "@milady/ui";
+import {
   Camera,
   Check,
   Mic,
@@ -26,16 +35,7 @@ import {
   useState,
 } from "react";
 import { useApp } from "../AppContext";
-import {
-  type AllPermissionsState,
-  client,
-  type PermissionStatus,
-  type PluginInfo,
-  type SystemPermissionId,
-} from "../api-client";
 import { hasRequiredOnboardingPermissions } from "../onboarding-permissions";
-import { StatusBadge } from "./shared/ui-badges";
-import { Switch } from "./shared/ui-switch";
 
 /** Permission definition for UI rendering. */
 interface PermissionDef {
@@ -209,21 +209,23 @@ function PermissionRow({
         {showAction && !isShell && (
           <>
             {canRequest && (
-              <button
-                type="button"
-                className="btn text-[11px] py-1 px-2.5"
+              <Button
+                variant="default"
+                size="sm"
+                className="h-auto text-[11px] py-1 px-2.5"
                 onClick={onRequest}
               >
                 {t("permissionssection.Request")}
-              </button>
+              </Button>
             )}
-            <button
-              type="button"
-              className="btn text-[11px] py-1 px-2.5"
+            <Button
+              variant="default"
+              size="sm"
+              className="h-auto text-[11px] py-1 px-2.5 ml-2"
               onClick={onOpenSettings}
             >
               {t("permissionssection.Settings")}
-            </button>
+            </Button>
           </>
         )}
       </div>
@@ -250,9 +252,8 @@ function CapabilityToggle({
 
   return (
     <div
-      className={`flex items-center gap-3 p-3 border border-[var(--border)] ${
-        enabled ? "bg-[var(--accent)]/10" : "bg-[var(--card)]"
-      }`}
+      className={`flex items-center gap-3 p-3 border border-[var(--border)] ${enabled ? "bg-[var(--accent)]/10" : "bg-[var(--card)]"
+        }`}
     >
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
@@ -437,9 +438,10 @@ export function PermissionsSection() {
             {t("permissionssection.SystemPermissions")}
           </div>
           <div className="flex gap-2">
-            <button
-              type="button"
-              className="btn text-[11px] py-1 px-2.5"
+            <Button
+              variant="default"
+              size="sm"
+              className="h-auto text-[11px] py-1 px-2.5"
               onClick={async () => {
                 for (const def of applicablePermissions) {
                   if (def.id === "shell") continue;
@@ -454,15 +456,16 @@ export function PermissionsSection() {
               }}
             >
               {t("permissionssection.AllowAll")}
-            </button>
-            <button
-              type="button"
-              className="btn text-[11px] py-1 px-2.5"
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
+              className="h-auto text-[11px] py-1 px-2.5"
               onClick={handleRefresh}
               disabled={refreshing}
             >
               {refreshing ? "Refreshing..." : "Refresh"}
-            </button>
+            </Button>
           </div>
         </div>
         <div className="border border-[var(--border)] bg-[var(--card)]">
@@ -583,13 +586,12 @@ export function PermissionsOnboardingSection({
         <div className="text-[var(--muted)] text-sm mb-4">
           {t("permissionssection.UnableToCheckPerm")}
         </div>
-        <button
-          type="button"
-          className="btn"
+        <Button
+          variant="default"
           onClick={() => onContinue({ allowPermissionBypass: true })}
         >
           {t("permissionssection.Continue")}
-        </button>
+        </Button>
       </div>
     );
   }
@@ -621,11 +623,10 @@ export function PermissionsOnboardingSection({
           return (
             <div
               key={def.id}
-              className={`flex items-center gap-4 p-4 border ${
-                isGranted
-                  ? "border-[var(--ok)] bg-[var(--ok)]/10"
-                  : "border-[var(--border)] bg-[var(--card)]"
-              }`}
+              className={`flex items-center gap-4 p-4 border ${isGranted
+                ? "border-[var(--ok)] bg-[var(--ok)]/10"
+                : "border-[var(--border)] bg-[var(--card)]"
+                }`}
             >
               <PermissionIcon icon={def.icon} />
               <div className="flex-1">
@@ -639,21 +640,23 @@ export function PermissionsOnboardingSection({
               ) : (
                 <div className="flex gap-2">
                   {canRequest && (
-                    <button
-                      type="button"
-                      className="btn text-xs py-1.5 px-3"
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="h-auto text-xs py-1.5 px-3"
                       onClick={() => handleRequest(def.id)}
                     >
                       {t("permissionssection.Grant")}
-                    </button>
+                    </Button>
                   )}
-                  <button
-                    type="button"
-                    className="btn text-xs py-1.5 px-3"
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="h-auto text-xs py-1.5 px-3"
                     onClick={() => handleOpenSettings(def.id)}
                   >
                     {t("permissionssection.OpenSettings")}
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>
@@ -664,13 +667,10 @@ export function PermissionsOnboardingSection({
       {/* Allow All shortcut */}
       {!allGranted && (
         <div className="flex justify-center mb-4">
-          <button
-            type="button"
-            className="btn text-xs py-2 px-6 w-full max-w-xs"
-            style={{
-              background: "var(--accent)",
-              borderColor: "var(--accent)",
-            }}
+          <Button
+            variant="default"
+            size="sm"
+            className="h-auto text-xs py-2 px-6 w-full max-w-xs bg-accent border-accent text-accent-foreground"
             onClick={async () => {
               for (const def of essentialPermissions) {
                 const state = permissions[def.id];
@@ -684,30 +684,28 @@ export function PermissionsOnboardingSection({
             }}
           >
             {t("permissionssection.AllowAllPermission")}
-          </button>
+          </Button>
         </div>
       )}
 
       <div className="flex justify-center gap-3">
-        <button
-          type="button"
-          className="btn text-xs py-2 px-6 opacity-70"
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-auto text-xs py-2 px-6 opacity-70"
           onClick={() => onContinue({ allowPermissionBypass: true })}
         >
           {t("permissionssection.SkipForNow")}
-        </button>
+        </Button>
         {allGranted && (
-          <button
-            type="button"
-            className="btn text-xs py-2 px-6"
-            style={{
-              background: "var(--accent)",
-              borderColor: "var(--accent)",
-            }}
+          <Button
+            variant="default"
+            size="sm"
+            className="h-auto text-xs py-2 px-6 bg-accent border-accent text-accent-foreground"
             onClick={() => onContinue()}
           >
             {t("permissionssection.Continue")}
-          </button>
+          </Button>
         )}
       </div>
 

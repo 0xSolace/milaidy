@@ -1,5 +1,5 @@
+import type { ModelOption } from "@milady/app-core/api";
 import { useApp } from "../../AppContext";
-import type { ModelOption } from "../../api-client";
 
 export function ModelSelectionStep() {
   const {

@@ -1,12 +1,13 @@
-import { Menu, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useApp } from "../AppContext";
-import { client } from "../api-client";
+import { useTimeout } from "../hooks/useTimeout";
+import { client } from "@milady/app-core/api";
 import {
   dispatchMiladyEvent,
   EMOTE_PICKER_EVENT,
   STOP_EMOTE_EVENT,
-} from "../events";
+} from "@milady/app-core/events";
+import { Menu, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useApp } from "../AppContext";
 
 // Types
 interface EmoteItem {
@@ -203,6 +204,8 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export function EmotePicker() {
+  const { setTimeout } = useTimeout();
+
   const { emotePickerOpen, openEmotePicker, closeEmotePicker, t } = useApp();
   const [search, setSearch] = useState("");
   const [playing, setPlaying] = useState<string | null>(null);

@@ -1,13 +1,19 @@
-import { useEffect, useMemo, useState } from "react";
-import { parsePositiveInteger } from "../../../../src/utils/number-parsing";
-import { useApp } from "../AppContext";
 import type {
   CreateTriggerRequest,
   TriggerSummary,
   UpdateTriggerRequest,
-} from "../api-client";
-import { formatDateTime, formatDurationMs } from "./shared/format";
-import { StatCard, StatusBadge, StatusDot } from "./shared/ui-badges";
+} from "@milady/app-core/api";
+import {
+  formatDateTime,
+  formatDurationMs,
+  StatCard,
+  StatusBadge,
+  StatusDot,
+} from "@milady/app-core/components";
+import { Button, Input } from "@milady/ui";
+import { useEffect, useMemo, useState } from "react";
+import { parsePositiveInteger } from "../../../../src/utils/number-parsing";
+import { useApp } from "../AppContext";
 
 type TriggerType = "interval" | "once" | "cron";
 type TriggerWakeMode = "inject_now" | "next_autonomy_cycle";
@@ -213,9 +219,10 @@ export function TriggersView() {
           <h2 className="text-sm font-bold">
             {t("triggersview.TriggerHealth")}
           </h2>
-          <button
-            type="button"
-            className="px-2.5 py-1 text-[11px] border border-accent bg-accent hover:bg-accent-hover cursor-pointer"
+          <Button
+            variant="default"
+            size="sm"
+            className="h-7 px-2.5 py-1 text-[11px] shadow-sm"
             style={accentFg}
             onClick={() => {
               void loadTriggerHealth();
@@ -223,7 +230,7 @@ export function TriggersView() {
             }}
           >
             {t("triggersview.Refresh")}
-          </button>
+          </Button>
         </div>
         {triggerHealth ? (
           <div className="flex gap-2 flex-wrap">
@@ -268,8 +275,8 @@ export function TriggersView() {
             <span className="block text-[11px] text-muted mb-1">
               {t("triggersview.Name")}
             </span>
-            <input
-              className="w-full px-3 py-1.5 border border-border bg-bg text-sm focus:border-accent outline-none"
+            <Input
+              className="w-full h-9 px-3 py-1.5 text-sm bg-bg border-border focus-visible:ring-1 focus-visible:ring-accent shadow-sm"
               value={form.displayName}
               onChange={(e) => setField("displayName", e.target.value)}
               placeholder={t("triggersview.eGDailyDigestH")}
@@ -329,8 +336,8 @@ export function TriggersView() {
               <span className="block text-[11px] text-muted mb-1">
                 {t("triggersview.MaxRunsOptional")}
               </span>
-              <input
-                className="w-full px-3 py-1.5 border border-border bg-bg text-sm focus:border-accent outline-none"
+              <Input
+                className="w-full h-9 px-3 py-1.5 text-sm bg-bg border-border focus-visible:ring-1 focus-visible:ring-accent shadow-sm"
                 value={form.maxRuns}
                 onChange={(e) => setField("maxRuns", e.target.value)}
                 placeholder="∞"
@@ -344,8 +351,8 @@ export function TriggersView() {
                 {t("triggersview.IntervalMs")}{" "}
                 {formatDurationMs(parsePositiveInteger(form.intervalMs))}
               </span>
-              <input
-                className="w-full px-3 py-1.5 border border-border bg-bg text-sm focus:border-accent outline-none"
+              <Input
+                className="w-full h-9 px-3 py-1.5 text-sm bg-bg border-border focus-visible:ring-1 focus-visible:ring-accent shadow-sm"
                 value={form.intervalMs}
                 onChange={(e) => setField("intervalMs", e.target.value)}
                 placeholder="3600000"
@@ -357,8 +364,8 @@ export function TriggersView() {
               <span className="block text-[11px] text-muted mb-1">
                 {t("triggersview.ScheduledTimeISO")}
               </span>
-              <input
-                className="w-full px-3 py-1.5 border border-border bg-bg text-sm focus:border-accent outline-none"
+              <Input
+                className="w-full h-9 px-3 py-1.5 text-sm bg-bg border-border focus-visible:ring-1 focus-visible:ring-accent shadow-sm"
                 value={form.scheduledAtIso}
                 onChange={(e) => setField("scheduledAtIso", e.target.value)}
                 placeholder={t("triggersview.20260215T100000")}
@@ -370,8 +377,8 @@ export function TriggersView() {
               <span className="block text-[11px] text-muted mb-1">
                 {t("triggersview.CronExpression5F")}
               </span>
-              <input
-                className="w-full px-3 py-1.5 border border-border bg-bg text-sm font-mono focus:border-accent outline-none"
+              <Input
+                className="w-full h-9 px-3 py-1.5 text-sm font-mono bg-bg border-border focus-visible:ring-1 focus-visible:ring-accent shadow-sm"
                 value={form.cronExpression}
                 onChange={(e) => setField("cronExpression", e.target.value)}
                 placeholder="*/15 * * * *"
@@ -399,9 +406,10 @@ export function TriggersView() {
           )}
 
           <div className="flex gap-2 pt-1">
-            <button
-              type="button"
-              className="px-4 py-1.5 text-sm border border-accent bg-accent hover:bg-accent-hover disabled:opacity-40 cursor-pointer"
+            <Button
+              variant="default"
+              size="sm"
+              className="px-4 py-1.5 h-9 text-sm shadow-sm"
               style={accentFg}
               disabled={triggersSaving}
               onClick={() => {
@@ -413,15 +421,16 @@ export function TriggersView() {
                 : editingId
                   ? "Save Changes"
                   : "Create Trigger"}
-            </button>
+            </Button>
             {editingId && (
-              <button
-                type="button"
-                className="px-4 py-1.5 text-sm border border-border hover:border-accent cursor-pointer"
+              <Button
+                variant="outline"
+                size="sm"
+                className="px-4 py-1.5 h-9 text-sm shadow-sm hover:border-accent"
                 onClick={clearForm}
               >
                 {t("triggersview.Cancel")}
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -494,9 +503,10 @@ export function TriggersView() {
                     </div>
                     {/* Actions */}
                     <div className="flex gap-1 flex-shrink-0 flex-wrap justify-end">
-                      <button
-                        type="button"
-                        className="px-2 py-1 text-[11px] border border-accent bg-accent hover:bg-accent-hover cursor-pointer"
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="h-7 px-2 py-1 text-[11px] shadow-sm"
                         style={accentFg}
                         onClick={() => {
                           setEditingId(trigger.id);
@@ -506,10 +516,11 @@ export function TriggersView() {
                         }}
                       >
                         {t("triggersview.Edit")}
-                      </button>
-                      <button
-                        type="button"
-                        className="px-2 py-1 text-[11px] border border-border hover:border-accent cursor-pointer"
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 py-1 text-[11px] shadow-sm hover:border-accent"
                         onClick={() => {
                           void updateTrigger(trigger.id, {
                             enabled: !trigger.enabled,
@@ -517,19 +528,21 @@ export function TriggersView() {
                         }}
                       >
                         {trigger.enabled ? "Disable" : "Enable"}
-                      </button>
-                      <button
-                        type="button"
-                        className="px-2 py-1 text-[11px] border border-border hover:border-accent cursor-pointer"
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 py-1 text-[11px] shadow-sm hover:border-accent"
                         onClick={() => {
                           void runTriggerNow(trigger.id);
                         }}
                       >
                         {t("triggersview.RunNow")}
-                      </button>
-                      <button
-                        type="button"
-                        className="px-2 py-1 text-[11px] border border-border hover:border-accent cursor-pointer"
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 py-1 text-[11px] shadow-sm hover:border-accent"
                         onClick={() => {
                           if (selectedRunsId === trigger.id) {
                             setSelectedRunsId(null);
@@ -540,17 +553,18 @@ export function TriggersView() {
                         }}
                       >
                         {selectedRunsId === trigger.id ? "Hide runs" : "Runs"}
-                      </button>
-                      <button
-                        type="button"
-                        className="px-2 py-1 text-[11px] border border-border hover:border-danger text-danger cursor-pointer"
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 py-1 text-[11px] shadow-sm hover:border-danger text-danger"
                         onClick={() => {
                           if (confirm(`Delete "${trigger.displayName}"?`))
                             void deleteTrigger(trigger.id);
                         }}
                       >
                         {t("triggersview.Delete")}
-                      </button>
+                      </Button>
                     </div>
                   </div>
 

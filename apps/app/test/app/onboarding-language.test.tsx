@@ -21,7 +21,7 @@ vi.mock("../../src/components/PermissionsSection", () => ({
   PermissionsOnboardingSection: () => null,
 }));
 
-vi.mock("../../src/api-client", () => ({
+vi.mock("@milady/app-core/api", () => ({
   client: {
     startAnthropicLogin: vi.fn(),
     exchangeAnthropicCode: vi.fn(),
@@ -77,14 +77,14 @@ function createOnboardingContext(
     onboardingRestarting: false,
     onboardingSetupMode: "advanced",
     uiLanguage: "en",
-    cloudConnected: false,
-    cloudLoginBusy: false,
-    cloudLoginError: "",
-    handleOnboardingNext: vi.fn(async () => {}),
+    miladyCloudConnected: false,
+    miladyCloudLoginBusy: false,
+    miladyCloudLoginError: "",
+    handleOnboardingNext: vi.fn(async () => { }),
     handleOnboardingBack: vi.fn(),
     setState: vi.fn(),
     setTheme: vi.fn(),
-    handleCloudLogin: vi.fn(async () => {}),
+    handleCloudLogin: vi.fn(async () => { }),
     ...overrides,
   };
 }
@@ -102,25 +102,25 @@ describe("Onboarding language mode", () => {
 
   it("shows english copy by default", async () => {
     mockUseApp.mockReturnValue(createOnboardingContext({ uiLanguage: "en" }));
-    let tree: TestRenderer.ReactTestRenderer;
+    let tree: TestRenderer.ReactTestRenderer | undefined;
     await act(async () => {
       tree = TestRenderer.create(React.createElement(OnboardingWizard));
     });
 
-    expect(collectText(tree?.root)).toContain("where should i live?");
+    expect(collectText(tree!.root)).toContain("onboarding.whereShouldILive");
   });
 
   it("shows chinese copy when uiLanguage is zh-CN", async () => {
     mockUseApp.mockReturnValue(
       createOnboardingContext({ uiLanguage: "zh-CN" }),
     );
-    let tree: TestRenderer.ReactTestRenderer;
+    let tree: TestRenderer.ReactTestRenderer | undefined;
     await act(async () => {
       tree = TestRenderer.create(React.createElement(OnboardingWizard));
     });
 
-    const text = collectText(tree?.root);
-    expect(text).toContain("我应该运行在哪里？");
-    expect(text).toContain("选择你希望我如何运行");
+    const text = collectText(tree!.root);
+    expect(text).toContain("onboarding.whereShouldILive");
+    expect(text).toContain("onboarding.pickHowToRun");
   });
 });

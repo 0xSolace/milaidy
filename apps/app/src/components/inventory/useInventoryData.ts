@@ -6,14 +6,14 @@
  * fallback rows, and derived values work for any supported chain.
  */
 
-import { useMemo } from "react";
 import type {
   EvmChainBalance,
   WalletAddresses,
   WalletBalancesResponse,
   WalletConfigStatus,
   WalletNftsResponse,
-} from "../../api-client";
+} from "@milady/app-core/api";
+import { useMemo } from "react";
 import type { TrackedToken } from "../BscTradePanel";
 import {
   CHAIN_CONFIGS,

@@ -22,12 +22,12 @@ export function CompanionView() {
     setUiShellMode,
     // Header properties
     agentStatus,
-    cloudEnabled,
-    cloudConnected,
-    cloudCredits,
-    cloudCreditsCritical,
-    cloudCreditsLow,
-    cloudTopUpUrl,
+    miladyCloudEnabled: miladyCloudEnabled,
+    miladyCloudConnected: miladyCloudConnected,
+    miladyCloudCredits: miladyCloudCredits,
+    miladyCloudCreditsCritical: miladyCloudCreditsCritical,
+    miladyCloudCreditsLow: miladyCloudCreditsLow,
+    miladyCloudTopUpUrl: miladyCloudTopUpUrl,
     walletAddresses,
     lifecycleBusy,
     lifecycleAction,
@@ -56,9 +56,9 @@ export function CompanionView() {
   const pauseResumeDisabled =
     lifecycleBusy || agentState === "restarting" || agentState === "starting";
 
-  const creditColor = cloudCreditsCritical
+  const creditColor = miladyCloudCreditsCritical
     ? "border-danger text-danger"
-    : cloudCreditsLow
+    : miladyCloudCreditsLow
       ? "border-warn text-warn"
       : "border-ok text-ok";
 
@@ -124,11 +124,11 @@ export function CompanionView() {
           pauseResumeDisabled={pauseResumeDisabled}
           handlePauseResume={handlePauseResume}
           handleRestart={handleRestart}
-          cloudEnabled={cloudEnabled}
-          cloudConnected={cloudConnected}
-          cloudCredits={cloudCredits}
+          miladyCloudEnabled={miladyCloudEnabled}
+          miladyCloudConnected={miladyCloudConnected}
+          miladyCloudCredits={miladyCloudCredits}
           creditColor={creditColor}
-          cloudTopUpUrl={cloudTopUpUrl}
+          miladyCloudTopUpUrl={miladyCloudTopUpUrl}
           evmShort={evmShort}
           solShort={solShort}
           handleSwitchToNativeShell={handleSwitchToNativeShell}

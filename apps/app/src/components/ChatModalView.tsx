@@ -40,7 +40,7 @@ function useIsNarrowViewport(): boolean {
   return isNarrow;
 }
 
-export type ChatModalLayoutVariant = "full-overlay" | "companion-dock";
+type ChatModalLayoutVariant = "full-overlay" | "companion-dock";
 
 interface ChatModalViewProps {
   variant?: ChatModalLayoutVariant;
@@ -89,7 +89,10 @@ export function ChatModalView({
           >
             <ConversationsSidebar variant="game-modal" />
           </aside>
-          <section className="flex-1 flex flex-col min-w-0 bg-transparent relative" data-chat-game-thread>
+          <section
+            className="flex-1 flex flex-col min-w-0 bg-transparent relative"
+            data-chat-game-thread
+          >
             <ChatView variant="game-modal" />
           </section>
         </div>

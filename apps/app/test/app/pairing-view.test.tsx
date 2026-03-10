@@ -20,7 +20,7 @@ function createContext(overrides?: Record<string, unknown>) {
     pairingCodeInput: "",
     pairingError: null,
     pairingBusy: false,
-    handlePairingSubmit: vi.fn(async () => {}),
+    handlePairingSubmit: vi.fn(async () => { }),
     setState: vi.fn(),
     ...(overrides ?? {}),
   };
@@ -43,24 +43,20 @@ describe("PairingView", () => {
     const bodyText = tree.root
       .findAllByType("p")
       .map((p) => p.children.join(""));
-    expect(bodyText.join(" ")).toContain(
-      "Pairing is not enabled on this server.",
-    );
-    expect(bodyText.join(" ")).toContain("Next steps:");
+    expect(bodyText.join(" ")).toContain("pairingview.PairingIsNotEnabl");
+    expect(bodyText.join(" ")).toContain("pairingview.NextSteps");
 
     const listItems = tree.root
       .findAllByType("li")
       .map((li) => li.children.join(""));
-    expect(listItems).toContain("Ask the server owner for an API token.");
-    expect(listItems).toContain(
-      "Enable pairing on the server and restart Milady.",
-    );
+    expect(listItems).toContain("pairingview.AskTheServerOwner");
+    expect(listItems).toContain("pairingview.EnablePairingOnTh");
 
-    const docsLink = tree.root.findByType("a");
+    const docsLink = tree.root.find((node) => node.type === "a");
     expect(docsLink.props.href).toContain(
       "docs/api-reference.mdx#authenticate-via-pairing-code",
     );
-    expect(docsLink.children.join("")).toBe("Pairing setup docs");
+    expect(docsLink.children.join("")).toBe("pairingview.PairingSetupDocs");
   });
 
   it("does not show disabled guidance while pairing is enabled", async () => {

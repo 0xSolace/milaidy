@@ -3,7 +3,7 @@
  * Extracted from PluginsView.tsx to reduce file size.
  */
 
-import type { PluginInfo } from "../../api-client";
+import type { PluginInfo } from "@milady/app-core/api";
 
 export const SHOWCASE_PLUGIN: PluginInfo = {
   id: "__ui-showcase__",

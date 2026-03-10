@@ -3,7 +3,7 @@
 import React, { useEffect } from "react";
 import TestRenderer, { act } from "react-test-renderer";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Tab } from "../../src/navigation";
+import type { Tab } from "@milady/app-core/navigation";
 
 const { mockClient } = vi.hoisted(() => ({
   mockClient: {
@@ -16,7 +16,7 @@ const { mockClient } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("../../src/api-client", () => ({
+vi.mock("@milady/app-core/api", () => ({
   client: mockClient,
   SkillScanReportSummary: {},
 }));

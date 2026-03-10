@@ -4,6 +4,11 @@
  * Renders a unified plugin list with searchable/filterable cards and per-plugin settings.
  */
 
+import type { PluginInfo, PluginParamDef } from "@milady/app-core/api";
+import { client } from "@milady/app-core/api";
+import { autoLabel } from "@milady/app-core/components";
+import type { ConfigUiHint } from "@milady/app-core/types";
+import { Button, Input } from "@milady/ui";
 import type { LucideIcon } from "lucide-react";
 import {
   Binary,
@@ -81,13 +86,9 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "../AppContext";
-import type { PluginInfo, PluginParamDef } from "../api-client";
-import { client } from "../api-client";
-import type { ConfigUiHint } from "../types";
 import type { JsonSchemaObject } from "./config-catalog";
 import { ConfigRenderer, defaultRegistry } from "./config-renderer";
 import { SHOWCASE_PLUGIN } from "./plugins/showcase-data";
-import { autoLabel } from "./shared/labels";
 import { WhatsAppQrOverlay } from "./WhatsAppQrOverlay";
 
 /* ── Always-on plugins (hidden from all views) ────────────────────────── */
@@ -122,7 +123,7 @@ const ALWAYS_ON_PLUGIN_IDS = new Set([
   "goals",
   "scheduling",
   // Internal / infrastructure
-  "elizacloud",
+  "miladycloud",
   "evm",
   "memory",
   "rolodex",
@@ -138,7 +139,7 @@ const ALWAYS_ON_PLUGIN_IDS = new Set([
 /* ── Helpers ────────────────────────────────────────────────────────── */
 
 /** Detect advanced / debug parameters that should be collapsed by default. */
-export function isAdvancedParam(param: PluginParamDef): boolean {
+function isAdvancedParam(param: PluginParamDef): boolean {
   const k = param.key.toUpperCase();
   const d = (param.description ?? "").toLowerCase();
   return (
@@ -533,9 +534,9 @@ function PluginConfigForm({
         if (isArrayField && typeof configValue === "string") {
           v[p.key] = configValue
             ? configValue
-                .split(",")
-                .map((s: string) => s.trim())
-                .filter(Boolean)
+              .split(",")
+              .map((s: string) => s.trim())
+              .filter(Boolean)
             : [];
         } else {
           v[p.key] = configValue;
@@ -544,9 +545,9 @@ function PluginConfigForm({
         if (isArrayField && typeof p.currentValue === "string") {
           v[p.key] = String(p.currentValue)
             ? String(p.currentValue)
-                .split(",")
-                .map((s: string) => s.trim())
-                .filter(Boolean)
+              .split(",")
+              .map((s: string) => s.trim())
+              .filter(Boolean)
             : [];
         } else {
           v[p.key] = p.currentValue;
@@ -695,7 +696,7 @@ const DEFAULT_ICONS: Record<string, LucideIcon> = {
   tee: LockKeyhole,
   blooio: Circle,
   acp: Construction,
-  elizacloud: Cloud,
+  miladycloud: Cloud,
   twilio: Phone,
 };
 
@@ -1327,9 +1328,8 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
         onDragOver={(e) => handleDragOver(e, p.id)}
         onDrop={(e) => handleDrop(e, p.id)}
         onDragEnd={handleDragEnd}
-        className={`border border-border bg-card transition-colors duration-150 flex flex-col ${enabledBorder} ${
-          isOpen ? "ring-1 ring-accent" : "hover:border-accent/40"
-        } ${isDragging ? "opacity-30" : ""} ${isDragOver ? "ring-2 ring-accent/60" : ""}`}
+        className={`border border-border bg-card transition-colors duration-150 flex flex-col ${enabledBorder} ${isOpen ? "ring-1 ring-accent" : "hover:border-accent/40"
+          } ${isDragging ? "opacity-30" : ""} ${isDragOver ? "ring-2 ring-accent/60" : ""}`}
         data-plugin-id={p.id}
       >
         {/* Top: drag handle + icon + name + toggle */}
@@ -1372,15 +1372,13 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
             <button
               type="button"
               data-plugin-toggle={p.id}
-              className={`text-[10px] font-bold tracking-wider px-2.5 py-[2px] border transition-colors duration-150 shrink-0 ${
-                p.enabled
+              className={`text-[10px] font-bold tracking-wider px-2.5 py-[2px] border transition-colors duration-150 shrink-0 ${p.enabled
                   ? "bg-accent text-accent-fg border-accent"
                   : "bg-transparent text-muted border-border hover:text-txt"
-              } ${
-                toggleDisabled
+                } ${toggleDisabled
                   ? "opacity-60 cursor-not-allowed"
                   : "cursor-pointer"
-              }`}
+                }`}
               onClick={(e) => {
                 e.stopPropagation();
                 void handleTogglePlugin(p.id, !p.enabled);
@@ -1404,11 +1402,10 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
           )}
           {p.enabled && !p.isActive && !isShowcase && (
             <span
-              className={`text-[10px] px-1.5 py-px border lowercase tracking-wide whitespace-nowrap ${
-                p.loadError
+              className={`text-[10px] px-1.5 py-px border lowercase tracking-wide whitespace-nowrap ${p.loadError
                   ? "border-destructive bg-[rgba(153,27,27,0.04)] text-destructive"
                   : "border-warn bg-[rgba(234,179,8,0.06)] text-warn"
-              }`}
+                }`}
               title={
                 p.loadError || "Plugin is enabled but not loaded in the runtime"
               }
@@ -1439,10 +1436,11 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
         {pluginLinks.length > 0 && (
           <div className="flex flex-wrap gap-2 px-3 pb-2">
             {pluginLinks.map((link) => (
-              <button
+              <Button
                 key={`${p.id}:${link.key}`}
-                type="button"
-                className="plugins-link-btn text-[10px] px-2 py-[2px] border border-border text-muted hover:text-accent hover:border-accent bg-transparent transition-colors cursor-pointer"
+                variant="outline"
+                size="sm"
+                className="h-6 px-2 text-[10px] font-bold border-border/40 text-muted hover:text-accent hover:border-accent hover:bg-accent/5 backdrop-blur-sm transition-all"
                 onClick={(e) => {
                   e.stopPropagation();
                   void openPluginExternalUrl(link.url);
@@ -1450,30 +1448,31 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                 title={`${link.label}: ${link.url}`}
               >
                 {link.label}
-              </button>
+              </Button>
             ))}
           </div>
         )}
 
         {/* Bottom bar: config status + settings button */}
-        <div className="flex items-center gap-2 px-3 py-2 border-t border-border mt-auto">
+        <div className="flex items-center gap-3 px-4 py-3 border-t border-border/40 mt-auto bg-black/5">
           {hasParams && !isShowcase ? (
             <>
               <span
-                className={`inline-block w-[7px] h-[7px] rounded-full shrink-0 ${
-                  allParamsSet ? "bg-ok" : "bg-destructive"
-                }`}
+                className={`inline-block w-2 h-2 rounded-full shadow-[0_0_10px_currentColor] shrink-0 ${allParamsSet
+                    ? "bg-ok text-ok"
+                    : "bg-destructive text-destructive"
+                  }`}
               />
-              <span className="text-[10px] text-muted">
+              <span className="text-[11px] font-bold tracking-wide text-muted">
                 {setCount}/{totalCount} {t("pluginsview.configured")}
               </span>
             </>
           ) : !hasParams && !isShowcase ? (
-            <span className="text-[10px] text-muted opacity-50">
+            <span className="text-[11px] font-bold tracking-wide text-muted/60">
               {t("pluginsview.NoConfigNeeded")}
             </span>
           ) : (
-            <span className="text-[10px] text-muted opacity-50">
+            <span className="text-[11px] font-bold tracking-wide text-muted/60">
               {t("pluginsview.23FieldDemos")}
             </span>
           )}
@@ -1483,9 +1482,10 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
             p.npmName &&
             !isShowcase &&
             !p.loadError && (
-              <button
-                type="button"
-                className="text-[10px] px-2 py-[2px] border border-accent text-accent bg-transparent hover:bg-accent hover:text-accent-fg cursor-pointer transition-colors max-w-[180px] truncate"
+              <Button
+                variant="default"
+                size="sm"
+                className="h-7 px-3 text-[10px] font-bold tracking-wide shadow-sm max-w-[140px] truncate"
                 disabled={installingPlugins.has(p.id)}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -1494,26 +1494,31 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
               >
                 {installingPlugins.has(p.id)
                   ? installProgress.get(p.npmName ?? "")?.message ||
-                    "Installing..."
+                  "Installing..."
                   : "Install"}
-              </button>
+              </Button>
             )}
           {hasParams && (
-            <button
-              type="button"
-              className={`text-[10px] text-muted hover:text-accent cursor-pointer transition-colors flex items-center gap-1 ${
-                isOpen ? "text-accent" : ""
-              }`}
-              onClick={() => toggleSettings(p.id)}
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`h-7 px-2.5 text-[11px] font-bold transition-all flex items-center gap-1.5 ${isOpen
+                  ? "text-accent bg-accent/10 hover:bg-accent/20"
+                  : "text-muted hover:text-txt hover:bg-white/5"
+                }`}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleSettings(p.id);
+              }}
               title={t("pluginsview.Settings")}
             >
-              <span className="text-[11px]">&#9881;</span>
+              <span className="text-[14px] leading-none">&#9881;</span>
               <span
-                className={`inline-block text-[8px] transition-transform duration-150 ${isOpen ? "rotate-90" : ""}`}
+                className={`inline-block text-[10px] transition-transform duration-200 ${isOpen ? "rotate-90" : ""}`}
               >
                 &#9654;
               </span>
-            </button>
+            </Button>
           )}
         </div>
 
@@ -1602,9 +1607,8 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
     return (
       <div className="plugins-game-modal">
         <div
-          className={`plugins-game-list-panel${
-            gameNarrow && gameMobileDetail ? " is-hidden" : ""
-          }`}
+          className={`plugins-game-list-panel${gameNarrow && gameMobileDetail ? " is-hidden" : ""
+            }`}
         >
           <div className="plugins-game-list-head">
             <div className="plugins-game-section-title">{sectionTitle}</div>
@@ -1619,9 +1623,8 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                 <button
                   key={p.id}
                   type="button"
-                  className={`plugins-game-card${
-                    effectiveGameSelected === p.id ? " is-selected" : ""
-                  }${!p.enabled ? " is-disabled" : ""}`}
+                  className={`plugins-game-card${effectiveGameSelected === p.id ? " is-selected" : ""
+                    }${!p.enabled ? " is-disabled" : ""}`}
                   onClick={() => {
                     setGameSelectedId(p.id);
                     if (gameNarrow) setGameMobileDetail(true);
@@ -1653,9 +1656,8 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                     <div className="plugins-game-card-name">{p.name}</div>
                     <div className="plugins-game-card-meta">
                       <span
-                        className={`plugins-game-badge ${
-                          p.enabled ? "is-on" : "is-off"
-                        }`}
+                        className={`plugins-game-badge ${p.enabled ? "is-on" : "is-off"
+                          }`}
                       >
                         {p.enabled ? "ON" : "OFF"}
                       </span>
@@ -1667,9 +1669,8 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
           </div>
         </div>
         <div
-          className={`plugins-game-detail-panel${
-            gameNarrow && !gameMobileDetail ? " is-hidden" : ""
-          }`}
+          className={`plugins-game-detail-panel${gameNarrow && !gameMobileDetail ? " is-hidden" : ""
+            }`}
         >
           {selectedPlugin ? (
             <>
@@ -1717,9 +1718,8 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                   </div>
                   <button
                     type="button"
-                    className={`plugins-game-toggle ${
-                      selectedPlugin.enabled ? "is-on" : "is-off"
-                    }`}
+                    className={`plugins-game-toggle ${selectedPlugin.enabled ? "is-on" : "is-off"
+                      }`}
                     onClick={() =>
                       void handleTogglePlugin(
                         selectedPlugin.id,
@@ -1794,9 +1794,8 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                 </button>
                 <button
                   type="button"
-                  className={`plugins-game-save-btn${
-                    pluginSaveSuccess.has(selectedPlugin.id) ? " is-saved" : ""
-                  }`}
+                  className={`plugins-game-save-btn${pluginSaveSuccess.has(selectedPlugin.id) ? " is-saved" : ""
+                    }`}
                   onClick={() => void handleConfigSave(selectedPlugin.id)}
                   disabled={pluginSaving.has(selectedPlugin.id)}
                 >
@@ -1828,68 +1827,71 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
   return (
     <div>
       {/* Toolbar: search + status toggle */}
-      <div className="flex items-center gap-2 mb-3.5 flex-wrap">
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
         {/* Search */}
-        <div className="relative flex-1 min-w-[180px]">
-          <input
+        <div className="relative flex-1 min-w-[220px]">
+          <Input
             type="text"
-            className="w-full py-[5px] px-3 pr-8 border border-border bg-card text-[13px] transition-colors duration-150 focus:border-accent focus:outline-none placeholder:text-muted placeholder:italic"
+            className="w-full bg-card/60 backdrop-blur-md shadow-inner pr-8 h-9 rounded-xl focus-visible:ring-accent border-border/40"
             placeholder={`Search ${label.toLowerCase()}...`}
             value={pluginSearch}
             onChange={(e) => setState("pluginSearch", e.target.value)}
           />
           {pluginSearch && (
-            <button
-              type="button"
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-transparent border-none text-muted cursor-pointer text-sm px-1.5 py-px leading-none hover:text-txt"
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 text-muted hover:text-txt rounded-full"
               onClick={() => setState("pluginSearch", "")}
               title={t("pluginsview.ClearSearch")}
             >
-              {t("pluginsview.Times")}
-            </button>
+              ✕
+            </Button>
           )}
         </div>
 
         {/* Status toggle: All / Enabled */}
-        <div className="flex gap-1 shrink-0">
+        <div className="flex gap-1.5 shrink-0 bg-black/10 p-1 rounded-xl border border-white/5">
           {(["all", "enabled"] as const).map((s) => (
-            <button
+            <Button
               key={s}
-              type="button"
-              className={`px-2.5 py-[3px] border text-[11px] cursor-pointer transition-colors duration-150 ${
-                pluginStatusFilter === s
-                  ? "bg-accent text-accent-fg border-accent"
-                  : "bg-surface text-txt border-border hover:bg-bg-hover"
-              }`}
+              variant={pluginStatusFilter === s ? "default" : "ghost"}
+              size="sm"
+              className={`h-7 px-3 text-[11px] font-bold tracking-wide rounded-lg transition-all ${pluginStatusFilter === s
+                  ? "shadow-sm"
+                  : "text-muted hover:text-txt hover:bg-white/5"
+                }`}
               onClick={() => setState("pluginStatusFilter", s as StatusFilter)}
             >
               {s === "all"
                 ? `All (${categoryPlugins.length})`
                 : `Enabled (${enabledCount})`}
-            </button>
+            </Button>
           ))}
         </div>
 
         {/* Reset order (only visible when custom order is set) */}
         {pluginOrder.length > 0 && (
-          <button
-            type="button"
-            className="px-2.5 py-[3px] border border-border bg-surface text-muted text-[11px] cursor-pointer shrink-0 hover:text-txt hover:bg-bg-hover"
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-3 text-[11px] font-bold border-border/40 bg-card/40 backdrop-blur-md shadow-sm rounded-xl shrink-0"
             onClick={handleResetOrder}
             title={t("pluginsview.ResetToDefaultSor")}
           >
             {t("pluginsview.ResetOrder")}
-          </button>
+          </Button>
         )}
 
         {/* Add plugin button */}
-        <button
-          type="button"
-          className="px-2.5 py-[3px] border border-accent bg-accent text-accent-fg text-[11px] cursor-pointer shrink-0 hover:bg-accent-hover hover:border-accent-hover"
+        <Button
+          variant="secondary"
+          size="sm"
+          className="h-8 px-4 text-[11px] font-bold tracking-wide border border-accent/30 text-accent bg-accent/10 hover:bg-accent/20 hover:border-accent/50 shadow-sm rounded-xl shrink-0 transition-all"
           onClick={() => setAddDirOpen(true)}
         >
           {t("pluginsview.AddPlugin")}
-        </button>
+        </Button>
       </div>
 
       {hasPluginToggleInFlight && (
@@ -1900,20 +1902,25 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
 
       {/* Tag filters */}
       {showSubgroupFilters && (
-        <div className="flex items-center gap-1.5 mb-3.5 flex-wrap">
+        <div className="flex items-center gap-2 mb-5 flex-wrap">
           {subgroupTags.map((tag) => (
-            <button
+            <Button
               key={tag.id}
-              type="button"
-              className={`px-2.5 py-[3px] border text-[11px] cursor-pointer transition-colors duration-150 ${
-                subgroupFilter === tag.id
-                  ? "bg-accent text-accent-fg border-accent"
-                  : "bg-surface text-txt border-border hover:bg-bg-hover"
-              }`}
+              variant={subgroupFilter === tag.id ? "default" : "outline"}
+              size="sm"
+              className={`h-7 px-3 text-[11px] font-bold tracking-wide rounded-lg transition-all ${subgroupFilter === tag.id
+                  ? "shadow-[0_0_10px_rgba(var(--accent),0.2)] border-accent"
+                  : "bg-card/40 backdrop-blur-sm border-border/40 text-muted hover:text-txt shadow-sm hover:border-accent/30"
+                }`}
               onClick={() => setSubgroupFilter(tag.id)}
             >
-              {tag.label} ({tag.count})
-            </button>
+              {tag.label}
+              <span
+                className={`ml-1.5 px-1.5 py-0.5 rounded border text-[9px] font-mono leading-none ${subgroupFilter === tag.id ? "bg-black/20 border-black/10" : "bg-black/10 border-white/5"}`}
+              >
+                {tag.count}
+              </span>
+            </Button>
           ))}
         </div>
       )}
@@ -1951,7 +1958,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
               : p.category;
           return (
             <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-6 animate-in fade-in duration-200"
               onClick={(e) => {
                 if (e.target === e.currentTarget) toggleSettings(p.id);
               }}
@@ -1964,10 +1971,10 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
               role="dialog"
               aria-modal="true"
             >
-              <div className="w-full max-w-2xl max-h-[85vh] border border-border bg-card shadow-lg flex flex-col overflow-hidden">
+              <div className="w-full max-w-2xl max-h-[85vh] border border-border/50 bg-card/90 shadow-2xl flex flex-col overflow-hidden rounded-2xl backdrop-blur-xl">
                 {/* Dialog header */}
-                <div className="flex items-center gap-3 px-5 py-3 border-b border-border shrink-0">
-                  <span className="font-bold text-sm flex items-center gap-1.5 flex-1 min-w-0">
+                <div className="flex items-center gap-3 px-5 py-4 border-b border-border/30 bg-black/10 shrink-0">
+                  <span className="font-bold text-base flex items-center gap-2 flex-1 min-w-0 tracking-wide text-txt">
                     {(() => {
                       const icon = resolveIcon(p);
                       if (!icon) return null;
@@ -1976,7 +1983,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                           <img
                             src={icon}
                             alt=""
-                            className="w-5 h-5 rounded-sm object-contain"
+                            className="w-6 h-6 rounded-md object-contain"
                             onError={(e) => {
                               (
                                 e.currentTarget as HTMLImageElement
@@ -1984,38 +1991,39 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                             }}
                           />
                         ) : (
-                          <span className="text-sm">{icon}</span>
+                          <span className="text-base">{icon}</span>
                         );
                       }
                       const IconComponent = icon;
-                      return <IconComponent className="w-5 h-5" />;
+                      return <IconComponent className="w-6 h-6 text-accent" />;
                     })()}
                     {p.name}
                   </span>
-                  <span className="text-[10px] px-1.5 py-px border border-border bg-surface text-muted lowercase tracking-wide">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full border border-border/40 bg-black/20 text-muted lowercase tracking-widest font-bold">
                     {categoryLabel}
                   </span>
                   {p.version && (
-                    <span className="text-[10px] font-mono text-muted opacity-70">
+                    <span className="text-[10px] font-mono text-muted/70">
                       v{p.version}
                     </span>
                   )}
                   {isShowcase && (
-                    <span className="text-[10px] font-bold tracking-wider px-2.5 py-[2px] border border-accent text-accent bg-accent-subtle">
+                    <span className="text-[10px] font-bold tracking-widest px-2.5 py-[2px] border border-accent/30 text-accent bg-accent/10 rounded-full">
                       {t("pluginsview.DEMO")}
                     </span>
                   )}
-                  <button
-                    type="button"
-                    className="text-muted hover:text-txt text-lg leading-none px-1 cursor-pointer"
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted hover:bg-white/10 hover:text-txt rounded-full transition-all shrink-0 ml-2"
                     onClick={() => toggleSettings(p.id)}
                   >
-                    {t("pluginsview.Times")}
-                  </button>
+                    ✕
+                  </Button>
                 </div>
 
                 {/* Dialog body — scrollable */}
-                <div className="overflow-y-auto flex-1">
+                <div className="overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
                   {/* Plugin details */}
                   <div className="px-5 pt-4 pb-1 flex items-center gap-3 flex-wrap text-xs text-muted">
                     {p.description && (
@@ -2063,11 +2071,12 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
 
                 {/* Dialog footer — actions (hidden for showcase) */}
                 {!isShowcase && (
-                  <div className="flex justify-end gap-2.5 px-5 py-3 border-t border-border shrink-0">
+                  <div className="flex justify-end gap-3 px-5 py-4 border-t border-border/30 shrink-0 bg-black/10">
                     {p.enabled && !p.isActive && p.npmName && !p.loadError && (
-                      <button
-                        type="button"
-                        className="px-3 py-1.5 text-[11px] border border-accent text-accent bg-transparent hover:bg-accent hover:text-accent-fg cursor-pointer rounded-sm transition-colors max-w-[260px] truncate"
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="h-8 px-4 text-[11px] font-bold tracking-wide shadow-sm"
                         disabled={installingPlugins.has(p.id)}
                         onClick={() =>
                           handleInstallPlugin(p.id, p.npmName ?? "")
@@ -2075,30 +2084,36 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                       >
                         {installingPlugins.has(p.id)
                           ? installProgress.get(p.npmName ?? "")?.message ||
-                            "Installing..."
+                          "Installing..."
                           : "Install Plugin"}
-                      </button>
+                      </Button>
                     )}
                     {p.loadError && (
                       <span
-                        className="px-3 py-1.5 text-[11px] text-destructive"
+                        className="px-3 py-1.5 text-[11px] text-danger font-bold tracking-wide"
                         title={p.loadError}
                       >
                         {t("pluginsview.PackageBrokenMis")}
                       </span>
                     )}
                     {p.isActive && (
-                      <button
-                        type="button"
-                        className={`px-3 py-1.5 text-[11px] border rounded-sm transition-colors ${
-                          testResults.get(p.id)?.loading
-                            ? "border-[var(--border)] text-[var(--muted)] cursor-wait"
+                      <Button
+                        variant={
+                          testResults.get(p.id)?.success
+                            ? "default"
+                            : testResults.get(p.id)?.error
+                              ? "destructive"
+                              : "outline"
+                        }
+                        size="sm"
+                        className={`h-8 px-4 text-[11px] font-bold tracking-wide transition-all ${testResults.get(p.id)?.loading
+                            ? "opacity-70 cursor-wait"
                             : testResults.get(p.id)?.success
-                              ? "border-[var(--ok)] text-[var(--ok)] bg-[color-mix(in_srgb,var(--ok)_5%,transparent)]"
+                              ? "bg-ok text-ok-fg border-ok hover:bg-ok/90"
                               : testResults.get(p.id)?.error
-                                ? "border-[var(--destructive)] text-[var(--destructive)]"
-                                : "border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)] cursor-pointer"
-                        }`}
+                                ? "bg-danger text-danger-fg border-danger hover:bg-danger/90"
+                                : "border-border/40 bg-card/40 backdrop-blur-md shadow-sm hover:border-accent/40"
+                          }`}
                         disabled={testResults.get(p.id)?.loading}
                         onClick={() => handleTestConnection(p.id)}
                       >
@@ -2109,22 +2124,23 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                             : testResults.get(p.id)?.error
                               ? `\u2715 ${testResults.get(p.id)?.error}`
                               : "Test Connection"}
-                      </button>
+                      </Button>
                     )}
-                    <button
-                      type="button"
-                      className="bg-transparent border border-border text-muted cursor-pointer text-[12px] px-4 py-1.5 rounded-sm hover:text-txt hover:bg-bg-hover transition-colors"
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-4 text-[12px] font-bold text-muted hover:text-txt transition-all"
                       onClick={() => handleConfigReset(p.id)}
                     >
                       {t("pluginsview.Reset")}
-                    </button>
-                    <button
-                      type="button"
-                      className={`text-[12px] px-5 py-1.5 cursor-pointer border rounded-sm transition-all duration-200 font-medium ${
-                        saveSuccess
-                          ? "!bg-ok !text-white !border-ok"
-                          : "bg-accent text-accent-fg border-accent hover:bg-accent-hover hover:shadow-sm"
-                      }`}
+                    </Button>
+                    <Button
+                      variant={saveSuccess ? "default" : "secondary"}
+                      size="sm"
+                      className={`h-8 px-5 text-[12px] font-bold tracking-wide transition-all ${saveSuccess
+                          ? "bg-ok text-ok-fg hover:bg-ok/90"
+                          : "bg-accent text-accent-fg hover:bg-accent/90 shadow-lg shadow-accent/20"
+                        }`}
                       onClick={() => handleConfigSave(p.id)}
                       disabled={isSaving}
                     >
@@ -2133,7 +2149,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                         : saveSuccess
                           ? "\u2713 Saved"
                           : "Save Settings"}
-                    </button>
+                    </Button>
                   </div>
                 )}
               </div>
@@ -2144,7 +2160,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
       {/* Add from directory modal */}
       {addDirOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-6 duration-200 animate-in fade-in"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setAddDirOpen(false);
@@ -2161,30 +2177,31 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
           role="dialog"
           aria-modal="true"
         >
-          <div className="w-full max-w-md border border-border bg-card p-5 shadow-lg">
-            <div className="flex items-center justify-between mb-4">
-              <div className="font-bold text-sm">
+          <div className="w-full max-w-md border border-border/50 bg-card/90 backdrop-blur-xl p-6 rounded-2xl shadow-2xl">
+            <div className="flex items-center justify-between mb-5">
+              <div className="font-bold text-base tracking-wide text-txt">
                 {t("pluginsview.AddPlugin1")}
               </div>
-              <button
-                type="button"
-                className="text-muted hover:text-txt text-lg leading-none px-1"
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted hover:bg-white/10 hover:text-txt rounded-full transition-all shrink-0 ml-2"
                 onClick={() => {
                   setAddDirOpen(false);
                   setAddDirPath("");
                 }}
               >
-                {t("pluginsview.Times")}
-              </button>
+                ✕
+              </Button>
             </div>
 
-            <p className="text-xs text-muted mb-3">
+            <p className="text-sm font-medium tracking-wide text-muted mb-4">
               {t("pluginsview.EnterThePathToA")}
             </p>
 
-            <input
+            <Input
               type="text"
-              className="w-full py-2 px-3 border border-border bg-bg text-[13px] font-mono transition-colors duration-150 focus:border-accent focus:outline-none placeholder:text-muted placeholder:font-body placeholder:italic"
+              className="w-full h-10 px-3 border border-border/40 bg-black/20 text-txt text-[13px] font-mono transition-all duration-150 focus-visible:ring-accent rounded-xl shadow-inner placeholder:text-muted/50"
               placeholder={t("pluginsview.PathToPluginOrP")}
               value={addDirPath}
               onChange={(e) => setAddDirPath(e.target.value)}
@@ -2193,25 +2210,27 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
               }}
             />
 
-            <div className="flex justify-end gap-2 mt-4">
-              <button
-                type="button"
-                className="px-4 py-[5px] border border-border bg-transparent text-muted text-xs cursor-pointer hover:text-txt hover:bg-bg-hover"
+            <div className="flex justify-end gap-3 mt-6">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-4 text-[12px] font-bold text-muted hover:text-txt transition-all"
                 onClick={() => {
                   setAddDirOpen(false);
                   setAddDirPath("");
                 }}
               >
                 {t("pluginsview.Cancel")}
-              </button>
-              <button
-                type="button"
-                className="px-4 py-[5px] border border-accent bg-accent text-accent-fg text-xs cursor-pointer hover:bg-accent-hover hover:border-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                className="h-8 px-6 text-[12px] font-bold tracking-wide shadow-sm"
                 onClick={handleAddFromDirectory}
                 disabled={addDirLoading || !addDirPath.trim()}
               >
                 {addDirLoading ? "Adding..." : "Add"}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
