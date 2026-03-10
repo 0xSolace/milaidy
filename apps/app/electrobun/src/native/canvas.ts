@@ -220,7 +220,10 @@ export class CanvasManager {
       // Skip if window is hidden off-screen (see hide() which uses -99999)
       if (x < -1000 || y < -1000) return null;
 
-      const tmpPath = path.join(os.tmpdir(), `milady-canvas-snapshot-${Date.now()}.png`);
+      const tmpPath = path.join(
+        os.tmpdir(),
+        `milady-canvas-snapshot-${Date.now()}.png`,
+      );
       let proc: ReturnType<typeof Bun.spawn>;
 
       if (process.platform === "darwin") {

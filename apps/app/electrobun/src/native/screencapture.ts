@@ -7,8 +7,7 @@
  *    Uses native CLI screenshot tools to capture real pixel data from the screen.
  *    - macOS: `screencapture -x -t jpg <tmpPath>` (no sound, no shadow)
  *    - Linux: `scrot --quality 70 <tmpPath>`, falling back to ImageMagick `import`
- *    - Windows: falls back to JS canvas approach (SIMPLE_CAPTURE_SCRIPT) since
- *      PowerShell screenshot capture is complex and Windows is not a primary target.
+ *    - Windows: PowerShell `System.Drawing.CopyFromScreen` for native capture.
  *    The temp JPEG file is read, POSTed to the stream endpoint, then deleted.
  *
  * 2. Game URL capture (gameUrl provided):
@@ -97,27 +96,6 @@ const _CAPTURE_SCRIPT = (_quality: number) => `
 })()
 `;
 
-// Simpler capture: screenshot the body background + visible text (very limited).
-// Used as last resort when no other method works.
-const SIMPLE_CAPTURE_SCRIPT = (quality: number) => `
-(function captureView() {
-  try {
-    var canvas = document.createElement('canvas');
-    var w = Math.min(window.innerWidth, 1280);
-    var h = Math.min(window.innerHeight, 720);
-    canvas.width = w;
-    canvas.height = h;
-    var ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-    // Fill with background color
-    ctx.fillStyle = getComputedStyle(document.body).backgroundColor || '#000';
-    ctx.fillRect(0, 0, w, h);
-    return canvas.toDataURL('image/jpeg', ${quality / 100});
-  } catch(e) {
-    return null;
-  }
-})()
-`;
 
 export class ScreenCaptureManager {
   private frameCaptureActive = false;
@@ -143,14 +121,6 @@ export class ScreenCaptureManager {
    */
   setCaptureTarget(webview: Webview | null): void {
     this.captureTargetWebview = webview;
-  }
-
-  /**
-   * Returns the active webview for frame capture: the override target if set,
-   * otherwise the main webview.
-   */
-  private getActiveWebview(): Webview | null {
-    return this.captureTargetWebview ?? this.mainWebview;
   }
 
   async getSources() {
@@ -234,7 +204,7 @@ export class ScreenCaptureManager {
    *
    * macOS: `screencapture -x -t jpg <tmpPath>`
    * Linux: `scrot --quality 70 <tmpPath>` (falls back to ImageMagick `import`)
-   * Windows: falls back to SIMPLE_CAPTURE_SCRIPT (JS canvas approach)
+   * Windows: PowerShell System.Drawing screen capture
    */
   private startWebviewCapture(
     _fps: number,
