@@ -110,8 +110,8 @@ vi.mock("../../src/components/SettingsView", () => ({
     React.createElement("section", null, "SettingsView Ready"),
 }));
 
-vi.mock("../../src/components/LoadingScreen", () => ({
-  LoadingScreen: () => React.createElement("div", null, "LoadingScreen"),
+vi.mock("../../src/components/avatar/AvatarLoader", () => ({
+  AvatarLoader: () => React.createElement("div", null, "AvatarLoader"),
 }));
 
 vi.mock("../../src/components/TerminalPanel", () => ({
@@ -447,20 +447,20 @@ describe("pages navigation smoke (e2e)", () => {
       patch: Partial<HarnessState>;
       token: string;
     }> = [
-      {
-        name: "loading",
-        patch: { onboardingLoading: true, onboardingComplete: false },
-        token: "LoadingScreen",
-      },
-      {
-        name: "pairing",
-        patch: {
-          onboardingLoading: false,
-          onboardingComplete: true,
-          authRequired: true,
+        {
+          name: "loading",
+          patch: { onboardingLoading: true, onboardingComplete: false },
+          token: "AvatarLoader",
         },
-        token: "PairingView",
-      },
+        {
+          name: "pairing",
+          patch: {
+            onboardingLoading: false,
+            onboardingComplete: true,
+            authRequired: true,
+          },
+          token: "PairingView",
+        },
       {
         name: "onboarding",
         patch: {

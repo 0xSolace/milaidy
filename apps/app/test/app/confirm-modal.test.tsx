@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 
-import { ConfirmModal, useConfirm } from "@milady/app-core/components";
+// Disable createPortal in ConfirmModal when using react-test-renderer
+(globalThis as Record<string, unknown>).__TEST_RENDERER__ = true;
+
+import {
+  ConfirmModal,
+  useConfirm,
+} from "@milady/app-core/components";
 import React from "react";
 import TestRenderer, { act } from "react-test-renderer";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
