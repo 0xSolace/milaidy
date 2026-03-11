@@ -166,7 +166,7 @@ export function cardBorderColor(f: TabFlags) {
   return "rgba(255,255,255,0.05)";
 }
 
-export function cardBoxShadow(f: TabFlags, shadowFx: string) {
+export function cardBoxShadow(f: TabFlags, _shadowFx: string) {
   if (f.isPluginsLike) return "none";
   if (
     f.isSettings ||

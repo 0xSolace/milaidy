@@ -5,14 +5,14 @@ import {
   useApp,
 } from "../AppContext";
 import { VrmStage } from "./companion/VrmStage";
-import { OnboardingStepNav } from "./onboarding/OnboardingStepNav";
-import { OnboardingPanel } from "./onboarding/OnboardingPanel";
-import { WakeUpStep } from "./onboarding/WakeUpStep";
-import { LanguageStep } from "./onboarding/LanguageStep";
-import { IdentityStep } from "./onboarding/IdentityStep";
-import { ConnectionStep } from "./onboarding/ConnectionStep";
-import { PermissionsStep } from "./onboarding/PermissionsStep";
 import { ActivateStep } from "./onboarding/ActivateStep";
+import { ConnectionStep } from "./onboarding/ConnectionStep";
+import { IdentityStep } from "./onboarding/IdentityStep";
+import { LanguageStep } from "./onboarding/LanguageStep";
+import { OnboardingPanel } from "./onboarding/OnboardingPanel";
+import { OnboardingStepNav } from "./onboarding/OnboardingStepNav";
+import { PermissionsStep } from "./onboarding/PermissionsStep";
+import { WakeUpStep } from "./onboarding/WakeUpStep";
 
 export function OnboardingWizard() {
   const { onboardingStep, onboardingAvatar, customVrmUrl, t } = useApp();
@@ -56,6 +56,7 @@ export function OnboardingWizard() {
         fill="none"
         stroke="rgba(240,185,11,0.18)"
         strokeWidth="1"
+        aria-hidden="true"
       >
         <path d="M0 18 L0 0 L18 0" />
         <circle
@@ -72,6 +73,7 @@ export function OnboardingWizard() {
         fill="none"
         stroke="rgba(240,185,11,0.18)"
         strokeWidth="1"
+        aria-hidden="true"
       >
         <path d="M0 18 L0 0 L18 0" />
         <circle
@@ -88,6 +90,7 @@ export function OnboardingWizard() {
         fill="none"
         stroke="rgba(240,185,11,0.18)"
         strokeWidth="1"
+        aria-hidden="true"
       >
         <path d="M0 18 L0 0 L18 0" />
         <circle
@@ -104,6 +107,7 @@ export function OnboardingWizard() {
         fill="none"
         stroke="rgba(240,185,11,0.18)"
         strokeWidth="1"
+        aria-hidden="true"
       >
         <path d="M0 18 L0 0 L18 0" />
         <circle

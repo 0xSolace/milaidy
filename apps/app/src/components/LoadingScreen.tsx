@@ -29,7 +29,7 @@ export function LoadingScreen({
   vrmUrl,
 }: LoadingScreenProps) {
   const [vrmCached, setVrmCached] = useState(false);
-  const [runtimeElapsedSeconds, setRuntimeElapsedSeconds] = useState(0);
+  const [, setRuntimeElapsedSeconds] = useState(0);
 
   useEffect(() => {
     if (typeof elapsedSeconds === "number") return;

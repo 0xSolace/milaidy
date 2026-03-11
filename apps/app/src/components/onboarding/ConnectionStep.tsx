@@ -1,12 +1,12 @@
-import { client } from "@milady/app-core/api";
 import type {
   OpenRouterModelOption,
   PiAiModelOption,
   ProviderOption,
 } from "@milady/app-core/api";
+import { client } from "@milady/app-core/api";
 import { useState } from "react";
-import { getProviderLogo } from "../../provider-logos";
 import { useApp } from "../../AppContext";
+import { getProviderLogo } from "../../provider-logos";
 
 function formatRequestError(err: unknown): string {
   if (err instanceof Error) {

@@ -14,6 +14,7 @@ import { useApp } from "./AppContext";
 import { AdvancedPageView } from "./components/AdvancedPageView";
 import { AppsPageView } from "./components/AppsPageView";
 import { AutonomousPanel } from "./components/AutonomousPanel";
+import { AvatarLoader } from "./components/avatar/AvatarLoader";
 import { CharacterView } from "./components/CharacterView";
 import { ChatView } from "./components/ChatView";
 import {
@@ -31,9 +32,6 @@ import { Header } from "./components/Header";
 import { InventoryView } from "./components/InventoryView";
 import { KnowledgeView } from "./components/KnowledgeView";
 import { LifoSandboxView } from "./components/LifoSandboxView";
-import { AvatarLoader } from "./components/avatar/AvatarLoader";
-import { CloudDashboard as MiladyCloudDashboard } from "./components/MiladyCloudDashboard";
-import { Nav } from "./components/Nav";
 import { OnboardingWizard } from "./components/OnboardingWizard";
 import { PairingView } from "./components/PairingView";
 import { SaveCommandModal } from "./components/SaveCommandModal";

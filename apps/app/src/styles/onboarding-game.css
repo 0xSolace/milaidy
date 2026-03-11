@@ -614,6 +614,7 @@
 .onboarding-panel [class*="bg-\\[var\\(--card\\)\\]"] {
   background-color: rgba(255, 255, 255, 0.04);
 }
+/* biome-ignore lint/complexity/noImportantStyles: override Tailwind utilities on PermissionsSection */
 /* Make permission card borders translucent */
 .onboarding-panel .flex.items-center.gap-4.p-4.border {
   background: rgba(255, 255, 255, 0.04) !important;
