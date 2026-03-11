@@ -247,7 +247,7 @@ function requireTree(
   return tree;
 }
 
-async function clickAndRerender(
+async function _clickAndRerender(
   tree: TestRenderer.ReactTestRenderer,
   label: string,
 ): Promise<void> {
