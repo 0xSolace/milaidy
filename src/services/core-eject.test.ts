@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 let mockedStateDir = "";
 let originalCwd = "";
+const toPosix = (value: string) => value.replaceAll("\\", "/");
 
 vi.mock("node:child_process", () => ({
   execFile: vi.fn(),
@@ -223,10 +224,10 @@ describe("core-eject", () => {
       const tsconfig = JSON.parse(tsconfigRaw) as {
         compilerOptions: { paths: Record<string, string[]> };
       };
-      expect(tsconfig.compilerOptions.paths["@elizaos/core"][0]).toContain(
+      expect(toPosix(tsconfig.compilerOptions.paths["@elizaos/core"][0])).toContain(
         "state/core/eliza/packages/core/dist",
       );
-      expect(tsconfig.compilerOptions.paths["@elizaos/core/*"][0]).toContain(
+      expect(toPosix(tsconfig.compilerOptions.paths["@elizaos/core/*"][0])).toContain(
         "state/core/eliza/packages/core/dist",
       );
     });
@@ -261,7 +262,7 @@ describe("core-eject", () => {
       setExecFileHandler(async (file, args) => {
         if (file === "git" && args[0] === "clone") {
           const targetDir = args[args.length - 1];
-          if (targetDir.includes("/eliza") && !firstCloneFinished) {
+          if (toPosix(targetDir).includes("/eliza") && !firstCloneFinished) {
             await firstCloneGate;
             firstCloneFinished = true;
           } else if (!firstCloneFinished) {

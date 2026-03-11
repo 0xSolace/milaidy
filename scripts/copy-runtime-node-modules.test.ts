@@ -240,7 +240,7 @@ describe("selectCopyTargetNodeModules", () => {
         topLevelVersions: new Map([["discord-api-types", "0.37.120"]]),
         resolvedVersion: "0.38.40",
       }),
-    ).toBe("/tmp/app/dist/node_modules/@discordjs/builders/node_modules");
+    ).toBe(path.join("/tmp/app/dist/node_modules/@discordjs/builders", "node_modules"));
   });
 
   it("always hoists @elizaos/core to the top level once present", () => {
@@ -311,6 +311,9 @@ describe("normalizeResolvedPackage", () => {
 
 describe("isPackageCompatibleWithCurrentPlatform", () => {
   it("skips packages pinned to a different operating system", () => {
+    const otherPlatform =
+      ["darwin", "linux", "win32"].find((value) => value !== process.platform) ??
+      "darwin";
     const tempDir = fs.mkdtempSync(
       path.join(os.tmpdir(), "runtime-platform-test-"),
     );
@@ -321,7 +324,7 @@ describe("isPackageCompatibleWithCurrentPlatform", () => {
       JSON.stringify({
         name: "@img/sharp-win32-x64",
         version: "1.0.0",
-        os: ["win32"],
+        os: [otherPlatform],
         cpu: ["x64"],
       }),
     );
