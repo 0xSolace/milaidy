@@ -595,7 +595,9 @@ const CHANNEL_ENV_MAP: Readonly<
     userToken: "SLACK_USER_TOKEN",
   },
   signal: {
-    account: "SIGNAL_ACCOUNT",
+    account: "SIGNAL_ACCOUNT_NUMBER",
+    httpUrl: "SIGNAL_HTTP_URL",
+    cliPath: "SIGNAL_CLI_PATH",
   },
   msteams: {
     appId: "MSTEAMS_APP_ID",
@@ -2481,7 +2483,7 @@ export function buildCharacterFromConfig(config: MiladyConfig): Character {
     "SLACK_BOT_TOKEN",
     "SLACK_APP_TOKEN",
     "SLACK_USER_TOKEN",
-    "SIGNAL_ACCOUNT",
+    "SIGNAL_ACCOUNT_NUMBER",
     "MSTEAMS_APP_ID",
     "MSTEAMS_APP_PASSWORD",
     "MATTERMOST_BOT_TOKEN",
