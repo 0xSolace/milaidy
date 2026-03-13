@@ -595,6 +595,7 @@ const CHANNEL_ENV_MAP: Readonly<
     userToken: "SLACK_USER_TOKEN",
   },
   signal: {
+    authDir: "SIGNAL_AUTH_DIR",
     account: "SIGNAL_ACCOUNT_NUMBER",
     httpUrl: "SIGNAL_HTTP_URL",
     cliPath: "SIGNAL_CLI_PATH",
@@ -648,7 +649,8 @@ export const CHANNEL_PLUGIN_MAP: Readonly<Record<string, string>> = {
   twitter: "@elizaos/plugin-twitter",
   // Internal connector built from src/plugins/whatsapp (not an npm package).
   whatsapp: "@milady/plugin-whatsapp",
-  signal: "@elizaos/plugin-signal",
+  // Internal connector built from src/plugins/signal (not an npm package).
+  signal: "@milady/plugin-signal",
   imessage: "@elizaos/plugin-imessage",
   bluebubbles: "@elizaos/plugin-bluebubbles",
   farcaster: "@elizaos/plugin-farcaster",
