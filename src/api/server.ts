@@ -6320,6 +6320,18 @@ async function handleCodingAgentsFallback(
       ...(expiresAt > 0 ? { expiresAt } : {}),
     };
   };
+  const parseSessionId = (raw: string): string | null => {
+    let sessionId = "";
+    try {
+      sessionId = decodeURIComponent(raw);
+    } catch {
+      return null;
+    }
+    if (!sessionId || sessionId.includes("/") || sessionId.includes("..")) {
+      return null;
+    }
+    return sessionId;
+  };
 
   // GET /api/coding-agents/preflight
   if (method === "GET" && pathname === "/api/coding-agents/preflight") {
@@ -6442,7 +6454,11 @@ async function handleCodingAgentsFallback(
   // POST /api/coding-agents/:sessionId/stop - Stop a coding agent task
   const stopMatch = pathname.match(/^\/api\/coding-agents\/([^/]+)\/stop$/);
   if (method === "POST" && stopMatch) {
-    const sessionId = decodeURIComponent(stopMatch[1]);
+    const sessionId = parseSessionId(stopMatch[1]);
+    if (!sessionId) {
+      error(res, "Invalid session ID", 400);
+      return true;
+    }
     const ptyService = runtime.getService("PTY_SERVICE") as PTYService | null;
 
     if (!ptyService?.stopSession) {
@@ -6492,7 +6508,11 @@ async function handleCodingAgentsFallback(
     /^\/api\/coding-agents\/([^/]+)\/scratch\/keep$/,
   );
   if (method === "POST" && keepMatch) {
-    const sessionId = decodeURIComponent(keepMatch[1]);
+    const sessionId = parseSessionId(keepMatch[1]);
+    if (!sessionId) {
+      error(res, "Invalid session ID", 400);
+      return true;
+    }
     const keeper =
       codeTaskService?.keepScratchWorkspace ?? codeTaskService?.keepScratch;
     if (!keeper) {
@@ -6513,7 +6533,11 @@ async function handleCodingAgentsFallback(
     /^\/api\/coding-agents\/([^/]+)\/scratch\/delete$/,
   );
   if (method === "POST" && deleteMatch) {
-    const sessionId = decodeURIComponent(deleteMatch[1]);
+    const sessionId = parseSessionId(deleteMatch[1]);
+    if (!sessionId) {
+      error(res, "Invalid session ID", 400);
+      return true;
+    }
     const deleter =
       codeTaskService?.deleteScratchWorkspace ?? codeTaskService?.deleteScratch;
     if (!deleter) {
@@ -6534,7 +6558,11 @@ async function handleCodingAgentsFallback(
     /^\/api\/coding-agents\/([^/]+)\/scratch\/promote$/,
   );
   if (method === "POST" && promoteMatch) {
-    const sessionId = decodeURIComponent(promoteMatch[1]);
+    const sessionId = parseSessionId(promoteMatch[1]);
+    if (!sessionId) {
+      error(res, "Invalid session ID", 400);
+      return true;
+    }
     const promoter =
       codeTaskService?.promoteScratchWorkspace ??
       codeTaskService?.promoteScratch;

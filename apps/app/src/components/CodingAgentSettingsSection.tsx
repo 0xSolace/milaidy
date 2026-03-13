@@ -81,12 +81,14 @@ const AGENT_LABELS: Record<AgentTab, string> = {
   aider: "Aider",
 };
 
-const PREFLIGHT_ADAPTER_MAP: Record<string, AgentTab> = {
-  claude: "claude",
-  gemini: "gemini",
-  codex: "codex",
-  aider: "aider",
-};
+// Explicit allowlist: only adapters we surface in the UI should be accepted
+// from preflight responses.
+const KNOWN_AGENT_ADAPTERS = new Set<AgentTab>([
+  "claude",
+  "gemini",
+  "codex",
+  "aider",
+]);
 
 const ENV_PREFIX: Record<AgentTab, string> = {
   claude: "PARALLAX_CLAUDE",
@@ -188,7 +190,10 @@ export function CodingAgentSettingsSection() {
           const mapped: Partial<Record<AgentTab, AgentPreflightResult>> = {};
           for (const item of preflightRes as AgentPreflightResult[]) {
             const raw = item.adapter?.toLowerCase();
-            const key = raw ? PREFLIGHT_ADAPTER_MAP[raw] : undefined;
+            const key =
+              raw && KNOWN_AGENT_ADAPTERS.has(raw as AgentTab)
+                ? (raw as AgentTab)
+                : undefined;
             if (key) mapped[key] = item;
           }
           setPreflightByAgent(mapped);
