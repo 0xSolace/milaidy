@@ -17,7 +17,6 @@ import {
   dispatchWindowEvent,
   VOICE_CONFIG_UPDATED_EVENT,
 } from "@milady/app-core/events";
-import { useTimeout } from "@milady/app-core/hooks";
 import { getVrmPreviewUrl, useApp } from "@milady/app-core/state";
 import type { ConfigUiHint } from "@milady/app-core/types";
 import { alertDesktopMessage } from "@milady/app-core/utils";
@@ -241,8 +240,6 @@ function parseImportedMessageExamples(
 /* ── CharacterView ──────────────────────────────────────────────────── */
 
 export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
-  const { setTimeout } = useTimeout();
-
   const {
     characterData,
     characterDraft,
@@ -571,6 +568,7 @@ export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
       name: d.name ?? "",
       system: d.system ?? "",
       bio: bioText,
+      topics: d.topics ?? [],
       style: d.style ?? { all: [], chat: [], post: [] },
       postExamples: d.postExamples ?? [],
     }),
@@ -682,15 +680,6 @@ export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
     ],
   );
 
-  const handleRandomName = useCallback(async () => {
-    try {
-      const { name } = await client.getRandomName();
-      handleFieldEdit("name", name);
-    } catch {
-      /* ignore */
-    }
-  }, [handleFieldEdit]);
-
   const handlePendingStyleEntryChange = useCallback(
     (key: StyleSectionKey, value: string) => {
       setPendingStyleEntries((prev) => ({ ...prev, [key]: value }));
@@ -750,10 +739,61 @@ export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
     [d.style, handleStyleEdit, styleEntryDrafts],
   );
 
+  const handleApplyCharacter = useCallback(
+    (entry: CharacterRosterEntry, openCustomizeEditor = false) => {
+      const nextCharacter = buildCharacterFromPreset(entry.preset, entry.name);
+      handleFieldEdit("name", nextCharacter.name ?? "");
+      handleFieldEdit("username", nextCharacter.username ?? "");
+      handleFieldEdit(
+        "bio",
+        Array.isArray(nextCharacter.bio)
+          ? nextCharacter.bio.join("\n")
+          : (nextCharacter.bio ?? ""),
+      );
+      handleFieldEdit("system", nextCharacter.system ?? "");
+      handleFieldEdit("adjectives", nextCharacter.adjectives ?? []);
+      handleFieldEdit("topics", nextCharacter.topics ?? []);
+      handleFieldEdit("style", nextCharacter.style ?? { all: [], chat: [], post: [] });
+      handleFieldEdit("messageExamples", nextCharacter.messageExamples ?? []);
+      handleFieldEdit("postExamples", nextCharacter.postExamples ?? []);
+      setState("selectedVrmIndex", entry.avatarIndex);
+      setSelectedCharacterId(entry.id);
+      setVoiceSaveError(null);
+
+      if (entry.voicePresetId) {
+        const voicePreset = PREMADE_VOICES.find(
+          (preset) => preset.id === entry.voicePresetId,
+        );
+        if (voicePreset) handleSelectPreset(voicePreset);
+      }
+
+      if (openCustomizeEditor) setCustomizeOpen(true);
+    },
+    [handleFieldEdit, handleSelectPreset, setState],
+  );
+
+  const handleSaveAll = useCallback(async () => {
+    setVoiceSaving(true);
+    setVoiceSaveError(null);
+    try {
+      await persistVoiceConfig();
+    } catch (err) {
+      setVoiceSaveError(
+        err instanceof Error
+          ? err.message
+          : "Failed to save voice settings.",
+      );
+      setVoiceSaving(false);
+      return;
+    }
+    setVoiceSaving(false);
+    await handleSaveCharacter();
+  }, [handleSaveCharacter, persistVoiceConfig]);
+
   /* ── Helpers ────────────────────────────────────────────────────── */
-  const sectionCls = inModal
-    ? "mt-4 p-5 border border-border/40 bg-card/40 backdrop-blur-xl rounded-2xl shadow-sm"
-    : "mt-4 p-5 border border-border/40 bg-card/40 backdrop-blur-xl rounded-2xl shadow-sm";
+  const cardCls =
+    "p-5 border border-border/40 bg-card/40 backdrop-blur-xl rounded-2xl shadow-sm";
+  const sectionCls = inModal ? `mt-4 ${cardCls}` : `mt-4 ${cardCls}`;
   const labelCls = "font-medium text-xs text-muted mb-1 block";
   const hintCls = "text-[11px] text-muted";
 
@@ -785,6 +825,29 @@ export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
     dropStatus?.publicMintOpen &&
     !dropStatus?.mintedOut;
   const userMinted = dropStatus?.userHasMinted === true;
+  const activeCharacter =
+    characterRoster.find((entry) => entry.id === selectedCharacterId) ?? null;
+  const activeVoicePreset =
+    PREMADE_VOICES.find((preset) => preset.id === selectedVoicePresetId) ??
+    null;
+  const currentAvatarPreview =
+    selectedVrmIndex > 0
+      ? getVrmPreviewUrl(selectedVrmIndex)
+      : activeCharacter
+        ? getVrmPreviewUrl(activeCharacter.avatarIndex)
+        : getVrmPreviewUrl(1);
+  const currentSummary = truncateCopy(
+    bioText ||
+      (typeof d.system === "string" ? d.system : "") ||
+      "Pick a character, then open Customize if you want to tune the details.",
+    180,
+  );
+  const currentCharacterName =
+    (typeof d.name === "string" && d.name.trim()) ||
+    activeCharacter?.name ||
+    "Current character";
+  const combinedSaveError = voiceSaveError ?? characterSaveError;
+  const currentCharacterHint = activeCharacter?.preset.hint ?? "custom";
 
   return (
     <div className={inModal ? "pb-8" : ""}>
@@ -825,73 +888,86 @@ export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
           const nameOutOfSync =
             currentName && onChainName && currentName !== onChainName;
           return (
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2 text-[12px]">
-                <span className="text-green-400 font-bold tracking-wide">
-                  {t("characterview.Registered")}
-                </span>
-                <span className="text-muted/50">|</span>
-                <span className="text-muted font-medium">
-                  {t("characterview.Token")}
-                  {registryStatus.tokenId}
-                </span>
-                <span className="text-muted/50">|</span>
-                <span className="text-txt font-semibold">{onChainName}</span>
-              </div>
-              {nameOutOfSync && (
-                <div className="flex items-center gap-3 bg-amber-400/10 border border-amber-400/20 px-3 py-2 rounded-lg">
-                  <span className="text-[11px] text-amber-400/80 font-medium tracking-wide">
-                    {t("characterview.OnChainName")}{" "}
-                    <strong className="text-amber-400">{onChainName}</strong>{" "}
-                    {t("characterview.DiffersFrom")}{" "}
-                    <strong className="text-amber-400">{currentName}"</strong>
+            <div className={sectionCls}>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2 text-[12px]">
+                  <span className="text-green-400 font-bold tracking-wide">
+                    {t("characterview.Registered")}
                   </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-[10px] h-6 px-2.5 border-amber-400/50 text-amber-400 hover:bg-amber-400/20 transition-all font-bold"
-                    disabled={registryRegistering}
-                    onClick={() => void syncRegistryProfile()}
-                  >
-                    {registryRegistering ? "syncing..." : "sync to chain"}
-                  </Button>
+                  <span className="text-muted/50">|</span>
+                  <span className="text-muted font-medium">
+                    {t("characterview.Token")}
+                    {registryStatus.tokenId}
+                  </span>
+                  <span className="text-muted/50">|</span>
+                  <span className="text-txt font-semibold">{onChainName}</span>
                 </div>
-              )}
-              {registryError && (
-                <span className="text-xs text-[var(--danger,#e74c3c)]">
-                  {registryError}
-                </span>
-              )}
-              <a
-                href={`https://etherscan.io/token/${registryStatus.walletAddress}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[11px] underline text-[var(--accent)]"
-              >
-                {t("characterview.viewOnEtherscan")}
-              </a>
+                {nameOutOfSync && (
+                  <div className="flex items-center gap-3 bg-amber-400/10 border border-amber-400/20 px-3 py-2 rounded-lg">
+                    <span className="text-[11px] text-amber-400/80 font-medium tracking-wide">
+                      {t("characterview.OnChainName")}{" "}
+                      <strong className="text-amber-400">{onChainName}</strong>{" "}
+                      {t("characterview.DiffersFrom")}{" "}
+                      <strong className="text-amber-400">{currentName}"</strong>
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-[10px] h-6 px-2.5 border-amber-400/50 text-amber-400 hover:bg-amber-400/20 transition-all font-bold"
+                      disabled={registryRegistering}
+                      onClick={() => void syncRegistryProfile()}
+                    >
+                      {registryRegistering ? "syncing..." : "sync to chain"}
+                    </Button>
+                  </div>
+                )}
+                {registryError && (
+                  <span className="text-xs text-[var(--danger,#e74c3c)]">
+                    {registryError}
+                  </span>
+                )}
+                <a
+                  href={`https://etherscan.io/token/${registryStatus.walletAddress}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] underline text-[var(--accent)]"
+                >
+                  {t("characterview.viewOnEtherscan")}
+                </a>
+              </div>
             </div>
           );
         })()}
 
       {hasWallet && userMinted && !isRegistered && (
-        <div className="text-[12px] text-[var(--ok,#16a34a)]">
-          {t("characterview.MintedFromCollecti")}
+        <div className={sectionCls}>
+          <div className="text-[12px] text-[var(--ok,#16a34a)]">
+            {t("characterview.MintedFromCollecti")}
+          </div>
         </div>
       )}
-      {/* ═══ SECTION 1: IDENTITY + PERSONALITY ═══ */}
+
       <div className={sectionCls}>
-        {/* Header row: title + action buttons */}
-        <div className="flex items-center justify-between mb-5 border-b border-border/40 pb-3">
-          <div className="font-bold text-sm tracking-wide text-txt">
-            {t("characterview.IdentityPersonali")}
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-3">
+          <div>
+            <div className="font-bold text-sm tracking-wide text-txt">
+              Character Select
+            </div>
+            <div className="mt-1 text-xs text-muted">
+              Pick a character base. Customize opens the full editor for the
+              current character.
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               size="sm"
               className="h-7 text-[11px] font-medium border-border/50 bg-bg/50 backdrop-blur-sm shadow-inner hover:text-accent hover:border-accent/40 transition-all"
-              onClick={() => void loadCharacter()}
+              onClick={() => {
+                setSelectedCharacterId(null);
+                setCustomizeOpen(false);
+                void loadCharacter();
+              }}
               disabled={characterLoading}
             >
               {characterLoading ? "loading..." : "reload"}
@@ -914,295 +990,631 @@ export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
             >
               {t("characterview.export")}
             </Button>
+            <Button
+              variant={customizeOpen ? "secondary" : "outline"}
+              size="sm"
+              className="h-7 text-[11px] font-medium border-border/50 bg-bg/50 backdrop-blur-sm shadow-inner transition-all"
+              onClick={() => setCustomizeOpen((current) => !current)}
+              data-testid="character-customize-toggle"
+            >
+              {customizeOpen ? "hide customize" : "customize"}
+            </Button>
           </div>
         </div>
 
-        <div className="flex flex-col gap-5">
-          {/* Name */}
-          <div className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("characterview.name")}</span>
-            <div className="flex items-center gap-3 max-w-[320px]">
-              <Input
-                type="text"
-                value={d.name ?? ""}
-                maxLength={50}
-                placeholder={t("characterview.agentName")}
-                onChange={(e) => handleFieldEdit("name", e.target.value)}
-                className="flex-1 bg-bg/50 backdrop-blur-md border-border/50 shadow-inner focus-visible:ring-accent/50 focus-visible:border-accent h-9 rounded-xl transition-all"
-              />
-              <Button
-                variant="secondary"
-                size="sm"
-                className="h-9 px-4 font-bold border border-white/5 shadow-sm hover:shadow-[0_0_10px_rgba(255,255,255,0.1)] transition-all rounded-xl"
-                onClick={() => void handleRandomName()}
-                title={t("characterview.randomName")}
-              >
-                {t("characterview.random")}
-              </Button>
+        <div className="grid gap-6 xl:grid-cols-[260px_minmax(0,1fr)]">
+          <div
+            className="rounded-2xl border border-border/40 bg-black/10 p-4 shadow-inner"
+            data-testid="character-current-card"
+          >
+            <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted">
+              Current character
             </div>
+            <img
+              src={currentAvatarPreview}
+              alt={currentCharacterName}
+              className="mt-4 h-52 w-full rounded-2xl object-cover"
+            />
+            <div
+              className="mt-4 text-lg font-semibold text-txt"
+              data-testid="character-current-name"
+            >
+              {currentCharacterName}
+            </div>
+            <div className="mt-1 text-xs uppercase tracking-[0.18em] text-muted">
+              {currentCharacterHint}
+            </div>
+            <p className="mt-3 text-sm leading-relaxed text-muted">
+              {currentSummary}
+            </p>
+            <Button
+              size="sm"
+              className="mt-4 w-full font-bold"
+              onClick={() => setCustomizeOpen(true)}
+            >
+              Customize current character
+            </Button>
           </div>
 
-          {/* Avatar full-width row */}
-          <div className="flex flex-col gap-1 w-full">
-            <span className={labelCls}>{t("characterview.avatar")}</span>
-            <div className="w-full">
-              <AvatarSelector
-                selected={selectedVrmIndex}
-                loading={avatarLoading}
-                onSelect={(i) => {
-                  if (avatarLoading) return;
-                  setAvatarLoading(true);
-                  setState("selectedVrmIndex", i);
-                  // TODO(PR-928): This timeout is a known approximation. Should hook into actual VRM load complete event.
-                  // Allow time for VRM to load before enabling selection again
-                  setTimeout(() => setAvatarLoading(false), 1500);
-                }}
-                onUpload={(file) => {
-                  if (avatarLoading) return;
-                  setAvatarLoading(true);
-                  const previousIndex = selectedVrmIndex;
-                  const url = URL.createObjectURL(file);
-                  setState("customVrmUrl", url);
-                  setState("selectedVrmIndex", 0);
-                  client
-                    .uploadCustomVrm(file)
-                    .then(() => {
-                      setState(
-                        "customVrmUrl",
-                        resolveApiUrl(`/api/avatar/vrm?t=${Date.now()}`),
-                      );
-                      requestAnimationFrame(() => URL.revokeObjectURL(url));
-                    })
-                    .catch(() => {
-                      setState("selectedVrmIndex", previousIndex);
-                      URL.revokeObjectURL(url);
-                    })
-                    .finally(() => {
-                      // TODO(PR-928): This timeout is a known approximation. Should hook into actual VRM load complete event.
-                      setTimeout(() => setAvatarLoading(false), 1500);
-                    });
-                }}
-                showUpload
-                fullWidth
-              />
+          <div>
+            <div className="text-xs text-muted">
+              Each character comes with a preset name, avatar, personality,
+              adjectives, topics, and directions.
             </div>
-          </div>
+            <div
+              className="mt-4 grid gap-4 md:grid-cols-2 2xl:grid-cols-3"
+              data-testid="character-roster-grid"
+            >
+              {characterRoster.length > 0 ? (
+                characterRoster.map((entry) => {
+                  const isSelected = selectedCharacterId === entry.id;
+                  const rosterBio = truncateCopy(
+                    replaceCharacterToken(entry.preset.bio[0] ?? "", entry.name),
+                    120,
+                  );
+                  const rosterDirections = truncateCopy(
+                    replaceCharacterToken(entry.preset.system, entry.name),
+                    160,
+                  );
 
-          {/* About me + adjectives + topics */}
-          <div className="mt-1 grid grid-cols-1 md:grid-cols-[1.2fr_1fr_1fr] gap-5">
-            <div className="flex flex-col gap-2 h-[220px]">
-              <div className="flex items-center justify-between">
-                <span className={labelCls}>{t("characterview.aboutMe")}</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 px-2 text-[10px] font-bold text-accent hover:bg-accent/10 border border-transparent hover:border-accent/30 transition-all rounded-md"
-                  onClick={() => void handleGenerate("bio")}
-                  disabled={generating === "bio"}
-                >
-                  {generating === "bio" ? "generating..." : "regenerate"}
-                </Button>
-              </div>
-              <Textarea
-                value={bioText}
-                rows={4}
-                placeholder={t("characterview.describeWhoYourAg")}
-                onChange={(e) => handleFieldEdit("bio", e.target.value)}
-                className="flex-1 min-h-[160px] bg-bg/50 backdrop-blur-md border-border/50 shadow-inner focus-visible:ring-accent/50 focus-visible:border-accent rounded-xl text-sm leading-relaxed p-3 custom-scrollbar"
-              />
-            </div>
-            <TagEditor
-              label={t("characterview.adjectives")}
-              items={d.adjectives ?? []}
-              onChange={(items) =>
-                handleCharacterArrayInput("adjectives", items.join("\n"))
-              }
-              placeholder={t("characterview.addAdjective")}
-            />
-            <TagEditor
-              label={t("characterview.topics")}
-              items={d.topics ?? []}
-              onChange={(items) =>
-                handleCharacterArrayInput("topics", items.join("\n"))
-              }
-              placeholder={t("characterview.addTopic")}
-            />
-          </div>
+                  return (
+                    <div
+                      key={entry.id}
+                      className={`flex h-full flex-col rounded-2xl border p-4 transition-all ${
+                        isSelected
+                          ? "border-accent bg-accent/5 shadow-[0_0_0_1px_rgba(var(--accent),0.25)]"
+                          : "border-border/40 bg-black/10"
+                      }`}
+                      data-testid={`character-preset-${entry.id}`}
+                    >
+                      <img
+                        src={getVrmPreviewUrl(entry.avatarIndex)}
+                        alt={entry.name}
+                        className="h-44 w-full rounded-2xl object-cover"
+                      />
+                      <div className="mt-4 flex items-start justify-between gap-3">
+                        <div>
+                          <div className="text-base font-semibold text-txt">
+                            {entry.name}
+                          </div>
+                          <div className="mt-1 text-xs uppercase tracking-[0.18em] text-muted">
+                            {entry.preset.hint}
+                          </div>
+                        </div>
+                        <span className="rounded-full border border-white/10 bg-black/20 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-muted">
+                          {entry.preset.catchphrase}
+                        </span>
+                      </div>
 
-          {/* System prompt below */}
-          <div className="flex flex-col gap-2 mt-2">
-            <div className="flex items-center justify-between">
-              <span className={labelCls}>
-                {t("characterview.directionsAndThing")}
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 px-2 text-[10px] font-bold text-accent hover:bg-accent/10 border border-transparent hover:border-accent/30 transition-all rounded-md"
-                onClick={() => void handleGenerate("system")}
-                disabled={generating === "system"}
-              >
-                {generating === "system" ? "generating..." : "regenerate"}
-              </Button>
+                      <p className="mt-3 text-sm leading-relaxed text-muted">
+                        {rosterBio}
+                      </p>
+
+                      <div className="mt-4">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted">
+                          Directions
+                        </div>
+                        <p className="mt-2 text-xs leading-relaxed text-muted">
+                          {rosterDirections}
+                        </p>
+                      </div>
+
+                      <div className="mt-4">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted">
+                          Adjectives
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {entry.preset.adjectives.slice(0, 4).map((adjective) => (
+                            <span
+                              key={adjective}
+                              className="rounded-full border border-border/40 bg-bg/50 px-2 py-1 text-[11px] text-txt"
+                            >
+                              {adjective}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="mt-4">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted">
+                          Topics
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {entry.preset.topics.slice(0, 4).map((topic) => (
+                            <span
+                              key={topic}
+                              className="rounded-full border border-border/40 bg-bg/50 px-2 py-1 text-[11px] text-txt"
+                            >
+                              {topic}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="mt-5 flex gap-2">
+                        <Button
+                          size="sm"
+                          className="flex-1 font-bold"
+                          variant={isSelected ? "secondary" : "default"}
+                          onClick={() => handleApplyCharacter(entry)}
+                        >
+                          {isSelected ? "Selected" : "Use character"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 font-bold"
+                          onClick={() => handleApplyCharacter(entry, true)}
+                        >
+                          Customize
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="rounded-2xl border border-border/40 bg-black/10 p-4 text-sm text-muted">
+                  Loading character presets...
+                </div>
+              )}
             </div>
-            <Textarea
-              value={d.system ?? ""}
-              rows={5}
-              maxLength={10000}
-              placeholder={t("characterview.writeInFirstPerso")}
-              onChange={(e) => handleFieldEdit("system", e.target.value)}
-              className="font-mono bg-bg/50 backdrop-blur-md border-border/50 shadow-inner focus-visible:ring-accent/50 focus-visible:border-accent rounded-xl text-xs leading-relaxed p-3 custom-scrollbar"
-            />
           </div>
         </div>
       </div>
 
-      {/* ═══ SECTIONS 2-3: STYLE + EXAMPLES ═══ */}
-      <div
-        className="mt-4 grid grid-cols-1 items-start gap-6 lg:grid-cols-2"
-        data-testid="character-style-examples-grid"
-      >
-        <div
-          className={`${sectionCls} !mt-0 flex min-h-0 max-h-none flex-col overflow-hidden lg:max-h-[560px]`}
-          data-testid="character-style-editor"
-        >
-          <div className="mb-4 flex items-center justify-between gap-3 border-b border-border/40 pb-3">
-            <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
-              <div className="font-bold text-sm tracking-wide text-txt">
-                {t("characterview.StyleRules")}
-              </div>
-              <span className="rounded-full border border-white/5 bg-black/10 px-2 py-0.5 text-[11px] font-medium tracking-wide text-muted">
-                {t("characterview.CommunicationGuid")}
-              </span>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 shrink-0 border-border/50 bg-bg/50 text-[11px] font-bold text-accent shadow-inner transition-all hover:border-accent/40 hover:text-accent"
-              onClick={() => void handleGenerate("style", "replace")}
-              disabled={generating === "style"}
-            >
-              {generating === "style" ? "generating..." : "regenerate"}
-            </Button>
-          </div>
-
+      {customizeOpen && (
+        <>
           <div
-            className="min-h-0 flex-1 overflow-y-auto pr-1 custom-scrollbar"
-            data-testid="character-style-editor-scroll"
+            className="mt-4 grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"
+            data-testid="character-customize-grid"
           >
-            <div className="flex flex-col gap-4">
-              {STYLE_SECTION_KEYS.map((key) => {
-                const items = d.style?.[key] ?? [];
-                return (
-                  <div
-                    key={key}
-                    className="flex flex-col gap-3 rounded-xl border border-border/40 bg-black/10 p-4 shadow-inner"
-                    data-testid={`style-section-${key}`}
+            <div className="flex flex-col gap-6">
+              <div className={cardCls}>
+                <div className="flex items-center justify-between">
+                  <span className={labelCls}>{t("characterview.aboutMe")}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-[10px] font-bold text-accent hover:bg-accent/10 border border-transparent hover:border-accent/30 transition-all rounded-md"
+                    onClick={() => void handleGenerate("bio")}
+                    disabled={generating === "bio"}
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="pl-1 text-[11px] font-bold uppercase tracking-widest text-muted">
-                          {key}
-                        </span>
-                        <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted/70">
-                          {items.length} rule{items.length === 1 ? "" : "s"}
-                        </span>
-                      </div>
+                    {generating === "bio" ? "generating..." : "regenerate"}
+                  </Button>
+                </div>
+                <Textarea
+                  value={bioText}
+                  rows={6}
+                  placeholder={t("characterview.describeWhoYourAg")}
+                  onChange={(e) => handleFieldEdit("bio", e.target.value)}
+                  className="min-h-[220px] bg-bg/50 backdrop-blur-md border-border/50 shadow-inner focus-visible:ring-accent/50 focus-visible:border-accent rounded-xl text-sm leading-relaxed p-3 custom-scrollbar"
+                />
+              </div>
+
+              <div className={cardCls}>
+                <div className="flex items-center justify-between">
+                  <span className={labelCls}>
+                    {t("characterview.directionsAndThing")}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-[10px] font-bold text-accent hover:bg-accent/10 border border-transparent hover:border-accent/30 transition-all rounded-md"
+                    onClick={() => void handleGenerate("system")}
+                    disabled={generating === "system"}
+                  >
+                    {generating === "system" ? "generating..." : "regenerate"}
+                  </Button>
+                </div>
+                <Textarea
+                  value={d.system ?? ""}
+                  rows={7}
+                  maxLength={10000}
+                  placeholder={t("characterview.writeInFirstPerso")}
+                  onChange={(e) => handleFieldEdit("system", e.target.value)}
+                  className="min-h-[240px] font-mono bg-bg/50 backdrop-blur-md border-border/50 shadow-inner focus-visible:ring-accent/50 focus-visible:border-accent rounded-xl text-xs leading-relaxed p-3 custom-scrollbar"
+                />
+              </div>
+
+              <div className={`${cardCls} relative z-20`}>
+                <div className="font-bold text-sm mb-4 border-b border-border/40 pb-3 text-txt tracking-wide">
+                  {t("characterview.Voice")}
+                </div>
+
+                {voiceLoading ? (
+                  <div className="text-center py-8 text-muted text-[13px] bg-black/5 rounded-xl border border-white/5 animate-pulse">
+                    {t("characterview.LoadingVoiceConfig")}
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-5">
+                    <div className="text-xs text-muted/80 leading-relaxed max-w-lg">
+                      {t("characterview.ChooseTheSpeaking")}
                     </div>
 
                     <div className="flex flex-col gap-2">
-                      {items.length > 0 ? (
-                        items.map((item, index) => (
-                          <div
-                            key={getStyleEntryRenderKey(
-                              key,
-                              items,
-                              item,
-                              index,
-                            )}
-                            className="flex items-start gap-3 rounded-lg border border-border/30 bg-bg/40 p-3"
-                            data-testid={`style-entry-${key}-${index}`}
-                          >
-                            <span className="mt-0.5 shrink-0 text-[10px] font-bold text-muted/70">
-                              {index + 1}
-                            </span>
-                            <Textarea
-                              value={styleEntryDrafts[key]?.[index] ?? item}
-                              rows={2}
-                              onChange={(e) =>
-                                handleStyleEntryDraftChange(
-                                  key,
-                                  index,
-                                  e.target.value,
-                                )
-                              }
-                              onBlur={() => handleCommitStyleEntry(key, index)}
-                              className="min-h-[72px] min-w-0 flex-1 resize-none rounded-lg border-border/50 bg-bg/50 p-2 text-xs leading-relaxed text-txt shadow-inner backdrop-blur-md transition-all focus-visible:border-accent/50 focus-visible:ring-accent/50"
-                              data-testid={`style-entry-editor-${key}-${index}`}
-                            />
+                      <span className={labelCls}>{t("characterview.voice")}</span>
+                      <div className="flex items-center gap-3">
+                        <ThemedSelect
+                          value={
+                            selectedVoicePresetId === "custom"
+                              ? "__custom__"
+                              : (selectedVoicePresetId ?? null)
+                          }
+                          groups={[
+                            {
+                              label: "Female",
+                              items: PREMADE_VOICES.filter(
+                                (preset) => preset.gender === "female",
+                              ).map((preset) => ({
+                                id: preset.id,
+                                text: preset.name,
+                                hint: preset.hint,
+                              })),
+                            },
+                            {
+                              label: "Male",
+                              items: PREMADE_VOICES.filter(
+                                (preset) => preset.gender === "male",
+                              ).map((preset) => ({
+                                id: preset.id,
+                                text: preset.name,
+                                hint: preset.hint,
+                              })),
+                            },
+                            {
+                              label: "Character",
+                              items: PREMADE_VOICES.filter(
+                                (preset) => preset.gender === "character",
+                              ).map((preset) => ({
+                                id: preset.id,
+                                text: preset.name,
+                                hint: preset.hint,
+                              })),
+                            },
+                            {
+                              label: "Other",
+                              items: [
+                                { id: "__custom__", text: "Custom voice ID..." },
+                              ],
+                            },
+                          ]}
+                          onChange={(id) => {
+                            if (id === "__custom__") {
+                              setSelectedVoicePresetId("custom");
+                            } else {
+                              const preset = PREMADE_VOICES.find(
+                                (voicePreset) => voicePreset.id === id,
+                              );
+                              if (preset) handleSelectPreset(preset);
+                            }
+                          }}
+                          placeholder={t("characterview.selectAVoice")}
+                        />
+                        {activeVoicePreset &&
+                          (voiceTesting ? (
                             <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 shrink-0 text-muted hover:bg-danger/10 hover:text-danger"
-                              onClick={() => handleRemoveStyleEntry(key, index)}
-                              title={t("characterview.remove")}
+                              variant="destructive"
+                              size="sm"
+                              className="h-9 px-4 font-bold rounded-xl shadow-sm"
+                              onClick={handleStopTest}
                             >
-                              ×
+                              {t("characterview.stop")}
                             </Button>
-                          </div>
-                        ))
-                      ) : (
-                        <div
-                          className={`${hintCls} rounded-lg border border-dashed border-border/40 bg-bg/30 px-3 py-2`}
-                        >
-                          {STYLE_SECTION_EMPTY_STATES[key]}
-                        </div>
-                      )}
+                          ) : (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className="h-9 px-4 font-bold border border-white/5 shadow-sm hover:shadow-[0_0_10px_rgba(255,255,255,0.1)] transition-all rounded-xl"
+                              onClick={() =>
+                                handleTestVoice(activeVoicePreset.previewUrl)
+                              }
+                            >
+                              {t("characterview.preview")}
+                            </Button>
+                          ))}
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="text"
-                        value={pendingStyleEntries[key]}
-                        placeholder={STYLE_SECTION_PLACEHOLDERS[key]}
-                        onChange={(e) =>
-                          handlePendingStyleEntryChange(key, e.target.value)
-                        }
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleAddStyleEntry(key);
+                    {selectedVoicePresetId === "custom" && (
+                      <div className="flex flex-col gap-2">
+                        <span className={labelCls}>{t("characterview.voiceID")}</span>
+                        <Input
+                          type="text"
+                          value={voiceConfig.elevenlabs?.voiceId ?? ""}
+                          placeholder={t("characterview.pasteElevenLabsVoi")}
+                          onChange={(e) =>
+                            handleVoiceFieldChange("voiceId", e.target.value)
                           }
-                        }}
-                        className="h-9 min-w-0 flex-1 rounded-xl border-border/50 bg-bg/50 shadow-inner backdrop-blur-md transition-all focus-visible:border-accent focus-visible:ring-accent/50"
-                        data-testid={`style-entry-input-${key}`}
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-9 shrink-0 border-border/50 bg-bg/50 px-3 text-[11px] font-bold text-txt shadow-inner transition-all hover:border-accent/40 hover:text-txt"
-                        onClick={() => handleAddStyleEntry(key)}
-                        disabled={!pendingStyleEntries[key].trim()}
-                      >
-                        + add
-                      </Button>
+                          className="w-full font-mono text-[13px] bg-bg/50 backdrop-blur-md border-border/50 shadow-inner focus-visible:ring-accent/50 focus-visible:border-accent h-9 rounded-xl transition-all"
+                        />
+                      </div>
+                    )}
+
+                    <details className="group">
+                      <summary className="flex items-center gap-2 cursor-pointer select-none text-xs font-bold list-none [&::-webkit-details-marker]:hidden bg-black/5 p-3 rounded-xl border border-white/5 hover:bg-black/10 transition-colors">
+                        <span className="inline-block transition-transform group-open:rotate-90 text-accent">
+                          &#9654;
+                        </span>
+
+                        {t("characterview.advancedVoiceSetti")}
+                      </summary>
+                      <div className="mt-4 p-4 border border-border/20 rounded-xl bg-black/10 shadow-inner">
+                        <ConfigRenderer
+                          schema={
+                            {
+                              type: "object",
+                              properties: {
+                                modelId: {
+                                  type: "string",
+                                  enum: [
+                                    "",
+                                    "eleven_flash_v2_5",
+                                    "eleven_turbo_v2_5",
+                                    "eleven_multilingual_v2",
+                                    "eleven_turbo_v2",
+                                    "eleven_monolingual_v1",
+                                  ],
+                                },
+                                stability: {
+                                  type: "number",
+                                  minimum: 0,
+                                  maximum: 1,
+                                },
+                                similarityBoost: {
+                                  type: "number",
+                                  minimum: 0,
+                                  maximum: 1,
+                                },
+                                speed: {
+                                  type: "number",
+                                  minimum: 0.5,
+                                  maximum: 2,
+                                },
+                              },
+                            } satisfies JsonSchemaObject
+                          }
+                          hints={{
+                            modelId: {
+                              label: "Model",
+                              type: "select",
+                              width: "full",
+                              options: [
+                                { value: "", label: "Default (Flash v2.5)" },
+                                {
+                                  value: "eleven_flash_v2_5",
+                                  label: "Flash v2.5 (Fastest)",
+                                },
+                                { value: "eleven_turbo_v2_5", label: "Turbo v2.5" },
+                                {
+                                  value: "eleven_multilingual_v2",
+                                  label: "Multilingual v2",
+                                },
+                                { value: "eleven_turbo_v2", label: "Turbo v2" },
+                                {
+                                  value: "eleven_monolingual_v1",
+                                  label: "Monolingual v1",
+                                },
+                              ],
+                            } satisfies ConfigUiHint,
+                            stability: {
+                              label: "Stability",
+                              type: "number",
+                              width: "third",
+                              placeholder: "0.5",
+                              step: 0.05,
+                            } satisfies ConfigUiHint,
+                            similarityBoost: {
+                              label: "Similarity",
+                              type: "number",
+                              width: "third",
+                              placeholder: "0.75",
+                              step: 0.05,
+                            } satisfies ConfigUiHint,
+                            speed: {
+                              label: "Speed",
+                              type: "number",
+                              width: "third",
+                              placeholder: "1.0",
+                              step: 0.1,
+                            } satisfies ConfigUiHint,
+                          }}
+                          values={{
+                            modelId: voiceConfig.elevenlabs?.modelId ?? "",
+                            stability: voiceConfig.elevenlabs?.stability ?? "",
+                            similarityBoost:
+                              voiceConfig.elevenlabs?.similarityBoost ?? "",
+                            speed: voiceConfig.elevenlabs?.speed ?? "",
+                          }}
+                          registry={defaultRegistry}
+                          onChange={(key, value) => {
+                            handleVoiceFieldChange(
+                              key,
+                              key === "modelId"
+                                ? String(value)
+                                : typeof value === "number"
+                                  ? value
+                                  : parseFloat(String(value)) || 0,
+                            );
+                          }}
+                        />
+                      </div>
+                    </details>
+
+                    <div className="border-t border-border/40 pt-4 text-xs text-muted">
+                      Voice settings save with the character.
                     </div>
                   </div>
-                );
-              })}
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-6">
+              <div className={cardCls}>
+                <TagEditor
+                  label={t("characterview.adjectives")}
+                  items={d.adjectives ?? []}
+                  onChange={(items) =>
+                    handleCharacterArrayInput("adjectives", items.join("\n"))
+                  }
+                  placeholder={t("characterview.addAdjective")}
+                />
+              </div>
+              <div className={cardCls}>
+                <TagEditor
+                  label={t("characterview.topics")}
+                  items={d.topics ?? []}
+                  onChange={(items) =>
+                    handleCharacterArrayInput("topics", items.join("\n"))
+                  }
+                  placeholder={t("characterview.addTopic")}
+                />
+              </div>
             </div>
           </div>
-        </div>
 
-        <div
-          className={`${sectionCls} !mt-0 flex min-h-0 max-h-none flex-col overflow-hidden lg:max-h-[560px]`}
-        >
-          <div className="mb-4 border-b border-border/40 pb-3 text-sm font-bold tracking-wide text-txt">
-            {t("characterview.Examples")}
-          </div>
+          <div
+            className="mt-4 grid grid-cols-1 items-start gap-6 lg:grid-cols-2"
+            data-testid="character-style-examples-grid"
+          >
+            <div
+              className={`${cardCls} flex min-h-0 max-h-none flex-col overflow-hidden lg:max-h-[560px]`}
+              data-testid="character-style-editor"
+            >
+              <div className="mb-4 flex items-center justify-between gap-3 border-b border-border/40 pb-3">
+                <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+                  <div className="font-bold text-sm tracking-wide text-txt">
+                    {t("characterview.StyleRules")}
+                  </div>
+                  <span className="rounded-full border border-white/5 bg-black/10 px-2 py-0.5 text-[11px] font-medium tracking-wide text-muted">
+                    {t("characterview.CommunicationGuid")}
+                  </span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 shrink-0 border-border/50 bg-bg/50 text-[11px] font-bold text-accent shadow-inner transition-all hover:border-accent/40 hover:text-accent"
+                  onClick={() => void handleGenerate("style", "replace")}
+                  disabled={generating === "style"}
+                >
+                  {generating === "style" ? "generating..." : "regenerate"}
+                </Button>
+              </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto pr-1 custom-scrollbar">
-            <div className="flex flex-col gap-5">
+              <div
+                className="min-h-0 flex-1 overflow-y-auto pr-1 custom-scrollbar"
+                data-testid="character-style-editor-scroll"
+              >
+                <div className="flex flex-col gap-4">
+                  {STYLE_SECTION_KEYS.map((key) => {
+                    const items = d.style?.[key] ?? [];
+                    return (
+                      <div
+                        key={key}
+                        className="flex flex-col gap-3 rounded-xl border border-border/40 bg-black/10 p-4 shadow-inner"
+                        data-testid={`style-section-${key}`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="pl-1 text-[11px] font-bold uppercase tracking-widest text-muted">
+                              {key}
+                            </span>
+                            <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted/70">
+                              {items.length} rule{items.length === 1 ? "" : "s"}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                          {items.length > 0 ? (
+                            items.map((item, index) => (
+                              <div
+                                key={getStyleEntryRenderKey(
+                                  key,
+                                  items,
+                                  item,
+                                  index,
+                                )}
+                                className="flex items-start gap-3 rounded-lg border border-border/30 bg-bg/40 p-3"
+                                data-testid={`style-entry-${key}-${index}`}
+                              >
+                                <span className="mt-0.5 shrink-0 text-[10px] font-bold text-muted/70">
+                                  {index + 1}
+                                </span>
+                                <Textarea
+                                  value={styleEntryDrafts[key]?.[index] ?? item}
+                                  rows={2}
+                                  onChange={(e) =>
+                                    handleStyleEntryDraftChange(
+                                      key,
+                                      index,
+                                      e.target.value,
+                                    )
+                                  }
+                                  onBlur={() => handleCommitStyleEntry(key, index)}
+                                  className="min-h-[72px] min-w-0 flex-1 resize-none rounded-lg border-border/50 bg-bg/50 p-2 text-xs leading-relaxed text-txt shadow-inner backdrop-blur-md transition-all focus-visible:border-accent/50 focus-visible:ring-accent/50"
+                                  data-testid={`style-entry-editor-${key}-${index}`}
+                                />
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 shrink-0 text-muted hover:bg-danger/10 hover:text-danger"
+                                  onClick={() => handleRemoveStyleEntry(key, index)}
+                                  title={t("characterview.remove")}
+                                >
+                                  ×
+                                </Button>
+                              </div>
+                            ))
+                          ) : (
+                            <div
+                              className={`${hintCls} rounded-lg border border-dashed border-border/40 bg-bg/30 px-3 py-2`}
+                            >
+                              {STYLE_SECTION_EMPTY_STATES[key]}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="text"
+                            value={pendingStyleEntries[key]}
+                            placeholder={STYLE_SECTION_PLACEHOLDERS[key]}
+                            onChange={(e) =>
+                              handlePendingStyleEntryChange(key, e.target.value)
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleAddStyleEntry(key);
+                              }
+                            }}
+                            className="h-9 min-w-0 flex-1 rounded-xl border-border/50 bg-bg/50 shadow-inner backdrop-blur-md transition-all focus-visible:border-accent focus-visible:ring-accent/50"
+                            data-testid={`style-entry-input-${key}`}
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-9 shrink-0 border-border/50 bg-bg/50 px-3 text-[11px] font-bold text-txt shadow-inner transition-all hover:border-accent/40 hover:text-txt"
+                            onClick={() => handleAddStyleEntry(key)}
+                            disabled={!pendingStyleEntries[key].trim()}
+                          >
+                            + add
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className={`${cardCls} flex min-h-0 max-h-none flex-col overflow-hidden lg:max-h-[560px]`}>
+              <div className="mb-4 border-b border-border/40 pb-3 text-sm font-bold tracking-wide text-txt">
+                {t("characterview.Examples")}
+              </div>
+
+              <div className="min-h-0 flex-1 overflow-y-auto pr-1 custom-scrollbar">
+                <div className="flex flex-col gap-5">
               {/* Chat Examples */}
               <details className="group">
                 <summary className="flex cursor-pointer list-none select-none items-center gap-2 text-xs font-bold [&::-webkit-details-marker]:hidden">
@@ -1372,249 +1784,11 @@ export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
               </details>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* ═══ SECTION 4: VOICE ═══ — relative z-20 so dropdown stacks above save bar */}
-      <div className={`${sectionCls} relative z-20`}>
-        <div className="font-bold text-sm mb-4 border-b border-border/40 pb-3 text-txt tracking-wide">
-          {t("characterview.Voice")}
-        </div>
-
-        {voiceLoading ? (
-          <div className="text-center py-8 text-muted text-[13px] bg-black/5 rounded-xl border border-white/5 animate-pulse">
-            {t("characterview.LoadingVoiceConfig")}
-          </div>
-        ) : (
-          <div className="flex flex-col gap-5">
-            <div className="text-xs text-muted/80 leading-relaxed max-w-lg">
-              {t("characterview.ChooseTheSpeaking")}
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <span className={labelCls}>{t("characterview.voice")}</span>
-              <div className="flex items-center gap-3">
-                <ThemedSelect
-                  value={
-                    selectedPresetId === "custom"
-                      ? "__custom__"
-                      : (selectedPresetId ?? null)
-                  }
-                  groups={[
-                    {
-                      label: "Female",
-                      items: PREMADE_VOICES.filter(
-                        (p) => p.gender === "female",
-                      ).map((p) => ({
-                        id: p.id,
-                        text: p.name,
-                        hint: p.hint,
-                      })),
-                    },
-                    {
-                      label: "Male",
-                      items: PREMADE_VOICES.filter(
-                        (p) => p.gender === "male",
-                      ).map((p) => ({
-                        id: p.id,
-                        text: p.name,
-                        hint: p.hint,
-                      })),
-                    },
-                    {
-                      label: "Character",
-                      items: PREMADE_VOICES.filter(
-                        (p) => p.gender === "character",
-                      ).map((p) => ({
-                        id: p.id,
-                        text: p.name,
-                        hint: p.hint,
-                      })),
-                    },
-                    {
-                      label: "Other",
-                      items: [{ id: "__custom__", text: "Custom voice ID..." }],
-                    },
-                  ]}
-                  onChange={(id) => {
-                    if (id === "__custom__") {
-                      setSelectedPresetId("custom");
-                    } else {
-                      const preset = PREMADE_VOICES.find((p) => p.id === id);
-                      if (preset) handleSelectPreset(preset);
-                    }
-                  }}
-                  placeholder={t("characterview.selectAVoice")}
-                />
-                {(() => {
-                  const activePreset = PREMADE_VOICES.find(
-                    (p) => p.id === selectedPresetId,
-                  );
-                  if (!activePreset) return null;
-                  return voiceTesting ? (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      className="h-9 px-4 font-bold rounded-xl shadow-sm"
-                      onClick={handleStopTest}
-                    >
-                      {t("characterview.stop")}
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="h-9 px-4 font-bold border border-white/5 shadow-sm hover:shadow-[0_0_10px_rgba(255,255,255,0.1)] transition-all rounded-xl"
-                      onClick={() => handleTestVoice(activePreset.previewUrl)}
-                    >
-                      {t("characterview.preview")}
-                    </Button>
-                  );
-                })()}
-              </div>
-            </div>
-
-            {selectedPresetId === "custom" && (
-              <div className="flex flex-col gap-2">
-                <span className={labelCls}>{t("characterview.voiceID")}</span>
-                <Input
-                  type="text"
-                  value={voiceConfig.elevenlabs?.voiceId ?? ""}
-                  placeholder={t("characterview.pasteElevenLabsVoi")}
-                  onChange={(e) =>
-                    handleVoiceFieldChange("voiceId", e.target.value)
-                  }
-                  className="w-full font-mono text-[13px] bg-bg/50 backdrop-blur-md border-border/50 shadow-inner focus-visible:ring-accent/50 focus-visible:border-accent h-9 rounded-xl transition-all"
-                />
-              </div>
-            )}
-
-            <details className="group">
-              <summary className="flex items-center gap-2 cursor-pointer select-none text-xs font-bold list-none [&::-webkit-details-marker]:hidden bg-black/5 p-3 rounded-xl border border-white/5 hover:bg-black/10 transition-colors">
-                <span className="inline-block transition-transform group-open:rotate-90 text-accent">
-                  &#9654;
-                </span>
-
-                {t("characterview.advancedVoiceSetti")}
-              </summary>
-              <div className="mt-4 p-4 border border-border/20 rounded-xl bg-black/10 shadow-inner">
-                <ConfigRenderer
-                  schema={
-                    {
-                      type: "object",
-                      properties: {
-                        modelId: {
-                          type: "string",
-                          enum: [
-                            "",
-                            "eleven_flash_v2_5",
-                            "eleven_turbo_v2_5",
-                            "eleven_multilingual_v2",
-                            "eleven_turbo_v2",
-                            "eleven_monolingual_v1",
-                          ],
-                        },
-                        stability: { type: "number", minimum: 0, maximum: 1 },
-                        similarityBoost: {
-                          type: "number",
-                          minimum: 0,
-                          maximum: 1,
-                        },
-                        speed: { type: "number", minimum: 0.5, maximum: 2 },
-                      },
-                    } satisfies JsonSchemaObject
-                  }
-                  hints={{
-                    modelId: {
-                      label: "Model",
-                      type: "select",
-                      width: "full",
-                      options: [
-                        { value: "", label: "Default (Flash v2.5)" },
-                        {
-                          value: "eleven_flash_v2_5",
-                          label: "Flash v2.5 (Fastest)",
-                        },
-                        { value: "eleven_turbo_v2_5", label: "Turbo v2.5" },
-                        {
-                          value: "eleven_multilingual_v2",
-                          label: "Multilingual v2",
-                        },
-                        { value: "eleven_turbo_v2", label: "Turbo v2" },
-                        {
-                          value: "eleven_monolingual_v1",
-                          label: "Monolingual v1",
-                        },
-                      ],
-                    } satisfies ConfigUiHint,
-                    stability: {
-                      label: "Stability",
-                      type: "number",
-                      width: "third",
-                      placeholder: "0.5",
-                      step: 0.05,
-                    } satisfies ConfigUiHint,
-                    similarityBoost: {
-                      label: "Similarity",
-                      type: "number",
-                      width: "third",
-                      placeholder: "0.75",
-                      step: 0.05,
-                    } satisfies ConfigUiHint,
-                    speed: {
-                      label: "Speed",
-                      type: "number",
-                      width: "third",
-                      placeholder: "1.0",
-                      step: 0.1,
-                    } satisfies ConfigUiHint,
-                  }}
-                  values={{
-                    modelId: voiceConfig.elevenlabs?.modelId ?? "",
-                    stability: voiceConfig.elevenlabs?.stability ?? "",
-                    similarityBoost:
-                      voiceConfig.elevenlabs?.similarityBoost ?? "",
-                    speed: voiceConfig.elevenlabs?.speed ?? "",
-                  }}
-                  registry={defaultRegistry}
-                  onChange={(key, value) => {
-                    handleVoiceFieldChange(
-                      key,
-                      key === "modelId"
-                        ? String(value)
-                        : typeof value === "number"
-                          ? value
-                          : parseFloat(String(value)) || 0,
-                    );
-                  }}
-                />
-              </div>
-            </details>
-
-            <div className="flex items-center gap-3 mt-4 pt-4 border-t border-border/40">
-              <Button
-                size="sm"
-                className={`font-bold tracking-wide rounded-xl shadow-sm hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-all ${voiceSaveSuccess ? "bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30" : ""}`}
-                onClick={() => void handleVoiceSave()}
-                disabled={voiceSaving}
-              >
-                {voiceSaving
-                  ? "saving..."
-                  : voiceSaveSuccess
-                    ? "saved"
-                    : "save voice"}
-              </Button>
-              {voiceSaveError && (
-                <span className="text-xs text-danger font-medium">
-                  {voiceSaveError}
-                </span>
-              )}
             </div>
           </div>
-        )}
-      </div>
+        </>
+      )}
 
-      {/* ═══ SAVE BAR ═══ — z-10 so voice dropdown can draw above */}
       <div className={`${sectionCls} relative z-10`}>
         <div className="flex items-center justify-end gap-4">
           {characterSaveSuccess && (
@@ -1622,18 +1796,18 @@ export function CharacterView({ inModal }: { inModal?: boolean } = {}) {
               {characterSaveSuccess}
             </span>
           )}
-          {characterSaveError && (
+          {combinedSaveError && (
             <span className="text-xs text-danger bg-danger/10 px-3 py-1.5 rounded-lg border border-danger/20 font-medium">
-              {characterSaveError}
+              {combinedSaveError}
             </span>
           )}
           <Button
             size="lg"
             className="font-bold tracking-wider px-8 shadow-[0_0_15px_rgba(var(--accent),0.2)] hover:shadow-[0_0_20px_rgba(var(--accent),0.4)] transition-all text-[13px] rounded-xl"
-            disabled={characterSaving}
-            onClick={() => void handleSaveCharacter()}
+            disabled={characterSaving || voiceSaving}
+            onClick={() => void handleSaveAll()}
           >
-            {characterSaving ? "saving..." : "SAVE CHARACTER"}
+            {characterSaving || voiceSaving ? "saving..." : "SAVE CHARACTER"}
           </Button>
         </div>
       </div>

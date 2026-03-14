@@ -818,18 +818,48 @@ export async function fetchEvmBalances(
   knownTokenAddresses?: string[],
 ): Promise<EvmChainBalance[]> {
   const keys = resolveEvmProviderKeys(alchemyOrKeys, maybeAnkrKey);
-  const bscRpcUrls = resolveBscRpcUrls({
-    cloudManagedAccess: keys.cloudManagedAccess,
-  });
-  const ethRpcUrls = resolveEthereumRpcUrls({
-    cloudManagedAccess: keys.cloudManagedAccess,
-  });
-  const baseRpcUrls = resolveBaseRpcUrls({
-    cloudManagedAccess: keys.cloudManagedAccess,
-  });
-  const avaxRpcUrls = resolveAvalancheRpcUrls({
-    cloudManagedAccess: keys.cloudManagedAccess,
-  });
+  const bscRpcUrls = [
+    ...new Set(
+      [
+        keys.nodeRealBscRpcUrl,
+        keys.quickNodeBscRpcUrl,
+        keys.bscRpcUrl,
+        ...resolveBscRpcUrls({
+          cloudManagedAccess: keys.cloudManagedAccess,
+        }),
+      ].filter((url): url is string => Boolean(url)),
+    ),
+  ];
+  const ethRpcUrls = [
+    ...new Set(
+      [
+        keys.ethereumRpcUrl,
+        ...resolveEthereumRpcUrls({
+          cloudManagedAccess: keys.cloudManagedAccess,
+        }),
+      ].filter((url): url is string => Boolean(url)),
+    ),
+  ];
+  const baseRpcUrls = [
+    ...new Set(
+      [
+        keys.baseRpcUrl,
+        ...resolveBaseRpcUrls({
+          cloudManagedAccess: keys.cloudManagedAccess,
+        }),
+      ].filter((url): url is string => Boolean(url)),
+    ),
+  ];
+  const avaxRpcUrls = [
+    ...new Set(
+      [
+        keys.avaxRpcUrl,
+        ...resolveAvalancheRpcUrls({
+          cloudManagedAccess: keys.cloudManagedAccess,
+        }),
+      ].filter((url): url is string => Boolean(url)),
+    ),
+  ];
 
   const hasManagedBscRpc = bscRpcUrls.length > 0;
   const activeChains = DEFAULT_EVM_CHAINS.filter((chain) => {
@@ -916,9 +946,14 @@ export async function fetchEvmNfts(
 ): Promise<Array<{ chain: string; nfts: EvmNft[] }>> {
   const keys = resolveEvmProviderKeys(alchemyOrKeys, maybeAnkrKey);
   const hasManagedBscRpc =
-    resolveBscRpcUrls({
-      cloudManagedAccess: keys.cloudManagedAccess,
-    }).length > 0;
+    [
+      keys.nodeRealBscRpcUrl,
+      keys.quickNodeBscRpcUrl,
+      keys.bscRpcUrl,
+      ...resolveBscRpcUrls({
+        cloudManagedAccess: keys.cloudManagedAccess,
+      }),
+    ].filter((url): url is string => Boolean(url)).length > 0;
   const activeChains = DEFAULT_EVM_CHAINS.filter((chain) => {
     if (chain.provider === "ankr") {
       return (isBscChain(chain) && hasManagedBscRpc) || Boolean(keys.ankrKey);
