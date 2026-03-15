@@ -696,28 +696,7 @@ export function SettingsView({
           description={t("settings.aiModelDescription")}
           className="p-4 sm:p-5 lg:p-6"
         >
-          <ProviderSwitcher
-            elizaCloudEnabled={elizaCloudEnabled}
-            elizaCloudConnected={elizaCloudConnected}
-            elizaCloudCredits={elizaCloudCredits}
-            elizaCloudCreditsLow={elizaCloudCreditsLow}
-            elizaCloudCreditsCritical={elizaCloudCreditsCritical}
-            elizaCloudTopUpUrl={elizaCloudTopUpUrl}
-            elizaCloudUserId={elizaCloudUserId}
-            elizaCloudLoginBusy={elizaCloudLoginBusy}
-            elizaCloudLoginError={elizaCloudLoginError}
-            elizaCloudDisconnecting={elizaCloudDisconnecting}
-            plugins={plugins}
-            pluginSaving={pluginSaving}
-            pluginSaveSuccess={pluginSaveSuccess}
-            loadPlugins={loadPlugins}
-            handlePluginToggle={handlePluginToggle}
-            handlePluginConfigSave={handlePluginConfigSave}
-            handleCloudLogin={handleCloudLogin}
-            handleCloudDisconnect={handleCloudDisconnect}
-            setState={setState}
-            setTab={setTab}
-          />
+          <ProviderSwitcher />
         </SectionCard>
       )}
 

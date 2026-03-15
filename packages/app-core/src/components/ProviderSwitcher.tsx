@@ -29,62 +29,32 @@ interface PluginInfo {
   configUiHints?: Record<string, ConfigUiHint>;
 }
 
-export interface ProviderSwitcherProps {
-  // Eliza Cloud state
-  elizaCloudEnabled: boolean;
-  elizaCloudConnected: boolean;
-  elizaCloudCredits: number | null;
-  elizaCloudCreditsLow: boolean;
-  elizaCloudCreditsCritical: boolean;
-  elizaCloudTopUpUrl: string;
-  elizaCloudUserId: string | null;
-  elizaCloudLoginBusy: boolean;
-  elizaCloudLoginError: string | null;
-  elizaCloudDisconnecting: boolean;
-  // Plugins
-  plugins: PluginInfo[];
-  pluginSaving: Set<string>;
-  pluginSaveSuccess: Set<string>;
-  // Actions
-  loadPlugins: () => Promise<void>;
-  handlePluginToggle: (id: string, enabled: boolean) => Promise<void>;
-  handlePluginConfigSave: (
-    pluginId: string,
-    values: Record<string, string>,
-  ) => void;
-  handleCloudLogin: () => Promise<void>;
-  handleCloudDisconnect: () => Promise<void>;
-  setState: (
-    key: "elizaCloudEnabled" | "cloudDashboardView",
-    value: boolean | "billing" | "agents",
-  ) => void;
-  setTab: (tab: "plugins" | "settings") => void;
-}
-
-export function ProviderSwitcher({
-  elizaCloudEnabled,
-  elizaCloudConnected,
-  elizaCloudCredits,
-  elizaCloudCreditsLow,
-  elizaCloudCreditsCritical,
-  elizaCloudUserId,
-  elizaCloudLoginBusy,
-  elizaCloudLoginError,
-  elizaCloudDisconnecting: cloudDisconnecting,
-  plugins,
-  pluginSaving,
-  pluginSaveSuccess,
-  loadPlugins,
-  handlePluginToggle,
-  handlePluginConfigSave,
-  handleCloudLogin,
-  handleCloudDisconnect,
-  setState,
-  setTab,
-}: ProviderSwitcherProps) {
+export function ProviderSwitcher() {
   const { setTimeout } = useTimeout();
 
-  const { t } = useApp();
+  const {
+    t,
+    elizaCloudEnabled,
+    elizaCloudConnected,
+    elizaCloudCredits,
+    elizaCloudCreditsLow,
+    elizaCloudCreditsCritical,
+    elizaCloudTopUpUrl,
+    elizaCloudUserId,
+    elizaCloudLoginBusy,
+    elizaCloudLoginError,
+    elizaCloudDisconnecting: cloudDisconnecting,
+    plugins,
+    pluginSaving,
+    pluginSaveSuccess,
+    loadPlugins,
+    handlePluginToggle,
+    handlePluginConfigSave,
+    handleCloudLogin,
+    handleCloudDisconnect,
+    setState,
+    setTab,
+  } = useApp();
   /* ── Model selection state ─────────────────────────────────────── */
   const [modelOptions, setModelOptions] = useState<
     OnboardingOptions["models"] | null
