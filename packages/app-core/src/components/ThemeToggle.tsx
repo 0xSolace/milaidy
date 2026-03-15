@@ -75,7 +75,7 @@ export function ThemeToggle({
   setUiTheme,
   t,
   className,
-  variant = "native",
+  variant: _variant = "native",
 }: ThemeToggleProps) {
   const isDark = uiTheme === "dark";
   const label = isDark
@@ -85,21 +85,6 @@ export function ThemeToggle({
   const handleToggle = useCallback(() => {
     setUiTheme(isDark ? "light" : "dark");
   }, [isDark, setUiTheme]);
-
-  if (variant === "companion") {
-    return (
-      <button
-        type="button"
-        onClick={handleToggle}
-        className={`flex items-center justify-center w-8 h-8 rounded-full bg-white/5 text-white/80 hover:text-white hover:bg-white/20 border border-transparent hover:border-white/30 transition-all cursor-pointer ${isDark ? "bg-white/14 text-white border-white/20 shadow-sm" : ""} ${className ?? ""}`}
-        title={label}
-        aria-label={label}
-        data-testid="theme-toggle"
-      >
-        {isDark ? <SunIcon /> : <MoonIcon />}
-      </button>
-    );
-  }
 
   return (
     <button

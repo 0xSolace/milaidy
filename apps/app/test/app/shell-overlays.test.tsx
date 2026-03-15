@@ -10,7 +10,6 @@ vi.mock("@milady/app-core/components", async () => {
     ...actual,
     BugReportModal: () => React.createElement("div", null, "BugReportModal"),
     CommandPalette: () => React.createElement("div", null, "CommandPalette"),
-    EmotePicker: () => React.createElement("div", null, "EmotePicker"),
     RestartBanner: () => React.createElement("div", null, "RestartBanner"),
     ShortcutsOverlay: () =>
       React.createElement("div", null, "ShortcutsOverlay"),
@@ -30,7 +29,6 @@ describe("ShellOverlays", () => {
     );
 
     expect(markup).toContain("CommandPalette");
-    expect(markup).toContain("EmotePicker");
     expect(markup).toContain("RestartBanner");
 
     expect(markup).toContain("BugReportModal");

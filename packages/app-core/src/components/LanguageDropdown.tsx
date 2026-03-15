@@ -64,7 +64,7 @@ export function LanguageDropdown({
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
         // Also check if clicked inside the portaled menu
         const portalMenu = document.getElementById("lang-dropdown-portal");
-        if (portalMenu && portalMenu.contains(e.target as Node)) return;
+        if (portalMenu?.contains(e.target as Node)) return;
         setOpen(false);
       }
     };
@@ -88,25 +88,20 @@ export function LanguageDropdown({
   }, [open, updateMenuPos]);
 
   const current = LANGUAGES.find((l) => l.id === uiLanguage) ?? LANGUAGES[0];
-
-  const triggerClass =
-    variant === "companion"
-      ? `flex items-center gap-1.5 h-8 px-2.5 rounded-full bg-white/5 text-white/80 hover:text-white hover:bg-white/20 border border-transparent hover:border-white/30 transition-all text-xs font-medium cursor-pointer ${open ? "bg-white/20 text-white border-white/30 shadow-sm" : ""}`
-      : `inline-flex items-center gap-1.5 h-9 px-2 sm:px-3 border border-border bg-bg text-[11px] sm:text-xs font-medium cursor-pointer transition-colors duration-200 hover:border-accent hover:text-txt rounded-md ${open ? "border-accent text-txt bg-accent/5 backdrop-blur-sm" : ""}`;
+  const triggerClass = `inline-flex items-center gap-1.5 h-9 px-2 sm:px-3 border border-border/50 bg-bg/50 backdrop-blur-md text-[11px] sm:text-xs font-medium cursor-pointer transition-all duration-300 text-txt hover:border-accent hover:text-txt rounded-md shadow-sm ${open ? "border-accent text-txt bg-accent/5" : ""}`;
+  const optionClass = (selected: boolean) =>
+    `w-full flex items-center justify-between px-3 py-2 text-sm transition-colors hover:bg-bg-hover cursor-pointer ${selected ? "text-txt bg-accent/5 font-medium" : "text-txt"}`;
 
   const menuContent = open && (
     <ul
       id="lang-dropdown-portal"
-      className={`w-36 rounded-lg shadow-xl overflow-hidden py-1 ${variant === "companion" ? "fixed" : "absolute top-full right-0 mt-1 bg-bg-elevated border border-border z-50"}`}
+      className={`w-36 rounded-lg bg-bg-elevated border border-border shadow-xl overflow-hidden py-1 ${variant === "companion" ? "fixed" : "absolute top-full right-0 mt-1 z-50"}`}
       style={
         variant === "companion" && menuPos
           ? {
               top: menuPos.top,
               right: menuPos.right,
               zIndex: 10001,
-              background: "color-mix(in srgb, var(--bg) 96%, transparent)",
-              border:
-                "1px solid color-mix(in srgb, var(--accent) 18%, transparent)",
               backdropFilter: "blur(24px)",
               boxShadow: "var(--shadow-lg)",
             }
@@ -120,23 +115,7 @@ export function LanguageDropdown({
             type="button"
             role="option"
             aria-selected={lang.id === uiLanguage}
-            className={
-              variant === "companion"
-                ? "w-full flex items-center justify-between px-3 py-2 text-sm transition-colors border-0 cursor-pointer"
-                : `w-full flex items-center justify-between px-3 py-2 text-sm transition-colors hover:bg-bg-hover ${lang.id === uiLanguage ? "text-txt bg-accent/5 font-medium" : "text-txt"}`
-            }
-            style={
-              variant === "companion"
-                ? {
-                    background:
-                      lang.id === uiLanguage
-                        ? "var(--accent-subtle)"
-                        : "transparent",
-                    color: lang.id === uiLanguage ? "#f0b232" : "var(--text)",
-                    fontWeight: lang.id === uiLanguage ? 500 : 400,
-                  }
-                : undefined
-            }
+            className={optionClass(lang.id === uiLanguage)}
             onClick={() => {
               setUiLanguage(lang.id);
               setOpen(false);

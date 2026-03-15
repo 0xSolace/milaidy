@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ThemeToggle } from "../../../../packages/app-core/src/components/ThemeToggle";
 
 describe("ThemeToggle", () => {
-  it("keeps the companion toggle readable in light mode", async () => {
+  it("renders the shared toggle style and flips to dark mode", async () => {
     const setUiTheme = vi.fn();
 
     let tree: TestRenderer.ReactTestRenderer | undefined;
@@ -20,8 +20,8 @@ describe("ThemeToggle", () => {
     });
 
     const button = tree?.root.findByProps({ "data-testid": "theme-toggle" });
-    expect(button?.props.className).toContain("text-white/80");
-    expect(button?.props.className).not.toContain("var(--text)");
+    expect(button?.props.className).toContain("text-txt");
+    expect(button?.props.className).toContain("bg-bg/50");
     expect(button?.props.style).toBeUndefined();
 
     await act(async () => {

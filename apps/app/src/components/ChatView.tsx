@@ -7,6 +7,7 @@
  */
 
 import {
+  type ConversationMessage,
   client,
   type ImageAttachment,
   type VoiceConfig,
@@ -45,6 +46,8 @@ function nowMs(): number {
 const CHAT_INPUT_MIN_HEIGHT_PX = 38;
 const CHAT_INPUT_MAX_HEIGHT_PX = 200;
 const COMPANION_VISIBLE_MESSAGE_LIMIT = 2;
+const COMPANION_HISTORY_HOLD_MS = 30_000;
+const COMPANION_HISTORY_FADE_MS = 5_000;
 const COMPANION_MESSAGE_LAYER_TOP = "calc(-100% + 1.5rem)";
 const COMPANION_MESSAGE_LAYER_BOTTOM = "6.5rem";
 const COMPANION_MESSAGE_LAYER_MASK =
@@ -103,7 +106,15 @@ export function ChatView({ variant = "default" }: ChatViewProps) {
   const messagesRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const previousCompanionCutoffTsRef = useRef(companionMessageCutoffTs);
+  const previousGameModalVisibleMsgsRef = useRef<ConversationMessage[]>([]);
   const [imageDragOver, setImageDragOver] = useState(false);
+  const [companionNowMs, setCompanionNowMs] = useState(() => Date.now());
+  const [companionCarryover, setCompanionCarryover] = useState<{
+    messages: ConversationMessage[];
+    fadeStartsAtMs: number;
+    expiresAtMs: number;
+  } | null>(null);
 
   // ── Voice config (ElevenLabs / browser TTS) ────────────────────────
   const [voiceConfig, setVoiceConfig] = useState<VoiceConfig | null>(null);
@@ -243,8 +254,62 @@ export function ChatView({ variant = "default" }: ChatViewProps) {
     () => gameModalRecentMsgs.slice(-COMPANION_VISIBLE_MESSAGE_LIMIT),
     [gameModalRecentMsgs],
   );
+  const gameModalCarryoverOpacity = useMemo(() => {
+    if (!companionCarryover) return 0;
+    if (companionNowMs < companionCarryover.fadeStartsAtMs) return 1;
+    const remainingMs = companionCarryover.expiresAtMs - companionNowMs;
+    if (remainingMs <= 0) return 0;
+    return Math.max(0, remainingMs / COMPANION_HISTORY_FADE_MS);
+  }, [companionCarryover, companionNowMs]);
   const agentAvatarSrc =
     selectedVrmIndex > 0 ? getVrmPreviewUrl(selectedVrmIndex) : null;
+
+  useEffect(() => {
+    if (!isGameModal) {
+      previousCompanionCutoffTsRef.current = companionMessageCutoffTs;
+      return;
+    }
+
+    const previousCutoffTs = previousCompanionCutoffTsRef.current;
+    if (companionMessageCutoffTs > previousCutoffTs) {
+      const carryoverMessages = previousGameModalVisibleMsgsRef.current.filter(
+        (message) => message.timestamp < companionMessageCutoffTs,
+      );
+      if (carryoverMessages.length > 0) {
+        const startedAtMs = Date.now();
+        setCompanionCarryover({
+          messages: carryoverMessages,
+          fadeStartsAtMs: startedAtMs + COMPANION_HISTORY_HOLD_MS,
+          expiresAtMs:
+            startedAtMs + COMPANION_HISTORY_HOLD_MS + COMPANION_HISTORY_FADE_MS,
+        });
+      } else {
+        setCompanionCarryover(null);
+      }
+    }
+    previousCompanionCutoffTsRef.current = companionMessageCutoffTs;
+  }, [companionMessageCutoffTs, isGameModal]);
+
+  useEffect(() => {
+    previousGameModalVisibleMsgsRef.current = gameModalVisibleMsgs;
+  }, [gameModalVisibleMsgs]);
+
+  useEffect(() => {
+    if (!companionCarryover) return;
+
+    const tick = () => setCompanionNowMs(Date.now());
+    tick();
+
+    const intervalId = window.setInterval(tick, 250);
+    return () => window.clearInterval(intervalId);
+  }, [companionCarryover]);
+
+  useEffect(() => {
+    if (!companionCarryover) return;
+    if (companionNowMs >= companionCarryover.expiresAtMs) {
+      setCompanionCarryover(null);
+    }
+  }, [companionCarryover, companionNowMs]);
 
   useEffect(() => {
     if (agentVoiceMuted) return;
@@ -477,6 +542,33 @@ export function ChatView({ variant = "default" }: ChatViewProps) {
           )
         ) : isGameModal ? (
           <div className="flex h-full w-full flex-col justify-end gap-4 px-1 py-4">
+            {companionCarryover?.messages.map((msg) => {
+              const isUser = msg.role === "user";
+              return (
+                <div
+                  key={`carryover-${msg.id}`}
+                  data-testid="companion-message-row"
+                  data-companion-carryover="true"
+                  className={`flex w-full ${isUser ? "justify-end" : "justify-start"}`}
+                  style={{ opacity: gameModalCarryoverOpacity }}
+                >
+                  <div
+                    className={`max-w-[85%] rounded-2xl px-4 py-3 text-[15px] leading-relaxed shadow-[0_12px_36px_rgba(0,0,0,0.22)] ${
+                      isUser
+                        ? "bg-accent/85 text-white rounded-br-sm"
+                        : "border border-white/10 bg-black/45 text-white/95 rounded-bl-sm backdrop-blur-md"
+                    }`}
+                  >
+                    <div
+                      className="break-words"
+                      style={{ fontFamily: "var(--font-chat)" }}
+                    >
+                      <MessageContent message={msg} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
             {gameModalVisibleMsgs.map((msg) => {
               const isUser = msg.role === "user";
               return (

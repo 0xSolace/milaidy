@@ -12,6 +12,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { prepareDraftForSave } from "../actions/character";
 import {
   type AgentStartupDiagnostics,
   type AgentStatus,
@@ -101,7 +102,6 @@ import {
   openExternalUrl,
   resolveApiUrl,
 } from "../utils";
-import { prepareDraftForSave } from "../actions/character";
 import {
   type ActionNotice,
   AGENT_READY_TIMEOUT_MS,
@@ -2179,6 +2179,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const userMsgId = `temp-${now}`;
         const assistantMsgId = `temp-resp-${now}`;
 
+        setCompanionMessageCutoffTs(now);
         setConversationMessages((prev: ConversationMessage[]) => [
           ...prev,
           { id: userMsgId, role: "user", text, timestamp: now },
@@ -2370,6 +2371,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const userMsgId = `temp-action-${now}`;
         const assistantMsgId = `temp-action-resp-${now}`;
 
+        setCompanionMessageCutoffTs(now);
         setConversationMessages((prev: ConversationMessage[]) => [
           ...prev,
           { id: userMsgId, role: "user", text: trimmed, timestamp: now },

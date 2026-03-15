@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
 import TestRenderer, { act } from "react-test-renderer";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type ChatMessage = {
   id: string;
@@ -125,6 +125,10 @@ describe("ChatView game-modal variant", () => {
       stopSpeaking: vi.fn(),
     });
     mockClient.getConfig.mockResolvedValue({});
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("hides source tags in game-modal bubbles", async () => {
@@ -388,6 +392,71 @@ describe("ChatView game-modal variant", () => {
     expect(secondRow).toBeDefined();
     expect(textOf(firstRow).toLowerCase()).toContain("four");
     expect(textOf(secondRow).toLowerCase()).toContain("five");
+  });
+
+  it("keeps the previous exchange for 30 seconds after a new send, then fades it out", async () => {
+    vi.useFakeTimers();
+
+    let currentContext = createContext({
+      companionMessageCutoffTs: 10,
+      conversationMessages: [
+        { id: "user-1", role: "user", text: "hello", timestamp: 10 },
+        { id: "assistant-1", role: "assistant", text: "hi", timestamp: 11 },
+      ],
+    });
+    mockUseApp.mockImplementation(() => currentContext);
+
+    let tree: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      tree = TestRenderer.create(
+        React.createElement(ChatView, { variant: "game-modal" }),
+      );
+    });
+
+    currentContext = createContext({
+      companionMessageCutoffTs: 20,
+      conversationMessages: [
+        { id: "user-1", role: "user", text: "hello", timestamp: 10 },
+        { id: "assistant-1", role: "assistant", text: "hi", timestamp: 11 },
+        { id: "user-2", role: "user", text: "new question", timestamp: 20 },
+      ],
+    });
+
+    await act(async () => {
+      tree.update(React.createElement(ChatView, { variant: "game-modal" }));
+    });
+
+    let rows = tree.root.findAllByProps({
+      "data-testid": "companion-message-row",
+    });
+    expect(rows).toHaveLength(3);
+    expect(textOf(rows[0]).toLowerCase()).toContain("hello");
+    expect(textOf(rows[1]).toLowerCase()).toContain("hi");
+    expect(textOf(rows[2]).toLowerCase()).toContain("new question");
+
+    await act(async () => {
+      vi.advanceTimersByTime(30_250);
+    });
+
+    rows = tree.root.findAllByProps({
+      "data-testid": "companion-message-row",
+    });
+    const carryoverRows = tree.root.findAllByProps({
+      "data-companion-carryover": "true",
+    });
+    expect(rows).toHaveLength(3);
+    expect(carryoverRows).toHaveLength(2);
+    expect(carryoverRows[0]?.props.style.opacity).toBeLessThan(1);
+
+    await act(async () => {
+      vi.advanceTimersByTime(5_100);
+    });
+
+    rows = tree.root.findAllByProps({
+      "data-testid": "companion-message-row",
+    });
+    expect(rows).toHaveLength(1);
+    expect(textOf(rows[0]).toLowerCase()).toContain("new question");
   });
 
   it("routes transcript drags to companion camera while keeping the composer interactive", async () => {
