@@ -466,6 +466,7 @@ export class VrmEngine {
   private vrm: VRM | null = null;
   private mixer: THREE.AnimationMixer | null = null;
   private idleAction: THREE.AnimationAction | null = null;
+  private idleLoadPromise: Promise<THREE.AnimationAction | null> | null = null;
   private animationFrameId: number | null = null;
   private onUpdate: UpdateCallback | null = null;
   private initialized = false;
@@ -539,6 +540,56 @@ export class VrmEngine {
       return;
     }
     action.fadeIn(fadeDuration);
+  }
+
+  private async ensureIdleAction(
+    vrm: VRM,
+    mixer: THREE.AnimationMixer,
+  ): Promise<THREE.AnimationAction | null> {
+    if (this.idleAction) return this.idleAction;
+    if (this.idleLoadPromise) return this.idleLoadPromise;
+
+    this.idleLoadPromise = (async () => {
+      const clip = await loadIdleClip(vrm, this.idleGlbUrl, this.animationLoaderContext);
+      if (!clip || this.loadingAborted || this.vrm !== vrm) {
+        return null;
+      }
+      const activeMixer = this.mixer ?? mixer;
+      if (!activeMixer || this.vrm !== vrm) {
+        return null;
+      }
+      const action = activeMixer.clipAction(clip);
+      action.reset();
+      action.setLoop(THREE.LoopRepeat, Infinity);
+      action.timeScale = 1.0;
+      this.idleAction = action;
+      activeMixer.update(1 / 60);
+      return action;
+    })().finally(() => {
+      this.idleLoadPromise = null;
+    });
+
+    return this.idleLoadPromise;
+  }
+
+  private restoreIdleAfterEmote(
+    activeEmote: THREE.AnimationAction | null,
+    fadeDuration: number,
+    vrm: VRM,
+    mixer: THREE.AnimationMixer,
+  ): void {
+    void this.ensureIdleAction(vrm, mixer).then((idleAction) => {
+      if (!idleAction || this.loadingAborted || this.vrm !== vrm) {
+        activeEmote?.fadeOut(fadeDuration);
+        return;
+      }
+      idleAction.play();
+      if (activeEmote && activeEmote !== idleAction) {
+        idleAction.crossFadeFrom(activeEmote, fadeDuration, false);
+      } else {
+        idleAction.fadeIn(fadeDuration);
+      }
+    });
   }
   private avatarLookRig: {
     headBone: THREE.Object3D | null;
@@ -1445,6 +1496,7 @@ export class VrmEngine {
     this.lastLoadError = null;
     this.mixer = null;
     this.idleAction = null;
+    this.idleLoadPromise = null;
     this.clearEmoteTimeout();
     this.emoteAction = null;
     this.emoteClipCache.clear();
@@ -1769,6 +1821,10 @@ export class VrmEngine {
       }
       return;
     }
+    if (this.vrm && this.mixer) {
+      this.restoreIdleAfterEmote(activeEmote, fadeDuration, this.vrm, this.mixer);
+      return;
+    }
     activeEmote?.fadeOut(fadeDuration);
   }
   async loadVrmFromUrl(url: string, name?: string): Promise<void> {
@@ -1785,6 +1841,7 @@ export class VrmEngine {
       this.vrmName = null;
       this.mixer = null;
       this.idleAction = null;
+      this.idleLoadPromise = null;
       this.revealStarted = false;
       this.stopEmote();
       this.emoteClipCache.clear();
@@ -2265,21 +2322,12 @@ if (teleportNoise < teleportRatio) discard;
   }
   private async loadAndPlayIdle(vrm: VRM): Promise<void> {
     if (this.loadingAborted) return;
-    const clip = await loadIdleClip(
-      vrm,
-      this.idleGlbUrl,
-      this.animationLoaderContext,
-    );
-    if (!clip) return;
-    const mixer = new THREE.AnimationMixer(vrm.scene);
+    const mixer = this.mixer ?? new THREE.AnimationMixer(vrm.scene);
     this.mixer = mixer;
-    const action = mixer.clipAction(clip);
-    action.reset();
-    action.setLoop(THREE.LoopRepeat, Infinity);
+    const action = await this.ensureIdleAction(vrm, mixer);
+    if (!action) return;
     action.fadeIn(0.25);
     action.play();
-    action.timeScale = 1.0;
-    this.idleAction = action;
     mixer.update(1 / 60);
   }
   private async loadEmoteClipCached(

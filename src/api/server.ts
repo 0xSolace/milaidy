@@ -12559,6 +12559,69 @@ async function handleRequest(
     }
   };
 
+  const deleteConversationMemories = async (
+    runtime: AgentRuntime,
+    memoryIds: UUID[],
+  ): Promise<number> => {
+    if (memoryIds.length === 0) return 0;
+
+    const runtimeWithDelete = runtime as AgentRuntime & {
+      deleteManyMemories?: (memoryIds: UUID[]) => Promise<unknown>;
+      deleteMemory?: (memoryId: UUID) => Promise<unknown>;
+      removeMemory?: (memoryId: UUID) => Promise<unknown>;
+      adapter?: {
+        db?: {
+          deleteManyMemories?: (memoryIds: UUID[]) => Promise<unknown>;
+          deleteMemory?: (memoryId: UUID) => Promise<unknown>;
+          removeMemory?: (memoryId: UUID) => Promise<unknown>;
+        };
+      };
+    };
+
+    if (typeof runtimeWithDelete.deleteManyMemories === "function") {
+      await runtimeWithDelete.deleteManyMemories(memoryIds);
+      return memoryIds.length;
+    }
+
+    const dbDeleteMany = runtimeWithDelete.adapter?.db?.deleteManyMemories;
+    if (typeof dbDeleteMany === "function") {
+      await dbDeleteMany.call(runtimeWithDelete.adapter?.db, memoryIds);
+      return memoryIds.length;
+    }
+
+    let deletedCount = 0;
+    for (const memoryId of memoryIds) {
+      if (typeof runtimeWithDelete.deleteMemory === "function") {
+        await runtimeWithDelete.deleteMemory(memoryId);
+      } else if (typeof runtimeWithDelete.removeMemory === "function") {
+        await runtimeWithDelete.removeMemory(memoryId);
+      } else if (
+        typeof runtimeWithDelete.adapter?.db?.deleteMemory === "function"
+      ) {
+        await runtimeWithDelete.adapter.db.deleteMemory.call(
+          runtimeWithDelete.adapter.db,
+          memoryId,
+        );
+      } else if (
+        typeof runtimeWithDelete.adapter?.db?.removeMemory === "function"
+      ) {
+        await runtimeWithDelete.adapter.db.removeMemory.call(
+          runtimeWithDelete.adapter.db,
+          memoryId,
+        );
+      } else {
+        const unsupportedError = new Error(
+          "Conversation message deletion is not supported by this runtime",
+        ) as Error & { status?: number };
+        unsupportedError.status = 501;
+        throw unsupportedError;
+      }
+      deletedCount += 1;
+    }
+
+    return deletedCount;
+  };
+
   // Helper: ensure the room for a conversation is set up.
   // Also ensures the world has ownership metadata so the settings provider
   // can find it via findWorldsForOwner during onboarding.
@@ -12773,6 +12836,44 @@ async function handleRequest(
 
       await state.chatConnectionPromise;
     }
+  };
+
+  const truncateConversationMessages = async (
+    runtime: AgentRuntime,
+    conv: ConversationMeta,
+    messageId: string,
+    options?: { inclusive?: boolean },
+  ): Promise<{ deletedCount: number }> => {
+    const memories = await runtime.getMemories({
+      roomId: conv.roomId,
+      tableName: "messages",
+      count: 1000,
+    });
+
+    memories.sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
+    const targetIndex = memories.findIndex((memory) => memory.id === messageId);
+    if (targetIndex < 0) {
+      const notFoundError = new Error("Conversation message not found") as Error &
+        {
+          status?: number;
+        };
+      notFoundError.status = 404;
+      throw notFoundError;
+    }
+
+    const deleteStartIndex = options?.inclusive === true
+      ? targetIndex
+      : targetIndex + 1;
+    const memoryIds = memories
+      .slice(deleteStartIndex)
+      .map((memory) => memory.id)
+      .filter(
+        (memoryId): memoryId is UUID =>
+          typeof memoryId === "string" && memoryId.trim().length > 0,
+      );
+
+    const deletedCount = await deleteConversationMemories(runtime, memoryIds);
+    return { deletedCount };
   };
 
   const ensureCompatChatConnection = async (
@@ -13480,6 +13581,57 @@ async function handleRequest(
         `[conversations] Failed to fetch messages: ${err instanceof Error ? err.message : String(err)}`,
       );
       json(res, { messages: [], error: "Failed to fetch messages" }, 500);
+    }
+    return;
+  }
+
+  // ── POST /api/conversations/:id/messages/truncate ──────────────────
+  if (
+    method === "POST" &&
+    /^\/api\/conversations\/[^/]+\/messages\/truncate$/.test(pathname)
+  ) {
+    const convId = decodeURIComponent(pathname.split("/")[3]);
+    const conv = await getConversationWithRestore(convId);
+    if (!conv) {
+      error(res, "Conversation not found", 404);
+      return;
+    }
+
+    const body = await readJsonBody<{
+      messageId?: string;
+      inclusive?: boolean;
+    }>(req, res);
+    if (!body) return;
+
+    const messageId =
+      typeof body.messageId === "string" ? body.messageId.trim() : "";
+    if (!messageId) {
+      error(res, "messageId is required", 400);
+      return;
+    }
+
+    const runtime = state.runtime;
+    if (!runtime) {
+      error(res, "Agent is not running", 503);
+      return;
+    }
+
+    try {
+      const result = await truncateConversationMessages(runtime, conv, messageId, {
+        inclusive: body.inclusive === true,
+      });
+      conv.updatedAt = new Date().toISOString();
+      state.broadcastWs?.({
+        type: "conversation-updated",
+        conversation: conv,
+      });
+      json(res, { ok: true, deletedCount: result.deletedCount });
+    } catch (err) {
+      const status =
+        typeof (err as { status?: number }).status === "number"
+          ? (err as { status: number }).status
+          : 500;
+      error(res, getErrorMessage(err), status);
     }
     return;
   }

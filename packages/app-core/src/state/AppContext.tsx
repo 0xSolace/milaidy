@@ -2251,22 +2251,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [appendLocalCommandTurn],
   );
 
-  const handleChatSend = useCallback(
-    async (channelType: ConversationChannelType = "DM") => {
-      const rawText = chatInput.trim();
+  const sendChatText = useCallback(
+    async (
+      rawInput: string,
+      options?: {
+        channelType?: ConversationChannelType;
+        conversationId?: string | null;
+        images?: ImageAttachment[];
+        clearChatInput?: boolean;
+      },
+    ) => {
+      const rawText = rawInput.trim();
       if (!rawText) return;
-      if (chatSendBusyRef.current || chatSending) return;
+      if (chatSendBusyRef.current) return;
       chatSendBusyRef.current = true;
+      const sendNonce = ++chatSendNonceRef.current;
+      const channelType = options?.channelType ?? "DM";
       const conversationMode: ConversationMode =
         channelType === "VOICE_DM" || channelType === "VOICE_GROUP"
           ? "simple"
           : chatMode;
-
-      // Capture and clear pending images before async work
-      const imagesToSend = chatPendingImages.length
-        ? chatPendingImages
-        : undefined;
-      setChatPendingImages([]);
+      const imagesToSend = options?.images;
+      let controller: AbortController | null = null;
 
       try {
         let text = rawText;
@@ -2278,11 +2284,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
             rawText,
             `Command failed: ${err instanceof Error ? err.message : "unknown error"}`,
           );
-          setChatInput("");
+          if (options?.clearChatInput) {
+            setChatInput("");
+          }
           return;
         }
         if (commandResult.handled) {
-          setChatInput("");
+          if (options?.clearChatInput) {
+            setChatInput("");
+          }
           return;
         }
         if (
@@ -2292,7 +2302,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           text = commandResult.rewrittenText.trim();
         }
 
-        let convId: string = activeConversationId ?? "";
+        let convId: string = options?.conversationId ?? activeConversationId ?? "";
         if (!convId) {
           try {
             const { conversation } = await client.createConversation();
@@ -2307,7 +2317,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        // Keep server-side active conversation in sync for proactive routing.
         client.sendWsMessage({
           type: "active-conversation",
           conversationId: convId,
@@ -2323,11 +2332,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
           { id: userMsgId, role: "user", text, timestamp: now },
           { id: assistantMsgId, role: "assistant", text: "", timestamp: now },
         ]);
-        setChatInput("");
+        if (options?.clearChatInput) {
+          setChatInput("");
+        }
         setChatSending(true);
         setChatFirstTokenReceived(false);
 
-        const controller = new AbortController();
+        controller = new AbortController();
         chatAbortRef.current = controller;
         let streamedAssistantText = "";
 
@@ -2368,7 +2379,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
               return changed ? next : prev;
             });
           }
-          // Capture token usage from the stream response
           if (data.usage) {
             setChatLastUsage({
               promptTokens: data.usage.promptTokens,
@@ -2379,7 +2389,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
             });
           }
 
-          // Mark interrupted if stream ended without a "done" event
           if (!data.completed && streamedAssistantText.trim()) {
             setConversationMessages((prev) =>
               prev.map((message) =>
@@ -2402,7 +2411,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
             return;
           }
 
-          // If the conversation was lost (server restart), create a fresh one and retry once.
           const status = (err as { status?: number }).status;
           if (status === 404) {
             try {
@@ -2453,24 +2461,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (chatAbortRef.current === controller) {
             chatAbortRef.current = null;
           }
-          setChatSending(false);
-          setChatFirstTokenReceived(false);
+          if (chatSendNonceRef.current === sendNonce) {
+            chatSendBusyRef.current = false;
+            setChatSending(false);
+            setChatFirstTokenReceived(false);
+          }
         }
       } finally {
-        chatSendBusyRef.current = false;
+        if (controller == null && chatSendNonceRef.current === sendNonce) {
+          chatSendBusyRef.current = false;
+        }
       }
     },
     [
-      chatInput,
-      chatSending,
-      chatMode,
-      chatPendingImages,
       activeConversationId,
+      appendLocalCommandTurn,
+      chatMode,
       loadConversationMessages,
       loadConversations,
-      appendLocalCommandTurn,
       tryHandlePrefixedChatCommand,
     ],
+  );
+
+  const handleChatSend = useCallback(
+    async (channelType: ConversationChannelType = "DM") => {
+      const imagesToSend = chatPendingImages.length
+        ? chatPendingImages
+        : undefined;
+      setChatPendingImages([]);
+      await sendChatText(chatInput, {
+        channelType,
+        images: imagesToSend,
+        clearChatInput: true,
+      });
+    },
+    [chatInput, chatPendingImages, sendChatText, setChatPendingImages],
   );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: t is stable but defined later
@@ -2478,9 +2503,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     async (text: string) => {
       const trimmed = text.trim();
       if (!trimmed) return;
-      if (chatSendBusyRef.current || chatSending) return;
+      if (chatSendBusyRef.current) return;
       chatSendBusyRef.current = true;
+      const sendNonce = ++chatSendNonceRef.current;
       const conversationMode: ConversationMode = chatMode;
+      let controller: AbortController | null = null;
 
       try {
         let convId: string = activeConversationId ?? "";
@@ -2518,7 +2545,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setChatSending(true);
         setChatFirstTokenReceived(false);
 
-        const controller = new AbortController();
+        controller = new AbortController();
         chatAbortRef.current = controller;
         let streamedAssistantText = "";
 
@@ -2576,15 +2603,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (chatAbortRef.current === controller) {
             chatAbortRef.current = null;
           }
-          setChatSending(false);
-          setChatFirstTokenReceived(false);
+          if (chatSendNonceRef.current === sendNonce) {
+            chatSendBusyRef.current = false;
+            setChatSending(false);
+            setChatFirstTokenReceived(false);
+          }
         }
       } finally {
-        chatSendBusyRef.current = false;
+        if (controller == null && chatSendNonceRef.current === sendNonce) {
+          chatSendBusyRef.current = false;
+        }
       }
     },
     [
-      chatSending,
       chatMode,
       activeConversationId,
       loadConversationMessages,
@@ -2607,6 +2638,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const handleChatRetry = useCallback(
     (assistantMsgId: string) => {
+      let retryText: string | null = null;
       setConversationMessages((prev) => {
         // Find the interrupted assistant message
         const assistantIdx = prev.findIndex(
@@ -2627,19 +2659,66 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // Remove the interrupted assistant message
         const next = prev.filter((m) => m.id !== assistantMsgId);
 
-        // Re-send the user's text by setting the input and triggering send
-        // (done outside setConversationMessages via queueMicrotask to avoid nested updates)
-        const retryText = userMsg.text;
-        queueMicrotask(() => {
-          setChatInput(retryText);
-          // Small delay to let state settle before triggering send
-          setTimeout(() => handleChatSend(), 50);
-        });
+        retryText = userMsg.text;
 
         return next;
       });
+      if (retryText) {
+        void sendChatText(retryText);
+      }
     },
-    [handleChatSend],
+    [sendChatText],
+  );
+
+  const handleChatEdit = useCallback(
+    async (messageId: string, text: string): Promise<boolean> => {
+      const convId = activeConversationIdRef.current;
+      const nextText = text.trim();
+      if (!convId || !nextText) {
+        return false;
+      }
+
+      const messageIndex = conversationMessages.findIndex(
+        (message) => message.id === messageId && message.role === "user",
+      );
+      if (messageIndex < 0) {
+        return false;
+      }
+
+      const targetMessage = conversationMessages[messageIndex];
+      if (
+        targetMessage.source === "local_command" ||
+        targetMessage.id.startsWith("temp-")
+      ) {
+        return false;
+      }
+
+      chatSendBusyRef.current = false;
+      chatAbortRef.current?.abort();
+      chatAbortRef.current = null;
+      setChatSending(false);
+      setChatFirstTokenReceived(false);
+      setChatInput("");
+
+      setConversationMessages(conversationMessages.slice(0, messageIndex));
+
+      try {
+        await client.truncateConversationMessages(convId, messageId, {
+          inclusive: true,
+        });
+        await sendChatText(nextText, { conversationId: convId });
+        return true;
+      } catch (err) {
+        await loadConversationMessages(convId);
+        setActionNotice(
+          `Failed to edit message: ${err instanceof Error ? err.message : "network error"}`,
+          "error",
+          4200,
+        );
+        return false;
+      }
+    },
+    [conversationMessages, loadConversationMessages, sendChatText, setActionNotice],
   );
 
   const handleChatClear = useCallback(async () => {
@@ -5261,6 +5340,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     handleChatSend,
     handleChatStop,
     handleChatRetry,
+    handleChatEdit,
     handleChatClear,
     handleNewConversation,
     setChatPendingImages,
