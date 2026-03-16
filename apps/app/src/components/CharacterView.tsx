@@ -963,11 +963,11 @@ export function CharacterView({
   );
   const styleEditorPanel = (
     <div
-      className={`${editorCardCls} min-h-[24rem]`}
+      className={`${editorCardCls} min-h-[24rem] min-w-0`}
       data-testid="character-customize-sidebar"
     >
       <div
-        className="flex min-h-0 flex-col gap-3"
+        className="flex min-h-0 min-w-0 flex-col gap-3"
         data-testid="character-style-editor"
       >
         <div className="flex items-center justify-between gap-3">
@@ -988,7 +988,7 @@ export function CharacterView({
         </div>
 
         <div
-          className="grid min-h-0 flex-1 gap-3 xl:grid-cols-1 2xl:grid-cols-3"
+          className="grid min-h-0 flex-1 gap-3 md:grid-cols-1 lg:grid-cols-2 2xl:grid-cols-2"
           data-testid="character-style-editor-scroll"
         >
           {STYLE_SECTION_KEYS.map((key) => {
@@ -1016,10 +1016,10 @@ export function CharacterView({
                       items.map((item, index) => (
                         <div
                           key={getStyleEntryRenderKey(key, items, item, index)}
-                          className="flex items-start gap-2 rounded-md border border-border/20 bg-bg/50 p-2"
+                          className="flex items-start gap-2 rounded-md border border-border/20 bg-bg/50 p-2 md:min-w-[16rem] md:p-3"
                           data-testid={`style-entry-${key}-${index}`}
                         >
-                          <span className="mt-0.5 shrink-0 text-[10px] font-bold text-muted/70">
+                          <span className="mt-0.5 shrink-0 text-[10px] font-bold text-muted/70 md:text-xs">
                             {index + 1}
                           </span>
                           <Textarea
@@ -1033,7 +1033,7 @@ export function CharacterView({
                               )
                             }
                             onBlur={() => handleCommitStyleEntry(key, index)}
-                            className="min-h-[72px] min-w-0 flex-1 resize-none rounded-md border-border/40 bg-bg p-2 text-xs leading-relaxed text-txt focus-visible:border-accent/50 focus-visible:ring-accent/50"
+                            className="min-h-[72px] min-w-0 flex-1 resize-none rounded-md border-border/40 bg-bg p-2 text-xs leading-relaxed text-txt focus-visible:border-accent/50 focus-visible:ring-accent/50 md:min-w-[12rem] md:text-sm md:min-h-[5rem]"
                             data-testid={`style-entry-editor-${key}-${index}`}
                           />
                           <Button
@@ -1059,7 +1059,7 @@ export function CharacterView({
                   </div>
                 </div>
 
-                <div className="border-t border-border/20 p-3">
+                <div className="border-t border-border/20 p-3 md:min-w-0">
                   <div className="flex items-center gap-2">
                     <Input
                       type="text"
@@ -1074,7 +1074,7 @@ export function CharacterView({
                           handleAddStyleEntry(key);
                         }
                       }}
-                      className="h-8 min-w-0 flex-1 rounded-md border-border/40 bg-bg focus-visible:border-accent focus-visible:ring-accent/50"
+                      className="h-8 min-w-0 flex-1 rounded-md border-border/40 bg-bg focus-visible:border-accent focus-visible:ring-accent/50 md:min-w-[12rem] md:h-9 md:text-sm"
                       data-testid={`style-entry-input-${key}`}
                     />
                     <Button
@@ -1520,7 +1520,7 @@ export function CharacterView({
             </div>
           ) : (
             <div
-              className="grid min-h-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,23rem)_minmax(0,1fr)_minmax(0,32rem)] xl:items-start xl:gap-6"
+              className="grid min-h-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,23rem)_minmax(0,1fr)_minmax(0,48rem)] xl:items-start xl:gap-6"
               data-testid="character-customize-grid"
             >
               <div
