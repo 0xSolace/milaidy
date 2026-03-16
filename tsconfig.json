@@ -19,6 +19,9 @@
     "useDefineForClassFields": false,
     "baseUrl": ".",
     "paths": {
+      "@elizaos/app-hyperscape/routes": [
+        "../plugins/app-hyperscape/src/routes.ts"
+      ],
       "@milady/plugin-streaming-base": [
         "./packages/plugin-streaming-base/src/index.ts"
       ]

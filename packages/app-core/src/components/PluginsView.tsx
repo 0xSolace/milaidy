@@ -1987,7 +1987,12 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                 </div>
               </div>
               <nav className="flex-1 space-y-2 overflow-y-auto px-4 py-4">
-                {visiblePlugins.map((plugin) => {
+                {(desktopConnectorLayout
+                  ? visiblePlugins.filter((plugin) => {
+                      return plugin.id === connectorSelectedId;
+                    })
+                  : visiblePlugins
+                ).map((plugin) => {
                   const isSelected = connectorSelectedId === plugin.id;
                   const isExpanded = connectorExpandedIds.has(plugin.id);
                   const isToggleBusy = togglingPlugins.has(plugin.id);
