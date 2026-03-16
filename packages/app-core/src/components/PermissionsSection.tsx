@@ -320,7 +320,7 @@ function usePermissionActions(
         setPermissions((prev) =>
           prev
             ? { ...prev, [id]: state }
-            : ({ [id]: state } as AllPermissionsState),
+            : ({ [id]: state } as unknown as AllPermissionsState),
         );
       } catch (err) {
         console.error("Failed to request permission:", err);

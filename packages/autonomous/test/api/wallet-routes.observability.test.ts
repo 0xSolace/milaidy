@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { MiladyConfig } from "../config/config";
+import type { MiladyConfig } from "../../src/config/config";
 import {
   handleWalletRoutes,
   type WalletRouteDependencies,
-} from "./wallet-routes";
+} from "../../src/api/wallet-routes";
 
 const { createSpanMock, spanSuccessMock, spanFailureMock } = vi.hoisted(() => ({
   createSpanMock: vi.fn(),
@@ -11,7 +11,7 @@ const { createSpanMock, spanSuccessMock, spanFailureMock } = vi.hoisted(() => ({
   spanFailureMock: vi.fn(),
 }));
 
-vi.mock("../diagnostics/integration-observability", () => ({
+vi.mock("../../src/diagnostics/integration-observability", () => ({
   createIntegrationTelemetrySpan: createSpanMock,
 }));
 

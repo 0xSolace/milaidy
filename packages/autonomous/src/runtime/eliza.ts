@@ -4811,8 +4811,7 @@ export async function startInCloudMode(
   agentId: string,
   opts?: StartElizaOptions,
 ): Promise<AgentRuntime | undefined> {
-  // Cross-package relative import — see cloud-onboarding.ts header comment.
-  const { CloudManager } = await import("../../../../src/cloud/cloud-manager");
+  const { CloudManager } = await import("../cloud/cloud-manager");
   const { normalizeCloudSiteUrl } = await import("../cloud/base-url");
 
   const cloudConfig = config.cloud!;

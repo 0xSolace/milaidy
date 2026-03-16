@@ -13,7 +13,7 @@
       ]
     },
     "resolveJsonModule": true,
-    "rootDir": "../..",
+    "rootDir": "./src",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
   "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"],

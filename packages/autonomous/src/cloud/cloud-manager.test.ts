@@ -99,7 +99,7 @@ describe("CloudManager", () => {
         cfg({ baseUrl: "https://test.elizacloud.ai/api/v1" }),
       );
       await mgr.init();
-      expect((mgr.getClient() as Record<string, string>)._baseUrl).toBe(
+      expect((mgr.getClient() as unknown as Record<string, string>)._baseUrl).toBe(
         "https://test.elizacloud.ai",
       );
     });
@@ -109,7 +109,7 @@ describe("CloudManager", () => {
         cfg({ baseUrl: "https://test.elizacloud.ai///" }),
       );
       await mgr.init();
-      expect((mgr.getClient() as Record<string, string>)._baseUrl).toBe(
+      expect((mgr.getClient() as unknown as Record<string, string>)._baseUrl).toBe(
         "https://test.elizacloud.ai",
       );
     });
@@ -117,7 +117,7 @@ describe("CloudManager", () => {
     it("defaults to elizacloud.ai when no baseUrl", async () => {
       const mgr = new CloudManager(cfg({ baseUrl: undefined }));
       await mgr.init();
-      expect((mgr.getClient() as Record<string, string>)._baseUrl).toBe(
+      expect((mgr.getClient() as unknown as Record<string, string>)._baseUrl).toBe(
         "https://www.elizacloud.ai",
       );
     });
@@ -154,7 +154,7 @@ describe("CloudManager", () => {
       const mgr = new CloudManager(cfg());
       await mgr.init();
 
-      const state = mgr as {
+      const state = mgr as unknown as {
         client: { provision: (...args: unknown[]) => Promise<unknown> };
       };
       state.client.provision = vi.fn(async () => {

@@ -1,7 +1,6 @@
 export * from "./api";
 export * from "./auth/index";
 export * from "./config";
-export * from "./contracts";
 export * from "./hooks/index";
 export * from "./onboarding-presets";
 export * from "./providers/workspace";

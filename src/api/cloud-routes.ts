@@ -4,7 +4,7 @@ import {
   type CloudRouteState as AutonomousCloudRouteState,
   handleCloudRoute as handleAutonomousCloudRoute,
 } from "@milady/autonomous/api/cloud-routes";
-import type { CloudManager } from "../cloud/cloud-manager";
+import type { CloudManager } from "@milady/autonomous/cloud/cloud-manager";
 import type { MiladyConfig } from "../config/config";
 import { saveMiladyConfig } from "../config/config";
 import { createIntegrationTelemetrySpan } from "../diagnostics/integration-observability";

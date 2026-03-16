@@ -88,9 +88,17 @@ export default defineConfig({
         find: /^@milady\/capacitor-(.*)/,
         replacement: path.resolve(here, "plugins/$1/src/index.ts"),
       },
+      {
+        find: /^@milady\/autonomous$/,
+        replacement: path.resolve(miladyRoot, "packages/autonomous/src/index.ts"),
+      },
+      {
+        find: /^@milady\/autonomous\/(.*)$/,
+        replacement: path.resolve(miladyRoot, "packages/autonomous/src/$1"),
+      },
       // Allow importing from the milady src (but NOT workspace packages)
       {
-        find: /^@milady(?!\/(capacitor-|app-core|ui))/,
+        find: /^@milady(?!\/(autonomous|capacitor-|app-core|ui))/,
         replacement: path.resolve(miladyRoot, "src"),
       },
     ],

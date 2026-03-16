@@ -22,14 +22,14 @@ import {
 
 // Mock the cloud auth module
 const mockCloudLogin = vi.fn();
-vi.mock("../../../../src/cloud/auth", () => ({
+vi.mock("../cloud/auth", () => ({
   cloudLogin: (...args: unknown[]) => mockCloudLogin(...args),
 }));
 
 // Mock the cloud bridge client
 const mockCreateAgent = vi.fn();
 const mockGetAgent = vi.fn();
-vi.mock("../../../../src/cloud/bridge-client", () => ({
+vi.mock("../cloud/bridge-client", () => ({
   ElizaCloudClient: class {
     createAgent = mockCreateAgent;
     getAgent = mockGetAgent;
@@ -159,7 +159,8 @@ describe("checkCloudAvailability", () => {
     await checkCloudAvailability("https://elizacloud.ai/api/v1/");
 
     // normalizeCloudSiteUrl should strip the /api/v1 and add www
-    const calledUrl = (mockFetch as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    const calledUrl = (mockFetch as unknown as ReturnType<typeof vi.fn>).mock
+      .calls[0][0];
     expect(calledUrl).toContain("www.elizacloud.ai");
     expect(calledUrl).toContain("/api/compat/availability");
     expect(calledUrl).not.toContain("/api/v1/api/compat");
