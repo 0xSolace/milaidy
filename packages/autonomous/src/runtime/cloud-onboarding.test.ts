@@ -5,7 +5,15 @@
  * the orchestration logic without requiring a live Eliza Cloud instance.
  */
 
-import { afterEach, assert, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  assert,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 // ---------------------------------------------------------------------------
 // Module-level mocks — must be declared before any imports that pull in
@@ -33,19 +41,18 @@ vi.mock("../../../../src/cloud/bridge-client", () => ({
 // ---------------------------------------------------------------------------
 
 import {
+  type CloudOnboardingResult,
   checkCloudAvailability,
   runCloudOnboarding,
-  type CloudOnboardingResult,
 } from "./cloud-onboarding";
 
 // ---------------------------------------------------------------------------
 // Helpers — fake @clack/prompts module
 // ---------------------------------------------------------------------------
 
-function makeClack(overrides: {
-  selectReturn?: string;
-  confirmReturns?: boolean[];
-} = {}) {
+function makeClack(
+  overrides: { selectReturn?: string; confirmReturns?: boolean[] } = {},
+) {
   const { selectReturn = "cloud", confirmReturns = [] } = overrides;
   let confirmIdx = 0;
 
@@ -259,13 +266,11 @@ describe("runCloudOnboarding", () => {
     const clack = makeClack({ confirmReturns: [true] }); // "try again"
 
     // First attempt fails, second succeeds
-    mockCloudLogin
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({
-        apiKey: "retry-key",
-        keyPrefix: "retry",
-        expiresAt: null,
-      });
+    mockCloudLogin.mockResolvedValueOnce(null).mockResolvedValueOnce({
+      apiKey: "retry-key",
+      keyPrefix: "retry",
+      expiresAt: null,
+    });
 
     mockCreateAgent.mockResolvedValue({
       id: "agent-retry",
@@ -309,9 +314,9 @@ describe("runCloudOnboarding", () => {
       "https://www.elizacloud.ai",
     );
 
-    expect(result).not.toBeNull();
-    expect(result!.apiKey).toBe("auth-only-key");
-    expect(result!.agentId).toBeUndefined();
+    assert(result != null, "expected a non-null auth-only result");
+    expect(result.apiKey).toBe("auth-only-key");
+    expect(result.agentId).toBeUndefined();
   });
 
   it("returns null when provisioning fails and user wants local", async () => {
@@ -392,9 +397,9 @@ describe("provisionCloudAgent (via runCloudOnboarding)", () => {
       "https://www.elizacloud.ai",
     );
 
-    expect(result).not.toBeNull();
-    expect(result!.agentId).toBe("agent-poll");
-    expect(result!.bridgeUrl).toBe("https://bridge.test");
+    assert(result != null, "expected a non-null result after polling");
+    expect(result.agentId).toBe("agent-poll");
+    expect(result.bridgeUrl).toBe("https://bridge.test");
     expect(mockGetAgent).toHaveBeenCalledTimes(2);
   });
 

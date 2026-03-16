@@ -8,6 +8,11 @@
  */
 
 import { logger } from "@elizaos/core";
+// NOTE: These cross-package relative imports are intentional. The cloud auth
+// and bridge-client modules live in the root `src/cloud/` directory and are not
+// yet exposed via a workspace package alias. Once `@milady/core` (or similar)
+// re-exports them, switch to the alias.
+// See: https://github.com/milady-ai/milady/pull/1004#issuecomment-4066484648
 import { cloudLogin, type CloudLoginResult } from "../../../../src/cloud/auth";
 import { normalizeCloudSiteUrl } from "../cloud/base-url";
 import {

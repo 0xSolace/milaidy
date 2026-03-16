@@ -3140,9 +3140,12 @@ async function runFirstTimeSetup(config: MiladyConfig): Promise<MiladyConfig> {
 
   if (clack.isCancel(runtimeChoice)) cancelOnboarding();
 
-  // "later" falls through here without setting isCloudMode, so the flow
-  // continues with local setup (steps 4–7) — same as choosing "local".
-  if (runtimeChoice === "cloud") {
+  if (runtimeChoice === "later") {
+    // User deferred the decision — continue with local setup (steps 4–7).
+    clack.log.info(
+      "No problem! Starting with local setup. You can switch to cloud anytime with `milady cloud connect`.",
+    );
+  } else if (runtimeChoice === "cloud") {
     const { runCloudOnboarding } = await import("./cloud-onboarding");
     cloudOnboardingResult = await runCloudOnboarding(
       clack,
@@ -4808,6 +4811,7 @@ export async function startInCloudMode(
   agentId: string,
   opts?: StartElizaOptions,
 ): Promise<AgentRuntime | undefined> {
+  // Cross-package relative import — see cloud-onboarding.ts header comment.
   const { CloudManager } = await import("../../../../src/cloud/cloud-manager");
   const { normalizeCloudSiteUrl } = await import("../cloud/base-url");
 
