@@ -1,6 +1,8 @@
+import type { IncomingMessage, ServerResponse } from "node:http";
 import {
   applySignalQrOverride as applyAutonomousSignalQrOverride,
   handleSignalRoute as handleAutonomousSignalRoute,
+  MAX_PAIRING_SESSIONS,
 } from "@milady/autonomous/api/signal-routes";
 import {
   SignalPairingSession,
@@ -8,11 +10,9 @@ import {
   signalAuthExists,
   signalLogout,
 } from "../services/signal-pairing";
-import type { IncomingMessage, ServerResponse } from "node:http";
 
-export type {
-  SignalRouteState,
-} from "@milady/autonomous/api/signal-routes";
+export type { SignalRouteState } from "@milady/autonomous/api/signal-routes";
+export { MAX_PAIRING_SESSIONS };
 
 export async function handleSignalRoute(
   req: IncomingMessage,

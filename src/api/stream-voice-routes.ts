@@ -1,3 +1,4 @@
+import type { IncomingMessage, ServerResponse } from "node:http";
 import {
   handleStreamVoiceRoute as handleAutonomousStreamVoiceRoute,
   onAgentMessage as onAutonomousAgentMessage,
@@ -8,12 +9,54 @@ import {
   ttsStreamBridge,
 } from "../services/tts-stream-bridge";
 import { sanitizeSpeechText } from "../utils/spoken-text";
-import {
-  readStreamSettings,
-  writeStreamSettings,
-} from "./stream-persistence";
+import { readStreamSettings, writeStreamSettings } from "./stream-persistence";
 import type { StreamRouteState } from "./stream-route-state";
-import type { IncomingMessage, ServerResponse } from "node:http";
+
+function getRouteTtsProviderStatus(config: unknown): {
+  resolvedProvider: string | null;
+  configuredProvider: string | null;
+  hasApiKey: boolean;
+} {
+  return getTtsProviderStatus(config as never);
+}
+
+function resolveRouteTtsConfig(
+  config: unknown,
+): Record<string, unknown> | null {
+  return resolveTtsConfig(config as never) as Record<string, unknown> | null;
+}
+
+const ttsBridgeAdapter = {
+  isSpeaking(): boolean {
+    return ttsStreamBridge.isSpeaking();
+  },
+  isAttached(): boolean {
+    return ttsStreamBridge.isAttached();
+  },
+  async speak(text: string, config: Record<string, unknown>): Promise<boolean> {
+    return ttsStreamBridge.speak(text, config as never);
+  },
+};
+
+function readRouteStreamSettings(): {
+  voice?: {
+    enabled?: boolean;
+    autoSpeak?: boolean;
+    provider?: string;
+  };
+} {
+  return readStreamSettings();
+}
+
+function writeRouteStreamSettings(settings: {
+  voice?: {
+    enabled?: boolean;
+    autoSpeak?: boolean;
+    provider?: string;
+  };
+}): void {
+  writeStreamSettings(settings as never);
+}
 
 export async function handleStreamVoiceRoute(
   req: IncomingMessage,
@@ -28,12 +71,12 @@ export async function handleStreamVoiceRoute(
     pathname,
     method,
     state,
-    getTtsProviderStatus,
-    resolveTtsConfig,
-    ttsStreamBridge,
+    getTtsProviderStatus: getRouteTtsProviderStatus,
+    resolveTtsConfig: resolveRouteTtsConfig,
+    ttsStreamBridge: ttsBridgeAdapter,
     sanitizeSpeechText,
-    readStreamSettings,
-    writeStreamSettings,
+    readStreamSettings: readRouteStreamSettings,
+    writeStreamSettings: writeRouteStreamSettings,
   });
 }
 
@@ -43,8 +86,8 @@ export async function onAgentMessage(
 ): Promise<void> {
   return onAutonomousAgentMessage(text, state, {
     sanitizeSpeechText,
-    readStreamSettings,
-    resolveTtsConfig,
-    ttsStreamBridge,
+    readStreamSettings: readRouteStreamSettings,
+    resolveTtsConfig: resolveRouteTtsConfig,
+    ttsStreamBridge: ttsBridgeAdapter,
   });
 }

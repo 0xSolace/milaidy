@@ -57,7 +57,7 @@ const defaultParallelRuns = runs.filter((entry) => !entry.forceSerial);
 const defaultSerialRuns = runs.filter((entry) => entry.forceSerial);
 const parallelRuns = isWindowsCi ? [] : defaultParallelRuns;
 const serialRuns = isWindowsCi ? runs : defaultSerialRuns;
-const localWorkers = Math.max(4, Math.min(16, os.cpus().length));
+const localWorkers = 2;
 const parallelCount = Math.max(1, parallelRuns.length);
 const perRunWorkers = Math.max(1, Math.floor(localWorkers / parallelCount));
 const macCiWorkers = isCI && isMacOS ? 1 : perRunWorkers;

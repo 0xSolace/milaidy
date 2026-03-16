@@ -9,7 +9,7 @@ const [packageDirArg, ...restArgs] = process.argv.slice(2);
 
 if (!packageDirArg) {
   console.error(
-    "usage: node scripts/prepare-package-dist.mjs <package-dir> [--compiled-prefix=path] [--asset-prefix=path]"
+    "usage: node scripts/prepare-package-dist.mjs <package-dir> [--compiled-prefix=path] [--asset-prefix=path]",
   );
   process.exit(1);
 }
@@ -22,7 +22,7 @@ const options = Object.fromEntries(
       process.exit(1);
     }
     return [match[1], match[2]];
-  })
+  }),
 );
 
 const compiledPrefix = normalizePrefix(options["compiled-prefix"] ?? "");
@@ -43,14 +43,17 @@ const publishManifest = {
   types: transformTypesPath(getRootEntry(packageJson), compiledPrefix),
   bin: transformBin(packageJson.bin, compiledPrefix),
   exports: transformExports(packageJson.exports, compiledPrefix, assetPrefix),
-  dependencies: rewriteWorkspaceDeps(packageJson.dependencies, workspaceVersions),
+  dependencies: rewriteWorkspaceDeps(
+    packageJson.dependencies,
+    workspaceVersions,
+  ),
   peerDependencies: rewriteWorkspaceDeps(
     packageJson.peerDependencies,
-    workspaceVersions
+    workspaceVersions,
   ),
   optionalDependencies: rewriteWorkspaceDeps(
     packageJson.optionalDependencies,
-    workspaceVersions
+    workspaceVersions,
   ),
   publishConfig: {
     ...(packageJson.publishConfig ?? {}),
@@ -80,7 +83,7 @@ const distDir = path.join(packageDir, "dist");
 mkdirSync(distDir, { recursive: true });
 writeFileSync(
   path.join(distDir, "package.json"),
-  `${JSON.stringify(cleanUndefined(publishManifest), null, 2)}\n`
+  `${JSON.stringify(cleanUndefined(publishManifest), null, 2)}\n`,
 );
 
 function collectWorkspaceVersions(rootDir) {
@@ -116,7 +119,9 @@ function walk(dirPath, visit) {
   for (const entry of entries) {
     const entryPath = path.join(dirPath, entry.name);
     if (entry.isDirectory()) {
-      if (["node_modules", "dist", ".git", "android", "ios"].includes(entry.name)) {
+      if (
+        ["node_modules", "dist", ".git", "android", "ios"].includes(entry.name)
+      ) {
         continue;
       }
       walk(entryPath, visit);
@@ -151,12 +156,14 @@ function rewriteWorkspaceDeps(section, versions) {
       if (typeof version === "string" && version.startsWith("workspace:")) {
         const resolvedVersion = versions.get(name);
         if (!resolvedVersion) {
-          throw new Error(`no local version found for workspace dependency ${name}`);
+          throw new Error(
+            `no local version found for workspace dependency ${name}`,
+          );
         }
         return [name, normalizeWorkspaceVersion(version, resolvedVersion)];
       }
       return [name, version];
-    })
+    }),
   );
 
   return rewritten;
@@ -184,7 +191,7 @@ function transformBin(binField, prefix) {
     Object.entries(binField).map(([name, value]) => [
       name,
       transformModulePath(value, prefix),
-    ])
+    ]),
   );
 }
 
@@ -196,7 +203,7 @@ function transformExports(exportsField, prefix, assetPathPrefix) {
     Object.entries(exportsField).map(([subpath, target]) => [
       subpath,
       transformExportTarget(target, prefix, assetPathPrefix),
-    ])
+    ]),
   );
 }
 
@@ -223,7 +230,7 @@ function transformExportTarget(target, prefix, assetPathPrefix) {
               ? transformTypesPath(value, prefix)
               : transformModulePath(value, prefix)
           : transformExportTarget(value, prefix, assetPathPrefix),
-      ])
+      ]),
     );
   }
 
@@ -232,13 +239,19 @@ function transformExportTarget(target, prefix, assetPathPrefix) {
 
 function transformModulePath(sourcePath, prefix) {
   return withLeadingDot(
-    path.posix.join(prefix, replaceSourceExtension(stripSrcPrefix(sourcePath), ".js"))
+    path.posix.join(
+      prefix,
+      replaceSourceExtension(stripSrcPrefix(sourcePath), ".js"),
+    ),
   );
 }
 
 function transformTypesPath(sourcePath, prefix) {
   return withLeadingDot(
-    path.posix.join(prefix, replaceSourceExtension(stripSrcPrefix(sourcePath), ".d.ts"))
+    path.posix.join(
+      prefix,
+      replaceSourceExtension(stripSrcPrefix(sourcePath), ".d.ts"),
+    ),
   );
 }
 
@@ -266,9 +279,16 @@ function replaceSourceExtension(relPath, nextExt) {
 }
 
 function isAssetPath(sourcePath) {
-  return [".css", ".json", ".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp"].includes(
-    path.posix.extname(sourcePath)
-  );
+  return [
+    ".css",
+    ".json",
+    ".svg",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".webp",
+  ].includes(path.posix.extname(sourcePath));
 }
 
 function withLeadingDot(relPath) {
@@ -283,7 +303,7 @@ function cleanUndefined(value) {
     return Object.fromEntries(
       Object.entries(value)
         .filter(([, entryValue]) => entryValue !== undefined)
-        .map(([key, entryValue]) => [key, cleanUndefined(entryValue)])
+        .map(([key, entryValue]) => [key, cleanUndefined(entryValue)]),
     );
   }
   return value;

@@ -1,6 +1,6 @@
 import {
-  ConnectionFailedBanner,
   CloudDashboard,
+  ConnectionFailedBanner,
   LoadingScreen,
   StartupFailureView,
   SystemWarningBanner,

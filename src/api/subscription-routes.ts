@@ -1,6 +1,6 @@
 import {
-  handleSubscriptionRoutes as handleAutonomousSubscriptionRoutes,
   type SubscriptionRouteState as AutonomousSubscriptionRouteState,
+  handleSubscriptionRoutes as handleAutonomousSubscriptionRoutes,
 } from "@milady/autonomous/api/subscription-routes";
 import type { MiladyConfig } from "../config/config";
 import type { RouteRequestContext } from "./route-helpers";
@@ -20,12 +20,9 @@ export interface SubscriptionRouteContext extends RouteRequestContext {
 export async function handleSubscriptionRoutes(
   ctx: SubscriptionRouteContext,
 ): Promise<boolean> {
-  return handleAutonomousSubscriptionRoutes(
-    {
-      ...ctx,
-      saveConfig: (config: unknown) => ctx.saveConfig(config as MiladyConfig),
-      loadSubscriptionAuth: async () =>
-        (await import("../auth/index")) as never,
-    } as never,
-  );
+  return handleAutonomousSubscriptionRoutes({
+    ...ctx,
+    saveConfig: (config: unknown) => ctx.saveConfig(config as MiladyConfig),
+    loadSubscriptionAuth: async () => (await import("../auth/index")) as never,
+  } as never);
 }

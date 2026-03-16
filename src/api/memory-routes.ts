@@ -1,8 +1,6 @@
-import {
-  handleMemoryRoutes as handleAutonomousMemoryRoutes,
-} from "@milady/autonomous/api/memory-routes";
-import type { RouteRequestContext } from "./route-helpers";
 import type { AgentRuntime } from "@elizaos/core";
+import { handleMemoryRoutes as handleAutonomousMemoryRoutes } from "@milady/autonomous/api/memory-routes";
+import type { RouteRequestContext } from "./route-helpers";
 
 export interface MemoryRouteContext extends RouteRequestContext {
   url: URL;

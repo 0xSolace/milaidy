@@ -889,7 +889,7 @@ export function CharacterView({
   const rosterSlantClipPath =
     "polygon(32px 0, 100% 0, calc(100% - 32px) 100%, 0 100%)";
   const insetShadowClipPath =
-  "polygon(0px 0, 100% 0, calc(100% - 4px) 100%, -8px 100%)";
+    "polygon(0px 0, 100% 0, calc(100% - 4px) 100%, -8px 100%)";
   const rootCls =
     sceneOverlay && !inModal
       ? "relative z-10 flex min-h-full flex-col justify-end pb-4"
@@ -897,7 +897,10 @@ export function CharacterView({
           sceneOverlay ? "relative z-10" : ""
         }`;
   const coreFieldsPanel = (
-    <div className={`${editorCardCls} min-h-[24rem]`} data-testid="character-core-editor">
+    <div
+      className={`${editorCardCls} min-h-[24rem]`}
+      data-testid="character-core-editor"
+    >
       <div className="flex min-h-0 flex-col gap-2">
         <div className="flex items-center justify-between">
           <span className={labelCls}>{t("characterview.aboutMe")}</span>
@@ -922,7 +925,9 @@ export function CharacterView({
 
       <div className="flex min-h-0 flex-col gap-2">
         <div className="flex items-center justify-between">
-          <span className={labelCls}>{t("characterview.directionsAndThing")}</span>
+          <span className={labelCls}>
+            {t("characterview.directionsAndThing")}
+          </span>
           <Button
             variant="ghost"
             size="sm"
@@ -1473,11 +1478,19 @@ export function CharacterView({
               className="grid min-h-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,23rem)_minmax(0,1fr)_minmax(0,32rem)] xl:items-start xl:gap-6"
               data-testid="character-customize-grid"
             >
-              <div className={customizeStep === "style" ? "hidden xl:block" : "block"}>
+              <div
+                className={
+                  customizeStep === "style" ? "hidden xl:block" : "block"
+                }
+              >
                 {coreFieldsPanel}
               </div>
               <div aria-hidden className="hidden xl:block" />
-              <div className={customizeStep === "core" ? "hidden xl:block" : "block"}>
+              <div
+                className={
+                  customizeStep === "core" ? "hidden xl:block" : "block"
+                }
+              >
                 {styleEditorPanel}
               </div>
             </div>
@@ -1503,71 +1516,75 @@ export function CharacterView({
 
         <div className="relative flex flex-col gap-3 md:min-h-10 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center justify-center md:justify-start">
-            <div
-              className="flex min-w-0 items-center gap-2"
-              data-testid="character-voice-picker"
-            >
-              <Button
-                type="button"
-                variant={voiceSelectionLocked ? "default" : "outline"}
-                size="icon"
-                className="h-8 w-8 rounded-full border-border/50 bg-bg/65 p-0 shadow-inner backdrop-blur-sm"
-                onClick={() => setVoiceSelectionLocked((value) => !value)}
-                aria-label={
-                  voiceSelectionLocked
-                    ? "Unlock voice selection"
-                    : "Lock voice selection"
-                }
-                title={
-                  voiceSelectionLocked
-                    ? "Voice stays pinned when switching characters"
-                    : "Lock current voice"
-                }
+            {!customOverridesEnabled && (
+              <div
+                className="flex min-w-0 items-center gap-2"
+                data-testid="character-voice-picker"
               >
-                {voiceSelectionLocked ? (
-                  <Lock className="h-3.5 w-3.5" />
-                ) : (
-                  <LockOpen className="h-3.5 w-3.5" />
-                )}
-              </Button>
-              <ThemedSelect
-                value={voiceSelectValue}
-                groups={VOICE_SELECT_GROUPS}
-                onChange={(id) => {
-                  const preset = PREMADE_VOICES.find(
-                    (voicePreset) => voicePreset.id === id,
-                  );
-                  if (preset) handleSelectPreset(preset);
-                }}
-                placeholder={t("characterview.selectAVoice")}
-                menuPlacement="top"
-                className="w-[11rem] max-w-[58vw]"
-                triggerClassName="h-8 rounded-full border-border/50 bg-bg/65 px-4 py-0 text-[11px] shadow-inner backdrop-blur-sm"
-                menuClassName="border-border/60 bg-bg/92 shadow-2xl backdrop-blur-md"
-              />
-              <Button
-                type="button"
-                variant={voiceTesting ? "destructive" : "outline"}
-                size="icon"
-                className="h-8 w-8 rounded-full border-border/50 bg-bg/65 p-0 shadow-inner backdrop-blur-sm"
-                onClick={() =>
-                  voiceTesting
-                    ? handleStopTest()
-                    : activeVoicePreset
-                      ? handleTestVoice(activeVoicePreset.previewUrl)
-                      : undefined
-                }
-                aria-label={voiceTesting ? "Stop voice preview" : "Preview voice"}
-                title={voiceTesting ? "Stop voice preview" : "Preview voice"}
-                disabled={!activeVoicePreset || voiceLoading}
-              >
-                {voiceTesting ? (
-                  <VolumeX className="h-3.5 w-3.5" />
-                ) : (
-                  <Volume2 className="h-3.5 w-3.5" />
-                )}
-              </Button>
-            </div>
+                <Button
+                  type="button"
+                  variant={voiceSelectionLocked ? "default" : "outline"}
+                  size="icon"
+                  className="h-8 w-8 rounded-full border-border/50 bg-bg/65 p-0 shadow-inner backdrop-blur-sm"
+                  onClick={() => setVoiceSelectionLocked((value) => !value)}
+                  aria-label={
+                    voiceSelectionLocked
+                      ? "Unlock voice selection"
+                      : "Lock voice selection"
+                  }
+                  title={
+                    voiceSelectionLocked
+                      ? "Voice stays pinned when switching characters"
+                      : "Lock current voice"
+                  }
+                >
+                  {voiceSelectionLocked ? (
+                    <Lock className="h-3.5 w-3.5" />
+                  ) : (
+                    <LockOpen className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+                <ThemedSelect
+                  value={voiceSelectValue}
+                  groups={VOICE_SELECT_GROUPS}
+                  onChange={(id) => {
+                    const preset = PREMADE_VOICES.find(
+                      (voicePreset) => voicePreset.id === id,
+                    );
+                    if (preset) handleSelectPreset(preset);
+                  }}
+                  placeholder={t("characterview.selectAVoice")}
+                  menuPlacement="top"
+                  className="w-[11rem] max-w-[58vw]"
+                  triggerClassName="h-8 rounded-full border-border/50 bg-bg/65 px-4 py-0 text-[11px] shadow-inner backdrop-blur-sm"
+                  menuClassName="border-border/60 bg-bg/92 shadow-2xl backdrop-blur-md"
+                />
+                <Button
+                  type="button"
+                  variant={voiceTesting ? "destructive" : "outline"}
+                  size="icon"
+                  className="h-8 w-8 rounded-full border-border/50 bg-bg/65 p-0 shadow-inner backdrop-blur-sm"
+                  onClick={() =>
+                    voiceTesting
+                      ? handleStopTest()
+                      : activeVoicePreset
+                        ? handleTestVoice(activeVoicePreset.previewUrl)
+                        : undefined
+                  }
+                  aria-label={
+                    voiceTesting ? "Stop voice preview" : "Preview voice"
+                  }
+                  title={voiceTesting ? "Stop voice preview" : "Preview voice"}
+                  disabled={!activeVoicePreset || voiceLoading}
+                >
+                  {voiceTesting ? (
+                    <VolumeX className="h-3.5 w-3.5" />
+                  ) : (
+                    <Volume2 className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center justify-center md:absolute md:left-1/2 md:top-1/2 md:z-10 md:-translate-x-1/2 md:-translate-y-1/2">

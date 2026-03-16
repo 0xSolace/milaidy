@@ -1,8 +1,8 @@
 import type http from "node:http";
 import type { AgentRuntime } from "@elizaos/core";
 import {
-  handleCloudRoute as handleAutonomousCloudRoute,
   type CloudRouteState as AutonomousCloudRouteState,
+  handleCloudRoute as handleAutonomousCloudRoute,
 } from "@milady/autonomous/api/cloud-routes";
 import type { CloudManager } from "../cloud/cloud-manager";
 import type { MiladyConfig } from "../config/config";
@@ -16,9 +16,7 @@ export interface CloudRouteState {
   runtime: AgentRuntime | null;
 }
 
-function toAutonomousState(
-  state: CloudRouteState,
-): AutonomousCloudRouteState {
+function toAutonomousState(state: CloudRouteState): AutonomousCloudRouteState {
   return {
     ...state,
     saveConfig: saveMiladyConfig,

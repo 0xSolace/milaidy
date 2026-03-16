@@ -9,7 +9,7 @@ const [packageDirArg, ...assetPaths] = process.argv.slice(2);
 
 if (!packageDirArg || assetPaths.length === 0) {
   console.error(
-    "usage: node scripts/copy-package-assets.mjs <package-dir> <src-path> [<src-path> ...]"
+    "usage: node scripts/copy-package-assets.mjs <package-dir> <src-path> [<src-path> ...]",
   );
   process.exit(1);
 }

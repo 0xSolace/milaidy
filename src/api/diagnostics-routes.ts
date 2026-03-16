@@ -2,16 +2,16 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  type DiagnosticsRouteContext as AutonomousDiagnosticsRouteContext,
+  handleDiagnosticsRoutes as handleAutonomousDiagnosticsRoutes,
+} from "@milady/autonomous/api/diagnostics-routes";
+import {
   AUDIT_EVENT_TYPES,
   AUDIT_SEVERITIES,
   getAuditFeedSize,
   queryAuditFeed,
   subscribeAuditFeed,
 } from "../security/audit-log";
-import {
-  handleDiagnosticsRoutes as handleAutonomousDiagnosticsRoutes,
-  type DiagnosticsRouteContext as AutonomousDiagnosticsRouteContext,
-} from "@milady/autonomous/api/diagnostics-routes";
 
 type DiagnosticsRouteContext = Omit<
   AutonomousDiagnosticsRouteContext,
@@ -43,7 +43,8 @@ export async function handleDiagnosticsRoutes(
 ): Promise<boolean> {
   return handleAutonomousDiagnosticsRoutes({
     ...ctx,
-    resolveExtensionPath: ctx.resolveExtensionPath ?? defaultResolveExtensionPath,
+    resolveExtensionPath:
+      ctx.resolveExtensionPath ?? defaultResolveExtensionPath,
     auditEventTypes: AUDIT_EVENT_TYPES,
     auditSeverities: AUDIT_SEVERITIES,
     getAuditFeedSize,

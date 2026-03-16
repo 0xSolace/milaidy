@@ -1,6 +1,6 @@
 import {
-  handleRegistryRoutes as handleAutonomousRegistryRoutes,
   type RegistryRouteContext as AutonomousRegistryRouteContext,
+  handleRegistryRoutes as handleAutonomousRegistryRoutes,
 } from "@milady/autonomous/api/registry-routes";
 import { classifyRegistryPluginRelease } from "../runtime/release-plugin-policy";
 import type { PluginManagerLike } from "../services/plugin-manager-types";

@@ -363,6 +363,8 @@ describe("CompanionView", () => {
     });
 
     expect(setCompanionZoomNormalized).toHaveBeenCalledWith(1);
+    setDragOrbitTarget.mockClear();
+    resetDragOrbit.mockClear();
 
     expect(tree).not.toBeNull();
     const root = tree?.root.findByProps({
@@ -432,6 +434,7 @@ describe("CompanionView", () => {
         setCompanionZoomNormalized: vi.fn(),
       });
     });
+    setDragOrbitTarget.mockClear();
 
     const root = tree?.root.findByProps({
       "data-testid": "companion-root",
@@ -490,6 +493,7 @@ describe("CompanionView", () => {
         setCompanionZoomNormalized,
       });
     });
+    setCompanionZoomNormalized.mockClear();
 
     expect(tree).not.toBeNull();
     const root = tree?.root.findByProps({
@@ -537,6 +541,7 @@ describe("CompanionView", () => {
         setCompanionZoomNormalized,
       });
     });
+    setCompanionZoomNormalized.mockClear();
 
     const root = tree?.root.findByProps({
       "data-testid": "companion-root",
@@ -557,8 +562,7 @@ describe("CompanionView", () => {
       });
     });
 
-    expect(setCompanionZoomNormalized).toHaveBeenCalledTimes(1);
-    expect(setCompanionZoomNormalized).toHaveBeenCalledWith(1);
+    expect(setCompanionZoomNormalized).not.toHaveBeenCalled();
     expect(preventDefault).toHaveBeenCalledTimes(1);
   });
 

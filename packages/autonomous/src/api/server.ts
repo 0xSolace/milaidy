@@ -37,6 +37,7 @@ import {
   type MiladyConfig,
   saveMiladyConfig,
 } from "../config/config";
+import { createIntegrationTelemetrySpan } from "../diagnostics/integration-observability";
 import { resolveModelsCacheDir, resolveStateDir } from "../config/paths";
 import {
   isConnectorConfigured,
@@ -12755,6 +12756,8 @@ async function handleRequest(
       config: state.config,
       cloudManager: state.cloudManager,
       runtime: state.runtime,
+      saveConfig: saveMiladyConfig,
+      createTelemetrySpan: createIntegrationTelemetrySpan,
     };
     const handled = await handleCloudRoute(
       req,

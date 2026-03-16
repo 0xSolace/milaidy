@@ -1,6 +1,8 @@
+import type { IncomingMessage, ServerResponse } from "node:http";
 import {
   applyWhatsAppQrOverride as applyAutonomousWhatsAppQrOverride,
   handleWhatsAppRoute as handleAutonomousWhatsAppRoute,
+  MAX_PAIRING_SESSIONS,
 } from "@milady/autonomous/api/whatsapp-routes";
 import {
   sanitizeAccountId,
@@ -8,11 +10,9 @@ import {
   whatsappAuthExists,
   whatsappLogout,
 } from "../services/whatsapp-pairing";
-import type { IncomingMessage, ServerResponse } from "node:http";
 
-export type {
-  WhatsAppRouteState,
-} from "@milady/autonomous/api/whatsapp-routes";
+export type { WhatsAppRouteState } from "@milady/autonomous/api/whatsapp-routes";
+export { MAX_PAIRING_SESSIONS };
 
 export async function handleWhatsAppRoute(
   req: IncomingMessage,

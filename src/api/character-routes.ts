@@ -1,7 +1,7 @@
 import {
-  handleCharacterRoutes as handleAutonomousCharacterRoutes,
   type CharacterRouteContext as AutonomousCharacterRouteContext,
   type CharacterRouteState as AutonomousCharacterRouteState,
+  handleCharacterRoutes as handleAutonomousCharacterRoutes,
 } from "@milady/autonomous/api/character-routes";
 import type { MiladyConfig } from "../config/types";
 import { CharacterSchema } from "../config/zod-schema";
@@ -25,8 +25,7 @@ function toAutonomousContext(
     saveConfig: ctx.saveConfig
       ? (config) => ctx.saveConfig?.(config as MiladyConfig)
       : undefined,
-    validateCharacter: (body) =>
-      CharacterSchema.safeParse(body) as never,
+    validateCharacter: (body) => CharacterSchema.safeParse(body) as never,
   };
 }
 

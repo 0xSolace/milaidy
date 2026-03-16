@@ -1,6 +1,7 @@
+import type { AgentRuntime } from "@elizaos/core";
 import {
-  handleTriggerRoutes as handleAutonomousTriggerRoutes,
   type TriggerRouteContext as AutonomousTriggerRouteContext,
+  handleTriggerRoutes as handleAutonomousTriggerRoutes,
 } from "@milady/autonomous/api/trigger-routes";
 import {
   executeTriggerTask,
@@ -20,7 +21,6 @@ import {
   DISABLED_TRIGGER_INTERVAL_MS,
   normalizeTriggerDraft,
 } from "../triggers/scheduling";
-import type { AgentRuntime } from "@elizaos/core";
 import type { RouteHelpers, RouteRequestContext } from "./route-helpers";
 
 export type TriggerRouteHelpers = RouteHelpers;

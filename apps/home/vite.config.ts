@@ -17,7 +17,10 @@ export default defineConfig({
     alias: [
       {
         find: /^@milady\/capacitor-(.*)/,
-        replacement: path.resolve(miladyRoot, "apps/app/plugins/$1/src/index.ts"),
+        replacement: path.resolve(
+          miladyRoot,
+          "apps/app/plugins/$1/src/index.ts",
+        ),
       },
     ],
   },
