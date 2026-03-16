@@ -1978,7 +1978,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
             className="flex w-[22rem] shrink-0 border-r border-border/50 bg-bg/35 backdrop-blur-xl"
           >
             <div className="flex min-h-full flex-1 flex-col sticky top-0 max-h-screen">
-              <div className="border-b border-border/40 px-5 py-5">
+              <div className="border-b border-border/40 px-5 py-5 text-center">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted/80">
                   Connectors
                 </div>
