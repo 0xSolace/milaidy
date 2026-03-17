@@ -101,7 +101,9 @@ describe("release-check package guards", () => {
     expect(isExactVersionSpecifier("1.2.3+build.4")).toBe(true);
     expect(isExactVersionSpecifier(undefined)).toBe(false);
     expect(isExactVersionSpecifier("next")).toBe(false);
+    expect(isExactVersionSpecifier("latest")).toBe(false);
     expect(isExactVersionSpecifier("^0.3.14")).toBe(false);
+    expect(isExactVersionSpecifier("~0.3.14")).toBe(false);
     expect(isExactVersionSpecifier("workspace:*")).toBe(false);
   });
 
@@ -125,6 +127,7 @@ describe("release-check package guards", () => {
       isExactVersion("https://registry.npmjs.org/foo/-/foo-1.0.0.tgz"),
     ).toBe(false);
   });
+
 
   it("flags lifecycle hooks that reference missing files", () => {
     expect(
