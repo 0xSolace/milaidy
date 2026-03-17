@@ -6,10 +6,7 @@ import {
   getWalletExportAuditLog,
 } from "./wallet-export-guard";
 
-function mockReq(
-  ip = "192.168.1.1",
-  ua = "test-agent",
-): http.IncomingMessage {
+function mockReq(ip = "192.168.1.1", ua = "test-agent"): http.IncomingMessage {
   return {
     headers: { "user-agent": ua },
     socket: { remoteAddress: ip },
@@ -193,13 +190,15 @@ describe("wallet-export-guard", () => {
     const log = getWalletExportAuditLog();
     expect(log.length).toBeGreaterThanOrEqual(2);
 
-    const rejected = log.find((e) => e.ip === "10.0.0.4" && e.outcome === "rejected");
+    const rejected = log.find(
+      (e) => e.ip === "10.0.0.4" && e.outcome === "rejected",
+    );
     expect(rejected).toBeDefined();
     expect(rejected!.userAgent).toBe("AuditTestAgent");
     expect(rejected!.timestamp).toMatch(/^\d{4}-/);
   });
 
-  it("reads X-Forwarded-For for IP when present", () => {
+  it("ignores X-Forwarded-For and uses socket.remoteAddress", () => {
     const guard = createHardenedExportGuard(alwaysAllow);
     const req = {
       headers: {
@@ -213,6 +212,25 @@ describe("wallet-export-guard", () => {
 
     const log = getWalletExportAuditLog();
     const latest = log[log.length - 1];
-    expect(latest.ip).toBe("203.0.113.50");
+    // XFF is untrusted — must use socket address
+    expect(latest.ip).toBe("127.0.0.1");
+  });
+
+  it("rejects nonce issuance when per-IP nonce cap is reached", () => {
+    const guard = createHardenedExportGuard(alwaysAllow);
+    const req = mockReq("10.0.0.50");
+
+    // Issue 3 nonces (the cap)
+    for (let i = 0; i < 3; i++) {
+      const result = guard(req, { confirm: true, requestNonce: true });
+      expect(result).not.toBeNull();
+      expect(result!.status).toBe(403);
+    }
+
+    // 4th should be rejected with 429
+    const result = guard(req, { confirm: true, requestNonce: true });
+    expect(result).not.toBeNull();
+    expect(result!.status).toBe(429);
+    expect(result!.reason).toContain("Too many pending");
   });
 });

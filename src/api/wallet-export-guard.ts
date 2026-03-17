@@ -11,6 +11,7 @@
  * keys without leaving an audit trail and hitting rate limits.
  */
 
+import crypto from "node:crypto";
 import type http from "node:http";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -58,11 +59,12 @@ if (typeof sweepTimer === "object" && "unref" in sweepTimer) {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+/**
+ * Get client IP from the socket directly. X-Forwarded-For is not trusted
+ * because this is a local server — trusting XFF would let attackers spoof
+ * IPs to bypass rate limits and nonce IP binding.
+ */
 function getClientIp(req: http.IncomingMessage): string {
-  const forwarded = req.headers["x-forwarded-for"];
-  if (typeof forwarded === "string") {
-    return forwarded.split(",")[0].trim();
-  }
   return req.socket?.remoteAddress ?? "unknown";
 }
 
@@ -91,14 +93,7 @@ function recordAudit(entry: WalletExportAuditEntry): void {
   }
 
   const logLine = `[wallet-export-audit] ${entry.outcome} ip=${entry.ip} ua="${entry.userAgent}"${entry.reason ? ` reason="${entry.reason}"` : ""}`;
-
-  if (entry.outcome === "allowed") {
-    // Use console.warn so it's visible in production logs (logger may
-    // be suppressed at info level in packaged builds).
-    console.warn(logLine);
-  } else {
-    console.warn(logLine);
-  }
+  console.warn(logLine);
 }
 
 /** Read-only snapshot of the audit log for diagnostics endpoints. */
@@ -116,21 +111,16 @@ export function _resetForTesting(): void {
 // ── Confirmation delay ───────────────────────────────────────────────────────
 
 const EXPORT_DELAY_MS = 10_000; // 10 seconds
+const MAX_PENDING_NONCES_PER_IP = 3;
 
 /**
  * Issue a time-limited export nonce.  The client must wait at least
  * EXPORT_DELAY_MS before submitting the actual export request with this nonce.
  */
-const pendingExportNonces = new Map<
-  string,
-  { issuedAt: number; ip: string }
->();
+const pendingExportNonces = new Map<string, { issuedAt: number; ip: string }>();
 const NONCE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
-function issueExportNonce(ip: string): string {
-  const nonce = `wxn_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-  pendingExportNonces.set(nonce, { issuedAt: Date.now(), ip });
-
+function issueExportNonce(ip: string): string | null {
   // Sweep expired nonces
   const now = Date.now();
   for (const [key, value] of pendingExportNonces) {
@@ -138,6 +128,19 @@ function issueExportNonce(ip: string): string {
       pendingExportNonces.delete(key);
     }
   }
+
+  // Cap pending nonces per IP to prevent unbounded growth from repeated
+  // requestNonce calls (which are rate-limit-exempt).
+  let countForIp = 0;
+  for (const entry of pendingExportNonces.values()) {
+    if (entry.ip === ip) countForIp++;
+  }
+  if (countForIp >= MAX_PENDING_NONCES_PER_IP) {
+    return null;
+  }
+
+  const nonce = `wxn_${crypto.randomBytes(16).toString("hex")}`;
+  pendingExportNonces.set(nonce, { issuedAt: Date.now(), ip });
 
   return nonce;
 }
@@ -221,6 +224,19 @@ export function createHardenedExportGuard(
     // 2. Nonce/delay flow — nonce requests are always allowed (no rate limit)
     if (body.requestNonce) {
       const nonce = issueExportNonce(ip);
+      if (!nonce) {
+        recordAudit({
+          timestamp: new Date().toISOString(),
+          ip,
+          userAgent: ua,
+          outcome: "rejected",
+          reason: "Too many pending nonces for this IP",
+        });
+        return {
+          status: 429,
+          reason: `Too many pending export requests. Complete or wait for existing nonces to expire.`,
+        };
+      }
       recordAudit({
         timestamp: new Date().toISOString(),
         ip,
@@ -271,9 +287,7 @@ export function createHardenedExportGuard(
     if (rateLimitEntry) {
       const elapsed = Date.now() - rateLimitEntry.lastExportAt;
       if (elapsed < RATE_LIMIT_WINDOW_MS) {
-        const retryAfter = Math.ceil(
-          (RATE_LIMIT_WINDOW_MS - elapsed) / 1000,
-        );
+        const retryAfter = Math.ceil((RATE_LIMIT_WINDOW_MS - elapsed) / 1000);
         recordAudit({
           timestamp: new Date().toISOString(),
           ip,
