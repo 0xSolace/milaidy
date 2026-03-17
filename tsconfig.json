@@ -19,17 +19,29 @@
       "@elizaos/app-hyperscape/routes": [
         "../plugins/app-hyperscape/src/routes.ts"
       ],
-      "@elizaos/autonomous/config/types.milady": [
-        "node_modules/@elizaos/autonomous/src/config/types.milady.ts"
+      "@elizaos/core": [
+        "../eliza/packages/typescript/src/index.ts"
       ],
-      "@elizaos/autonomous/runtime/milady-plugin": [
-        "node_modules/@elizaos/autonomous/src/runtime/milady-plugin.ts"
+      "@elizaos/core/*": [
+        "../eliza/packages/typescript/src/*"
       ],
-      "@elizaos/autonomous/runtime/cloud-onboarding": [
-        "node_modules/@elizaos/autonomous/src/runtime/cloud-onboarding.ts"
+      "@elizaos/autonomous": [
+        "../eliza/packages/autonomous/src/index.ts"
       ],
-      "@elizaos/plugin-streaming-base": [
-        "../plugins/plugin-streaming-base/src/index.ts"
+      "@elizaos/autonomous/*": [
+        "../eliza/packages/autonomous/src/*"
+      ],
+      "@elizaos/app-core": [
+        "../eliza/packages/app-core/src/index.ts"
+      ],
+      "@elizaos/app-core/*": [
+        "../eliza/packages/app-core/src/*"
+      ],
+      "@elizaos/ui": [
+        "../eliza/packages/ui/src/index.ts"
+      ],
+      "@elizaos/ui/*": [
+        "../eliza/packages/ui/src/*"
       ]
     }
   },

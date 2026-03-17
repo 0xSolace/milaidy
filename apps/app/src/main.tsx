@@ -12,6 +12,7 @@ import { App as CapacitorApp } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
 import { Keyboard } from "@capacitor/keyboard";
 import { StatusBar, Style } from "@capacitor/status-bar";
+import { App } from "@elizaos/app-core";
 // Import Capacitor bridge utilities
 import {
   initializeCapacitorBridge,
@@ -33,7 +34,6 @@ import { AppProvider } from "@elizaos/app-core/state";
 // Import the agent plugin
 import { Agent } from "@miladyai/capacitor-agent";
 import { Desktop } from "@miladyai/capacitor-desktop";
-import { App } from "@elizaos/app-core";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 

@@ -10,8 +10,8 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { logger } from "@elizaos/core";
 import type { StreamingDestination } from "@elizaos/autonomous/api/stream-routes";
+import { logger } from "@elizaos/core";
 
 // ---------------------------------------------------------------------------
 // Interfaces

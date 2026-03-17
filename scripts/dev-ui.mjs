@@ -563,10 +563,24 @@ async function bootstrapOnchainDev() {
   }
 
   const registryCandidates = [
-    path.join(cwd, "test", "contracts", "out", "MockMiladyAgentRegistry.sol", "MockMiladyAgentRegistry.json"),
+    path.join(
+      cwd,
+      "test",
+      "contracts",
+      "out",
+      "MockMiladyAgentRegistry.sol",
+      "MockMiladyAgentRegistry.json",
+    ),
   ];
   const collectionCandidates = [
-    path.join(cwd, "test", "contracts", "out", "MockMiladyCollection.sol", "MockMiladyCollection.json"),
+    path.join(
+      cwd,
+      "test",
+      "contracts",
+      "out",
+      "MockMiladyCollection.sol",
+      "MockMiladyCollection.json",
+    ),
   ];
   let registryArtifactPath = resolveArtifactPath(registryCandidates);
   let collectionArtifactPath = resolveArtifactPath(collectionCandidates);
@@ -574,7 +588,9 @@ async function bootstrapOnchainDev() {
   if (!registryArtifactPath || !collectionArtifactPath) {
     if (which("forge")) {
       try {
-        console.log(`  ${green("[milady]")} Building contract artifacts (forge build --skip Harness)...`);
+        console.log(
+          `  ${green("[milady]")} Building contract artifacts (forge build --skip Harness)...`,
+        );
         execSync("forge build --skip Harness", {
           cwd: path.join(cwd, "test", "contracts"),
           stdio: "pipe",
