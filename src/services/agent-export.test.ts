@@ -197,9 +197,20 @@ function createMockAdapter(db: MockDb): IDatabaseAdapter<object> {
 
     getAgent: async (agentId: UUID) => db.agents.get(agentId) ?? null,
     getAgents: async () => Array.from(db.agents.values()),
+    getAgentsByIds: async (agentIds: UUID[]) =>
+      agentIds.map((id) => db.agents.get(id)).filter(Boolean) as Agent[],
     createAgent: async (agent: Partial<Agent>) => {
       db.agents.set(agent.id ?? "", agent as Agent);
       return true;
+    },
+    createAgents: async (agents: Partial<Agent>[]) => {
+      const ids: UUID[] = [];
+      for (const agent of agents) {
+        const id = agent.id ?? ("" as UUID);
+        db.agents.set(id, agent as Agent);
+        ids.push(id);
+      }
+      return ids;
     },
     updateAgent: async (agentId: UUID, agent: Partial<Agent>) => {
       const existing = db.agents.get(agentId);
@@ -216,11 +227,19 @@ function createMockAdapter(db: MockDb): IDatabaseAdapter<object> {
       return world.id ?? "";
     },
     getWorld: async (id: UUID) => db.worlds.get(id) ?? null,
+    createWorlds: async (worlds: World[]) => {
+      for (const w of worlds) db.worlds.set(w.id ?? "", w);
+      return worlds.map((w) => w.id ?? ("" as UUID));
+    },
     updateWorld: async () => {},
     removeWorld: async () => {},
 
     getRoomsByWorld: async (worldId: UUID) =>
       Array.from(db.rooms.values()).filter((r) => r.worldId === worldId),
+    getRoomsByWorlds: async (worldIds: UUID[]) =>
+      Array.from(db.rooms.values()).filter(
+        (r) => r.worldId && worldIds.includes(r.worldId),
+      ),
     getRoomsByIds: async (roomIds: UUID[]) =>
       roomIds.map((id) => db.rooms.get(id)).filter(Boolean) as Room[],
     getRoomsForParticipant: async (entityId: UUID) => {
@@ -259,6 +278,26 @@ function createMockAdapter(db: MockDb): IDatabaseAdapter<object> {
           return entity;
         });
     },
+    getEntitiesForRooms: async (roomIds: UUID[], includeComponents?: boolean) => {
+      const result: Entity[] = [];
+      for (const roomId of roomIds) {
+        const participantData = db.participants.get(roomId);
+        if (!participantData) continue;
+        for (const eid of participantData.entityIds) {
+          const entity = db.entities.get(eid);
+          if (!entity) continue;
+          if (includeComponents) {
+            result.push({
+              ...entity,
+              components: db.components.filter((c) => c.entityId === entity.id),
+            } as Entity);
+          } else {
+            result.push(entity);
+          }
+        }
+      }
+      return result;
+    },
     getEntitiesByIds: async (entityIds: UUID[]) =>
       entityIds.map((id) => db.entities.get(id)).filter(Boolean) as Entity[],
     createEntities: async (entities: Entity[]) => {
@@ -275,7 +314,25 @@ function createMockAdapter(db: MockDb): IDatabaseAdapter<object> {
     getParticipantsForRoom: async (roomId: UUID) => {
       return db.participants.get(roomId)?.entityIds ?? [];
     },
+    getParticipantsForRooms: async (roomIds: UUID[]) => {
+      const result: Record<string, UUID[]> = {};
+      for (const roomId of roomIds) {
+        result[roomId] = db.participants.get(roomId)?.entityIds ?? [];
+      }
+      return result;
+    },
     getParticipantsForEntity: async () => [],
+    createRoomParticipants: async () => true,
+    getParticipantUserStates: async (roomId: UUID) => {
+      const data = db.participants.get(roomId);
+      if (!data) return {};
+      const result: Record<string, string | null> = {};
+      for (const [eid, state] of data.userStates) {
+        result[eid] = state;
+      }
+      return result;
+    },
+    updateParticipantUserStates: async () => {},
     addParticipantsRoom: async (entityIds: UUID[], roomId: UUID) => {
       const existing = db.participants.get(roomId) ?? {
         entityIds: [],
@@ -305,8 +362,16 @@ function createMockAdapter(db: MockDb): IDatabaseAdapter<object> {
     getComponent: async () => null,
     getComponents: async (entityId: UUID) =>
       db.components.filter((c) => c.entityId === entityId),
+    getComponentsForEntities: async (entityIds: UUID[]) =>
+      db.components.filter(
+        (c) => c.entityId && entityIds.includes(c.entityId as UUID),
+      ),
     createComponent: async (component: Component) => {
       db.components.push(component);
+      return true;
+    },
+    createComponents: async (components: Component[]) => {
+      db.components.push(...components);
       return true;
     },
     updateComponent: async () => {},
@@ -336,6 +401,9 @@ function createMockAdapter(db: MockDb): IDatabaseAdapter<object> {
       db.memories.push(memory);
       return memory.id ?? "";
     },
+    createMemories: async (memories: Memory[]) => {
+      db.memories.push(...memories);
+    },
     updateMemory: async () => true,
     deleteMemory: async () => {},
     deleteManyMemories: async () => {},
@@ -361,6 +429,10 @@ function createMockAdapter(db: MockDb): IDatabaseAdapter<object> {
       return true;
     },
     updateRelationship: async () => {},
+    createRelationships: async (rels: Partial<Relationship>[]) => {
+      for (const r of rels) db.relationships.push(r as Relationship);
+      return true;
+    },
 
     getTasks: async () => db.tasks,
     getTask: async () => null,
@@ -371,6 +443,10 @@ function createMockAdapter(db: MockDb): IDatabaseAdapter<object> {
     },
     updateTask: async () => {},
     deleteTask: async () => {},
+    createTasks: async (tasks: Task[]) => {
+      db.tasks.push(...tasks);
+      return tasks.map((t) => t.id ?? ("" as UUID));
+    },
 
     log: async (params: {
       body: Record<string, unknown>;
@@ -388,6 +464,9 @@ function createMockAdapter(db: MockDb): IDatabaseAdapter<object> {
       } as Log);
     },
     getLogs: async () => db.logs,
+    createLogs: async (logs: Partial<Log>[]) => {
+      for (const l of logs) db.logs.push(l as Log);
+    },
     deleteLog: async () => {},
 
     getCache: async () => undefined,

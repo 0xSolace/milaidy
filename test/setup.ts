@@ -4,6 +4,8 @@ import { afterAll, afterEach, vi } from "vitest";
 process.env.VITEST = "true";
 // Keep test output focused on failures; individual tests can override.
 process.env.LOG_LEVEL ??= "error";
+// Allow tests to run without a real database (uses InMemoryDatabaseAdapter).
+process.env.ALLOW_NO_DATABASE ??= "true";
 
 declare global {
   // React 18 testing flag to suppress act() environment warnings.

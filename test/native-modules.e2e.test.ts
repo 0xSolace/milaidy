@@ -403,8 +403,10 @@ describe("Core Plugins with Vision Integration", () => {
     )
       ? elizaContent
       : fs.readFileSync(
-          path.join(
+          path.resolve(
             packageRoot,
+            "..",
+            "eliza",
             "packages",
             "autonomous",
             "src",

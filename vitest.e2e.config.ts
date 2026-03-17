@@ -3,58 +3,116 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 const repoRoot = path.dirname(fileURLToPath(import.meta.url));
+const elizaRoot = path.join(repoRoot, "..", "eliza");
 
 export default defineConfig({
   resolve: {
-    alias: {
-      "milady/plugin-sdk": path.join(repoRoot, "src", "plugin-sdk", "index.ts"),
-      "@elizaos/core": path.join(
-        repoRoot,
-        "node_modules",
-        "@elizaos",
-        "core",
-        "dist",
-        "node",
-        "index.node.js",
-      ),
-      "@elizaos/skills": path.join(
-        repoRoot,
-        "test",
-        "stubs",
-        "empty-module.mjs",
-      ),
-      "@elizaos/plugin-agent-orchestrator": path.join(
-        repoRoot,
-        "test",
-        "stubs",
-        "coding-agent-module.ts",
-      ),
-      "@elizaos/plugin-coding-agent": path.join(
-        repoRoot,
-        "test",
-        "stubs",
-        "coding-agent-module.ts",
-      ),
-      "@elizaos/plugin-pdf": path.join(
-        repoRoot,
-        "test",
-        "stubs",
-        "empty-module.mjs",
-      ),
-      "@elizaos/plugin-form": path.join(
-        repoRoot,
-        "test",
-        "stubs",
-        "empty-module.mjs",
-      ),
-      "@elizaos/plugin-pi-ai": path.join(
-        repoRoot,
-        "test",
-        "stubs",
-        "pi-ai-module.ts",
-      ),
-      electron: path.join(repoRoot, "test", "stubs", "electron-module.ts"),
-    },
+    alias: [
+      {
+        find: "milady/plugin-sdk",
+        replacement: path.join(repoRoot, "src", "plugin-sdk", "index.ts"),
+      },
+      {
+        find: "@elizaos/core",
+        replacement: path.join(
+          elizaRoot,
+          "packages",
+          "typescript",
+          "src",
+          "index.ts",
+        ),
+      },
+      {
+        find: /^@elizaos\/autonomous\/(.*)/,
+        replacement: path.join(elizaRoot, "packages", "autonomous", "src", "$1"),
+      },
+      {
+        find: "@elizaos/autonomous",
+        replacement: path.join(
+          elizaRoot,
+          "packages",
+          "autonomous",
+          "src",
+          "index.ts",
+        ),
+      },
+      {
+        find: /^@elizaos\/app-core\/(.*)/,
+        replacement: path.join(elizaRoot, "packages", "app-core", "src", "$1"),
+      },
+      {
+        find: "@elizaos/app-core",
+        replacement: path.join(
+          elizaRoot,
+          "packages",
+          "app-core",
+          "src",
+          "index.ts",
+        ),
+      },
+      {
+        find: "@elizaos/skills",
+        replacement: path.join(repoRoot, "test", "stubs", "empty-module.mjs"),
+      },
+      {
+        find: "@elizaos/plugin-repoprompt",
+        replacement: path.join(repoRoot, "test", "stubs", "empty-module.mjs"),
+      },
+      {
+        find: "@elizaos/plugin-agent-orchestrator",
+        replacement: path.join(
+          repoRoot,
+          "test",
+          "stubs",
+          "coding-agent-module.ts",
+        ),
+      },
+      {
+        find: "@elizaos/plugin-coding-agent",
+        replacement: path.join(
+          repoRoot,
+          "test",
+          "stubs",
+          "coding-agent-module.ts",
+        ),
+      },
+      {
+        find: "@elizaos/plugin-pdf",
+        replacement: path.join(repoRoot, "test", "stubs", "empty-module.mjs"),
+      },
+      {
+        find: "@elizaos/plugin-form",
+        replacement: path.join(repoRoot, "test", "stubs", "empty-module.mjs"),
+      },
+      {
+        find: "@elizaos/plugin-pi-ai",
+        replacement: path.join(repoRoot, "test", "stubs", "pi-ai-module.ts"),
+      },
+      {
+        find: "@elizaos/plugin-openai",
+        replacement: path.join(repoRoot, "test", "stubs", "plugin-stub.mjs"),
+      },
+      {
+        find: "@elizaos/plugin-ollama",
+        replacement: path.join(repoRoot, "test", "stubs", "plugin-stub.mjs"),
+      },
+      {
+        find: "@elizaos/plugin-local-embedding",
+        replacement: path.join(repoRoot, "test", "stubs", "plugin-stub.mjs"),
+      },
+      {
+        find: "@elizaos/plugin-sql",
+        replacement: path.join(repoRoot, "test", "stubs", "plugin-stub.mjs"),
+      },
+      {
+        find: "@elizaos/plugin-discord",
+        replacement: path.join(repoRoot, "test", "stubs", "plugin-stub.mjs"),
+      },
+      {
+        find: "electron",
+        replacement: path.join(repoRoot, "test", "stubs", "electron-module.ts"),
+      },
+    ],
   },
   test: {
     testTimeout: 120_000,
@@ -70,7 +128,12 @@ export default defineConfig({
     exclude: ["dist/**", "**/node_modules/**", "test/capacitor-plugins.e2e.test.ts"],
     server: {
       deps: {
-        inline: ["@elizaos/core", "zod"],
+        inline: [
+          "@elizaos/core",
+          "@elizaos/autonomous",
+          /^@elizaos\/plugin-/,
+          "zod",
+        ],
       },
     },
   },

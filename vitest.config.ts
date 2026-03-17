@@ -216,25 +216,25 @@ export default defineConfig({
         // Stale npm dists have broken @elizaos/core resolution when loaded from
         // the eliza workspace node_modules. Stub until next plugin release.
         find: "@elizaos/plugin-openai",
-        replacement: path.join(repoRoot, "test", "stubs", "empty-module.mjs"),
+        replacement: path.join(repoRoot, "test", "stubs", "plugin-stub.mjs"),
       },
       {
         find: "@elizaos/plugin-ollama",
-        replacement: path.join(repoRoot, "test", "stubs", "empty-module.mjs"),
+        replacement: path.join(repoRoot, "test", "stubs", "plugin-stub.mjs"),
       },
       {
         find: "@elizaos/plugin-local-embedding",
-        replacement: path.join(repoRoot, "test", "stubs", "empty-module.mjs"),
+        replacement: path.join(repoRoot, "test", "stubs", "plugin-stub.mjs"),
       },
       {
         // plugin-sql and plugin-discord npm dists reference a non-existent
         // @elizaos/core/dist/node/index.node.js path.
         find: "@elizaos/plugin-sql",
-        replacement: path.join(repoRoot, "test", "stubs", "empty-module.mjs"),
+        replacement: path.join(repoRoot, "test", "stubs", "plugin-stub.mjs"),
       },
       {
         find: "@elizaos/plugin-discord",
-        replacement: path.join(repoRoot, "test", "stubs", "empty-module.mjs"),
+        replacement: path.join(repoRoot, "test", "stubs", "plugin-stub.mjs"),
       },
       {
         find: "electron",
