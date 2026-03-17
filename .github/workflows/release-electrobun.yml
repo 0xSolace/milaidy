@@ -43,7 +43,10 @@ permissions:
 
 env:
   CI: "true"
-  BUN_VERSION: "1.3.10"
+  # Pinned to 1.3.9: Bun 1.3.10 introduced a "Clean lockfile" pass that
+  # misreads 2 phantom entries on Windows, causing --frozen-lockfile to fail.
+  # Revisit when bun ships a fix (see oven-sh/bun lockfile issues).
+  BUN_VERSION: "1.3.9"
 
 jobs:
   prepare:
