@@ -205,6 +205,7 @@ export default defineConfig({
     execArgv: ["--max-old-space-size=4096"],
     include: [
       "packages/app-core/src/**/*.test.ts",
+      "packages/app-core/test/**/*.test.ts",
       "src/**/*.test.ts",
       "scripts/**/*.test.ts",
       "apps/**/*.test.ts",
