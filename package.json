@@ -45,7 +45,6 @@
     "milady": "milady.mjs",
     "milady.ai": "milady.mjs",
     "milady-ai": "milady.mjs",
-    "miladyai": "milady.mjs",
     "miladyai": "milady.mjs"
   },
   "exports": {
@@ -63,6 +62,7 @@
     "build": "tsdown && echo '{\"type\":\"module\"}' > dist/package.json && bun scripts/write-build-info.ts && cd apps/app && bun run build",
     "build:node": "tsdown && echo '{\"type\":\"module\"}' > dist/package.json && node --import tsx scripts/write-build-info.ts && cd apps/app && npm run build",
     "build:android": "cd apps/app && bun scripts/build.mjs && capacitor sync android",
+    "build:contracts": "cd test/contracts && forge build --skip Harness",
     "build:desktop": "node scripts/desktop-build.mjs build --variant=base --stage-macos-release-app",
     "build:homepage": "node scripts/write-homepage-release-data.mjs && cd apps/homepage && bun run build",
     "build:ios": "cd apps/app && bun scripts/build.mjs && capacitor sync ios",
@@ -116,7 +116,7 @@
     "dev:win": "node scripts/dev-win.mjs"
   },
   "dependencies": {
-    "@elizaos/autonomous": "alpha",
+    "@elizaos/autonomous": "file:../eliza/packages/autonomous",
     "@ai-sdk/anthropic": "^3.0.13",
     "@ai-sdk/gateway": "^3.0.12",
     "@ai-sdk/provider": "^3.0.2",
@@ -158,7 +158,7 @@
     "@elizaos/plugin-secrets-manager": "alpha",
     "@elizaos/plugin-shell": "alpha",
     "@elizaos/plugin-sql": "alpha",
-    "@elizaos/plugin-streaming-base": "2.0.0-alpha.1",
+    "@elizaos/plugin-streaming-base": "file:../plugins/plugin-streaming-base",
     "@elizaos/plugin-telegram": "alpha",
     "@elizaos/plugin-todo": "alpha",
     "@elizaos/plugin-trajectory-logger": "alpha",

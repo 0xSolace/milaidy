@@ -11,5 +11,3 @@ export const ScreenCapture = registerPlugin<ScreenCapturePlugin>(
     electron: loadWeb,
   },
 );
-
-export * from "./definitions";

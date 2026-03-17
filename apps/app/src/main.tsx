@@ -33,9 +33,9 @@ import { AppProvider } from "@elizaos/app-core/state";
 // Import the agent plugin
 import { Agent } from "@miladyai/capacitor-agent";
 import { Desktop } from "@miladyai/capacitor-desktop";
+import { App } from "@elizaos/app-core";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { App } from "./App";
 
 /**
  * Platform detection utilities

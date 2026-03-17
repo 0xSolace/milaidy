@@ -8,5 +8,3 @@ export const Camera = registerPlugin<CameraPlugin>("MiladyCamera", {
   web: loadWeb,
   electron: loadWeb,
 });
-
-export * from "./definitions";

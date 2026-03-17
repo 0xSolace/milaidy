@@ -33,11 +33,11 @@ export const DEFAULT_MODELS_DIR = path.join(os.homedir(), ".eliza", "models");
 
 const EMBEDDING_META_DIR =
   process.env.MILADY_EMBEDDING_META_DIR ??
-  process.env.MILAIDY_EMBEDDING_META_DIR ??
+  process.env.MILADY_EMBEDDING_META_DIR ??
   path.join(os.homedir(), ".milady", "state");
 export const EMBEDDING_META_PATH =
   process.env.MILADY_EMBEDDING_META_PATH ??
-  process.env.MILAIDY_EMBEDDING_META_PATH ??
+  process.env.MILADY_EMBEDDING_META_PATH ??
   path.join(EMBEDDING_META_DIR, "embedding-meta.json");
 
 let _logger:

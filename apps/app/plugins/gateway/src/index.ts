@@ -7,5 +7,3 @@ export const Gateway = registerPlugin<GatewayPlugin>("Gateway", {
   web: loadWeb,
   electron: loadWeb,
 });
-
-export * from "./definitions";

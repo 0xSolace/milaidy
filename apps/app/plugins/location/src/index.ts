@@ -8,5 +8,3 @@ export const Location = registerPlugin<LocationPlugin>("MiladyLocation", {
   web: loadWeb,
   electron: loadWeb,
 });
-
-export * from "./definitions";

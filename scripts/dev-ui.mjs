@@ -562,48 +562,35 @@ async function bootstrapOnchainDev() {
     );
   }
 
-  const registryArtifactPath = resolveArtifactPath([
-    path.join(
-      cwd,
-      "test",
-      "contracts",
-      "out",
-      "MockMiladyAgentRegistry.sol",
-      "MockMiladyAgentRegistry.json",
-    ),
-    path.join(
-      cwd,
-      "test",
-      "contracts",
-      "out",
-      "MockMiladyAgentRegistry.sol",
-      "MockMiladyAgentRegistry.json",
-    ),
-  ]);
-  const collectionArtifactPath = resolveArtifactPath([
-    path.join(
-      cwd,
-      "test",
-      "contracts",
-      "out",
-      "MockMiladyCollection.sol",
-      "MockMiladyCollection.json",
-    ),
-    path.join(
-      cwd,
-      "test",
-      "contracts",
-      "out",
-      "MockMiladyCollection.sol",
-      "MockMiladyCollection.json",
-    ),
-  ]);
+  const registryCandidates = [
+    path.join(cwd, "test", "contracts", "out", "MockMiladyAgentRegistry.sol", "MockMiladyAgentRegistry.json"),
+  ];
+  const collectionCandidates = [
+    path.join(cwd, "test", "contracts", "out", "MockMiladyCollection.sol", "MockMiladyCollection.json"),
+  ];
+  let registryArtifactPath = resolveArtifactPath(registryCandidates);
+  let collectionArtifactPath = resolveArtifactPath(collectionCandidates);
 
   if (!registryArtifactPath || !collectionArtifactPath) {
-    anvil.kill("SIGTERM");
-    throw new Error(
-      "Missing contract artifacts under test/contracts/out. Run `cd test/contracts && forge build`.",
-    );
+    if (which("forge")) {
+      try {
+        console.log(`  ${green("[milady]")} Building contract artifacts (forge build --skip Harness)...`);
+        execSync("forge build --skip Harness", {
+          cwd: path.join(cwd, "test", "contracts"),
+          stdio: "pipe",
+        });
+        registryArtifactPath = resolveArtifactPath(registryCandidates);
+        collectionArtifactPath = resolveArtifactPath(collectionCandidates);
+      } catch {
+        // Build failed; fall through to error below
+      }
+    }
+    if (!registryArtifactPath || !collectionArtifactPath) {
+      anvil.kill("SIGTERM");
+      throw new Error(
+        "Missing contract artifacts under test/contracts/out. Run `cd test/contracts && forge build --skip Harness`.",
+      );
+    }
   }
 
   const registryArtifact = readJson(registryArtifactPath);

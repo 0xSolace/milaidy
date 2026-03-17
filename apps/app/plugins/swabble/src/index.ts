@@ -8,5 +8,3 @@ export const Swabble = registerPlugin<SwabblePlugin>("Swabble", {
   web: loadWeb,
   electron: loadWeb,
 });
-
-export * from "./definitions";

@@ -43,7 +43,7 @@ function loadCompiledContract(
 
   if (!artifactPath) {
     throw new Error(
-      `Contract artifact not found for any of: ${candidates.join(", ")}. Did you run 'forge build' in test/contracts?`,
+      `Contract artifact not found for any of: ${candidates.join(", ")}. Did you run 'forge build --skip Harness' in test/contracts?`,
     );
   }
 

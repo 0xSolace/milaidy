@@ -8,5 +8,3 @@ export const Canvas = registerPlugin<CanvasPlugin>("MiladyCanvas", {
   web: loadWeb,
   electron: loadWeb,
 });
-
-export * from "./definitions";

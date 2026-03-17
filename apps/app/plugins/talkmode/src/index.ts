@@ -7,5 +7,3 @@ export const TalkMode = registerPlugin<TalkModePlugin>("TalkMode", {
   web: loadWeb,
   electron: loadWeb,
 });
-
-export * from "./definitions";
