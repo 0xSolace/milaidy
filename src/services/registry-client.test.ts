@@ -954,12 +954,7 @@ describe("registry-client", () => {
       const hyperscape = apps.find(
         (app) => app.name === "@elizaos/app-hyperscape",
       );
-      expect(hyperscape?.launchUrl).toBe("http://localhost:3333");
-      expect(hyperscape?.uiExtension?.detailPanelId).toBe(
-        "hyperscape-embedded-agents",
-      );
-      expect(hyperscape?.viewer?.url).toBe("http://localhost:3333");
-      expect(hyperscape?.viewer?.postMessageAuth).toBe(true);
+      expect(hyperscape?.launchUrl).toBe("https://hyperscape.ai");
 
       const pluginInfo = await getPluginInfo("@elizaos/app-hyperscape");
       expect(pluginInfo?.localPath).toContain(

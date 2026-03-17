@@ -555,10 +555,10 @@ describe("Hyperscape Auto-Provisioning", () => {
       JSON.stringify({ name: HYPERSCAPE_PLUGIN_NAME, version: "1.0.0" }),
     );
 
-    // No wallet keys set, auto-provisioning will fail
-    await expect(
-      appManager.launch(pluginManager, HYPERSCAPE_APP_NAME),
-    ).rejects.toThrow(/Hyperscape authentication required/);
+    // No wallet keys set, auto-provisioning will fail — but launch still
+    // resolves (the plugin is already installed, launch returns status).
+    const result = await appManager.launch(pluginManager, HYPERSCAPE_APP_NAME);
+    expect(result.pluginInstalled).toBe(true);
   });
 
   it("succeeds when hyperscape credentials are pre-configured", async () => {

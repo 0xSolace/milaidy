@@ -16,6 +16,7 @@ const ciWorkers = isWindows ? 2 : 3;
 
 export default defineConfig({
   resolve: {
+    dedupe: ["react", "react-dom", "ethers"],
     alias: [
       {
         find: "milady/plugin-sdk",

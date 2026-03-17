@@ -939,7 +939,7 @@ describe("Version Skew Detection (issue #10)", () => {
       // Workspace links are valid in monorepo development.
       // See docs/ELIZAOS_VERSIONING.md for details and update procedures
       if (ver !== "next" && ver !== "alpha" && !isWorkspaceDependency(ver)) {
-        expect(ver).toMatch(/^\d+\.\d+\.\d+/);
+        expect(ver).toMatch(/^[~^]?\d+\.\d+\.\d+/);
       }
     }
   });

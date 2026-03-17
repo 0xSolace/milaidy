@@ -1,4 +1,50 @@
+import Module from "node:module";
 import { afterAll, afterEach, vi } from "vitest";
+
+// ── React deduplication ──────────────────────────────────────────────
+// bun hoists react-test-renderer's peer react into a separate .bun/ path,
+// creating two React instances that break hooks.  Intercept Node's CJS
+// resolution so every `require("react")` returns the root copy.
+{
+  const _require = Module.createRequire(import.meta.url);
+  const rootReactDir = require("node:path").dirname(
+    _require.resolve("react/package.json"),
+  );
+
+  const origResolve = (Module as unknown as { _resolveFilename: Function })
+    ._resolveFilename;
+  (Module as unknown as { _resolveFilename: Function })._resolveFilename =
+    function patchedResolve(
+      request: string,
+      parent: unknown,
+      isMain: boolean,
+      options: unknown,
+    ) {
+      const resolved: string = origResolve.call(
+        this,
+        request,
+        parent,
+        isMain,
+        options,
+      );
+      // Redirect any .bun/-hoisted react files to the root copy so
+      // react-test-renderer and component code share one React instance.
+      if (
+        resolved.includes("node_modules/.bun/") &&
+        resolved.includes("/react/") &&
+        !resolved.includes("react-dom") &&
+        !resolved.includes("react-test-renderer")
+      ) {
+        // Extract the relative path within the react package
+        const reactPkgIdx = resolved.lastIndexOf("/react/");
+        if (reactPkgIdx !== -1) {
+          const relPath = resolved.slice(reactPkgIdx + "/react/".length);
+          return require("node:path").join(rootReactDir, relPath);
+        }
+      }
+      return resolved;
+    };
+}
 
 // Ensure Vitest environment is properly set
 process.env.VITEST = "true";
