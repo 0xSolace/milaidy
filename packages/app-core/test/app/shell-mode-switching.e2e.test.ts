@@ -48,18 +48,12 @@ vi.mock("@miladyai/app-core/platform", async () => {
 
 /* ── Mock every leaf component ────────────────────────────────────── */
 
-vi.mock("@miladyai/app-core/state", async () => {
-  const actual = await vi.importActual<typeof import("@miladyai/app-core/state")>(
-    "@miladyai/app-core/state",
-  );
-  return {
-    ...actual,
-    useApp: () => mockUseApp(),
-    getVrmUrl: vi.fn(() => "mock-vrm-url"),
-    getVrmPreviewUrl: vi.fn(() => "mock-vrm-preview"),
-    getVrmBackgroundUrl: vi.fn(() => "mock-vrm-bg"),
-  };
-});
+vi.mock("@miladyai/app-core/state", () => ({
+  useApp: () => mockUseApp(),
+  getVrmUrl: vi.fn(() => "mock-vrm-url"),
+  getVrmPreviewUrl: vi.fn(() => "mock-vrm-preview"),
+  getVrmBackgroundUrl: vi.fn(() => "mock-vrm-bg"),
+}));
 
 vi.mock("@miladyai/app-core/components", async () => {
   const actual = await vi.importActual<
@@ -67,39 +61,19 @@ vi.mock("@miladyai/app-core/components", async () => {
   >("@miladyai/app-core/components");
   return {
     ...actual,
-    AdvancedPageView: () =>
-      React.createElement("section", null, "AdvancedPageView Ready"),
     AppsPageView: () =>
       React.createElement("section", null, "AppsPageView Ready"),
     BugReportModal: () => React.createElement("div", null, "BugReportModal"),
-    CharacterView: () =>
-      React.createElement("section", null, "CharacterView Ready"),
-    ChatView: () => React.createElement("section", null, "ChatView Ready"),
     CloudDashboard: () =>
       React.createElement("section", null, "ElizaCloudDashboard Ready"),
     CommandPalette: () => React.createElement("div", null, "CommandPalette"),
-    CompanionShell: ({ tab }: { tab: string }) =>
-      React.createElement("main", null, `CompanionShell Ready: ${tab}`),
-    CompanionView: () =>
-      React.createElement("section", null, "CompanionView Ready"),
     ConnectorsPageView: () =>
       React.createElement("section", null, "ConnectorsPageView Ready"),
-    ConversationsSidebar: () =>
-      React.createElement("aside", null, "ConversationsSidebar"),
-    CustomActionEditor: () =>
-      React.createElement("aside", null, "CustomActionEditor"),
-    CustomActionsPanel: () =>
-      React.createElement("aside", null, "CustomActionsPanel"),
     EmotePicker: () => React.createElement("div", null, "EmotePicker"),
     ErrorBoundary: ({ children }: { children: React.ReactNode }) =>
       React.createElement(React.Fragment, null, children),
-    Header: () => React.createElement("header", null, "Header"),
     HeartbeatsView: () =>
       React.createElement("section", null, "HeartbeatsView Ready"),
-    InventoryView: () =>
-      React.createElement("section", null, "InventoryView Ready"),
-    KnowledgeView: () =>
-      React.createElement("section", null, "KnowledgeView Ready"),
     PairingView: () => React.createElement("div", null, "PairingView"),
     PluginsPageView: () =>
       React.createElement("section", null, "PluginsPageView Ready"),
@@ -109,10 +83,80 @@ vi.mock("@miladyai/app-core/components", async () => {
       React.createElement("div", null, "SaveCommandModal"),
     ConnectionFailedBanner: () =>
       React.createElement("div", null, "ConnectionFailedBanner"),
-    OnboardingWizard: () =>
-      React.createElement("div", null, "OnboardingWizard"),
     SettingsView: () =>
       React.createElement("section", null, "SettingsView Ready"),
+    SkillsView: () => React.createElement("section", null, "SkillsView Ready"),
+    SystemWarningBanner: () =>
+      React.createElement("div", null, "SystemWarningBanner"),
+  };
+});
+
+vi.mock("../../src/components/Header", () => ({
+  Header: () => React.createElement("header", null, "Header"),
+}));
+
+vi.mock("../../src/components/CommandPalette", () => ({
+  CommandPalette: () => React.createElement("div", null, "CommandPalette"),
+}));
+
+vi.mock("../../src/components/EmotePicker", () => ({
+  EmotePicker: () => React.createElement("div", null, "EmotePicker"),
+}));
+
+vi.mock("../../src/components/PairingView", () => ({
+  PairingView: () => React.createElement("div", null, "PairingView"),
+}));
+
+vi.mock("../../src/components/OnboardingWizard", () => ({
+  OnboardingWizard: () => React.createElement("div", null, "OnboardingWizard"),
+}));
+
+vi.mock("../../src/components/ChatView", () => ({
+  ChatView: () => React.createElement("section", null, "ChatView Ready"),
+}));
+
+vi.mock("../../src/components/StreamView", () => ({
+  StreamView: () => React.createElement("section", null, "StreamView Ready"),
+}));
+
+vi.mock("../../src/components/ConversationsSidebar", () => ({
+  ConversationsSidebar: () =>
+    React.createElement("aside", null, "ConversationsSidebar"),
+}));
+
+vi.mock("../../src/components/CustomActionsPanel", () => ({
+  CustomActionsPanel: () =>
+    React.createElement("aside", null, "CustomActionsPanel"),
+}));
+
+vi.mock("../../src/components/CustomActionEditor", () => ({
+  CustomActionEditor: () =>
+    React.createElement("aside", null, "CustomActionEditor"),
+}));
+
+vi.mock("../../src/components/AppsPageView", () => ({
+  AppsPageView: () =>
+    React.createElement("section", null, "AppsPageView Ready"),
+}));
+
+vi.mock("../../src/components/CharacterView", () => ({
+  CharacterView: () =>
+    React.createElement("section", null, "CharacterView Ready"),
+}));
+
+vi.mock("../../src/components/AdvancedPageView", () => ({
+  AdvancedPageView: () =>
+    React.createElement("section", null, "AdvancedPageView Ready"),
+}));
+
+vi.mock("../../src/components/CompanionView", () => ({
+  CompanionView: () =>
+    React.createElement("section", null, "CompanionView Ready"),
+}));
+
+vi.mock("../../src/components/companion/CompanionSceneHost", async () => {
+  const React = await vi.importActual<typeof import("react")>("react");
+  return {
     SharedCompanionScene: ({
       active,
       interactive,
@@ -133,131 +177,31 @@ vi.mock("@miladyai/app-core/components", async () => {
       sceneHostState.interactiveHistory.push(Boolean(interactive));
       return React.createElement(React.Fragment, null, children);
     },
-    ShellOverlays: () => null,
-    SkillsView: () => React.createElement("section", null, "SkillsView Ready"),
-    StreamView: () => React.createElement("section", null, "StreamView Ready"),
-    SystemWarningBanner: () =>
-      React.createElement("div", null, "SystemWarningBanner"),
+    CompanionSceneHost: () => null,
+    useSharedCompanionScene: () => true,
   };
 });
 
-vi.mock("../../../packages/app-core/src/components/Header", () => ({
-  Header: () => React.createElement("header", null, "Header"),
-}));
-
-vi.mock("../../../packages/app-core/src/components/CommandPalette", () => ({
-  CommandPalette: () => React.createElement("div", null, "CommandPalette"),
-}));
-
-vi.mock("../../../packages/app-core/src/components/EmotePicker", () => ({
-  EmotePicker: () => React.createElement("div", null, "EmotePicker"),
-}));
-
-vi.mock("../../../packages/app-core/src/components/PairingView", () => ({
-  PairingView: () => React.createElement("div", null, "PairingView"),
-}));
-
-vi.mock("../../../packages/app-core/src/components/OnboardingWizard", () => ({
-  OnboardingWizard: () => React.createElement("div", null, "OnboardingWizard"),
-}));
-
-vi.mock("../../../packages/app-core/src/components/ChatView", () => ({
-  ChatView: () => React.createElement("section", null, "ChatView Ready"),
-}));
-
-vi.mock("../../../packages/app-core/src/components/StreamView", () => ({
-  StreamView: () => React.createElement("section", null, "StreamView Ready"),
-}));
-
-vi.mock(
-  "../../../packages/app-core/src/components/ConversationsSidebar",
-  () => ({
-    ConversationsSidebar: () =>
-      React.createElement("aside", null, "ConversationsSidebar"),
-  }),
-);
-
-vi.mock("../../../packages/app-core/src/components/CustomActionsPanel", () => ({
-  CustomActionsPanel: () =>
-    React.createElement("aside", null, "CustomActionsPanel"),
-}));
-
-vi.mock("../../../packages/app-core/src/components/CustomActionEditor", () => ({
-  CustomActionEditor: () =>
-    React.createElement("aside", null, "CustomActionEditor"),
-}));
-
-vi.mock("../../../packages/app-core/src/components/AppsPageView", () => ({
-  AppsPageView: () =>
-    React.createElement("section", null, "AppsPageView Ready"),
-}));
-
-vi.mock("../../../packages/app-core/src/components/CharacterView", () => ({
-  CharacterView: () =>
-    React.createElement("section", null, "CharacterView Ready"),
-}));
-
-vi.mock("../../../packages/app-core/src/components/AdvancedPageView", () => ({
-  AdvancedPageView: () =>
-    React.createElement("section", null, "AdvancedPageView Ready"),
-}));
-
-vi.mock("../../../packages/app-core/src/components/CompanionView", () => ({
-  CompanionView: () =>
-    React.createElement("section", null, "CompanionView Ready"),
-}));
-
-vi.mock(
-  "../../../packages/app-core/src/components/companion/CompanionSceneHost",
-  async () => {
-    const React = await vi.importActual<typeof import("react")>("react");
-    return {
-      SharedCompanionScene: ({
-        active,
-        interactive,
-        children,
-      }: {
-        active: boolean;
-        interactive?: boolean;
-        children: React.ReactNode;
-      }) => {
-        const { useEffect } = React;
-        useEffect(() => {
-          sceneHostState.mounts += 1;
-          return () => {
-            sceneHostState.unmounts += 1;
-          };
-        }, []);
-        sceneHostState.activeHistory.push(active);
-        sceneHostState.interactiveHistory.push(Boolean(interactive));
-        return React.createElement(React.Fragment, null, children);
-      },
-      CompanionSceneHost: () => null,
-      useSharedCompanionScene: () => true,
-    };
-  },
-);
-
-vi.mock("../../../packages/app-core/src/components/companion/VrmStage", () => ({
+vi.mock("../../src/components/companion/VrmStage", () => ({
   VrmStage: () => React.createElement("div", null, "VrmStage Ready"),
 }));
 
-vi.mock("../../../packages/app-core/src/components/TriggersView", () => ({
+vi.mock("../../src/components/TriggersView", () => ({
   TriggersView: () =>
     React.createElement("section", null, "TriggersView Ready"),
 }));
 
-vi.mock("../../../packages/app-core/src/components/ConnectorsPageView", () => ({
+vi.mock("../../src/components/ConnectorsPageView", () => ({
   ConnectorsPageView: () =>
     React.createElement("section", null, "ConnectorsPageView Ready"),
 }));
 
-vi.mock("../../../packages/app-core/src/components/InventoryView", () => ({
+vi.mock("../../src/components/InventoryView", () => ({
   InventoryView: () =>
     React.createElement("section", null, "InventoryView Ready"),
 }));
 
-vi.mock("../../../packages/app-core/src/components/KnowledgeView", () => ({
+vi.mock("../../src/components/KnowledgeView", () => ({
   KnowledgeView: () =>
     React.createElement("section", null, "KnowledgeView Ready"),
 }));
@@ -266,45 +210,37 @@ vi.mock("@miladyai/app-core/components/AvatarLoader", () => ({
   AvatarLoader: () => React.createElement("div", null, "AvatarLoader"),
 }));
 
-vi.mock("../../../packages/app-core/src/components/PluginsPageView", () => ({
+vi.mock("../../src/components/PluginsPageView", () => ({
   PluginsPageView: () =>
     React.createElement("section", null, "PluginsPageView Ready"),
 }));
 
-vi.mock("../../../packages/app-core/src/components/PluginsView", () => ({
+vi.mock("../../src/components/PluginsView", () => ({
   PluginsView: () => React.createElement("section", null, "PluginsView Ready"),
 }));
 
-vi.mock("../../../packages/app-core/src/components/SkillsView", () => ({
+vi.mock("../../src/components/SkillsView", () => ({
   SkillsView: () => React.createElement("section", null, "SkillsView Ready"),
 }));
 
-vi.mock("../../../packages/app-core/src/components/CustomActionsView", () => ({
+vi.mock("../../src/components/CustomActionsView", () => ({
   CustomActionsView: () =>
     React.createElement("section", null, "CustomActionsView Ready"),
 }));
 
-vi.mock("../../../packages/app-core/src/components/FineTuningView", () => ({
+vi.mock("../../src/components/FineTuningView", () => ({
   FineTuningView: () =>
     React.createElement("section", null, "FineTuningView Ready"),
 }));
 
-vi.mock("../../../packages/app-core/src/components/TrajectoriesView", () => ({
+vi.mock("../../src/components/TrajectoriesView", () => ({
   TrajectoriesView: () =>
     React.createElement("section", null, "TrajectoriesView Ready"),
 }));
 
-vi.mock(
-  "../../../packages/app-core/src/components/TrajectoryDetailView",
-  () => ({
-    TrajectoryDetailView: () =>
-      React.createElement("section", null, "TrajectoryDetailView Ready"),
-  }),
-);
-
-vi.mock("../../../packages/app-core/src/components/LifoSandboxView", () => ({
-  LifoSandboxView: () =>
-    React.createElement("section", null, "LifoSandboxView Ready"),
+vi.mock("../../src/components/TrajectoryDetailView", () => ({
+  TrajectoryDetailView: () =>
+    React.createElement("section", null, "TrajectoryDetailView Ready"),
 }));
 
 vi.mock("@miladyai/app-core/hooks", async () => {
@@ -337,6 +273,10 @@ type HarnessState = {
   setUiShellMode: (mode: "native" | "companion") => void;
   [key: string]: unknown;
 };
+
+function shellModeForTab(tab: Tab): "native" | "companion" {
+  return tab === "companion" ? "companion" : "native";
+}
 
 function tFn(k: string): string {
   const labels: Record<string, string> = {
@@ -372,11 +312,10 @@ function makeState(overrides?: Partial<HarnessState>): HarnessState {
     tab: "chat",
     actionNotice: null,
     plugins: [],
-    conversations: [],
-    elizaCloudCredits: null,
     uiShellMode: "native",
     setUiShellMode: vi.fn((mode: "native" | "companion") => {
       state.uiShellMode = mode;
+      state.tab = mode === "companion" ? "companion" : "chat";
     }),
     uiLanguage: "en",
     agentStatus: { state: "running", agentName: "Milady" },
@@ -390,6 +329,7 @@ function makeState(overrides?: Partial<HarnessState>): HarnessState {
     setActionNotice: vi.fn(),
     setTab: (tab: Tab) => {
       state.tab = tab;
+      state.uiShellMode = shellModeForTab(tab);
     },
     ...overrides,
   };
@@ -402,6 +342,14 @@ function textOf(node: TestRenderer.ReactTestInstance): string {
   return node.children
     .map((child) => (typeof child === "string" ? child : textOf(child)))
     .join("");
+}
+
+function requireTree(
+  tree: TestRenderer.ReactTestRenderer | null | undefined,
+): TestRenderer.ReactTestRenderer {
+  expect(tree).toBeTruthy();
+  if (!tree) throw new Error("expected test renderer instance");
+  return tree;
 }
 
 function expectValidContent(content: string): void {
@@ -432,6 +380,56 @@ function filterRealErrors(spy: ReturnType<typeof vi.spyOn>): Array<unknown[]> {
   });
 }
 
+function expectShellForTab(text: string, tab: Tab): void {
+  const expectedToken = (() => {
+    switch (tab) {
+      case "chat":
+        return "ChatView Ready";
+      case "companion":
+        return "CompanionView Ready";
+      case "character":
+      case "character-select":
+        return "CharacterView Ready";
+      case "wallets":
+        return "InventoryView Ready";
+      case "knowledge":
+        return "KnowledgeView Ready";
+      case "connectors":
+        return "ConnectorsPageView Ready";
+      case "triggers":
+        return "HeartbeatsView Ready";
+      case "apps":
+        return "AppsPageView Ready";
+      case "settings":
+      case "voice":
+        return "SettingsView Ready";
+      case "stream":
+        return "StreamView Ready";
+      case "advanced":
+      case "plugins":
+      case "skills":
+      case "actions":
+      case "fine-tuning":
+      case "trajectories":
+      case "runtime":
+      case "database":
+      case "logs":
+      case "security":
+        return "AdvancedPageView Ready";
+      default:
+        return "ChatView Ready";
+    }
+  })();
+
+  expect(text).toContain(expectedToken);
+  if (tab === "companion") {
+    expect(text).not.toContain("Header");
+  } else {
+    expect(text).toContain("Header");
+  }
+  expectValidContent(text);
+}
+
 /* ── Tests ────────────────────────────────────────────────────────── */
 
 describe("shell mode switching (e2e)", () => {
@@ -448,47 +446,40 @@ describe("shell mode switching (e2e)", () => {
     sceneHostState.unmounts = 0;
   });
 
-  // --- Native shell: every tab renders valid content ---
-
-  it("renders every tab in NATIVE shell mode with valid content", async () => {
+  it("renders every tab with the shell implied by its tab", async () => {
     const errorSpy = vi.spyOn(console, "error");
     const warnSpy = vi.spyOn(console, "warn");
 
-    state.uiShellMode = "native";
-
-    const nativeTabs: Array<{ tab: Tab; token: string }> = [
-      { tab: "chat", token: "ChatView Ready" },
-      { tab: "companion", token: "CompanionView Ready" },
-      { tab: "character", token: "CharacterView Ready" },
-      { tab: "wallets", token: "InventoryView Ready" },
-      { tab: "knowledge", token: "KnowledgeView Ready" },
-      { tab: "connectors", token: "ConnectorsPageView Ready" },
-      { tab: "triggers", token: "HeartbeatsView Ready" },
-      // All advanced sub-tabs route through AdvancedPageView in ViewRouter
-      { tab: "plugins", token: "AdvancedPageView Ready" },
-      { tab: "skills", token: "AdvancedPageView Ready" },
-      { tab: "settings", token: "SettingsView Ready" },
-      { tab: "advanced", token: "AdvancedPageView Ready" },
-      { tab: "fine-tuning", token: "AdvancedPageView Ready" },
-      { tab: "trajectories", token: "AdvancedPageView Ready" },
-      { tab: "runtime", token: "AdvancedPageView Ready" },
-      { tab: "database", token: "AdvancedPageView Ready" },
-      { tab: "logs", token: "AdvancedPageView Ready" },
-      { tab: "lifo", token: "AdvancedPageView Ready" },
+    const tabsToVerify: Tab[] = [
+      "chat",
+      "companion",
+      "character",
+      "wallets",
+      "knowledge",
+      "connectors",
+      "triggers",
+      "plugins",
+      "skills",
+      "settings",
+      "advanced",
+      "fine-tuning",
+      "trajectories",
+      "runtime",
+      "database",
+      "logs",
     ];
 
     let tree!: TestRenderer.ReactTestRenderer;
     await act(async () => {
       tree = TestRenderer.create(React.createElement(App));
     });
-    for (const { tab, token } of nativeTabs) {
-      state.tab = tab;
+    for (const tab of tabsToVerify) {
+      state.setTab(tab);
       await act(async () => {
         tree.update(React.createElement(App));
       });
-      const text = textOf(tree.root);
-      expect(text).toContain(token);
-      expectValidContent(text);
+      const text = textOf(requireTree(tree).root);
+      expectShellForTab(text, tab);
     }
 
     expect(filterRealErrors(errorSpy).length).toBe(0);
@@ -502,25 +493,19 @@ describe("shell mode switching (e2e)", () => {
     warnSpy.mockRestore();
   });
 
-  // --- Companion shell: companion mode always renders the companion chat surface ---
-
-  it("renders the companion shell for every tab while companion mode is active", async () => {
+  it("uses the companion shell only for the companion tab", async () => {
     const errorSpy = vi.spyOn(console, "error");
     const warnSpy = vi.spyOn(console, "warn");
 
-    state.uiShellMode = "companion";
-
-    state.tab = "companion";
+    state.setTab("companion");
     let tree!: TestRenderer.ReactTestRenderer;
     await act(async () => {
       tree = TestRenderer.create(React.createElement(App));
     });
-    let text = textOf(tree.root);
-    expect(text).toContain("CompanionShell Ready: companion");
-    expect(text).not.toContain("Header");
-    expectValidContent(text);
+    let text = textOf(requireTree(tree).root);
+    expectShellForTab(text, "companion");
 
-    const companionCases: Tab[] = [
+    const nativeTabs: Tab[] = [
       "settings",
       "triggers",
       "skills",
@@ -528,15 +513,13 @@ describe("shell mode switching (e2e)", () => {
       "wallets",
     ];
 
-    for (const tab of companionCases) {
-      state.tab = tab;
+    for (const tab of nativeTabs) {
+      state.setTab(tab);
       await act(async () => {
         tree.update(React.createElement(App));
       });
-      text = textOf(tree.root);
-      expect(text).toContain("CompanionShell Ready: companion");
-      expect(text).not.toContain("Header");
-      expectValidContent(text);
+      text = textOf(requireTree(tree).root);
+      expectShellForTab(text, tab);
     }
 
     expect(filterRealErrors(errorSpy).length).toBe(0);
@@ -550,92 +533,66 @@ describe("shell mode switching (e2e)", () => {
     warnSpy.mockRestore();
   });
 
-  // --- Switch native → companion → native, checking content at each step ---
-
-  it("switches from native to companion and back without rendering errors", async () => {
+  it("switches between native tabs and companion without stale rendering", async () => {
     const errorSpy = vi.spyOn(console, "error");
     const warnSpy = vi.spyOn(console, "warn");
 
     let tree!: TestRenderer.ReactTestRenderer;
 
-    // 1. Start in native mode on chat
-    state.uiShellMode = "native";
-    state.tab = "chat";
+    state.setTab("chat");
     await act(async () => {
       tree = TestRenderer.create(React.createElement(App));
     });
-    let text = textOf(tree.root);
-    expect(text).toContain("ChatView Ready");
-    expect(text).toContain("Header");
-    expectValidContent(text);
+    let text = textOf(requireTree(tree).root);
+    expectShellForTab(text, "chat");
 
-    // 2. Navigate to settings in native mode
-    state.tab = "settings";
+    state.setTab("settings");
     await act(async () => {
       tree.update(React.createElement(App));
     });
-    text = textOf(tree.root);
-    expect(text).toContain("SettingsView Ready");
-    expect(text).toContain("Header");
-    expectValidContent(text);
+    text = textOf(requireTree(tree).root);
+    expectShellForTab(text, "settings");
 
-    // 3. Switch to companion mode
-    state.uiShellMode = "companion";
-    state.tab = "companion";
+    state.setTab("companion");
     await act(async () => {
       tree.update(React.createElement(App));
     });
-    text = textOf(tree.root);
-    expect(text).toContain("CompanionShell Ready: companion");
-    // Companion mode should NOT render the native Header
-    expect(text).not.toContain("Header");
-    expectValidContent(text);
+    text = textOf(requireTree(tree).root);
+    expectShellForTab(text, "companion");
 
-    // 4. Navigate around in companion mode — still stays on companion shell
-    state.tab = "skills";
+    state.setTab("skills");
     await act(async () => {
       tree.update(React.createElement(App));
     });
-    text = textOf(tree.root);
-    expect(text).toContain("CompanionShell Ready: companion");
-    expect(text).not.toContain("Header");
-    expectValidContent(text);
+    text = textOf(requireTree(tree).root);
+    expectShellForTab(text, "skills");
 
-    // 5. Navigate to settings in companion mode — still companion shell
-    state.tab = "settings";
+    state.setTab("companion");
     await act(async () => {
       tree.update(React.createElement(App));
     });
-    text = textOf(tree.root);
-    expect(text).toContain("CompanionShell Ready: companion");
-    expect(text).not.toContain("Header");
-    expectValidContent(text);
+    text = textOf(requireTree(tree).root);
+    expectShellForTab(text, "companion");
 
-    // 6. Switch back to native mode
-    state.uiShellMode = "native";
-    state.tab = "chat";
+    state.setTab("chat");
     await act(async () => {
       tree.update(React.createElement(App));
     });
-    text = textOf(tree.root);
-    expect(text).toContain("ChatView Ready");
-    expect(text).toContain("Header");
-    expectValidContent(text);
+    text = textOf(requireTree(tree).root);
+    expectShellForTab(text, "chat");
 
-    // 7. Navigate through several native tabs to verify no stale companion state
     for (const nextTab of [
       "character",
       "wallets",
       "plugins",
       "settings",
     ] as Tab[]) {
-      state.tab = nextTab;
+      state.setTab(nextTab);
       await act(async () => {
         tree.update(React.createElement(App));
       });
-      text = textOf(tree.root);
-      expect(text).toContain("Header");
-      expectValidContent(text);
+      text = textOf(requireTree(tree).root);
+      expectShellForTab(text, nextTab);
     }
 
     expect(filterRealErrors(errorSpy).length).toBe(0);
@@ -649,37 +606,32 @@ describe("shell mode switching (e2e)", () => {
     warnSpy.mockRestore();
   });
 
-  // --- Rapid tab switching in companion mode ---
-
-  it("handles rapid tab switching in companion mode without errors", async () => {
+  it("handles rapid tab switching without stale shell state", async () => {
     const errorSpy = vi.spyOn(console, "error");
     const warnSpy = vi.spyOn(console, "warn");
 
-    state.uiShellMode = "companion";
-    state.tab = "companion";
+    state.setTab("companion");
 
     let tree!: TestRenderer.ReactTestRenderer;
     await act(async () => {
       tree = TestRenderer.create(React.createElement(App));
     });
-    // Rapid-fire: every tab still renders the companion shell while in companion mode
     const rapidTabs: Tab[] = [
       "companion",
       "skills",
       "companion",
       "settings",
       "companion",
+      "character",
     ];
 
     for (const tab of rapidTabs) {
-      state.tab = tab;
+      state.setTab(tab);
       await act(async () => {
         tree.update(React.createElement(App));
       });
-      const text = textOf(tree.root);
-      expect(text).toContain("CompanionShell Ready: companion");
-      expect(text).not.toContain("Header");
-      expectValidContent(text);
+      const text = textOf(requireTree(tree).root);
+      expectShellForTab(text, tab);
     }
 
     expect(filterRealErrors(errorSpy).length).toBe(0);
@@ -693,35 +645,23 @@ describe("shell mode switching (e2e)", () => {
     warnSpy.mockRestore();
   });
 
-  // --- Mode toggle back and forth multiple times ---
-
-  it("toggles shell mode multiple times without stale rendering", async () => {
+  it("toggles between chat and companion multiple times without stale rendering", async () => {
     const errorSpy = vi.spyOn(console, "error");
     const warnSpy = vi.spyOn(console, "warn");
 
     let tree!: TestRenderer.ReactTestRenderer;
-    state.tab = "chat";
-    state.uiShellMode = "native";
+    state.setTab("chat");
     await act(async () => {
       tree = TestRenderer.create(React.createElement(App));
     });
-    // Toggle 5 times
     for (let i = 0; i < 5; i++) {
-      const isCompanion = i % 2 === 0;
-      state.uiShellMode = isCompanion ? "companion" : "native";
-      state.tab = isCompanion ? "companion" : "chat";
+      const nextTab = i % 2 === 0 ? "companion" : "chat";
+      state.setTab(nextTab);
       await act(async () => {
         tree.update(React.createElement(App));
       });
-      const text = textOf(tree.root);
-      if (isCompanion) {
-        expect(text).toContain("CompanionShell Ready: companion");
-        expect(text).not.toContain("Header");
-      } else {
-        expect(text).toContain("ChatView Ready");
-        expect(text).toContain("Header");
-      }
-      expectValidContent(text);
+      const text = textOf(requireTree(tree).root);
+      expectShellForTab(text, nextTab);
     }
 
     expect(filterRealErrors(errorSpy).length).toBe(0);
@@ -738,19 +678,16 @@ describe("shell mode switching (e2e)", () => {
   it("keeps the shared companion scene mounted while shell mode changes", async () => {
     let tree!: TestRenderer.ReactTestRenderer;
 
-    state.uiShellMode = "native";
-    state.tab = "chat";
+    state.setTab("chat");
     await act(async () => {
       tree = TestRenderer.create(React.createElement(App));
     });
-    state.uiShellMode = "companion";
-    state.tab = "companion";
+    state.setTab("companion");
     await act(async () => {
       tree.update(React.createElement(App));
     });
 
-    state.uiShellMode = "native";
-    state.tab = "chat";
+    state.setTab("chat");
     await act(async () => {
       tree.update(React.createElement(App));
     });
@@ -760,70 +697,75 @@ describe("shell mode switching (e2e)", () => {
     expect(sceneHostState.activeHistory).toEqual([false, true, false]);
   });
 
-  it("routes companion mode back to the companion shell even if the tab state says character", async () => {
+  it("keeps character tabs in the native shell while the companion scene stays active", async () => {
     let tree!: TestRenderer.ReactTestRenderer;
 
-    state.uiShellMode = "native";
-    state.tab = "chat";
+    state.setTab("chat");
     await act(async () => {
       tree = TestRenderer.create(React.createElement(App));
     });
-    state.tab = "character";
+    state.setTab("companion");
     await act(async () => {
       tree.update(React.createElement(App));
     });
 
-    let text = textOf(tree.root);
-    expect(text).toContain("Header");
-    expect(text).toContain("CharacterView Ready");
-    expect(sceneHostState.activeHistory.at(-1)).toBe(true);
-    expect(sceneHostState.interactiveHistory.at(-1)).toBe(false);
-
-    state.uiShellMode = "companion";
-    state.tab = "character";
-    await act(async () => {
-      tree.update(React.createElement(App));
-    });
-
-    text = textOf(tree.root);
-    expect(text).toContain("CompanionShell Ready: companion");
-    expect(text).not.toContain("Header");
+    let text = textOf(requireTree(tree).root);
+    expectShellForTab(text, "companion");
     expect(sceneHostState.activeHistory.at(-1)).toBe(true);
     expect(sceneHostState.interactiveHistory.at(-1)).toBe(true);
+
+    state.setTab("character");
+    await act(async () => {
+      tree.update(React.createElement(App));
+    });
+
+    text = textOf(requireTree(tree).root);
+    expectShellForTab(text, "character");
+    expect(sceneHostState.activeHistory.at(-1)).toBe(true);
+    expect(sceneHostState.interactiveHistory.at(-1)).toBe(false);
   });
 
   it("disables iOS native scrolling only while the companion shell is visible", async () => {
     let tree!: TestRenderer.ReactTestRenderer;
 
-    state.uiShellMode = "native";
-    state.tab = "chat";
+    state.setTab("chat");
     await act(async () => {
       tree = TestRenderer.create(React.createElement(App));
     });
+    expect(mockKeyboardSetScroll).toHaveBeenLastCalledWith({
+      isDisabled: false,
+    });
 
-    state.uiShellMode = "companion";
-    state.tab = "settings";
+    state.setTab("settings");
     await act(async () => {
       tree.update(React.createElement(App));
     });
+    expect(mockKeyboardSetScroll).toHaveBeenLastCalledWith({
+      isDisabled: false,
+    });
 
-    state.uiShellMode = "companion";
-    state.tab = "companion";
+    state.setTab("companion");
     await act(async () => {
       tree.update(React.createElement(App));
     });
+    expect(mockKeyboardSetScroll).toHaveBeenLastCalledWith({
+      isDisabled: true,
+    });
 
-    state.uiShellMode = "native";
-    state.tab = "chat";
+    state.setTab("character");
     await act(async () => {
       tree.update(React.createElement(App));
     });
+    expect(mockKeyboardSetScroll).toHaveBeenLastCalledWith({
+      isDisabled: false,
+    });
 
-    if (mockKeyboardSetScroll.mock.calls.length > 0) {
-      expect(mockKeyboardSetScroll).toHaveBeenCalledWith({ isDisabled: true });
-      expect(mockKeyboardSetScroll).toHaveBeenCalledWith({
-        isDisabled: false,
-      });
-    }
+    state.setTab("chat");
+    await act(async () => {
+      tree.update(React.createElement(App));
+    });
+    expect(mockKeyboardSetScroll).toHaveBeenLastCalledWith({
+      isDisabled: false,
+    });
   });
 });
