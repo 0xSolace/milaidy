@@ -196,17 +196,11 @@ export default defineConfig({
             },
             {
               find: /^@elizaos\/app-core\/(.*)$/,
-              replacement: path.resolve(
-                elizaRoot,
-                "packages/app-core/src/$1",
-              ),
+              replacement: path.resolve(elizaRoot, "packages/app-core/src/$1"),
             },
             {
               find: /^@elizaos\/ui$/,
-              replacement: path.resolve(
-                elizaRoot,
-                "packages/ui/src/index.ts",
-              ),
+              replacement: path.resolve(elizaRoot, "packages/ui/src/index.ts"),
             },
             {
               find: /^@elizaos\/ui\/(.*)$/,

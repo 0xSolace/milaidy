@@ -298,7 +298,9 @@ describe("AppProvider onboarding step resume", () => {
       await api?.next();
     });
 
-    expect(localStorage.getItem(ONBOARDING_STEP_STORAGE_KEY)).toBe("connection");
+    expect(localStorage.getItem(ONBOARDING_STEP_STORAGE_KEY)).toBe(
+      "connection",
+    );
     expect(api?.getSnapshot().onboardingStep).toBe("connection");
 
     await act(async () => {

@@ -329,9 +329,8 @@ describe("whatsappLogout()", () => {
     // test environment the dynamic `await import("@whiskeysockets/baileys")`
     // may be silently caught (the source wraps it in try/catch). Regardless,
     // the auth directory should always be removed.
-    const baileysLoaded = (
-      useMultiFileAuthState as ReturnType<typeof vi.fn>
-    ).mock.calls.length > 0;
+    const baileysLoaded =
+      (useMultiFileAuthState as ReturnType<typeof vi.fn>).mock.calls.length > 0;
     if (baileysLoaded) {
       expect(mockLogout).toHaveBeenCalled();
       expect(mockEnd).toHaveBeenCalledWith(undefined);
