@@ -40,6 +40,23 @@ vi.mock("../src/services/mcp-marketplace", () => ({
   ),
 }));
 
+vi.mock("@elizaos/plugin-todo", () => ({
+  createTodoDataService: () => ({
+    getTodos: () => {
+      throw new Error("mock – fall back to task store");
+    },
+    getTodo: () => {
+      throw new Error("mock – fall back to task store");
+    },
+    createTodo: () => {
+      throw new Error("mock – fall back to task store");
+    },
+    updateTodo: () => {
+      throw new Error("mock – fall back to task store");
+    },
+  }),
+}));
+
 // ---------------------------------------------------------------------------
 // HTTP helper (identical to the one in agent-runtime.e2e.test.ts)
 // ---------------------------------------------------------------------------
@@ -318,7 +335,7 @@ function createRuntimeForStreamTests(options: {
     getCache: async () => null,
     setCache: async () => {},
   };
-  return runtimeSubset as unknown as AgentRuntime;
+  return runtimeSubset as AgentRuntime;
 }
 
 function createRuntimeForAutonomySurfaceTests(options: {
@@ -427,7 +444,7 @@ function createRuntimeForAutonomySurfaceTests(options: {
       const roomId = String(query.roomId ?? "");
       const current = memoriesByRoom.get(roomId) ?? [];
       const count = Math.max(1, query.count ?? current.length);
-      return current.slice(-count) as unknown as Awaited<
+      return current.slice(-count) as Awaited<
         ReturnType<AgentRuntime["getMemories"]>
       >;
     },
@@ -447,7 +464,7 @@ function createRuntimeForAutonomySurfaceTests(options: {
     setCache: async () => {},
   };
 
-  return runtimeSubset as unknown as AgentRuntime;
+  return runtimeSubset as AgentRuntime;
 }
 
 function createRuntimeForWorkbenchCrudTests(options?: {
@@ -511,7 +528,7 @@ function createRuntimeForWorkbenchCrudTests(options?: {
     },
   };
 
-  return runtimeSubset as unknown as AgentRuntime;
+  return runtimeSubset as AgentRuntime;
 }
 
 function createRuntimeForChatSseTests(options?: {
@@ -605,7 +622,7 @@ function createRuntimeForChatSseTests(options?: {
       merged.sort(
         (a, b) => Number(a.createdAt ?? 0) - Number(b.createdAt ?? 0),
       );
-      return merged.slice(-limit) as unknown as Awaited<
+      return merged.slice(-limit) as Awaited<
         ReturnType<AgentRuntime["getMemoriesByRoomIds"]>
       >;
     },
@@ -614,7 +631,7 @@ function createRuntimeForChatSseTests(options?: {
       const roomId = String(query.roomId ?? "");
       const current = memoriesByRoom.get(roomId) ?? [];
       const count = Math.max(1, query.count ?? current.length);
-      return current.slice(-count) as unknown as Awaited<
+      return current.slice(-count) as Awaited<
         ReturnType<AgentRuntime["getMemories"]>
       >;
     },
@@ -622,7 +639,7 @@ function createRuntimeForChatSseTests(options?: {
     setCache: async () => {},
   };
 
-  return runtimeSubset as unknown as AgentRuntime;
+  return runtimeSubset as AgentRuntime;
 }
 
 function createRuntimeForCompatEndpointTests(): AgentRuntime {
@@ -657,7 +674,7 @@ function createRuntimeForCompatEndpointTests(): AgentRuntime {
     setCache: async () => {},
   };
 
-  return runtimeSubset as unknown as AgentRuntime;
+  return runtimeSubset as AgentRuntime;
 }
 
 function createRuntimeForCreditNoResponseTests(): AgentRuntime {
@@ -695,7 +712,7 @@ function createRuntimeForCreditNoResponseTests(): AgentRuntime {
     setCache: async () => {},
   };
 
-  return runtimeSubset as unknown as AgentRuntime;
+  return runtimeSubset as AgentRuntime;
 }
 
 function createRuntimeForCreditLiteralNoResponseTests(): AgentRuntime {
@@ -733,7 +750,7 @@ function createRuntimeForCreditLiteralNoResponseTests(): AgentRuntime {
     setCache: async () => {},
   };
 
-  return runtimeSubset as unknown as AgentRuntime;
+  return runtimeSubset as AgentRuntime;
 }
 
 function createRuntimeForCreditErrorTests(): AgentRuntime {
@@ -757,7 +774,7 @@ function createRuntimeForCreditErrorTests(): AgentRuntime {
     setCache: async () => {},
   };
 
-  return runtimeSubset as unknown as AgentRuntime;
+  return runtimeSubset as AgentRuntime;
 }
 
 // ---------------------------------------------------------------------------
@@ -1243,7 +1260,7 @@ describe("API Server E2E (no runtime)", () => {
             : [],
         handleMessage: async (runtimeArg, message, onResponse) => {
           const trajectoryLogger = (
-            runtimeArg as unknown as {
+            runtimeArg as {
               getService: (serviceType: string) => {
                 logLlmCall?: (params: {
                   stepId: string;
@@ -1547,7 +1564,7 @@ describe("API Server E2E (no runtime)", () => {
           query.count === 1 ? ([{ createdAt: restoredAt }] as never[]) : [],
         getCache: async () => null,
         setCache: async () => {},
-      } as unknown as AgentRuntime;
+      } as Partial<AgentRuntime> as AgentRuntime;
 
       const streamServer = await startApiServer({ port: 0, runtime });
       try {
@@ -1598,7 +1615,7 @@ describe("API Server E2E (no runtime)", () => {
           query.count === 1 ? ([{ createdAt: restoredAt }] as never[]) : [],
         getCache: async () => null,
         setCache: async () => {},
-      } as unknown as AgentRuntime;
+      } as Partial<AgentRuntime> as AgentRuntime;
 
       const streamServer = await startApiServer({ port: 0, runtime });
       try {
@@ -3044,7 +3061,7 @@ describe("API Server E2E (no runtime)", () => {
         createTask: async () => crypto.randomUUID() as UUID,
         updateTask: async () => {},
         deleteTask: async () => {},
-      } as unknown as unknown as AgentRuntime;
+      } as unknown as AgentRuntime;
 
       const streamServer = await startApiServer({ port: 0, runtime });
       const streamPort = streamServer.port;
