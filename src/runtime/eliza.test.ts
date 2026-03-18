@@ -141,6 +141,16 @@ describe("collectPluginNames", () => {
     "ELIZA_DISABLE_LOCAL_EMBEDDINGS",
     "OBSIDIAN_VAULT_PATH",
     "OBSIDAN_VAULT_PATH",
+    // Include MILADY_* brand aliases that syncMiladyEnvToEliza/syncElizaEnvToMilady may set
+    "MILADY_USE_PI_AI",
+    "MILADY_CLOUD_TTS_DISABLED",
+    "MILADY_CLOUD_MEDIA_DISABLED",
+    "MILADY_CLOUD_EMBEDDINGS_DISABLED",
+    "MILADY_CLOUD_RPC_DISABLED",
+    "ELIZA_CLOUD_TTS_DISABLED",
+    "ELIZA_CLOUD_MEDIA_DISABLED",
+    "ELIZA_CLOUD_EMBEDDINGS_DISABLED",
+    "ELIZA_CLOUD_RPC_DISABLED",
   ];
   const snap = envSnapshot(envKeys);
   beforeEach(() => {
@@ -2479,6 +2489,9 @@ describe("Gemini API key normalization", () => {
     "GEMINI_API_KEY",
     "GOOGLE_API_KEY",
     "GOOGLE_GENERATIVE_AI_API_KEY",
+    // Include brand alias env vars to prevent contamination
+    "ELIZA_USE_PI_AI",
+    "MILADY_USE_PI_AI",
   ];
   const snap = envSnapshot(geminiEnvKeys);
 
@@ -2567,7 +2580,13 @@ describe("getSetting null fallback — default Google model names", () => {
 // ---------------------------------------------------------------------------
 
 describe("collectPluginNames — whitespace env keys", () => {
-  const envKeys = ["GROQ_API_KEY", "ANTHROPIC_API_KEY"];
+  const envKeys = [
+    "GROQ_API_KEY",
+    "ANTHROPIC_API_KEY",
+    // Include brand alias env vars to prevent contamination
+    "ELIZA_USE_PI_AI",
+    "MILADY_USE_PI_AI",
+  ];
   const snap = envSnapshot(envKeys);
   beforeEach(() => {
     snap.save();

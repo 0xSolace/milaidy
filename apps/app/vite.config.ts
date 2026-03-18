@@ -5,6 +5,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import type { Plugin } from "vite";
 import { defineConfig } from "vite";
+import { MILADY_CHARACTER_ASSETS } from "./src/character-catalog";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const miladyRoot = path.resolve(here, "../..");
@@ -56,18 +57,8 @@ function electronCorsPlugin(): Plugin {
 function publicSrcPlugin(): Plugin {
   const publicSrc = path.resolve(here, "public_src");
   const charactersVrm = path.resolve(here, "characters", "vrm");
-  const charToIndex: Record<string, number> = {
-    Chen: 1,
-    Jin: 2,
-    Kei: 3,
-    Momo: 4,
-    Rin: 5,
-    Ryu: 6,
-    Satoshi: 7,
-    Yuki: 8,
-  };
-  const indexToChar = Object.fromEntries(
-    Object.entries(charToIndex).map(([k, v]) => [v, k]),
+  const assetById = new Map(
+    MILADY_CHARACTER_ASSETS.map((asset) => [asset.id, asset]),
   );
   return {
     name: "public-src",
@@ -77,9 +68,9 @@ function publicSrcPlugin(): Plugin {
         const vrmMatch = url.match(/^\/vrms\/milady-(\d+)\.vrm$/);
         if (vrmMatch) {
           const index = Number(vrmMatch[1]);
-          const charName = indexToChar[index];
+          const asset = assetById.get(index);
           const charFile =
-            charName && path.join(charactersVrm, `${charName}.vrm`);
+            asset && path.join(charactersVrm, asset.sourceVrmFilename);
           const publicSrcFile = path.join(
             publicSrc,
             "vrms",

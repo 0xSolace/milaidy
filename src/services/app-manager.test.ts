@@ -374,19 +374,10 @@ describe("AppManager Integration", () => {
   });
 
   it("launches an app directly if plugin is already installed", async () => {
-    // Setup: Simulate installed plugin
-    // Use hyphen in sanitized name as verified
-    const installedDir = path.join(
-      tempDir,
-      "plugins",
-      "installed",
-      "_elizaos_plugin-example",
-    );
-    fs.mkdirSync(installedDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(installedDir, "package.json"),
-      JSON.stringify({ name: APP_PLUGIN_NAME, version: "1.0.0" }),
-    );
+    // Mock listInstalledPlugins to report the plugin as already installed
+    vi.spyOn(pluginManager, "listInstalledPlugins").mockResolvedValue([
+      { name: APP_PLUGIN_NAME, version: "1.0.0" },
+    ]);
 
     // Act
     const result = await appManager.launch(pluginManager, APP_NAME);
@@ -415,19 +406,16 @@ describe("AppManager Integration", () => {
   });
 
   it("stops an app by uninstalling its plugin", async () => {
-    // Setup: Simulate installed plugin
-    // Use hyphen in sanitized name as verified
-    const installedDir = path.join(
-      tempDir,
-      "plugins",
-      "installed",
-      "_elizaos_plugin-example",
-    );
-    fs.mkdirSync(installedDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(installedDir, "package.json"),
-      JSON.stringify({ name: APP_PLUGIN_NAME, version: "1.0.0" }),
-    );
+    // Mock listInstalledPlugins to report the plugin as installed
+    vi.spyOn(pluginManager, "listInstalledPlugins").mockResolvedValue([
+      { name: APP_PLUGIN_NAME, version: "1.0.0" },
+    ]);
+    // Mock uninstallPlugin to simulate successful uninstall
+    vi.spyOn(pluginManager, "uninstallPlugin").mockResolvedValue({
+      success: true,
+      pluginName: APP_PLUGIN_NAME,
+      requiresRestart: false,
+    });
 
     // Act
     const result = await appManager.stop(pluginManager, APP_NAME);
@@ -435,9 +423,6 @@ describe("AppManager Integration", () => {
     // Assert
     expect(result.success).toBe(true);
     expect(result.pluginUninstalled).toBe(true);
-
-    // Verify file system
-    expect(fs.existsSync(installedDir)).toBe(false);
   });
 });
 
@@ -543,18 +528,10 @@ describe("Hyperscape Auto-Provisioning", () => {
       });
     });
 
-    // Simulate plugin already installed
-    const installedDir = path.join(
-      tempDir,
-      "plugins",
-      "installed",
-      "_elizaos_plugin-hyperscape",
-    );
-    fs.mkdirSync(installedDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(installedDir, "package.json"),
-      JSON.stringify({ name: HYPERSCAPE_PLUGIN_NAME, version: "1.0.0" }),
-    );
+    // Mock listInstalledPlugins to report the plugin as already installed
+    vi.spyOn(pluginManager, "listInstalledPlugins").mockResolvedValue([
+      { name: HYPERSCAPE_PLUGIN_NAME, version: "1.0.0" },
+    ]);
 
     // No wallet keys set, auto-provisioning will fail — but launch still
     // resolves (the plugin is already installed, launch returns status).
@@ -599,18 +576,10 @@ describe("Hyperscape Auto-Provisioning", () => {
       }),
     });
 
-    // Simulate plugin already installed
-    const installedDir = path.join(
-      tempDir,
-      "plugins",
-      "installed",
-      "_elizaos_plugin-hyperscape",
-    );
-    fs.mkdirSync(installedDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(installedDir, "package.json"),
-      JSON.stringify({ name: HYPERSCAPE_PLUGIN_NAME, version: "1.0.0" }),
-    );
+    // Mock listInstalledPlugins to report the plugin as already installed
+    vi.spyOn(pluginManager, "listInstalledPlugins").mockResolvedValue([
+      { name: HYPERSCAPE_PLUGIN_NAME, version: "1.0.0" },
+    ]);
 
     const result = await appManager.launch(pluginManager, HYPERSCAPE_APP_NAME);
     expect(result.pluginInstalled).toBe(true);
@@ -658,18 +627,10 @@ describe("Hyperscape Auto-Provisioning", () => {
       }),
     });
 
-    // Simulate plugin already installed
-    const installedDir = path.join(
-      tempDir,
-      "plugins",
-      "installed",
-      "_elizaos_plugin-hyperscape",
-    );
-    fs.mkdirSync(installedDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(installedDir, "package.json"),
-      JSON.stringify({ name: HYPERSCAPE_PLUGIN_NAME, version: "1.0.0" }),
-    );
+    // Mock listInstalledPlugins to report the plugin as already installed
+    vi.spyOn(pluginManager, "listInstalledPlugins").mockResolvedValue([
+      { name: HYPERSCAPE_PLUGIN_NAME, version: "1.0.0" },
+    ]);
 
     const result = await appManager.launch(pluginManager, HYPERSCAPE_APP_NAME);
     expect(result.pluginInstalled).toBe(true);

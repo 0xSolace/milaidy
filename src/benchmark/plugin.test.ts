@@ -51,15 +51,11 @@ describe("benchmark plugin action capture", () => {
     const action = getBenchmarkAction();
     setBenchmarkContext({ benchmark: "agentbench", taskId: "task-2" });
 
-    await action.handler(
-      {} as never,
-      {
-        parameters: {
-          command: "search[laptop under $500]",
-        },
+    await action.handler({} as never, {} as never, undefined as never, {
+      parameters: {
+        command: "search[laptop under $500]",
       },
-      [] as never,
-    );
+    });
 
     expect(getCapturedAction()).toMatchObject({
       command: "search[laptop under $500]",
@@ -70,16 +66,12 @@ describe("benchmark plugin action capture", () => {
     const action = getBenchmarkAction();
     setBenchmarkContext({ benchmark: "tau-bench", taskId: "task-3" });
 
-    await action.handler(
-      {} as never,
-      {
-        parameters: {
-          tool_name: "lookup_order",
-          arguments: '{"order_id":"A-123"}',
-        },
+    await action.handler({} as never, {} as never, undefined as never, {
+      parameters: {
+        tool_name: "lookup_order",
+        arguments: '{"order_id":"A-123"}',
       },
-      [] as never,
-    );
+    });
 
     expect(getCapturedAction()).toMatchObject({
       toolName: "lookup_order",
@@ -91,16 +83,12 @@ describe("benchmark plugin action capture", () => {
     const action = getBenchmarkAction();
     setBenchmarkContext({ benchmark: "tau-bench", taskId: "task-4" });
 
-    await action.handler(
-      {} as never,
-      {
-        parameters: {
-          tool_name: "lookup_order",
-          arguments: "{not-json}",
-        },
+    await action.handler({} as never, {} as never, undefined as never, {
+      parameters: {
+        tool_name: "lookup_order",
+        arguments: "{not-json}",
       },
-      [] as never,
-    );
+    });
 
     expect(getCapturedAction()).toMatchObject({
       toolName: "lookup_order",
@@ -112,19 +100,15 @@ describe("benchmark plugin action capture", () => {
     const action = getBenchmarkAction();
     setBenchmarkContext({ benchmark: "mind2web", taskId: "task-5" });
 
-    await action.handler(
-      {} as never,
-      {
-        parameters: {
-          fields: {
-            operation: { stringValue: "CLICK" },
-            element_id: { stringValue: "btn-1" },
-            value: { stringValue: "" },
-          },
+    await action.handler({} as never, {} as never, undefined as never, {
+      parameters: {
+        fields: {
+          operation: { stringValue: "CLICK" },
+          element_id: { stringValue: "btn-1" },
+          value: { stringValue: "" },
         },
       },
-      [] as never,
-    );
+    });
 
     expect(getCapturedAction()).toMatchObject({
       operation: "CLICK",

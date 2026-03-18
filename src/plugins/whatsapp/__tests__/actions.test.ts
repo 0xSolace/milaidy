@@ -105,6 +105,7 @@ describe("sendWhatsAppMessage action", () => {
         runtime,
         stubMessage(),
         undefined,
+        undefined,
         callback,
       );
 

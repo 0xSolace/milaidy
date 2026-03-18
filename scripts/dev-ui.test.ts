@@ -62,7 +62,7 @@ describe("coerceBoolean", () => {
 describe("REGRESSION: onchain default was incorrectly true before fix", () => {
   it("coerceBoolean(undefined) !== false was true — the old bug", () => {
     // This is the condition that existed before the fix. It evaluates to true
-    // when MILADY_DEV_ONCHAIN is not set, causing anvil to be required.
+    // when ELIZA_DEV_ONCHAIN is not set, causing anvil to be required.
     const oldCondition = coerceBoolean(undefined) !== false;
     expect(oldCondition).toBe(true); // documents the bug was real
   });
@@ -76,7 +76,7 @@ describe("REGRESSION: onchain default was incorrectly true before fix", () => {
   it("coerceBoolean(undefined) === true is false for all absent-env scenarios", () => {
     for (const absent of [undefined, null, ""]) {
       // Empty string won't appear as an env var in practice, but belt-and-
-      // suspenders: an empty MILADY_DEV_ONCHAIN should not enable on-chain.
+      // suspenders: an empty ELIZA_DEV_ONCHAIN should not enable on-chain.
       const enabled = coerceBoolean(absent as string) === true;
       expect(enabled).toBe(false);
     }
@@ -107,10 +107,10 @@ const installFailure = vi.fn(async () => false);
 // ---------------------------------------------------------------------------
 
 describe("resolveOnchainPreference — explicit env var", () => {
-  it("MILADY_DEV_ONCHAIN=1 enables on-chain, no prompts", async () => {
+  it("ELIZA_DEV_ONCHAIN=1 enables on-chain, no prompts", async () => {
     const promptFn = vi.fn();
     const result = await resolveOnchainPreference({
-      env: { MILADY_DEV_ONCHAIN: "1" },
+      env: { ELIZA_DEV_ONCHAIN: "1" },
       isTTY: false,
       whichFn: whichMissingAnvil,
       promptFn,
@@ -120,10 +120,10 @@ describe("resolveOnchainPreference — explicit env var", () => {
     expect(promptFn).not.toHaveBeenCalled();
   });
 
-  it("MILADY_DEV_ONCHAIN=0 disables on-chain, no prompts", async () => {
+  it("ELIZA_DEV_ONCHAIN=0 disables on-chain, no prompts", async () => {
     const promptFn = vi.fn();
     const result = await resolveOnchainPreference({
-      env: { MILADY_DEV_ONCHAIN: "0" },
+      env: { ELIZA_DEV_ONCHAIN: "0" },
       isTTY: true,
       whichFn: whichFoundAnvil,
       promptFn,
@@ -133,9 +133,9 @@ describe("resolveOnchainPreference — explicit env var", () => {
     expect(promptFn).not.toHaveBeenCalled();
   });
 
-  it("MILADY_DEV_ONCHAIN=1 + MILADY_DEV_ANCHOR=1 enables both", async () => {
+  it("ELIZA_DEV_ONCHAIN=1 + ELIZA_DEV_ANCHOR=1 enables both", async () => {
     const result = await resolveOnchainPreference({
-      env: { MILADY_DEV_ONCHAIN: "1", MILADY_DEV_ANCHOR: "1" },
+      env: { ELIZA_DEV_ONCHAIN: "1", ELIZA_DEV_ANCHOR: "1" },
       isTTY: false,
       whichFn: whichMissingAnvil,
       promptFn: vi.fn(),
@@ -147,7 +147,7 @@ describe("resolveOnchainPreference — explicit env var", () => {
   it("accepts all recognised truthy spellings", async () => {
     for (const val of ["1", "true", "yes", "on", "TRUE", "Yes"]) {
       const result = await resolveOnchainPreference({
-        env: { MILADY_DEV_ONCHAIN: val },
+        env: { ELIZA_DEV_ONCHAIN: val },
         isTTY: false,
         whichFn: whichMissingAnvil,
         promptFn: vi.fn(),
@@ -159,7 +159,7 @@ describe("resolveOnchainPreference — explicit env var", () => {
   it("accepts all recognised falsy spellings", async () => {
     for (const val of ["0", "false", "no", "off", "FALSE"]) {
       const result = await resolveOnchainPreference({
-        env: { MILADY_DEV_ONCHAIN: val },
+        env: { ELIZA_DEV_ONCHAIN: val },
         isTTY: true,
         whichFn: whichFoundAnvil,
         promptFn: vi.fn(),
@@ -329,7 +329,7 @@ describe("resolveOnchainPreference — env var takes precedence over TTY", () =>
   it("env var=1 + TTY: prompts are never called", async () => {
     const promptFn = vi.fn();
     await resolveOnchainPreference({
-      env: { MILADY_DEV_ONCHAIN: "1" },
+      env: { ELIZA_DEV_ONCHAIN: "1" },
       isTTY: true,
       whichFn: whichMissingAnvil,
       promptFn,
@@ -340,7 +340,7 @@ describe("resolveOnchainPreference — env var takes precedence over TTY", () =>
   it("env var=0 + TTY: prompts are never called", async () => {
     const promptFn = vi.fn();
     await resolveOnchainPreference({
-      env: { MILADY_DEV_ONCHAIN: "0" },
+      env: { ELIZA_DEV_ONCHAIN: "0" },
       isTTY: true,
       whichFn: whichFoundAnvil,
       promptFn,

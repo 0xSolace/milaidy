@@ -547,6 +547,7 @@ describe("checkForUpdate", () => {
     // Fire two checks concurrently
     const [result1, result2] = await Promise.all([
       checkForUpdate({ force: true }),
+      checkForUpdate({ force: true }),
     ]);
 
     // Both should succeed

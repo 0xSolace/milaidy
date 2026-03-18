@@ -414,11 +414,10 @@ describe("createPiAiHandler", () => {
 
       await handler(runtime as unknown, { prompt: "test" } as unknown);
 
-      // Verify stream was called with signal in options
-      expect(mockStream).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({ signal: controller.signal }),
-      );
+      // Verify stream was called with signal in options (3rd arg)
+      const lastCallArgs = mockStream.mock.calls[0];
+      const optionsArg = lastCallArgs[lastCallArgs.length - 1];
+      expect(optionsArg).toHaveProperty("signal", controller.signal);
     });
 
     it("extracts abortSignal from params as fallback", async () => {
@@ -444,10 +443,9 @@ describe("createPiAiHandler", () => {
         } as unknown,
       );
 
-      expect(mockStream).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({ signal: controller.signal }),
-      );
+      const lastCallArgs = mockStream.mock.calls[0];
+      const optionsArg = lastCallArgs[lastCallArgs.length - 1];
+      expect(optionsArg).toHaveProperty("signal", controller.signal);
     });
   });
 
@@ -529,10 +527,9 @@ describe("createPiAiHandler", () => {
 
       await handler(runtime as unknown, { prompt: "test" } as unknown);
 
-      expect(mockStream).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({ apiKey: "test-api-key" }),
-      );
+      const lastCallArgs = mockStream.mock.calls[0];
+      const optionsArg = lastCallArgs[lastCallArgs.length - 1];
+      expect(optionsArg).toHaveProperty("apiKey", "test-api-key");
     });
 
     it("omits apiKey from stream options when getApiKey returns undefined", async () => {
@@ -553,8 +550,9 @@ describe("createPiAiHandler", () => {
 
       await handler(runtime as unknown, { prompt: "test" } as unknown);
 
-      const callArgs = mockStream.mock.calls[0][2];
-      expect(callArgs).not.toHaveProperty("apiKey");
+      const lastCallArgs2 = mockStream.mock.calls[0];
+      const optionsArg2 = lastCallArgs2[lastCallArgs2.length - 1];
+      expect(optionsArg2).not.toHaveProperty("apiKey");
     });
   });
 });

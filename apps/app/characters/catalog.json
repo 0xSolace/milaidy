@@ -1,0 +1,78 @@
+{
+  "assets": [
+    {
+      "id": 1,
+      "slug": "milady-1",
+      "title": "Chen",
+      "sourceName": "Chen"
+    },
+    {
+      "id": 2,
+      "slug": "milady-2",
+      "title": "Jin",
+      "sourceName": "Jin"
+    },
+    {
+      "id": 3,
+      "slug": "milady-3",
+      "title": "Kei",
+      "sourceName": "Kei"
+    },
+    {
+      "id": 4,
+      "slug": "milady-4",
+      "title": "Momo",
+      "sourceName": "Momo"
+    },
+    {
+      "id": 5,
+      "slug": "milady-5",
+      "title": "Rin",
+      "sourceName": "Rin"
+    },
+    {
+      "id": 6,
+      "slug": "milady-6",
+      "title": "Ryu",
+      "sourceName": "Ryu"
+    },
+    {
+      "id": 7,
+      "slug": "milady-7",
+      "title": "Satoshi",
+      "sourceName": "Satoshi"
+    },
+    {
+      "id": 8,
+      "slug": "milady-8",
+      "title": "Yuki",
+      "sourceName": "Yuki"
+    }
+  ],
+  "injectedCharacters": [
+    {
+      "catchphrase": "Noted.",
+      "name": "Rin",
+      "avatarAssetId": 1,
+      "voicePresetId": "alice"
+    },
+    {
+      "catchphrase": "uwu~",
+      "name": "Ai",
+      "avatarAssetId": 2,
+      "voicePresetId": "sarah"
+    },
+    {
+      "catchphrase": "lol k",
+      "name": "Anzu",
+      "avatarAssetId": 3,
+      "voicePresetId": "lily"
+    },
+    {
+      "catchphrase": "hehe~",
+      "name": "Aya",
+      "avatarAssetId": 4,
+      "voicePresetId": "gigi"
+    }
+  ]
+}
