@@ -28,9 +28,8 @@ export default defineConfig({
         replacement: path.join(repoRoot, "src", "plugin-sdk", "index.ts"),
       },
       // When the eliza workspace exists locally, resolve @elizaos packages from
-      // source so that all transitive imports share a single version. In CI,
-      // autonomous falls back to the installed package source root because the
-      // published package layout does not match its declared exports.
+      // source so that all transitive imports share a single version. In CI we
+      // fall through to the published package imports instead.
       ...(elizaCoreEntry
         ? [
             {
@@ -66,7 +65,14 @@ export default defineConfig({
               ),
             },
           ]
-        : []),
+        : [
+            {
+              // Stub app-core when workspace is absent — its npm dist has
+              // extensionless JS imports that break under vitest/vite.
+              find: /^@elizaos\/app-core(\/.*)?$/,
+              replacement: path.join(repoRoot, "test", "stubs", "plugin-stub.mjs"),
+            },
+          ]),
       {
         find: "@miladyai/capacitor-gateway",
         replacement: path.join(
