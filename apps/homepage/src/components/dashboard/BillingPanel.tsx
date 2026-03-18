@@ -1,32 +1,32 @@
 import { useEffect, useState } from "react";
-import { useConnections } from "../../lib/ConnectionProvider";
+import { useAgents } from "../../lib/AgentProvider";
+import { isAuthenticated, getToken } from "../../lib/auth";
+
+const CLOUD_BASE = "https://www.elizacloud.ai";
 
 export function BillingPanel() {
-  const { connections } = useConnections();
-  const cloudConns = connections.filter(
-    (c) => c.type === "cloud" && c.health === "healthy",
-  );
+  const { agents } = useAgents();
   const [billing, setBilling] = useState<object | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (cloudConns.length === 0) return;
-    const client = cloudConns[0].client;
-    client
-      .getBilling()
+    if (!isAuthenticated()) return;
+    const token = getToken();
+    fetch(`${CLOUD_BASE}/api/v1/billing`, {
+      headers: { "X-Api-Key": token! },
+    })
+      .then((r) => r.ok ? r.json() : Promise.reject(`${r.status}`))
       .then(setBilling)
       .catch((e) => setError(String(e)));
-  }, [cloudConns.length]);
+  }, []);
 
-  if (cloudConns.length === 0) {
+  if (!isAuthenticated()) {
     return (
       <div className="flex flex-col items-center justify-center py-32 space-y-3">
-        <div className="text-text-muted/30 text-4xl">◈</div>
-        <div className="text-text-muted font-mono text-sm">
-          No cloud connections
-        </div>
+        <div className="text-text-muted/30 text-4xl">{"\u25C8"}</div>
+        <div className="text-text-muted font-mono text-sm">Not connected to cloud</div>
         <div className="text-text-muted/50 font-mono text-xs">
-          Add a cloud connection to view billing information.
+          Log in with Eliza Cloud to view billing information.
         </div>
       </div>
     );
@@ -38,9 +38,7 @@ export function BillingPanel() {
 
   return (
     <div className="space-y-4">
-      <h3 className="font-mono text-xs uppercase tracking-widest text-brand">
-        Billing
-      </h3>
+      <h3 className="font-mono text-xs uppercase tracking-widest text-brand">Billing</h3>
       <pre className="bg-dark border border-white/10 rounded p-4 font-mono text-xs text-text-muted overflow-auto">
         {billing ? JSON.stringify(billing, null, 2) : "Loading..."}
       </pre>

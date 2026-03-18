@@ -7,20 +7,26 @@ import { MetricsPanel } from "../components/dashboard/MetricsPanel";
 import { LogsPanel } from "../components/dashboard/LogsPanel";
 import type { AgentStatus } from "../lib/cloud-api";
 
-vi.mock("../lib/ConnectionProvider", () => ({
-  useConnections: () => ({
-    connections: [
+vi.mock("../lib/AgentProvider", () => ({
+  useAgents: () => ({
+    agents: [
       {
-        id: "test-conn",
-        name: "Test",
-        url: "http://localhost:2138",
-        type: "local" as const,
+        id: "local-default",
+        name: "Test Agent",
+        source: "local" as const,
+        status: "running" as const,
+        model: "gpt-4",
+        sourceUrl: "http://localhost:2138",
         client: {
           exportAgent: vi.fn(),
           importAgent: vi.fn(),
         },
       },
     ],
+    loading: false,
+    refresh: vi.fn(),
+    addRemoteUrl: vi.fn(),
+    removeRemote: vi.fn(),
   }),
 }));
 
@@ -71,14 +77,13 @@ describe("Sidebar", () => {
 /*  ConnectionModal                                                   */
 /* ------------------------------------------------------------------ */
 describe("ConnectionModal", () => {
-  it("renders name, url, and type inputs", () => {
+  it("renders name and url inputs", () => {
     const onSubmit = vi.fn();
     const onClose = vi.fn();
     render(<ConnectionModal onSubmit={onSubmit} onClose={onClose} />);
 
-    expect(screen.getByPlaceholderText("My Local Agent")).toBeTruthy();
-    expect(screen.getByPlaceholderText("http://localhost:2138")).toBeTruthy();
-    expect(screen.getByText("Type")).toBeTruthy();
+    expect(screen.getByPlaceholderText("My Remote Agent")).toBeTruthy();
+    expect(screen.getByPlaceholderText("http://10.0.0.5:2138")).toBeTruthy();
   });
 
   it("Connect button is disabled when name is empty", () => {
@@ -93,12 +98,9 @@ describe("ConnectionModal", () => {
     const onSubmit = vi.fn();
     render(<ConnectionModal onSubmit={onSubmit} onClose={() => {}} />);
 
-    // Fill name but clear url
-    fireEvent.change(screen.getByPlaceholderText("My Local Agent"), {
+    // Fill name but leave url empty (url starts empty now)
+    fireEvent.change(screen.getByPlaceholderText("My Remote Agent"), {
       target: { value: "Test" },
-    });
-    fireEvent.change(screen.getByPlaceholderText("http://localhost:2138"), {
-      target: { value: "" },
     });
 
     const connectBtn = screen.getByText("Connect");
@@ -109,8 +111,11 @@ describe("ConnectionModal", () => {
     const onSubmit = vi.fn();
     render(<ConnectionModal onSubmit={onSubmit} onClose={() => {}} />);
 
-    fireEvent.change(screen.getByPlaceholderText("My Local Agent"), {
+    fireEvent.change(screen.getByPlaceholderText("My Remote Agent"), {
       target: { value: "Test Agent" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("http://10.0.0.5:2138"), {
+      target: { value: "http://10.0.0.5:2138" },
     });
 
     const connectBtn = screen.getByText("Connect");
@@ -119,8 +124,8 @@ describe("ConnectionModal", () => {
 
     expect(onSubmit).toHaveBeenCalledWith({
       name: "Test Agent",
-      url: "http://localhost:2138",
-      type: "local",
+      url: "http://10.0.0.5:2138",
+      type: "remote",
     });
   });
 });
@@ -227,14 +232,14 @@ describe("LogsPanel", () => {
 });
 
 /* ------------------------------------------------------------------ */
-/*  ExportPanel (rendered with mocked useConnections)                 */
+/*  ExportPanel (rendered with mocked useAgents)                      */
 /* ------------------------------------------------------------------ */
 describe("ExportPanel", () => {
   it("renders password input and export/import buttons", async () => {
     const { ExportPanel } = await import(
       "../components/dashboard/ExportPanel"
     );
-    const { container } = render(<ExportPanel connectionId="test-conn" />);
+    const { container } = render(<ExportPanel connectionId="local-default" />);
     const text = container.textContent ?? "";
     expect(text).toContain("Password");
     expect(screen.getByText("Export Agent")).toBeTruthy();
@@ -245,7 +250,7 @@ describe("ExportPanel", () => {
     const { ExportPanel } = await import(
       "../components/dashboard/ExportPanel"
     );
-    render(<ExportPanel connectionId="test-conn" />);
+    render(<ExportPanel connectionId="local-default" />);
     const exportBtn = screen.getByText("Export Agent");
     expect(exportBtn).toBeDisabled();
 

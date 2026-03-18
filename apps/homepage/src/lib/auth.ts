@@ -42,6 +42,30 @@ export async function cloudLoginPoll(sessionId: string): Promise<{ status: strin
   return res.json();
 }
 
+export interface CloudAgent {
+  id: string;
+  name: string;
+  status: string;
+  model?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export async function fetchCloudAgents(): Promise<CloudAgent[]> {
+  const token = getToken();
+  if (!token) return [];
+  try {
+    const res = await fetch(`${CLOUD_BASE}/api/v1/milady/agents`, {
+      headers: { "X-Api-Key": token },
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : data.agents ?? data.data ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export async function fetchWithAuth(url: string, opts: RequestInit = {}): Promise<Response> {
   const token = getToken();
   const headers = new Headers(opts.headers);

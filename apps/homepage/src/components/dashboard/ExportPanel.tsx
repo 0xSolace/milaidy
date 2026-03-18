@@ -1,23 +1,23 @@
 import { useCallback, useRef, useState } from "react";
-import { useConnections } from "../../lib/ConnectionProvider";
+import { useAgents } from "../../lib/AgentProvider";
 
 interface ExportPanelProps {
   connectionId: string;
 }
 
 export function ExportPanel({ connectionId }: ExportPanelProps) {
-  const { connections } = useConnections();
-  const conn = connections.find((c) => c.id === connectionId);
+  const { agents } = useAgents();
+  const agent = agents.find((a) => a.id === connectionId);
 
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleExport = useCallback(async () => {
-    if (!conn || password.length < 4) return;
+    if (!agent?.client || password.length < 4) return;
     setStatus("Exporting...");
     try {
-      const blob = await conn.client.exportAgent(password);
+      const blob = await agent.client.exportAgent(password);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -28,10 +28,10 @@ export function ExportPanel({ connectionId }: ExportPanelProps) {
     } catch (err) {
       setStatus(`Export failed: ${err}`);
     }
-  }, [conn, password]);
+  }, [agent, password]);
 
   const handleImport = useCallback(async () => {
-    if (!conn || password.length < 4) return;
+    if (!agent?.client || password.length < 4) return;
     const file = fileRef.current?.files?.[0];
     if (!file) {
       setStatus("No file selected");
@@ -39,17 +39,17 @@ export function ExportPanel({ connectionId }: ExportPanelProps) {
     }
     setStatus("Importing...");
     try {
-      await conn.client.importAgent(file, password);
+      await agent.client.importAgent(file, password);
       setStatus("Import complete");
     } catch (err) {
       setStatus(`Import failed: ${err}`);
     }
-  }, [conn, password]);
+  }, [agent, password]);
 
   if (!connectionId) {
     return (
       <div className="flex flex-col items-center justify-center py-32 space-y-3">
-        <div className="text-text-muted/30 text-4xl">⤓</div>
+        <div className="text-text-muted/30 text-4xl">{"\u2913"}</div>
         <div className="text-text-muted font-mono text-sm">
           No agent selected
         </div>
@@ -60,10 +60,10 @@ export function ExportPanel({ connectionId }: ExportPanelProps) {
     );
   }
 
-  if (!conn) {
+  if (!agent) {
     return (
       <div className="text-text-muted font-mono text-sm">
-        Connection not found
+        Agent not found
       </div>
     );
   }

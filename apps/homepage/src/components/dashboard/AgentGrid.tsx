@@ -1,92 +1,54 @@
-import { useCallback, useEffect, useState } from "react";
-import { useConnections } from "../../lib/ConnectionProvider";
-import type { AgentStatus } from "../../lib/cloud-api";
+import { useState } from "react";
+import { useAgents, type ManagedAgent } from "../../lib/AgentProvider";
 import { AgentCard } from "./AgentCard";
 import { AgentDetail } from "./AgentDetail";
 
-interface AgentEntry {
-  agent: AgentStatus;
-  connectionId: string;
-  connectionName: string;
-}
-
 export function AgentGrid() {
-  const { connections } = useConnections();
-  const [agents, setAgents] = useState<AgentEntry[]>([]);
-  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+  const { agents, loading } = useAgents();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const fetchAgents = useCallback(async () => {
-    const entries: AgentEntry[] = [];
-    for (const conn of connections) {
-      if (conn.health !== "healthy") continue;
-      try {
-        const status = await conn.client.getAgentStatus();
-        entries.push({
-          agent: status,
-          connectionId: conn.id,
-          connectionName: conn.name || conn.url,
-        });
-      } catch {
-        // Connection may not have agent status endpoint
-      }
-    }
-    setAgents(entries);
-  }, [connections]);
-
-  // Fetch agents when connections change (ConnectionProvider handles the 5s polling).
-  // No independent interval here to avoid double-polling.
-  useEffect(() => {
-    fetchAgents();
-  }, [fetchAgents]);
-
-  const handleAction = useCallback(
-    async (idx: number, action: "play" | "resume" | "pause" | "stop") => {
-      const entry = agents[idx];
-      const conn = connections.find((c) => c.id === entry.connectionId);
-      if (!conn) return;
-      try {
-        if (action === "play") await conn.client.playAgent();
-        else if (action === "resume") await conn.client.resumeAgent();
-        else if (action === "pause") await conn.client.pauseAgent();
-        else if (action === "stop") await conn.client.stopAgent();
-        await fetchAgents();
-      } catch (err) {
-        console.error(`Failed to ${action} agent:`, err);
-      }
-    },
-    [agents, connections, fetchAgents],
-  );
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-32">
+        <div className="text-brand font-mono text-sm animate-pulse">Discovering agents...</div>
+      </div>
+    );
+  }
 
   if (agents.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-32 space-y-3">
-        <div className="text-text-muted/30 text-4xl">◉</div>
-        <div className="text-text-muted font-mono text-sm">
-          No agents found
-        </div>
-        <div className="text-text-muted/50 font-mono text-xs">
-          Add a connection to a running Milady container to see agents.
+        <div className="text-text-muted/30 text-4xl">{"\u25C9"}</div>
+        <div className="text-text-muted font-mono text-sm">No agents found</div>
+        <div className="text-text-muted/50 font-mono text-xs text-center max-w-md">
+          Log in with Eliza Cloud to see your hosted agents, or start a local Milady agent on port 2138.
         </div>
       </div>
     );
   }
 
-  const selected = selectedIdx !== null ? agents[selectedIdx] : null;
+  const selected = selectedId ? agents.find((a) => a.id === selectedId) : null;
 
   return (
     <div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {agents.map((entry, i) => (
+        {agents.map((agent) => (
           <AgentCard
-            key={`${entry.connectionId}-${entry.agent.agentName}`}
-            agent={entry.agent}
-            connectionName={entry.connectionName}
-            onPlay={() => handleAction(i, "play")}
-            onResume={() => handleAction(i, "resume")}
-            onPause={() => handleAction(i, "pause")}
-            onStop={() => handleAction(i, "stop")}
-            onSelect={() => setSelectedIdx(selectedIdx === i ? null : i)}
-            selected={selectedIdx === i}
+            key={agent.id}
+            agent={{
+              agentName: agent.name,
+              state: agent.status === "provisioning" || agent.status === "unknown" ? "stopped" : agent.status,
+              model: agent.model ?? "\u2014",
+              uptime: agent.uptime,
+              memories: agent.memories,
+            }}
+            connectionName={agent.source}
+            onPlay={() => { agent.client?.playAgent(); }}
+            onResume={() => { agent.client?.resumeAgent(); }}
+            onPause={() => { agent.client?.pauseAgent(); }}
+            onStop={() => { agent.client?.stopAgent(); }}
+            onSelect={() => setSelectedId(selectedId === agent.id ? null : agent.id)}
+            selected={selectedId === agent.id}
           />
         ))}
       </div>
@@ -94,8 +56,14 @@ export function AgentGrid() {
       {selected && (
         <div className="mt-6">
           <AgentDetail
-            agent={selected.agent}
-            connectionId={selected.connectionId}
+            agent={{
+              agentName: selected.name,
+              state: selected.status === "provisioning" || selected.status === "unknown" ? "stopped" : selected.status,
+              model: selected.model ?? "\u2014",
+              uptime: selected.uptime,
+              memories: selected.memories,
+            }}
+            connectionId={selected.id}
           />
         </div>
       )}
