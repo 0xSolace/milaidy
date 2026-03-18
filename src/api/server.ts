@@ -16,7 +16,7 @@ import {
   resolveWalletExportRejection as upstreamResolveWalletExportRejection,
   startApiServer as upstreamStartApiServer,
 } from "@elizaos/autonomous/api/server";
-import { loadElizaConfig } from "../config/config";
+import { loadElizaConfig, saveElizaConfig } from "../config/config";
 import { ensureRuntimeSqlCompatibility } from "../utils/sql-compat";
 import { createHardenedExportGuard } from "./wallet-export-guard";
 
@@ -104,6 +104,44 @@ interface RuntimePluginLike {
   description?: string;
 }
 
+interface CompatPluginParameter {
+  key: string;
+  type: string;
+  description: string;
+  required: boolean;
+  sensitive: boolean;
+  default?: string;
+  options?: string[];
+  currentValue: string | null;
+  isSet: boolean;
+}
+
+interface CompatPluginRecord {
+  id: string;
+  name?: string;
+  description?: string;
+  enabled?: boolean;
+  configured?: boolean;
+  envKey?: string | null;
+  category?: PluginCategory;
+  source?: string;
+  parameters: CompatPluginParameter[];
+  validationErrors: Array<{ field: string; message: string }>;
+  validationWarnings?: Array<{ field?: string; message: string }>;
+  npmName?: string;
+  version?: string;
+  isActive?: boolean;
+}
+
+const DATABASE_UNAVAILABLE_MESSAGE =
+  "Database not available. The agent may not be running or the database adapter is not initialized.";
+const CAPABILITY_FEATURE_IDS = new Set([
+  "vision",
+  "browser",
+  "computeruse",
+  "coding-agent",
+]);
+
 function syncMiladyEnvToEliza(): void {
   for (const [miladyKey, elizaKey] of BRAND_ENV_ALIASES) {
     const value = process.env[miladyKey];
@@ -142,6 +180,86 @@ function mirrorCompatHeaders(req: Pick<http.IncomingMessage, "headers">): void {
     if (elizaValue != null && miladyValue == null) {
       req.headers[miladyHeader] = elizaValue;
     }
+  }
+}
+
+function extractHeaderValue(
+  value: string | string[] | undefined,
+): string | null {
+  if (typeof value === "string") {
+    return value;
+  }
+  return Array.isArray(value) && typeof value[0] === "string" ? value[0] : null;
+}
+
+function getCompatApiToken(): string | null {
+  const token =
+    process.env.ELIZA_API_TOKEN?.trim() ?? process.env.MILADY_API_TOKEN?.trim();
+  return token ? token : null;
+}
+
+function getProvidedApiToken(
+  req: Pick<http.IncomingMessage, "headers">,
+): string | null {
+  const authHeader = extractHeaderValue(req.headers.authorization);
+  if (authHeader?.startsWith("Bearer ")) {
+    return authHeader.slice("Bearer ".length).trim();
+  }
+
+  return (
+    extractHeaderValue(req.headers["x-eliza-token"]) ??
+    extractHeaderValue(req.headers["x-milady-token"])
+  );
+}
+
+function ensureCompatApiAuthorized(
+  req: Pick<http.IncomingMessage, "headers">,
+  res: http.ServerResponse,
+): boolean {
+  const expectedToken = getCompatApiToken();
+  if (!expectedToken) {
+    return true;
+  }
+
+  if (getProvidedApiToken(req) === expectedToken) {
+    return true;
+  }
+
+  sendJsonErrorResponse(res, 401, "Unauthorized");
+  return false;
+}
+
+async function readCompatJsonBody(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+): Promise<Record<string, unknown> | null> {
+  const chunks: Buffer[] = [];
+
+  try {
+    for await (const chunk of req) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+  } catch {
+    sendJsonErrorResponse(res, 400, "Invalid request body");
+    return null;
+  }
+
+  if (chunks.length === 0) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(
+      Buffer.concat(chunks).toString("utf8"),
+    ) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      sendJsonErrorResponse(res, 400, "Invalid JSON body");
+      return null;
+    }
+    return parsed as Record<string, unknown>;
+  } catch {
+    sendJsonErrorResponse(res, 400, "Invalid JSON body");
+    return null;
   }
 }
 
@@ -624,6 +742,131 @@ function buildPluginListResponse(runtime: AgentRuntime | null): {
   return { plugins: pluginList };
 }
 
+function validateCompatPluginConfig(
+  plugin: CompatPluginRecord,
+  config: Record<string, unknown>,
+): {
+  errors: Array<{ field: string; message: string }>;
+  values: Record<string, string>;
+} {
+  const paramMap = new Map(
+    plugin.parameters.map((parameter) => [parameter.key, parameter]),
+  );
+  const errors: Array<{ field: string; message: string }> = [];
+  const values: Record<string, string> = {};
+
+  for (const [key, rawValue] of Object.entries(config)) {
+    const parameter = paramMap.get(key);
+    if (!parameter) {
+      errors.push({
+        field: key,
+        message: `${key} is not a declared config key for this plugin`,
+      });
+      continue;
+    }
+
+    if (typeof rawValue !== "string") {
+      errors.push({
+        field: key,
+        message: "Plugin config values must be strings.",
+      });
+      continue;
+    }
+
+    const trimmed = rawValue.trim();
+    if (parameter.required && trimmed.length === 0) {
+      errors.push({
+        field: key,
+        message: "Required value is not configured.",
+      });
+      continue;
+    }
+
+    values[key] = rawValue;
+  }
+
+  return { errors, values };
+}
+
+function persistCompatPluginMutation(
+  pluginId: string,
+  body: Record<string, unknown>,
+  plugin: CompatPluginRecord,
+): {
+  status: number;
+  payload: Record<string, unknown>;
+} {
+  const config = loadElizaConfig();
+  config.plugins ??= {};
+  config.plugins.entries ??= {};
+  config.plugins.entries[pluginId] ??= {};
+  const pluginEntry = config.plugins.entries[pluginId] as Record<
+    string,
+    unknown
+  >;
+
+  if (typeof body.enabled === "boolean") {
+    pluginEntry.enabled = body.enabled;
+
+    if (CAPABILITY_FEATURE_IDS.has(pluginId)) {
+      config.features ??= {};
+      config.features[pluginId] = body.enabled;
+    }
+  }
+
+  if (body.config !== undefined) {
+    if (
+      !body.config ||
+      typeof body.config !== "object" ||
+      Array.isArray(body.config)
+    ) {
+      return {
+        status: 400,
+        payload: { ok: false, error: "Plugin config must be a JSON object." },
+      };
+    }
+
+    const configObject = body.config as Record<string, unknown>;
+    const { errors, values } = validateCompatPluginConfig(plugin, configObject);
+    if (errors.length > 0) {
+      return {
+        status: 422,
+        payload: { ok: false, plugin, validationErrors: errors },
+      };
+    }
+
+    const nextConfig =
+      pluginEntry.config &&
+      typeof pluginEntry.config === "object" &&
+      !Array.isArray(pluginEntry.config)
+        ? { ...(pluginEntry.config as Record<string, unknown>) }
+        : {};
+
+    config.env ??= {};
+    for (const [key, value] of Object.entries(values)) {
+      process.env[key] = value;
+      config.env[key] = value;
+      nextConfig[key] = value;
+    }
+
+    pluginEntry.config = nextConfig;
+  }
+
+  saveElizaConfig(config);
+
+  const refreshed = (
+    buildPluginListResponse(null).plugins as unknown as CompatPluginRecord[]
+  ).find((candidate) => candidate.id === pluginId);
+
+  return {
+    status: 200,
+    payload: {
+      ok: true,
+      plugin: refreshed ?? plugin,
+    },
+  };
+}
+
 async function handleDatabaseRowsCompatRoute(
   req: http.IncomingMessage,
   res: http.ServerResponse,
@@ -636,7 +879,7 @@ async function handleDatabaseRowsCompatRoute(
   }
 
   if (!runtime) {
-    sendJsonErrorResponse(res, 503, "Database not available");
+    sendJsonErrorResponse(res, 503, DATABASE_UNAVAILABLE_MESSAGE);
     return true;
   }
 
@@ -782,7 +1025,48 @@ async function handleMiladyCompatRoute(
   const url = new URL(req.url ?? "/", "http://localhost");
 
   if (method === "GET" && url.pathname === "/api/plugins") {
+    if (!ensureCompatApiAuthorized(req, res)) {
+      return true;
+    }
+
     sendJsonResponse(res, 200, buildPluginListResponse(state.current));
+    return true;
+  }
+
+  if (method === "GET" && url.pathname === "/api/config") {
+    if (!ensureCompatApiAuthorized(req, res)) {
+      return true;
+    }
+
+    sendJsonResponse(res, 200, loadElizaConfig());
+    return true;
+  }
+
+  if (method === "PUT" && url.pathname.startsWith("/api/plugins/")) {
+    if (!ensureCompatApiAuthorized(req, res)) {
+      return true;
+    }
+
+    const body = await readCompatJsonBody(req, res);
+    if (body == null) {
+      return true;
+    }
+
+    const pluginId = normalizePluginId(
+      decodeURIComponent(url.pathname.slice("/api/plugins/".length)),
+    );
+    const plugin = (
+      buildPluginListResponse(state.current)
+        .plugins as unknown as CompatPluginRecord[]
+    ).find((candidate) => candidate.id === pluginId);
+
+    if (!plugin) {
+      sendJsonErrorResponse(res, 404, `Plugin "${pluginId}" not found`);
+      return true;
+    }
+
+    const result = persistCompatPluginMutation(pluginId, body, plugin);
+    sendJsonResponse(res, result.status, result.payload);
     return true;
   }
 
@@ -917,7 +1201,7 @@ export async function startApiServer(
   syncMiladyEnvToEliza();
   syncElizaEnvToMilady();
   const compatState: CompatRuntimeState = {
-    current: args[0]?.runtime ?? null,
+    current: (args[0]?.runtime as unknown as AgentRuntime | null) ?? null,
   };
   const restoreCreateServer = patchHttpCreateServerForMiladyCompat(compatState);
 
@@ -927,7 +1211,9 @@ export async function startApiServer(
     }
 
     const server = await upstreamStartApiServer(...args);
-    const originalUpdateRuntime = server.updateRuntime;
+    const originalUpdateRuntime = server.updateRuntime as (
+      runtime: AgentRuntime,
+    ) => void;
 
     server.updateRuntime = (runtime: AgentRuntime) => {
       compatState.current = runtime;

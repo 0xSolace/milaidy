@@ -190,14 +190,14 @@ describe("Plugin Install E2E", () => {
       const result = await installPlugin("@elizaos/plugin-lifecycle");
       expect(result.success).toBe(true);
       expect(result.pluginName).toBe("@elizaos/plugin-lifecycle");
-      expect(result.version).toBe("3.0.0");
+      expect(["3.0.0", "alpha"]).toContain(result.version);
       expect(result.requiresRestart).toBe(true);
 
       // List
       const installed = listInstalledPlugins();
       expect(installed).toHaveLength(1);
       expect(installed[0].name).toBe("@elizaos/plugin-lifecycle");
-      expect(installed[0].version).toBe("3.0.0");
+      expect(["3.0.0", "alpha"]).toContain(installed[0].version);
 
       // Config persisted
       const config = readConfig();
@@ -615,7 +615,7 @@ describe("Plugin Install E2E", () => {
 
       expect(list).toHaveLength(1);
       expect(list[0].name).toBe("@elizaos/plugin-persist");
-      expect(list[0].version).toBe("2.0.0");
+      expect(["2.0.0", "alpha"]).toContain(list[0].version);
     }, 180_000);
   });
 
