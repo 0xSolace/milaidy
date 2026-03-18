@@ -24,4 +24,10 @@ describe("auth", () => {
     setToken("test-api-key");
     expect(isAuthenticated()).toBe(true);
   });
+
+  it("cloudLogin and cloudLoginPoll are exported", async () => {
+    const { cloudLogin, cloudLoginPoll } = await import("../lib/auth");
+    expect(typeof cloudLogin).toBe("function");
+    expect(typeof cloudLoginPoll).toBe("function");
+  });
 });

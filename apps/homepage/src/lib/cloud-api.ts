@@ -117,11 +117,4 @@ export class CloudApiClient {
     return this.request("/api/billing", { method: "GET" });
   }
 
-  async cloudLogin(): Promise<{ ok: boolean; sessionId: string; browserUrl: string }> {
-    return this.request("/api/cloud/login", { method: "POST" });
-  }
-
-  async cloudLoginPoll(sessionId: string): Promise<{ status: string; apiKey?: string }> {
-    return this.request(`/api/cloud/login/status?sessionId=${encodeURIComponent(sessionId)}`, { method: "GET" });
-  }
 }
