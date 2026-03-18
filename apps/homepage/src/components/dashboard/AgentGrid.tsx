@@ -85,7 +85,7 @@ export function AgentGrid() {
           <AgentDetail
             agent={{
               agentName: selected.name,
-              state: selected.status === "provisioning" || selected.status === "unknown" ? "stopped" : selected.status,
+              state: selected.status,
               model: selected.model ?? "\u2014",
               uptime: selected.uptime,
               memories: selected.memories,

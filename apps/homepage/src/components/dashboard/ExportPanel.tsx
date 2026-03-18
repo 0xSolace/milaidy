@@ -29,7 +29,7 @@ export function ExportPanel({ connectionId }: ExportPanelProps) {
       .then(setBackups)
       .catch(() => setBackups([]))
       .finally(() => setBackupsLoading(false));
-  }, [isCloud, agent?.cloudAgentId]);
+  }, [isCloud, agent?.cloudAgentId, agent?.cloudClient]);
 
   // Cloud: take snapshot
   const handleSnapshot = useCallback(async () => {

@@ -1,4 +1,4 @@
-import { fetchWithAuth } from "./auth";
+
 
 const CLOUD_BASE = "https://www.elizacloud.ai";
 
@@ -215,7 +215,9 @@ export class CloudApiClient {
   }
 
   private async request<T>(path: string, opts: RequestInit = {}): Promise<T> {
-    const res = await fetchWithAuth(`${this.baseUrl}${path}`, opts);
+    // Use plain fetch — local/remote agents don't use cloud API keys.
+    // fetchWithAuth would leak the cloud API key to arbitrary URLs.
+    const res = await fetch(`${this.baseUrl}${path}`, opts);
     if (!res.ok) throw new Error(`API ${res.status}: ${path}`);
     return res.json();
   }
@@ -250,7 +252,7 @@ export class CloudApiClient {
   }
 
   async exportAgent(password: string, includeLogs?: boolean): Promise<Blob> {
-    const res = await fetchWithAuth(`${this.baseUrl}/api/agent/export`, {
+    const res = await fetch(`${this.baseUrl}/api/agent/export`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password, includeLogs }),
@@ -269,7 +271,7 @@ export class CloudApiClient {
     const lengthBuf = new ArrayBuffer(4);
     new DataView(lengthBuf).setUint32(0, passwordBytes.length);
     const envelope = new Blob([lengthBuf, passwordBytes, fileBytes]);
-    const res = await fetchWithAuth(`${this.baseUrl}/api/agent/import`, {
+    const res = await fetch(`${this.baseUrl}/api/agent/import`, {
       method: "POST",
       body: envelope,
     });
