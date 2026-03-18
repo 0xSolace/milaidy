@@ -64,7 +64,7 @@ export function AgentGrid() {
             key={agent.id}
             agent={{
               agentName: agent.name,
-              state: agent.status === "provisioning" || agent.status === "unknown" ? "stopped" : agent.status,
+              state: agent.status,
               model: agent.model ?? "\u2014",
               uptime: agent.uptime,
               memories: agent.memories,

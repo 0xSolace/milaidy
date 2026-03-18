@@ -165,6 +165,11 @@ export class CloudClient {
     return res.text();
   }
 
+  // Billing settings
+  async getBillingSettings(): Promise<object> {
+    return this.request("/api/v1/billing/settings", { method: "GET" });
+  }
+
   // Session info
   async getCurrentSession(): Promise<{ credits?: number; requests?: number; tokens?: number }> {
     return this.request("/api/sessions/current", { method: "GET" });
@@ -179,7 +184,7 @@ export interface ConnectionInfo {
 }
 
 export interface AgentStatus {
-  state: "running" | "paused" | "stopped";
+  state: "running" | "paused" | "stopped" | "provisioning" | "unknown";
   uptime?: number;
   memories?: number;
   agentName: string;

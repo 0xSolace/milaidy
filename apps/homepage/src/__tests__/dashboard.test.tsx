@@ -39,11 +39,11 @@ afterEach(() => { cleanup(); localStorage.clear(); });
 /*  Sidebar                                                           */
 /* ------------------------------------------------------------------ */
 describe("Sidebar", () => {
-  it("renders all 5 section buttons", () => {
+  it("renders all 6 section buttons", () => {
     const onChange = vi.fn();
     render(<Sidebar active="agents" onChange={onChange} />);
 
-    for (const label of ["Agents", "Metrics", "Logs", "Export", "Billing"]) {
+    for (const label of ["Agents", "Metrics", "Logs", "Snapshots", "Credits", "Billing"]) {
       const buttons = screen.getAllByText((_content, el) =>
         el?.textContent?.includes(label) && el?.tagName === "BUTTON"
           ? true

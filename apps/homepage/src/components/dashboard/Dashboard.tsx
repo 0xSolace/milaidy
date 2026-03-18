@@ -3,6 +3,7 @@ import { AgentProvider } from "../../lib/AgentProvider";
 import { AuthGate } from "./AuthGate";
 import { AgentGrid } from "./AgentGrid";
 import { BillingPanel } from "./BillingPanel";
+import { CreditsPanel } from "./CreditsPanel";
 import { ExportPanel } from "./ExportPanel";
 import { LogsPanel } from "./LogsPanel";
 import { MetricsPanel } from "./MetricsPanel";
@@ -42,8 +43,10 @@ function DashboardContent({ section }: { section: DashboardSection }) {
       return <MetricsPanel />;
     case "logs":
       return <LogsPanel />;
-    case "export":
+    case "snapshots":
       return <ExportPanel connectionId="" />;
+    case "credits":
+      return <CreditsPanel />;
     case "billing":
       return <BillingPanel />;
   }

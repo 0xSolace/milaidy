@@ -2,7 +2,8 @@ const SECTIONS = [
   { id: "agents", label: "Agents", icon: "\u25C9" },
   { id: "metrics", label: "Metrics", icon: "\u25EB" },
   { id: "logs", label: "Logs", icon: "\u25FB" },
-  { id: "export", label: "Export", icon: "\u2913" },
+  { id: "snapshots", label: "Snapshots", icon: "\u2913" },
+  { id: "credits", label: "Credits", icon: "\u25C7" },
   { id: "billing", label: "Billing", icon: "\u25C8" },
 ] as const;
 

@@ -11,11 +11,13 @@ interface AgentCardProps {
   selected: boolean;
 }
 
-const STATE_COLORS = {
+const STATE_COLORS: Record<string, string> = {
   running: "bg-green-500",
   paused: "bg-yellow-500",
   stopped: "bg-red-500",
-} as const;
+  provisioning: "bg-cyan-500 animate-pulse",
+  unknown: "bg-white/20",
+};
 
 function formatUptime(seconds?: number): string {
   if (!seconds) return "\u2014";
@@ -54,7 +56,7 @@ export function AgentCard({
         </div>
         <div className="flex items-center gap-1.5">
           <span
-            className={`w-2 h-2 rounded-full ${STATE_COLORS[agent.state]}`}
+            className={`w-2 h-2 rounded-full ${STATE_COLORS[agent.state] ?? STATE_COLORS.unknown}`}
           />
           <span className="text-[10px] font-mono text-text-muted uppercase">
             {agent.state}
@@ -67,7 +69,11 @@ export function AgentCard({
         {agent.memories !== undefined && (
           <span>{"\u29eb"} {agent.memories} memories</span>
         )}
-        <span className="ml-auto opacity-50">{connectionName}</span>
+        <span className={`ml-auto px-1.5 py-0.5 rounded text-[9px] font-mono uppercase tracking-wider ${
+          connectionName === "cloud" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" :
+          connectionName === "local" ? "bg-green-500/10 text-green-400 border border-green-500/20" :
+          "bg-purple-500/10 text-purple-400 border border-purple-500/20"
+        }`}>{connectionName}</span>
       </div>
 
       <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
@@ -95,13 +101,23 @@ export function AgentCard({
             Pause
           </button>
         )}
-        {agent.state !== "stopped" && (
+        {agent.state !== "stopped" && agent.state !== "provisioning" && agent.state !== "unknown" && (
           <button
             onClick={onStop}
             className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider border border-red-500/30 text-red-500 rounded hover:bg-red-500/10 transition-colors"
           >
             Stop
           </button>
+        )}
+        {agent.state === "provisioning" && (
+          <span className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-cyan-500 animate-pulse">
+            Provisioning...
+          </span>
+        )}
+        {agent.state === "unknown" && (
+          <span className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-text-muted">
+            Status unknown
+          </span>
         )}
       </div>
     </div>
