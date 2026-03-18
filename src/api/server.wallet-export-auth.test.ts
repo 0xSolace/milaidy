@@ -18,9 +18,11 @@ function req(
  * This helper extracts a nonce from the first (requestNonce) call,
  * then fast-forwards time past the 10s delay so the second call succeeds.
  */
-function extractNonce(rejection: { status: number; reason: string } | null): string {
+function extractNonce(
+  rejection: { status: number; reason: string } | null,
+): string {
   expect(rejection).not.toBeNull();
-  const parsed = JSON.parse(rejection!.reason);
+  const parsed = JSON.parse(rejection?.reason);
   expect(parsed.countdown).toBe(true);
   return parsed.nonce as string;
 }
@@ -97,7 +99,11 @@ describe("resolveWalletExportRejection", () => {
     // Phase 1: request a nonce
     const nonceResult = resolveWalletExportRejection(
       req() as http.IncomingMessage,
-      { confirm: true, exportToken: "secret-token", requestNonce: true } as never,
+      {
+        confirm: true,
+        exportToken: "secret-token",
+        requestNonce: true,
+      } as never,
     );
     const nonce = extractNonce(nonceResult);
     // Fast-forward past the 10s delay
@@ -106,7 +112,11 @@ describe("resolveWalletExportRejection", () => {
     // Phase 2: submit with nonce
     const rejection = resolveWalletExportRejection(
       req() as http.IncomingMessage,
-      { confirm: true, exportToken: "secret-token", exportNonce: nonce } as never,
+      {
+        confirm: true,
+        exportToken: "secret-token",
+        exportNonce: nonce,
+      } as never,
     );
     expect(rejection).toBeNull();
     vi.restoreAllMocks();
@@ -135,14 +145,22 @@ describe("resolveWalletExportRejection", () => {
     process.env.MILADY_WALLET_EXPORT_TOKEN = "secret-token";
     const nonceResult = resolveWalletExportRejection(
       req({ "x-eliza-export-token": "secret-token" }) as http.IncomingMessage,
-      { confirm: true, exportToken: "wrong-token", requestNonce: true } as never,
+      {
+        confirm: true,
+        exportToken: "wrong-token",
+        requestNonce: true,
+      } as never,
     );
     const nonce = extractNonce(nonceResult);
     const now = Date.now();
     vi.spyOn(Date, "now").mockReturnValue(now + 11_000);
     const rejection = resolveWalletExportRejection(
       req({ "x-eliza-export-token": "secret-token" }) as http.IncomingMessage,
-      { confirm: true, exportToken: "wrong-token", exportNonce: nonce } as never,
+      {
+        confirm: true,
+        exportToken: "wrong-token",
+        exportNonce: nonce,
+      } as never,
     );
     expect(rejection).toBeNull();
     vi.restoreAllMocks();

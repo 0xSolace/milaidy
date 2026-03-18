@@ -39,8 +39,8 @@ describe("wallet-export-guard", () => {
     const guard = createHardenedExportGuard(alwaysAllow);
     const result = guard(mockReq(), { confirm: true });
     expect(result).not.toBeNull();
-    expect(result!.status).toBe(403);
-    expect(result!.reason).toContain("confirmation delay");
+    expect(result?.status).toBe(403);
+    expect(result?.reason).toContain("confirmation delay");
   });
 
   it("issues a nonce when requestNonce is true", () => {
@@ -50,8 +50,8 @@ describe("wallet-export-guard", () => {
       requestNonce: true,
     });
     expect(result).not.toBeNull();
-    expect(result!.status).toBe(403);
-    const body = JSON.parse(result!.reason);
+    expect(result?.status).toBe(403);
+    const body = JSON.parse(result?.reason);
     expect(body.countdown).toBe(true);
     expect(body.nonce).toMatch(/^wxn_/);
     expect(body.delaySeconds).toBe(10);
@@ -63,14 +63,14 @@ describe("wallet-export-guard", () => {
 
     // Issue nonce
     const nonceResult = guard(req, { confirm: true, requestNonce: true });
-    const nonce = JSON.parse(nonceResult!.reason).nonce;
+    const nonce = JSON.parse(nonceResult?.reason).nonce;
 
     // Try immediately — should fail
     vi.advanceTimersByTime(5_000); // only 5s, need 10s
     const result = guard(req, { confirm: true, exportNonce: nonce });
     expect(result).not.toBeNull();
-    expect(result!.status).toBe(403);
-    expect(result!.reason).toContain("Wait");
+    expect(result?.status).toBe(403);
+    expect(result?.reason).toContain("Wait");
   });
 
   it("allows export after delay elapses", () => {
@@ -79,7 +79,7 @@ describe("wallet-export-guard", () => {
 
     // Issue nonce
     const nonceResult = guard(req, { confirm: true, requestNonce: true });
-    const nonce = JSON.parse(nonceResult!.reason).nonce;
+    const nonce = JSON.parse(nonceResult?.reason).nonce;
 
     // Wait 10s
     vi.advanceTimersByTime(10_000);
@@ -93,18 +93,18 @@ describe("wallet-export-guard", () => {
 
     // First export: issue nonce, wait, export
     const nonce1Result = guard(req, { confirm: true, requestNonce: true });
-    const nonce1 = JSON.parse(nonce1Result!.reason).nonce;
+    const nonce1 = JSON.parse(nonce1Result?.reason).nonce;
     vi.advanceTimersByTime(10_000);
     expect(guard(req, { confirm: true, exportNonce: nonce1 })).toBeNull();
 
     // Second attempt from same IP: issue nonce, wait, but rate limited
     const nonce2Result = guard(req, { confirm: true, requestNonce: true });
-    const nonce2 = JSON.parse(nonce2Result!.reason).nonce;
+    const nonce2 = JSON.parse(nonce2Result?.reason).nonce;
     vi.advanceTimersByTime(10_000);
     const result = guard(req, { confirm: true, exportNonce: nonce2 });
     expect(result).not.toBeNull();
-    expect(result!.status).toBe(429);
-    expect(result!.reason).toContain("Rate limit");
+    expect(result?.status).toBe(429);
+    expect(result?.reason).toContain("Rate limit");
   });
 
   it("allows export again after rate limit window expires", () => {
@@ -113,7 +113,7 @@ describe("wallet-export-guard", () => {
 
     // First export
     const nonce1Result = guard(req, { confirm: true, requestNonce: true });
-    const nonce1 = JSON.parse(nonce1Result!.reason).nonce;
+    const nonce1 = JSON.parse(nonce1Result?.reason).nonce;
     vi.advanceTimersByTime(10_000);
     expect(guard(req, { confirm: true, exportNonce: nonce1 })).toBeNull();
 
@@ -122,7 +122,7 @@ describe("wallet-export-guard", () => {
 
     // Second export should work
     const nonce2Result = guard(req, { confirm: true, requestNonce: true });
-    const nonce2 = JSON.parse(nonce2Result!.reason).nonce;
+    const nonce2 = JSON.parse(nonce2Result?.reason).nonce;
     vi.advanceTimersByTime(10_000);
     expect(guard(req, { confirm: true, exportNonce: nonce2 })).toBeNull();
   });
@@ -135,7 +135,7 @@ describe("wallet-export-guard", () => {
       confirm: true,
       requestNonce: true,
     });
-    const nonce = JSON.parse(nonceResult!.reason).nonce;
+    const nonce = JSON.parse(nonceResult?.reason).nonce;
 
     // Try to use from IP B
     vi.advanceTimersByTime(10_000);
@@ -144,7 +144,7 @@ describe("wallet-export-guard", () => {
       exportNonce: nonce,
     });
     expect(result).not.toBeNull();
-    expect(result!.reason).toContain("different client");
+    expect(result?.reason).toContain("different client");
   });
 
   it("rejects an invalid/expired nonce", () => {
@@ -154,7 +154,7 @@ describe("wallet-export-guard", () => {
       exportNonce: "wxn_bogus",
     });
     expect(result).not.toBeNull();
-    expect(result!.reason).toContain("Invalid or expired");
+    expect(result?.reason).toContain("Invalid or expired");
   });
 
   it("nonce is single-use (consumed after successful export)", () => {
@@ -163,7 +163,7 @@ describe("wallet-export-guard", () => {
     const req = mockReq("10.99.99.99");
 
     const nonceResult = guard(req, { confirm: true, requestNonce: true });
-    const nonce = JSON.parse(nonceResult!.reason).nonce;
+    const nonce = JSON.parse(nonceResult?.reason).nonce;
 
     vi.advanceTimersByTime(10_000);
     expect(guard(req, { confirm: true, exportNonce: nonce })).toBeNull();
@@ -174,7 +174,7 @@ describe("wallet-export-guard", () => {
     // Reuse same nonce — should fail (nonce consumed, not rate limited)
     const reuse = guard(req, { confirm: true, exportNonce: nonce });
     expect(reuse).not.toBeNull();
-    expect(reuse!.reason).toContain("Invalid or expired");
+    expect(reuse?.reason).toContain("Invalid or expired");
   });
 
   it("records audit entries for all outcomes", () => {
@@ -194,8 +194,8 @@ describe("wallet-export-guard", () => {
       (e) => e.ip === "10.0.0.4" && e.outcome === "rejected",
     );
     expect(rejected).toBeDefined();
-    expect(rejected!.userAgent).toBe("AuditTestAgent");
-    expect(rejected!.timestamp).toMatch(/^\d{4}-/);
+    expect(rejected?.userAgent).toBe("AuditTestAgent");
+    expect(rejected?.timestamp).toMatch(/^\d{4}-/);
   });
 
   it("ignores X-Forwarded-For and uses socket.remoteAddress", () => {
@@ -224,13 +224,13 @@ describe("wallet-export-guard", () => {
     for (let i = 0; i < 3; i++) {
       const result = guard(req, { confirm: true, requestNonce: true });
       expect(result).not.toBeNull();
-      expect(result!.status).toBe(403);
+      expect(result?.status).toBe(403);
     }
 
     // 4th should be rejected with 429
     const result = guard(req, { confirm: true, requestNonce: true });
     expect(result).not.toBeNull();
-    expect(result!.status).toBe(429);
-    expect(result!.reason).toContain("Too many pending");
+    expect(result?.status).toBe(429);
+    expect(result?.reason).toContain("Too many pending");
   });
 });

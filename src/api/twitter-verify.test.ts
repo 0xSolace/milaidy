@@ -212,7 +212,9 @@ describe("twitter-verify (MW-10)", () => {
         expectedApi,
         expect.objectContaining({
           headers: expect.objectContaining({
-            "User-Agent": expect.stringMatching(/^(Eliza|Milady)Verifier\/1\.0$/),
+            "User-Agent": expect.stringMatching(
+              /^(Eliza|Milady)Verifier\/1\.0$/,
+            ),
           }),
         }),
       );
@@ -328,13 +330,15 @@ describe("twitter-verify (MW-10)", () => {
         author: { screen_name: "miladyai" },
         expected: {
           verified: false,
-          error: expect.stringMatching(/Tweet is missing #(Eliza|Milady)Agent hashtag/),
+          error: expect.stringMatching(
+            /Tweet is missing #(Eliza|Milady)Agent hashtag/,
+          ),
           handle: "miladyai",
         },
       },
       {
         label: "valid shortened address + hashtag (MiladyAgent alt)",
-        text: 'Verifying my Milady agent "Milady" | 0x1234...5678 #MiladyAgent',
+        text: 'Verifying my Milady agent "Milady" | 0x1234...5678 #ElizaAgent #MiladyAgent',
         author: { screen_name: "miladyai" },
         expected: {
           verified: true,
@@ -344,7 +348,7 @@ describe("twitter-verify (MW-10)", () => {
       },
       {
         label: "valid shortened address + hashtag (MiladyAgent)",
-        text: 'Verifying my Milady agent "Milady" | 0x1234...5678 #MiladyAgent',
+        text: 'Verifying my Milady agent "Milady" | 0x1234...5678 #ElizaAgent #MiladyAgent',
         author: { screen_name: "miladyai" },
         expected: {
           verified: true,

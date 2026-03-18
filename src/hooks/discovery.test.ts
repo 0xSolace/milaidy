@@ -109,7 +109,7 @@ describe("frontmatter parsing", () => {
         "---",
         "name: meta-hook",
         "description: Hook with metadata",
-        'metadata: { "milady": { "emoji": "🔥", "events": ["command:new"], "hookKey": "custom-key" } }',
+        'metadata: { "eliza": { "emoji": "🔥", "events": ["command:new"], "hookKey": "custom-key" } }',
         "---",
       ].join("\n"),
     });

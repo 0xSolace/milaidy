@@ -200,7 +200,9 @@ describe("buildUpdateCommand", () => {
     const result = buildUpdateCommand("unknown", "stable");
     expect(result).not.toBeNull();
     expect(result?.command).toBe("npm");
-    expect(result?.args.some((a: string) => /^(elizaos|miladyai)@latest$/.test(a))).toBe(true);
+    expect(
+      result?.args.some((a: string) => /^(elizaos|miladyai)@latest$/.test(a)),
+    ).toBe(true);
   });
 });
 
