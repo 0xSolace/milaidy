@@ -20,9 +20,14 @@ export function BillingPanel() {
 
   if (cloudConns.length === 0) {
     return (
-      <div className="text-text-muted font-mono text-sm text-center py-16">
-        Billing is available for cloud connections only. Add a cloud connection
-        to view billing.
+      <div className="flex flex-col items-center justify-center py-32 space-y-3">
+        <div className="text-text-muted/30 text-4xl">◈</div>
+        <div className="text-text-muted font-mono text-sm">
+          No cloud connections
+        </div>
+        <div className="text-text-muted/50 font-mono text-xs">
+          Add a cloud connection to view billing information.
+        </div>
       </div>
     );
   }

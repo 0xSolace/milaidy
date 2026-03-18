@@ -7,7 +7,7 @@ export function ConnectionBar() {
   const [showModal, setShowModal] = useState(false);
 
   return (
-    <div className="px-6 py-3 border-b border-white/10 flex items-center gap-4 flex-wrap">
+    <div className="px-8 py-4 border-b border-white/10 flex items-center gap-5 flex-wrap">
       <button
         onClick={() => setShowModal(true)}
         className="px-3 py-1 border border-white/20 text-text-muted font-mono text-xs uppercase tracking-widest rounded hover:border-brand hover:text-brand transition-colors"

@@ -17,14 +17,17 @@ export function Dashboard() {
       <ConnectionProvider>
         <div
           data-testid="dashboard"
-          className="min-h-screen bg-dark text-text-light flex"
+          className="min-h-screen bg-dark text-text-light"
         >
-          <Sidebar active={section} onChange={setSection} />
-          <div className="flex-1 flex flex-col pt-20">
-            <ConnectionBar />
-            <main className="flex-1 p-6">
-              <DashboardContent section={section} />
-            </main>
+          {/* Push everything below the fixed nav */}
+          <div className="pt-[72px] flex min-h-screen">
+            <Sidebar active={section} onChange={setSection} />
+            <div className="flex-1 flex flex-col min-w-0">
+              <ConnectionBar />
+              <main className="flex-1 px-8 py-6">
+                <DashboardContent section={section} />
+              </main>
+            </div>
           </div>
         </div>
       </ConnectionProvider>

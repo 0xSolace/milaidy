@@ -59,8 +59,14 @@ export function AgentGrid() {
 
   if (agents.length === 0) {
     return (
-      <div className="text-text-muted font-mono text-sm text-center py-16">
-        No agents found. Connect to a running Milady container to see agents.
+      <div className="flex flex-col items-center justify-center py-32 space-y-3">
+        <div className="text-text-muted/30 text-4xl">◉</div>
+        <div className="text-text-muted font-mono text-sm">
+          No agents found
+        </div>
+        <div className="text-text-muted/50 font-mono text-xs">
+          Add a connection to a running Milady container to see agents.
+        </div>
       </div>
     );
   }

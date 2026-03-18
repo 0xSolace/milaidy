@@ -48,8 +48,14 @@ export function ExportPanel({ connectionId }: ExportPanelProps) {
 
   if (!connectionId) {
     return (
-      <div className="text-text-muted font-mono text-sm text-center py-16">
-        Select an agent from the Agents panel to export or import snapshots.
+      <div className="flex flex-col items-center justify-center py-32 space-y-3">
+        <div className="text-text-muted/30 text-4xl">⤓</div>
+        <div className="text-text-muted font-mono text-sm">
+          No agent selected
+        </div>
+        <div className="text-text-muted/50 font-mono text-xs">
+          Select an agent from the Agents panel to export or import snapshots.
+        </div>
       </div>
     );
   }

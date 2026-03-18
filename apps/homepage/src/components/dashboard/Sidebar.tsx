@@ -17,7 +17,8 @@ export function Sidebar({ active, onChange }: SidebarProps) {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden md:block w-48 min-h-screen border-r border-white/10 pt-24 px-4 flex-shrink-0">
+      <aside className="hidden md:block w-52 border-r border-white/10 px-4 py-6 flex-shrink-0">
+        <h3 className="text-[10px] font-mono uppercase tracking-widest text-text-muted/50 px-3 mb-4">Dashboard</h3>
         <nav className="space-y-1">
           {SECTIONS.map((s) => (
             <button
@@ -37,7 +38,7 @@ export function Sidebar({ active, onChange }: SidebarProps) {
       </aside>
 
       {/* Mobile tab bar */}
-      <div className="md:hidden flex overflow-x-auto border-b border-white/10 pt-20 px-2 gap-1">
+      <div className="md:hidden flex overflow-x-auto border-b border-white/10 px-2 gap-1">
         {SECTIONS.map((s) => (
           <button
             key={s.id}
