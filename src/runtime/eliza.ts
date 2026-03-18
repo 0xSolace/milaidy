@@ -1,4 +1,10 @@
-import { type AgentRuntime, AutonomyService, logger } from "@elizaos/core";
+import {
+  type AgentRuntime,
+  AutonomyService,
+  ChannelType,
+  logger,
+  stringToUuid,
+} from "@elizaos/core";
 
 export * from "@elizaos/autonomous/runtime/eliza";
 
@@ -7,6 +13,7 @@ import {
   bootElizaRuntime as upstreamBootElizaRuntime,
   buildCharacterFromConfig as upstreamBuildCharacterFromConfig,
   collectPluginNames as upstreamCollectPluginNames,
+  shutdownRuntime as upstreamShutdownRuntime,
   startEliza as upstreamStartEliza,
 } from "@elizaos/autonomous/runtime/eliza";
 import { ensureRuntimeSqlCompatibility } from "../utils/sql-compat";
@@ -21,6 +28,60 @@ const BRAND_ENV_ALIASES = [
 
 const miladyMirroredEnvKeys = new Set<string>();
 const elizaMirroredEnvKeys = new Set<string>();
+const AUTONOMY_WORLD_ID = stringToUuid("00000000-0000-0000-0000-000000000001");
+const AUTONOMY_ENTITY_ID = stringToUuid("00000000-0000-0000-0000-000000000002");
+const AUTONOMY_MESSAGE_SERVER_ID = stringToUuid(
+  "00000000-0000-0000-0000-000000000000",
+);
+
+interface EntityLike {
+  id: string;
+  agentId?: string;
+  names?: string[];
+  metadata?: Record<string, unknown>;
+}
+
+interface RuntimeAutonomyCompat {
+  getEntityById?: (id: string) => Promise<EntityLike | null>;
+  createEntity?: (entity: {
+    id: string;
+    names: string[];
+    agentId: string;
+    metadata?: Record<string, unknown>;
+  }) => Promise<boolean>;
+  updateEntity?: (entity: EntityLike & { agentId: string }) => Promise<boolean>;
+  ensureWorldExists?: (world: {
+    id: string;
+    name: string;
+    agentId: string;
+    messageServerId?: string;
+    metadata?: Record<string, unknown>;
+  }) => Promise<unknown>;
+  ensureRoomExists?: (room: {
+    id: string;
+    name: string;
+    worldId: string;
+    source: string;
+    type: ChannelType;
+    metadata?: Record<string, unknown>;
+  }) => Promise<unknown>;
+  ensureParticipantInRoom?: (
+    entityId: string,
+    roomId: string,
+  ) => Promise<unknown>;
+  addParticipant?: (entityId: string, roomId: string) => Promise<unknown>;
+}
+
+interface RuntimeAdapterAutonomyCompat {
+  upsertEntities?: (
+    entities: Array<{
+      id: string;
+      names: string[];
+      agentId: string;
+      metadata?: Record<string, unknown>;
+    }>,
+  ) => Promise<unknown>;
+}
 
 function syncMiladyEnvToEliza(): void {
   for (const [miladyKey, elizaKey] of BRAND_ENV_ALIASES) {
@@ -75,10 +136,100 @@ export function buildCharacterFromConfig(
   return result;
 }
 
+async function ensureAutonomyBootstrapContext(
+  runtime: AgentRuntime,
+): Promise<void> {
+  const runtimeWithCompat = runtime as AgentRuntime & RuntimeAutonomyCompat;
+  const adapter = runtime.adapter as RuntimeAdapterAutonomyCompat | undefined;
+  const autonomousRoomId = stringToUuid(`autonomy-room-${runtime.agentId}`);
+
+  await runtimeWithCompat.ensureWorldExists?.({
+    id: AUTONOMY_WORLD_ID,
+    name: "Autonomy World",
+    agentId: runtime.agentId,
+    messageServerId: AUTONOMY_MESSAGE_SERVER_ID,
+    metadata: {
+      type: "autonomy",
+      description: "World for autonomous agent thinking",
+    },
+  });
+
+  await runtimeWithCompat.ensureRoomExists?.({
+    id: autonomousRoomId,
+    name: "Autonomous Thoughts",
+    worldId: AUTONOMY_WORLD_ID,
+    source: "autonomy-service",
+    type: ChannelType.SELF,
+    metadata: {
+      source: "autonomy-service",
+      description: "Room for autonomous agent thinking",
+    },
+  });
+
+  const autonomyEntity = {
+    id: AUTONOMY_ENTITY_ID,
+    names: ["Autonomy"],
+    agentId: runtime.agentId,
+    metadata: {
+      type: "autonomy",
+      description: "Dedicated entity for autonomy service prompts",
+    },
+  };
+  const existingEntity =
+    (await runtimeWithCompat.getEntityById?.(AUTONOMY_ENTITY_ID)) ?? null;
+
+  if (!existingEntity) {
+    const created = await runtimeWithCompat.createEntity?.(autonomyEntity);
+    if (!created && adapter?.upsertEntities) {
+      await adapter.upsertEntities([autonomyEntity]);
+    }
+  } else if (existingEntity.agentId !== runtime.agentId) {
+    if (runtimeWithCompat.updateEntity) {
+      await runtimeWithCompat.updateEntity({
+        ...existingEntity,
+        agentId: runtime.agentId,
+      });
+    } else if (adapter?.upsertEntities) {
+      await adapter.upsertEntities([
+        {
+          id: existingEntity.id ?? AUTONOMY_ENTITY_ID,
+          names:
+            existingEntity.names && existingEntity.names.length > 0
+              ? existingEntity.names
+              : autonomyEntity.names,
+          agentId: runtime.agentId,
+          metadata: {
+            ...autonomyEntity.metadata,
+            ...(existingEntity.metadata ?? {}),
+          },
+        },
+      ]);
+    }
+  }
+
+  if (runtimeWithCompat.ensureParticipantInRoom) {
+    await runtimeWithCompat.ensureParticipantInRoom(
+      runtime.agentId,
+      autonomousRoomId,
+    );
+    await runtimeWithCompat.ensureParticipantInRoom(
+      AUTONOMY_ENTITY_ID,
+      autonomousRoomId,
+    );
+  } else if (runtimeWithCompat.addParticipant) {
+    await runtimeWithCompat.addParticipant(runtime.agentId, autonomousRoomId);
+    await runtimeWithCompat.addParticipant(
+      AUTONOMY_ENTITY_ID,
+      autonomousRoomId,
+    );
+  }
+}
+
 async function repairRuntimeAfterBoot(
   runtime: AgentRuntime,
 ): Promise<AgentRuntime> {
   await ensureRuntimeSqlCompatibility(runtime);
+  await ensureAutonomyBootstrapContext(runtime);
 
   if (!runtime.getService("AUTONOMY")) {
     try {
@@ -115,6 +266,74 @@ export async function startEliza(
   syncMiladyEnvToEliza();
 
   try {
+    const options = args[0];
+
+    if (options?.serverOnly) {
+      let currentRuntime =
+        (await upstreamStartEliza({
+          ...options,
+          headless: true,
+          serverOnly: false,
+        })) ?? undefined;
+
+      currentRuntime = currentRuntime
+        ? await repairRuntimeAfterBoot(currentRuntime)
+        : currentRuntime;
+
+      if (!currentRuntime) {
+        return currentRuntime;
+      }
+
+      const { startApiServer } = await import("../api/server");
+      const apiPort = Number(process.env.ELIZA_PORT) || 2138;
+      const { port: actualApiPort } = await startApiServer({
+        port: apiPort,
+        runtime: currentRuntime,
+        onRestart: async () => {
+          if (!currentRuntime) {
+            return null;
+          }
+
+          await upstreamShutdownRuntime(
+            currentRuntime,
+            "milady server-only restart",
+          );
+
+          const restarted =
+            (await upstreamStartEliza({
+              ...options,
+              headless: true,
+              serverOnly: false,
+            })) ?? undefined;
+
+          currentRuntime = restarted
+            ? await repairRuntimeAfterBoot(restarted)
+            : undefined;
+
+          return currentRuntime ?? null;
+        },
+      });
+
+      logger.info(
+        `[milady] API server listening on http://localhost:${actualApiPort}`,
+      );
+      console.log(`[milady] Control UI: http://localhost:${actualApiPort}`);
+      console.log("[milady] Server running. Press Ctrl+C to stop.");
+
+      const keepAlive = setInterval(() => {}, 1 << 30);
+      const cleanup = async () => {
+        clearInterval(keepAlive);
+        if (currentRuntime) {
+          await upstreamShutdownRuntime(currentRuntime, "server-only shutdown");
+        }
+        process.exit(0);
+      };
+
+      process.on("SIGINT", () => void cleanup());
+      process.on("SIGTERM", () => void cleanup());
+      return currentRuntime;
+    }
+
     const runtime = await upstreamStartEliza(...args);
     return runtime ? await repairRuntimeAfterBoot(runtime) : runtime;
   } finally {
