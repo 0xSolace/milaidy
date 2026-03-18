@@ -1,8 +1,6 @@
 import fs from "node:fs";
-import Module from "node:module";
 import path from "node:path";
 
-const require = Module.createRequire(import.meta.url);
 const MODULE_EXTENSIONS = [".ts", ".tsx", ".mts", ".js", ".jsx", ".mjs", ".cjs"];
 const preferInstalledEliza = process.env.MILADY_PREFER_INSTALLED_ELIZA === "1";
 
@@ -13,14 +11,6 @@ function firstExistingPath(
     (candidate): candidate is string =>
       typeof candidate === "string" && fs.existsSync(candidate),
   );
-}
-
-function resolvePackageRoot(packageName: string): string | undefined {
-  try {
-    return path.dirname(require.resolve(`${packageName}/package.json`));
-  } catch {
-    return undefined;
-  }
 }
 
 export function resolveModuleEntry(basePath: string): string {
@@ -65,54 +55,15 @@ export function getElizaCoreEntry(repoRoot: string): string | undefined {
 export function getAutonomousSourceRoot(repoRoot: string): string | undefined {
   const workspaceRoot = getElizaWorkspaceRoot(repoRoot);
 
-  return firstExistingPath([
-    workspaceRoot
-      ? path.join(workspaceRoot, "packages", "autonomous", "src")
-      : undefined,
-    (() => {
-      const packageRoot = resolvePackageRoot("@elizaos/autonomous");
-      if (!packageRoot) {
-        return undefined;
-      }
-
-      return firstExistingPath([
-        path.join(packageRoot, "src"),
-        path.join(packageRoot, "packages", "autonomous", "src"),
-      ]);
-    })(),
-  ]);
+  return workspaceRoot
+    ? path.join(workspaceRoot, "packages", "autonomous", "src")
+    : undefined;
 }
 
 export function getAppCoreSourceRoot(repoRoot: string): string | undefined {
   const workspaceRoot = getElizaWorkspaceRoot(repoRoot);
 
-  return firstExistingPath([
-    workspaceRoot
-      ? path.join(workspaceRoot, "packages", "app-core", "src")
-      : undefined,
-  ]);
-}
-
-export function resolveAutonomousSourceFile(
-  repoRoot: string,
-  relativePath: string,
-): string | undefined {
-  const sourceRoot = getAutonomousSourceRoot(repoRoot);
-  if (!sourceRoot) {
-    return undefined;
-  }
-
-  const normalizedRelativePath = relativePath.replaceAll("\\", "/");
-  const extname = path.extname(normalizedRelativePath);
-  const basePath = path.join(
-    sourceRoot,
-    extname
-      ? normalizedRelativePath.slice(0, -extname.length)
-      : normalizedRelativePath,
-  );
-
-  return firstExistingPath([
-    resolveModuleEntry(basePath),
-    path.join(sourceRoot, normalizedRelativePath),
-  ]);
+  return workspaceRoot
+    ? path.join(workspaceRoot, "packages", "app-core", "src")
+    : undefined;
 }

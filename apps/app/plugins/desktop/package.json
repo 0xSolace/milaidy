@@ -14,7 +14,7 @@
   "exports": {
     ".": {
       "types": "./dist/esm/index.d.ts",
-      "import": "./dist/plugin.js",
+      "import": "./dist/esm/index.js",
       "require": "./dist/plugin.cjs.js"
     },
     "./package.json": "./package.json"
