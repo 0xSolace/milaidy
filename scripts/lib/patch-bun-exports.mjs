@@ -358,7 +358,10 @@ export function applyAppCoreMiladyVrmStatePatch(filePath) {
   if (
     compatSource.includes("const BASE_VRM_COUNT = 8;") &&
     compatSource.includes("const VRM_INDEX_MAP = [1, 2, 3, 4, 5, 6, 7, 8];") &&
-    compatSource.includes("vrms/milady-${sourceIndex}.vrm.gz")
+    compatSource.includes(`vrms/milady-\${sourceIndex}.vrm.gz`) &&
+    compatSource.includes(
+      "bundled Milady source files.\n */\nconst VRM_INDEX_MAP",
+    )
   ) {
     return false;
   }
@@ -376,11 +379,16 @@ export function applyAppCoreMiladyVrmStatePatch(filePath) {
 `,
     `/**
  * Maps logical avatar indices (1-8) directly to bundled Milady source files.
- */`,
+ */
+`,
   );
   updatedSource = updatedSource.replace(
     "const VRM_INDEX_MAP = [1, 4, 5, 9];",
     "const VRM_INDEX_MAP = [1, 2, 3, 4, 5, 6, 7, 8];",
+  );
+  updatedSource = updatedSource.replace(
+    " */const VRM_INDEX_MAP = [1, 2, 3, 4, 5, 6, 7, 8];",
+    " */\nconst VRM_INDEX_MAP = [1, 2, 3, 4, 5, 6, 7, 8];",
   );
   updatedSource = updatedSource
     .replaceAll("eliza-", "milady-")

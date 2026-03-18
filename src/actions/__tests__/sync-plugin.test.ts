@@ -16,7 +16,12 @@ describe("syncPluginAction", () => {
   });
 
   it("should require a plugin ID", async () => {
-    const result = await syncPluginAction.handler(undefined);
+    const result = await syncPluginAction.handler(
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    );
 
     expect(result.success).toBe(false);
     expect(result.text).toContain("plugin ID");
@@ -31,9 +36,14 @@ describe("syncPluginAction", () => {
       conflicts: [],
     });
 
-    const result = await syncPluginAction.handler(undefined, {
-      parameters: { pluginId: "  discord  " },
-    });
+    const result = await syncPluginAction.handler(
+      undefined,
+      undefined,
+      undefined,
+      {
+        parameters: { pluginId: "  discord  " },
+      },
+    );
 
     expect(mockSyncPlugin).toHaveBeenCalledWith("discord");
     expect(result.success).toBe(true);
@@ -49,9 +59,14 @@ describe("syncPluginAction", () => {
       error: "merge conflict",
     });
 
-    const result = await syncPluginAction.handler(undefined, {
-      parameters: { pluginId: "discord" },
-    });
+    const result = await syncPluginAction.handler(
+      undefined,
+      undefined,
+      undefined,
+      {
+        parameters: { pluginId: "discord" },
+      },
+    );
 
     expect(result.success).toBe(false);
     expect(result.text).toContain("merge conflict");
@@ -67,9 +82,14 @@ describe("syncPluginAction", () => {
       conflicts: [],
     });
 
-    const result = await syncPluginAction.handler(undefined, {
-      parameters: { pluginId: "telegram-enhanced" },
-    });
+    const result = await syncPluginAction.handler(
+      undefined,
+      undefined,
+      undefined,
+      {
+        parameters: { pluginId: "telegram-enhanced" },
+      },
+    );
 
     expect(result.success).toBe(true);
     expect(result.text).toContain("telegram-enhanced");

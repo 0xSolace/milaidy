@@ -20,10 +20,9 @@ async function callAction(
   action: Action,
   params: Record<string, unknown> = {},
 ) {
-  return action.handler(
-    {} as never,
-    { parameters: params } as HandlerOptions,
-  ) as Promise<{ text: string; success: boolean }>;
+  return action.handler({} as never, {} as never, undefined, {
+    parameters: params,
+  } as HandlerOptions) as Promise<{ text: string; success: boolean }>;
 }
 
 describe("stream control actions", () => {

@@ -12,10 +12,9 @@ import { checkBalanceAction } from "./check-balance";
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function callHandler(params: Record<string, unknown> = {}) {
-  return checkBalanceAction.handler(
-    {} as never,
-    { parameters: params } as HandlerOptions,
-  );
+  return checkBalanceAction.handler({} as never, {} as never, undefined, {
+    parameters: params,
+  } as HandlerOptions);
 }
 
 /** Full multi-chain mock response matching WalletBalancesResponse. */

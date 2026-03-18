@@ -12,10 +12,9 @@ import { switchStreamSourceAction } from "./switch-stream-source";
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function callHandler(params: Record<string, unknown> = {}) {
-  return switchStreamSourceAction.handler(
-    {} as never,
-    { parameters: params } as HandlerOptions,
-  );
+  return switchStreamSourceAction.handler({} as never, {} as never, undefined, {
+    parameters: params,
+  } as HandlerOptions);
 }
 
 // ── Test suite ────────────────────────────────────────────────────────────────

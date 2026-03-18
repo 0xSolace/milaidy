@@ -13,21 +13,24 @@ import http from "node:http";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-// Load .env from the repository root when present.
-const envPath = path.resolve(import.meta.dirname, "..", ".env");
-try {
-  const { config } = await import("dotenv");
-  config({ path: envPath });
-} catch {
-  // dotenv may not be available — keys must be in process.env already
+const liveTestsEnabled = process.env.MILADY_LIVE_TEST === "1";
+
+// Load .env from the repository root only for explicit live runs.
+if (liveTestsEnabled) {
+  const envPath = path.resolve(import.meta.dirname, "..", ".env");
+  try {
+    const { config } = await import("dotenv");
+    config({ path: envPath });
+  } catch {
+    // dotenv may not be available — keys must be in process.env already
+  }
 }
 
 const hasLLM =
   Boolean(process.env.OPENAI_API_KEY?.trim()) ||
   Boolean(process.env.ANTHROPIC_API_KEY?.trim()) ||
   Boolean(process.env.GROQ_API_KEY?.trim());
-const isLiveTest = process.env.MILADY_LIVE_TEST === "1";
-const canRun = hasLLM && isLiveTest;
+const canRun = hasLLM && liveTestsEnabled;
 
 // ---------------------------------------------------------------------------
 // HTTP helper

@@ -14,10 +14,9 @@ import { executeTradeAction } from "./execute-trade";
 const VALID_TOKEN = "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82";
 
 function callHandler(params: Record<string, unknown>) {
-  return executeTradeAction.handler(
-    {} as never,
-    { parameters: params } as HandlerOptions,
-  );
+  return executeTradeAction.handler({} as never, {} as never, undefined, {
+    parameters: params,
+  } as HandlerOptions);
 }
 
 // ── Test suite ───────────────────────────────────────────────────────────────

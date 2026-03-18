@@ -9,10 +9,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  applyAgentSkillsCatalogFetchPatch,
   applyAppCoreMiladyVrmStatePatch,
   applyAppCoreMiladyVrmTypesPatch,
   applyAppCoreMiladyVrmViewerPatch,
-  applyAgentSkillsCatalogFetchPatch,
   applyExtensionlessJsExportAliases,
   applyMissingLifecycleScriptPatch,
   applyNobleHashesCompat,
@@ -597,10 +597,14 @@ export function getVrmTitle(index) {
       expect(updated).toContain(
         "const VRM_INDEX_MAP = [1, 2, 3, 4, 5, 6, 7, 8];",
       );
-      expect(updated).toContain("vrms/milady-${sourceIndex}.vrm.gz");
-      expect(updated).toContain("vrms/previews/milady-${sourceIndex}.png");
-      expect(updated).toContain("vrms/backgrounds/milady-${sourceIndex}.${EXT}");
-      expect(updated).toContain("MILADY-${String(sourceIndex).padStart(2, \"0\")}");
+      expect(updated).toContain(`vrms/milady-\${sourceIndex}.vrm.gz`);
+      expect(updated).toContain(`vrms/previews/milady-\${sourceIndex}.png`);
+      expect(updated).toContain(
+        `vrms/backgrounds/milady-\${sourceIndex}.\${EXT}`,
+      );
+      expect(updated).toContain(
+        `MILADY-\${String(sourceIndex).padStart(2, "0")}`,
+      );
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }
@@ -712,24 +716,25 @@ export function getVrmTitle(index) {
       const patched = patchAppCoreMiladyAssets(tmp, (msg) => logs.push(msg));
       expect(patched).toBe(true);
       expect(
-        logs.some((line) =>
-          line.includes("@elizaos/app-core state/vrm.js"),
-        ),
+        logs.some((line) => line.includes("@elizaos/app-core state/vrm.js")),
       ).toBe(true);
       expect(
         logs.some((line) =>
           line.includes("@elizaos/app-core components/avatar/VrmViewer.js"),
         ),
       ).toBe(true);
-      expect(readFileSync(join(rootPkgDir, "state", "vrm.js"), "utf8")).toContain(
-        "vrms/milady-${index}.vrm.gz",
-      );
-      expect(readFileSync(join(rootPkgDir, "state", "vrm.d.ts"), "utf8")).toContain(
-        "export declare const VRM_COUNT = 8;",
-      );
       expect(
-        readFileSync(join(cachedPkgDir, "components", "avatar", "VrmViewer.js"), "utf8"),
-      ).toContain('vrms/milady-1.vrm.gz');
+        readFileSync(join(rootPkgDir, "state", "vrm.js"), "utf8"),
+      ).toContain(`vrms/milady-\${index}.vrm.gz`);
+      expect(
+        readFileSync(join(rootPkgDir, "state", "vrm.d.ts"), "utf8"),
+      ).toContain("export declare const VRM_COUNT = 8;");
+      expect(
+        readFileSync(
+          join(cachedPkgDir, "components", "avatar", "VrmViewer.js"),
+          "utf8",
+        ),
+      ).toContain("vrms/milady-1.vrm.gz");
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }

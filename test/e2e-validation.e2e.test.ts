@@ -71,6 +71,11 @@ function fileExistsAny(candidates: string[]): boolean {
   return candidates.some((candidate) => fs.existsSync(candidate));
 }
 
+function isPromptBatcherDisposedError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /PromptBatcher has been disposed|BatcherDisposedError/i.test(message);
+}
+
 dotenv.config({ path: path.resolve(packageRoot, ".env") });
 
 const hasOpenAI = Boolean(process.env.OPENAI_API_KEY);
@@ -1287,6 +1292,16 @@ describe("Runtime Integration (with model provider)", () => {
   }, 180_000);
 
   afterAll(async () => {
+    const ignoreDisposedBatcher = (reason: unknown) => {
+      if (isPromptBatcherDisposedError(reason)) {
+        logger.warn(
+          "[e2e-validation] Ignoring PromptBatcher disposed rejection during runtime cleanup",
+        );
+        return;
+      }
+      throw reason;
+    };
+    process.prependListener("unhandledRejection", ignoreDisposedBatcher);
     if (server) {
       try {
         await withTimeout(server.close(), 30_000, "server.close()");
@@ -1310,6 +1325,8 @@ describe("Runtime Integration (with model provider)", () => {
       fs.rmSync(pgliteDir, { recursive: true, force: true });
     } catch {
       /* ignore */
+    } finally {
+      process.removeListener("unhandledRejection", ignoreDisposedBatcher);
     }
   }, 150_000);
 

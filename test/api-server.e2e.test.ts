@@ -1487,6 +1487,7 @@ describe("API Server E2E (no runtime)", () => {
             "H",
             "e",
             "l",
+            "l",
             "o",
             " ",
             "w",

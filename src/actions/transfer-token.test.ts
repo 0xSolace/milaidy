@@ -15,10 +15,9 @@ const VALID_ADDRESS = "0x1234567890abcdef1234567890abcdef12345678";
 const VALID_TOKEN_CONTRACT = "0x55d398326f99059fF775485246999027B3197955";
 
 function callHandler(params: Record<string, unknown>) {
-  return transferTokenAction.handler(
-    {} as never,
-    { parameters: params } as HandlerOptions,
-  );
+  return transferTokenAction.handler({} as never, {} as never, undefined, {
+    parameters: params,
+  } as HandlerOptions);
 }
 
 // ── Test suite ───────────────────────────────────────────────────────────────
