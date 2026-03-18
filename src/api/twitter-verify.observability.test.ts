@@ -34,7 +34,7 @@ describe("twitter-verify observability", () => {
         status: 200,
         json: async () => ({
           tweet: {
-            text: `Verifying my Eliza agent "Test" | ${shortAddr} #ElizaAgent`,
+            text: `Verifying my agent "Test" | ${shortAddr} #ElizaAgent #MiladyAgent`,
             author: { screen_name: "alice" },
           },
         }),

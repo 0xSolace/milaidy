@@ -5,6 +5,15 @@ import { defineConfig } from "vitest/config";
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      // Deduplicate React so symlinked packages (e.g. @elizaos/app-core ->
+      // eliza/packages/app-core) share the same React instance as the test
+      // renderer and the app itself.
+      react: path.join(here, "node_modules/react"),
+      "react-dom": path.join(here, "node_modules/react-dom"),
+    },
+  },
   test: {
     // Use POSIX-style relative globs so test discovery works on Windows too.
     include: ["test/**/*.test.ts", "test/**/*.test.tsx"],

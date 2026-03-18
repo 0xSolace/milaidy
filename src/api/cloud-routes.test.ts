@@ -1818,17 +1818,17 @@ describe("handleCloudRoute timeout behavior", () => {
         cloudManager: null,
       } as unknown as CloudRouteState;
 
+      // Use GET /api/cloud/login/status?sessionId=... which is where
+      // the upstream handler processes the "authenticated" response and
+      // sets process.env.ELIZAOS_CLOUD_API_KEY.
       const req = createMockIncomingMessage({
-        method: "POST",
-        url: "/api/cloud/login",
-        headers: { "content-type": "application/json" },
-        bodyChunks: [
-          Buffer.from(JSON.stringify({ email: "a@b.c", code: "123456" })),
-        ],
+        method: "GET",
+        url: "/api/cloud/login/status?sessionId=test-session-123",
+        headers: { host: "localhost:3000" },
       });
       const { res } = createMockHttpResponse();
 
-      await handleCloudRoute(req, res, "/api/cloud/login", "POST", state);
+      await handleCloudRoute(req, res, "/api/cloud/login/status", "GET", state);
 
       // process.env is clean
       expect(process.env.ELIZAOS_CLOUD_API_KEY).toBeUndefined();

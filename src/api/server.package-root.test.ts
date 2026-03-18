@@ -22,25 +22,25 @@ afterEach(() => {
 
 describe("findOwnPackageRoot", () => {
   it("matches package name case-insensitively", () => {
-    const root = makeTempDir("eliza-root-");
+    const root = makeTempDir("milady-root-");
     const nested = path.join(root, "src", "api");
     mkdirSync(nested, { recursive: true });
     writeFileSync(
       path.join(root, "package.json"),
-      JSON.stringify({ name: "Eliza" }),
+      JSON.stringify({ name: "Milady" }),
       "utf8",
     );
 
     expect(findOwnPackageRoot(nested)).toBe(root);
   });
 
-  it("matches 'elizaos' package name", () => {
-    const root = makeTempDir("elizaos-root-");
+  it("matches 'miladyai' package name", () => {
+    const root = makeTempDir("miladyai-root-");
     const nested = path.join(root, "src", "api");
     mkdirSync(nested, { recursive: true });
     writeFileSync(
       path.join(root, "package.json"),
-      JSON.stringify({ name: "elizaos" }),
+      JSON.stringify({ name: "miladyai" }),
       "utf8",
     );
 

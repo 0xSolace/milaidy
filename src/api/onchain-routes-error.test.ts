@@ -69,8 +69,8 @@ vi.mock("@elizaos/autonomous/api/drop-service.ts", () => ({
   DropService: ThrowingDropService,
 }));
 
-vi.mock("@elizaos/autonomous/config/config.ts", () => ({
-  loadElizaConfig: () => ({
+vi.mock("@elizaos/autonomous/config/config.ts", () => {
+  const configData = {
     registry: {
       registryAddress: "0x2222222222222222222222222222222222222222",
       mainnetRpc: "http://mock-rpc",
@@ -81,10 +81,15 @@ vi.mock("@elizaos/autonomous/config/config.ts", () => ({
       EVM_PRIVATE_KEY:
         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     },
-  }),
-  saveElizaConfig: () => {},
-  configFileExists: () => true,
-}));
+  };
+  return {
+    loadElizaConfig: () => configData,
+    loadMiladyConfig: () => configData,
+    saveElizaConfig: () => {},
+    saveMiladyConfig: () => {},
+    configFileExists: () => true,
+  };
+});
 
 vi.mock("@elizaos/autonomous/services/mcp-marketplace.ts", () => ({
   searchMcpMarketplace: vi.fn().mockResolvedValue({ results: [] }),

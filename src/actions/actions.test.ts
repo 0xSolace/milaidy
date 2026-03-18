@@ -12,10 +12,16 @@ vi.mock("@elizaos/core", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), debug: vi.fn(), error: vi.fn() },
 }));
 
-vi.mock("@elizaos/autonomous/config/config", () => ({
-  loadElizaConfig: vi.fn(() => ({ customActions: [] })),
-  saveElizaConfig: vi.fn(),
-}));
+vi.mock("@elizaos/autonomous/config/config", () => {
+  const loadFn = vi.fn(() => ({ customActions: [] }));
+  const saveFn = vi.fn();
+  return {
+    loadElizaConfig: loadFn,
+    loadMiladyConfig: loadFn,
+    saveElizaConfig: saveFn,
+    saveMiladyConfig: saveFn,
+  };
+});
 
 vi.mock("node:dns/promises", () => ({
   lookup: vi.fn().mockResolvedValue([{ address: "93.184.216.34", family: 4 }]),

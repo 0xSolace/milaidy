@@ -13,6 +13,7 @@ const requiredPaths = [
   "dist/entry.js",
   "dist/build-info.json",
   "scripts/run-repo-setup.mjs",
+  "scripts/setup-eliza-workspace.mjs",
   "scripts/patch-deps.mjs",
   "scripts/ensure-vision-deps.mjs",
   "scripts/lib/patch-bun-exports.mjs",

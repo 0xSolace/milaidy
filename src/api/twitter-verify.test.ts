@@ -333,8 +333,8 @@ describe("twitter-verify (MW-10)", () => {
         },
       },
       {
-        label: "valid shortened address + hashtag (ElizaAgent)",
-        text: 'Verifying my Eliza agent "Milady" | 0x1234...5678 #ElizaAgent',
+        label: "valid shortened address + hashtag (MiladyAgent alt)",
+        text: 'Verifying my Milady agent "Milady" | 0x1234...5678 #MiladyAgent',
         author: { screen_name: "miladyai" },
         expected: {
           verified: true,

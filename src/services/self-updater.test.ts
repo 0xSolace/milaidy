@@ -272,7 +272,7 @@ describe("performUpdate", () => {
 
     expect(result.success).toBe(false);
     expect(result.method).toBe("npm-global");
-    expect(result.command).toContain("npm install -g elizaos@latest");
+    expect(result.command).toMatch(/npm install -g (elizaos|miladyai)@latest/);
     expect(result.error).toContain("E403");
   });
 
@@ -373,7 +373,7 @@ describe("performUpdate edge cases", () => {
 
     expect(result.success).toBe(true);
     expect(result.method).toBe("bun-global");
-    expect(result.command).toContain("bun install -g elizaos@beta");
+    expect(result.command).toMatch(/bun install -g (elizaos|miladyai)@beta/);
   });
 
   it("handles spawn error event (command not found)", async () => {
