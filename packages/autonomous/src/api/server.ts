@@ -126,7 +126,6 @@ import { handleAgentAdminRoutes } from "./agent-admin-routes";
 import { handleAgentLifecycleRoutes } from "./agent-lifecycle-routes";
 import { detectRuntimeModel, resolveProviderFromModel } from "./agent-model";
 import { handleAgentTransferRoutes } from "./agent-transfer-routes";
-import { handleAppsHyperscapeRoutes } from "@elizaos/app-hyperscape/routes";
 import { handleAppsRoutes } from "./apps-routes";
 import { handleAuthRoutes } from "./auth-routes";
 
@@ -14758,19 +14757,26 @@ async function handleRequest(
     return;
   }
 
-  // ── Hyperscape control proxy routes ──────────────────────────────────
-  if (
-    await handleAppsHyperscapeRoutes({
-      req,
-      res,
-      method,
-      pathname,
-      relayHyperscapeApi,
-      readJsonBody,
-      error,
-    })
-  ) {
-    return;
+  // ── Hyperscape control proxy routes (optional — package may not be installed) ──
+  try {
+    const { handleAppsHyperscapeRoutes } = await import(
+      "@elizaos/app-hyperscape/routes"
+    );
+    if (
+      await handleAppsHyperscapeRoutes({
+        req,
+        res,
+        method,
+        pathname,
+        relayHyperscapeApi,
+        readJsonBody,
+        error,
+      })
+    ) {
+      return;
+    }
+  } catch {
+    // @elizaos/app-hyperscape not available — skip hyperscape routes
   }
 
   // ═══════════════════════════════════════════════════════════════════════
