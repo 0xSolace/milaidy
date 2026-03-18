@@ -132,7 +132,8 @@ export function resolveDiscordPluginImportSpecifier(): string | null {
   return null;
 }
 
-const LENS_PLUGIN_PACKAGE_NAME = "@elizaos-plugins/client-lens";
+const LENS_PLUGIN_PACKAGE_NAME = "@elizaos/plugin-lens";
+const LENS_PLUGIN_FALLBACK_PACKAGE = "@elizaos-plugins/client-lens";
 const LENS_PLUGIN_LOCAL_ENTRY_CANDIDATES = [
   "../plugins/plugin-lens/typescript/dist/index",
   "../plugins/plugin-lens/dist/index",
@@ -146,14 +147,21 @@ const LENS_PLUGIN_LOCAL_ENTRY_CANDIDATES = [
  * Uses both CJS require.resolve and a direct node_modules check for ESM-only packages.
  */
 export function resolveLensPluginImportSpecifier(): string | null {
+  // Try canonical package name first (matches CONNECTOR_PLUGINS map)
   if (isPackageImportResolvable(LENS_PLUGIN_PACKAGE_NAME)) {
     return LENS_PLUGIN_PACKAGE_NAME;
+  }
+  // Fallback: the community plugin package (may be installed during transition)
+  if (isPackageImportResolvable(LENS_PLUGIN_FALLBACK_PACKAGE)) {
+    return LENS_PLUGIN_FALLBACK_PACKAGE;
   }
 
   // ESM-only packages may fail require.resolve — check node_modules directly.
   // Use the source entry to avoid bun eagerly resolving lazy chunks' imports.
   const helperDir = path.dirname(fileURLToPath(import.meta.url));
   const packageRoot = path.resolve(helperDir, "..", "..");
+
+  // Check @elizaos-plugins/client-lens (fallback package)
   const nodeModulesSourceEntry = path.resolve(
     packageRoot,
     "node_modules",

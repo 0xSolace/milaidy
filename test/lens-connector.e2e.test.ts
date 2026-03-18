@@ -281,6 +281,7 @@ async function lensWaitForPost(
     const statusResult = await lensGraphQL(
       `query TransactionStatus($request: TransactionStatusRequest!) {
         transactionStatus(request: $request) {
+          __typename
           ... on FinishedTransactionStatus { blockTimestamp }
           ... on FailedTransactionStatus { reason }
           ... on PendingTransactionStatus { blockTimestamp }
@@ -289,10 +290,10 @@ async function lensWaitForPost(
       }`,
       { request: { txHash } },
     );
-    const status = (statusResult.data as { transactionStatus?: { blockTimestamp?: string; reason?: string } })
+    const status = (statusResult.data as { transactionStatus?: { __typename?: string; blockTimestamp?: string; reason?: string } })
       ?.transactionStatus;
-    if (status?.blockTimestamp && !("reason" in status)) break;
-    if (status && "reason" in status && status.reason === "FAILED") return null;
+    if (status?.__typename === "FinishedTransactionStatus") break;
+    if (status?.__typename === "FailedTransactionStatus") return null;
   }
 
   // Now fetch the post by txHash
@@ -550,7 +551,9 @@ describeIfPluginAvailable(
 // ---------------------------------------------------------------------------
 
 describeIfLiveWrite("Lens Connector - Post Handling", () => {
-  const postsToCleanup: string[] = [];
+  // Store post IDs (not tx hashes) for cleanup. Entries that are tx hashes
+  // will silently fail deletion — that's acceptable for best-effort cleanup.
+  const postIdsToCleanup: string[] = [];
 
   beforeAll(async () => {
     if (!lensAccessToken) {
@@ -560,7 +563,7 @@ describeIfLiveWrite("Lens Connector - Post Handling", () => {
   }, TEST_TIMEOUT);
 
   afterAll(async () => {
-    for (const id of postsToCleanup) {
+    for (const id of postIdsToCleanup) {
       try {
         await lensDeletePost(id);
       } catch {
@@ -579,7 +582,9 @@ describeIfLiveWrite("Lens Connector - Post Handling", () => {
         return;
       }
       expect(hash).toBeTruthy();
-      postsToCleanup.push(hash);
+      // Wait for indexing to get the real post ID for cleanup
+      const indexed = await lensWaitForPost(hash, 5);
+      postIdsToCleanup.push(indexed?.id ?? hash);
     },
     LIVE_WRITE_TIMEOUT,
   );
@@ -605,13 +610,13 @@ describeIfLiveWrite("Lens Connector - Post Handling", () => {
         logger.warn("[lens-connector] Post failed or rate-limited — skipping");
         return;
       }
-      postsToCleanup.push(hash);
-
       const post = await lensWaitForPost(hash);
       if (post === null) {
         logger.warn("[lens-connector] Read failed or rate-limited — skipping");
+        postIdsToCleanup.push(hash); // fallback: tx hash for best-effort cleanup
         return;
       }
+      postIdsToCleanup.push(post.id);
       expect(post.content).toBe(content);
     },
     LIVE_WRITE_TIMEOUT,
@@ -671,7 +676,7 @@ describeIfLiveWrite("Lens Connector - Post Handling", () => {
 // ---------------------------------------------------------------------------
 
 describeIfLiveWrite("Lens Connector - Lens-Specific Features", () => {
-  const postsToCleanup: string[] = [];
+  const postIdsToCleanup: string[] = [];
   const reactionsToCleanup: string[] = [];
 
   beforeAll(async () => {
@@ -689,7 +694,7 @@ describeIfLiveWrite("Lens Connector - Lens-Specific Features", () => {
         /* best-effort */
       }
     }
-    for (const id of postsToCleanup) {
+    for (const id of postIdsToCleanup) {
       try {
         await lensDeletePost(id);
       } catch {
@@ -724,7 +729,7 @@ describeIfLiveWrite("Lens Connector - Lens-Specific Features", () => {
         logger.warn("[lens-connector] Post failed — skipping");
         return;
       }
-      postsToCleanup.push(postHash);
+      postIdsToCleanup.push(postHash);
 
       // Wait for indexing so the post ID is available
       const post = await lensWaitForPost(postHash);
@@ -739,7 +744,7 @@ describeIfLiveWrite("Lens Connector - Lens-Specific Features", () => {
         return;
       }
       expect(repostHash).toBeTruthy();
-      postsToCleanup.push(repostHash);
+      postIdsToCleanup.push(repostHash);
     },
     LIVE_WRITE_TIMEOUT,
   );
@@ -753,7 +758,7 @@ describeIfLiveWrite("Lens Connector - Lens-Specific Features", () => {
         logger.warn("[lens-connector] Post failed — skipping");
         return;
       }
-      postsToCleanup.push(postHash);
+      postIdsToCleanup.push(postHash);
 
       // Wait for indexing
       const post = await lensWaitForPost(postHash);
@@ -782,7 +787,7 @@ describeIfLiveWrite("Lens Connector - Lens-Specific Features", () => {
         logger.warn("[lens-connector] Post failed — skipping");
         return;
       }
-      postsToCleanup.push(postHash);
+      postIdsToCleanup.push(postHash);
 
       // Wait for indexing
       const post = await lensWaitForPost(postHash);
@@ -822,7 +827,7 @@ describeIfLiveWrite("Lens Connector - Lens-Specific Features", () => {
 // ---------------------------------------------------------------------------
 
 describeIfLiveWrite("Lens Connector - Media & Attachments", () => {
-  const postsToCleanup: string[] = [];
+  const postIdsToCleanup: string[] = [];
 
   beforeAll(async () => {
     if (!lensAccessToken) {
@@ -832,7 +837,7 @@ describeIfLiveWrite("Lens Connector - Media & Attachments", () => {
   }, TEST_TIMEOUT);
 
   afterAll(async () => {
-    for (const id of postsToCleanup) {
+    for (const id of postIdsToCleanup) {
       try {
         await lensDeletePost(id);
       } catch {
@@ -884,7 +889,7 @@ describeIfLiveWrite("Lens Connector - Media & Attachments", () => {
       } | undefined;
       const hash = data?.post?.hash;
       expect(hash).toBeTruthy();
-      if (hash) postsToCleanup.push(hash);
+      if (hash) postIdsToCleanup.push(hash);
     },
     LIVE_WRITE_TIMEOUT,
   );
