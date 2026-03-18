@@ -1,8 +1,9 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, act } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Sidebar } from "../components/dashboard/Sidebar";
 import { ConnectionModal } from "../components/dashboard/ConnectionModal";
 import { AgentCard } from "../components/dashboard/AgentCard";
+import { AgentDetail } from "../components/dashboard/AgentDetail";
 import { MetricsPanel } from "../components/dashboard/MetricsPanel";
 import { LogsPanel } from "../components/dashboard/LogsPanel";
 import type { AgentStatus } from "../lib/cloud-api";
@@ -31,7 +32,8 @@ vi.mock("../lib/AgentProvider", () => ({
   }),
 }));
 
-afterEach(cleanup);
+beforeEach(() => localStorage.clear());
+afterEach(() => { cleanup(); localStorage.clear(); });
 
 /* ------------------------------------------------------------------ */
 /*  Sidebar                                                           */
@@ -263,5 +265,239 @@ describe("ExportPanel", () => {
     // Type 4 chars — enabled
     fireEvent.change(pwInput, { target: { value: "abcd" } });
     expect(screen.getByText("Export Agent")).not.toBeDisabled();
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  AgentDetail                                                        */
+/* ------------------------------------------------------------------ */
+describe("AgentDetail", () => {
+  const agent: AgentStatus = {
+    agentName: "Detail Agent",
+    model: "claude-3",
+    state: "running",
+    uptime: 7200,
+  };
+
+  it("renders Metrics tab by default", () => {
+    const { container } = render(
+      <AgentDetail agent={agent} connectionId="local-default" />,
+    );
+    expect(container.textContent).toContain("CPU");
+    expect(container.textContent).toContain("Memory");
+  });
+
+  it("shows agent name in header", () => {
+    const { container } = render(
+      <AgentDetail agent={agent} connectionId="local-default" />,
+    );
+    expect(container.textContent).toContain("Detail Agent");
+  });
+
+  it("renders all three tab buttons", () => {
+    render(<AgentDetail agent={agent} connectionId="local-default" />);
+    expect(screen.getByText("Metrics")).toBeTruthy();
+    expect(screen.getByText("Logs")).toBeTruthy();
+    expect(screen.getByText("Snapshots")).toBeTruthy();
+  });
+
+  it("switches to Logs tab", () => {
+    const { container } = render(
+      <AgentDetail agent={agent} connectionId="local-default" />,
+    );
+    fireEvent.click(screen.getByText("Logs"));
+    const text = container.textContent ?? "";
+    // Logs tab shows log entries with level indicators
+    const hasLevel = text.includes("info") || text.includes("warn") || text.includes("error");
+    expect(hasLevel).toBe(true);
+  });
+
+  it("switches to Snapshots tab", () => {
+    render(<AgentDetail agent={agent} connectionId="local-default" />);
+    fireEvent.click(screen.getByText("Snapshots"));
+    // Snapshots tab renders ExportPanel which has "Export Agent" button
+    expect(screen.getByText("Export Agent")).toBeTruthy();
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  AgentCard — regression tests                                       */
+/* ------------------------------------------------------------------ */
+describe("AgentCard regression", () => {
+  const baseProps = {
+    connectionName: "Local",
+    onPlay: vi.fn(),
+    onResume: vi.fn(),
+    onPause: vi.fn(),
+    onStop: vi.fn(),
+    onSelect: vi.fn(),
+    selected: false,
+  };
+
+  function makeAgent(overrides: Partial<AgentStatus> = {}): AgentStatus {
+    return {
+      agentName: "TestAgent",
+      model: "gpt-4",
+      state: "running",
+      uptime: 3600,
+      ...overrides,
+    };
+  }
+
+  it("does not show Stop button when already stopped", () => {
+    render(
+      <AgentCard {...baseProps} agent={makeAgent({ state: "stopped" })} />,
+    );
+    expect(screen.queryByText("Stop")).toBeNull();
+  });
+
+  it("shows both Pause and Stop for running agent", () => {
+    render(
+      <AgentCard {...baseProps} agent={makeAgent({ state: "running" })} />,
+    );
+    expect(screen.getByText("Pause")).toBeTruthy();
+    expect(screen.getByText("Stop")).toBeTruthy();
+  });
+
+  it("shows Stop button for paused agent", () => {
+    render(
+      <AgentCard {...baseProps} agent={makeAgent({ state: "paused" })} />,
+    );
+    expect(screen.getByText("Stop")).toBeTruthy();
+  });
+
+  it("displays uptime formatted correctly (hours and minutes)", () => {
+    const { container } = render(
+      <AgentCard {...baseProps} agent={makeAgent({ uptime: 3660 })} />,
+    );
+    // 3660s = 1h 1m
+    expect(container.textContent).toContain("1h 1m");
+  });
+
+  it("displays uptime as minutes only when less than an hour", () => {
+    const { container } = render(
+      <AgentCard {...baseProps} agent={makeAgent({ uptime: 300 })} />,
+    );
+    // 300s = 5m
+    expect(container.textContent).toContain("5m");
+  });
+
+  it("displays dash when uptime is 0 or undefined", () => {
+    const { container } = render(
+      <AgentCard {...baseProps} agent={makeAgent({ uptime: 0 })} />,
+    );
+    expect(container.textContent).toContain("\u2014");
+  });
+
+  it("displays memory count when provided", () => {
+    const { container } = render(
+      <AgentCard {...baseProps} agent={makeAgent({ memories: 42 })} />,
+    );
+    expect(container.textContent).toContain("42 memories");
+  });
+
+  it("hides memory count when undefined", () => {
+    const { container } = render(
+      <AgentCard {...baseProps} agent={makeAgent()} />,
+    );
+    expect(container.textContent).not.toContain("memories");
+  });
+
+  it("shows connection source label", () => {
+    const { container } = render(
+      <AgentCard {...baseProps} connectionName="Cloud-Prod" agent={makeAgent()} />,
+    );
+    expect(container.textContent).toContain("Cloud-Prod");
+  });
+
+  it("calls onSelect when card is clicked", () => {
+    const onSelect = vi.fn();
+    const { container } = render(
+      <AgentCard {...baseProps} onSelect={onSelect} agent={makeAgent()} />,
+    );
+    fireEvent.click(container.firstChild as HTMLElement);
+    expect(onSelect).toHaveBeenCalled();
+  });
+
+  it("calls onPlay when Play button is clicked on stopped agent", () => {
+    const onPlay = vi.fn();
+    render(
+      <AgentCard {...baseProps} onPlay={onPlay} agent={makeAgent({ state: "stopped" })} />,
+    );
+    fireEvent.click(screen.getByText("Play"));
+    expect(onPlay).toHaveBeenCalled();
+  });
+
+  it("calls onPause when Pause button is clicked on running agent", () => {
+    const onPause = vi.fn();
+    render(
+      <AgentCard {...baseProps} onPause={onPause} agent={makeAgent({ state: "running" })} />,
+    );
+    fireEvent.click(screen.getByText("Pause"));
+    expect(onPause).toHaveBeenCalled();
+  });
+
+  it("calls onResume when Resume button is clicked on paused agent", () => {
+    const onResume = vi.fn();
+    render(
+      <AgentCard {...baseProps} onResume={onResume} agent={makeAgent({ state: "paused" })} />,
+    );
+    fireEvent.click(screen.getByText("Resume"));
+    expect(onResume).toHaveBeenCalled();
+  });
+
+  it("applies selected styling when selected is true", () => {
+    const { container } = render(
+      <AgentCard {...baseProps} selected={true} agent={makeAgent()} />,
+    );
+    const card = container.firstChild as HTMLElement;
+    expect(card.className).toContain("border-brand");
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  AuthGate                                                           */
+/* ------------------------------------------------------------------ */
+describe("AuthGate", () => {
+  it("renders children when authenticated", async () => {
+    localStorage.setItem("milady-cloud-token", "test-key");
+    let result: ReturnType<typeof render>;
+    await act(async () => {
+      const { AuthGate } = await import("../components/dashboard/AuthGate");
+      result = render(<AuthGate><div>Dashboard Content</div></AuthGate>);
+    });
+    expect(result!.getByText("Dashboard Content")).toBeTruthy();
+  });
+
+  it("shows login UI when not authenticated", async () => {
+    let result: ReturnType<typeof render>;
+    await act(async () => {
+      const { AuthGate } = await import("../components/dashboard/AuthGate");
+      result = render(<AuthGate><div>Dashboard Content</div></AuthGate>);
+    });
+    expect(result!.getByText("Login with Eliza Cloud")).toBeTruthy();
+    expect(result!.getByText("Skip (local only)")).toBeTruthy();
+  });
+
+  it("renders children after clicking Skip", async () => {
+    let result: ReturnType<typeof render>;
+    await act(async () => {
+      const { AuthGate } = await import("../components/dashboard/AuthGate");
+      result = render(<AuthGate><div>Dashboard Content</div></AuthGate>);
+    });
+    const skipBtn = result!.getByText("Skip (local only)");
+    await act(async () => {
+      fireEvent.click(skipBtn);
+    });
+    expect(result!.getByText("Dashboard Content")).toBeTruthy();
+  });
+
+  it("shows Milady Cloud heading in login view", async () => {
+    let result: ReturnType<typeof render>;
+    await act(async () => {
+      const { AuthGate } = await import("../components/dashboard/AuthGate");
+      result = render(<AuthGate><div>child</div></AuthGate>);
+    });
+    expect(result!.getByText("Milady Cloud")).toBeTruthy();
   });
 });
