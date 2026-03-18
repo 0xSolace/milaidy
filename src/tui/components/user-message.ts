@@ -12,10 +12,7 @@ import { elizaMarkdownTheme, tuiTheme } from "../theme.js";
 export class UserMessageComponent implements Component {
   private markdown: Markdown;
 
-  constructor(
-    text: string,
-    markdownTheme: MarkdownTheme = elizaMarkdownTheme,
-  ) {
+  constructor(text: string, markdownTheme: MarkdownTheme = elizaMarkdownTheme) {
     this.markdown = new Markdown(text, 1, 0, markdownTheme, {
       bgColor: (t) => tuiTheme.userMsgBg(t),
     });

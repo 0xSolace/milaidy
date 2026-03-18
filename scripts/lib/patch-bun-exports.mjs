@@ -346,6 +346,148 @@ export function patchMissingLifecycleScript(
 }
 
 /**
+ * @elizaos/app-core alpha.53 still ships the upstream Eliza avatar roster
+ * (4 slots pointing at eliza-1/4/5/9), but Milady bundles 8 contiguous
+ * milady-* assets. Patch the published bundle so runtime avatar URLs match the
+ * shipped files in dev, tests, and packaged builds.
+ */
+export function applyAppCoreMiladyVrmStatePatch(filePath) {
+  if (!existsSync(filePath)) return false;
+
+  const compatSource = readFileSync(filePath, "utf8");
+  if (
+    compatSource.includes("const BASE_VRM_COUNT = 8;") &&
+    compatSource.includes("const VRM_INDEX_MAP = [1, 2, 3, 4, 5, 6, 7, 8];") &&
+    compatSource.includes("vrms/milady-${sourceIndex}.vrm.gz")
+  ) {
+    return false;
+  }
+
+  let updatedSource = compatSource;
+  updatedSource = updatedSource.replace(
+    "const BASE_VRM_COUNT = 4;",
+    "const BASE_VRM_COUNT = 8;",
+  );
+  updatedSource = updatedSource.replace(
+    `/**
+ * Maps logical avatar indices (1-4) to the original source file numbers.
+ * Index 1 → eliza-1, Index 2 → eliza-4, Index 3 → eliza-5, Index 4 → eliza-9.
+ */
+const VRM_INDEX_MAP = [1, 4, 5, 9];`,
+    `/**
+ * Maps logical avatar indices (1-8) directly to bundled Milady source files.
+ */
+const VRM_INDEX_MAP = [1, 2, 3, 4, 5, 6, 7, 8];`,
+  );
+  updatedSource = updatedSource.replace(
+    "return resolveAppAssetUrl(`vrms/eliza-${sourceIndex}.vrm.gz`);",
+    "return resolveAppAssetUrl(`vrms/milady-${sourceIndex}.vrm.gz`);",
+  );
+  updatedSource = updatedSource.replace(
+    "return resolveAppAssetUrl(`vrms/previews/eliza-${sourceIndex}.png`);",
+    "return resolveAppAssetUrl(`vrms/previews/milady-${sourceIndex}.png`);",
+  );
+  updatedSource = updatedSource.replace(
+    "return resolveAppAssetUrl(`vrms/backgrounds/eliza-${sourceIndex}.${EXT}`);",
+    "return resolveAppAssetUrl(`vrms/backgrounds/milady-${sourceIndex}.${EXT}`);",
+  );
+  updatedSource = updatedSource.replace(
+    'return `ELIZA-${String(sourceIndex).padStart(2, "0")}`;',
+    'return `MILADY-${String(sourceIndex).padStart(2, "0")}`;',
+  );
+
+  if (updatedSource === compatSource) return false;
+
+  writeFileSync(filePath, updatedSource, "utf8");
+  return true;
+}
+
+/**
+ * Keep the published app-core declaration file in sync with the runtime VRM
+ * patch so TS consumers see the expanded bundled roster size.
+ */
+export function applyAppCoreMiladyVrmTypesPatch(filePath) {
+  if (!existsSync(filePath)) return false;
+
+  const compatSource = readFileSync(filePath, "utf8");
+  if (compatSource.includes("export declare const VRM_COUNT = 8;")) {
+    return false;
+  }
+
+  const updatedSource = compatSource.replace(
+    "export declare const VRM_COUNT = 4;",
+    "export declare const VRM_COUNT = 8;",
+  );
+  if (updatedSource === compatSource) return false;
+
+  writeFileSync(filePath, updatedSource, "utf8");
+  return true;
+}
+
+/**
+ * The default VRM fallback path in VrmViewer must point at Milady's first
+ * bundled avatar so initial renders still succeed before state loads.
+ */
+export function applyAppCoreMiladyVrmViewerPatch(filePath) {
+  if (!existsSync(filePath)) return false;
+
+  const compatSource = readFileSync(filePath, "utf8");
+  if (compatSource.includes("vrms/milady-1.vrm.gz")) return false;
+
+  const updatedSource = compatSource.replace(
+    'const DEFAULT_VRM_PATH = resolveAppAssetUrl("vrms/eliza-1.vrm.gz");',
+    'const DEFAULT_VRM_PATH = resolveAppAssetUrl("vrms/milady-1.vrm.gz");',
+  );
+  if (updatedSource === compatSource) return false;
+
+  writeFileSync(filePath, updatedSource, "utf8");
+  return true;
+}
+
+/**
+ * Patch all installed @elizaos/app-core copies so bundled avatar URLs resolve
+ * to Milady's public assets instead of the upstream Eliza asset names.
+ */
+export function patchAppCoreMiladyAssets(root, log = console.log) {
+  const patchTargets = [
+    {
+      relativePath: "state/vrm.js",
+      apply: applyAppCoreMiladyVrmStatePatch,
+      description: "runtime avatar roster now targets milady-* assets",
+    },
+    {
+      relativePath: "state/vrm.d.ts",
+      apply: applyAppCoreMiladyVrmTypesPatch,
+      description: "type declarations now expose the Milady roster size",
+    },
+    {
+      relativePath: "components/avatar/VrmViewer.js",
+      apply: applyAppCoreMiladyVrmViewerPatch,
+      description: "default VRM fallback now targets milady-1",
+    },
+  ];
+
+  let patched = false;
+  for (const target of patchTargets) {
+    const candidates = findPackageFilePaths(
+      root,
+      "@elizaos/app-core",
+      target.relativePath,
+    );
+
+    for (const filePath of candidates) {
+      if (!target.apply(filePath)) continue;
+      patched = true;
+      log(
+        `[patch-deps] Patched @elizaos/app-core ${target.relativePath}: ${target.description}.`,
+      );
+    }
+  }
+
+  return patched;
+}
+
+/**
  * @elizaos/plugin-agent-skills alpha.11 logs duplicate catalog warnings when
  * concurrent callers all hit the same upstream 429. Coalesce in-flight fetches
  * and treat 429s as a soft backoff with Retry-After support.

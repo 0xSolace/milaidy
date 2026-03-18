@@ -13,8 +13,8 @@ import { Text } from "@mariozechner/pi-tui";
 import { loadElizaConfig, saveElizaConfig } from "../config/config.js";
 import {
   DEFAULT_MODELS_DIR,
-  ensureModel,
   ElizaEmbeddingManager,
+  ensureModel,
 } from "../runtime/embedding-manager.js";
 import {
   EMBEDDING_PRESETS,

@@ -23,6 +23,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   patchAgentSkillsCatalogFetch,
+  patchAppCoreMiladyAssets,
   patchBrokenElizaCoreRuntimeDists,
   patchBunExports,
   patchExtensionlessJsExports,
@@ -59,6 +60,7 @@ patchExtensionlessJsExports(root, "@noble/hashes");
 patchNobleHashesCompat(root);
 patchProperLockfileSignalExitCompat(root);
 patchBrokenElizaCoreRuntimeDists(root);
+patchAppCoreMiladyAssets(root);
 
 /**
  * Patch @elizaos/core synthetic action/reply chat messages.

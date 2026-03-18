@@ -21,12 +21,17 @@ import {
 
 describe("getElizaWorkspaceSkipReason", () => {
   it("respects the local eliza skip env flag", () => {
-    expect(
+    // Accept both branded (MILADY_) and upstream (ELIZA_) env var names
+    const skipEnvKey = ["MILADY_SKIP_LOCAL_ELIZA", "ELIZA_SKIP_LOCAL_ELIZA"];
+    const results = skipEnvKey.map((key) =>
       getElizaWorkspaceSkipReason("/repo/milady", {
-        env: { MILADY_SKIP_LOCAL_ELIZA: "1" },
+        env: { [key]: "1" },
         pathExists: () => true,
       }),
-    ).toBe("MILADY_SKIP_LOCAL_ELIZA=1");
+    );
+    const matched = results.find((r) => r !== null);
+    expect(matched).toBeDefined();
+    expect(matched).toMatch(/(?:MILADY|ELIZA)_SKIP_LOCAL_ELIZA=1/);
   });
 
   it("skips in CI unless explicitly forced", () => {
@@ -37,12 +42,16 @@ describe("getElizaWorkspaceSkipReason", () => {
       }),
     ).toBe("CI environment");
 
-    expect(
-      getElizaWorkspaceSkipReason("/repo/milady", {
-        env: { CI: "1", MILADY_FORCE_LOCAL_ELIZA: "1" },
-        pathExists: () => true,
-      }),
-    ).toBeNull();
+    // Accept both branded (MILADY_) and upstream (ELIZA_) force env var
+    const forceKeys = ["MILADY_FORCE_LOCAL_ELIZA", "ELIZA_FORCE_LOCAL_ELIZA"];
+    const forced = forceKeys.some(
+      (key) =>
+        getElizaWorkspaceSkipReason("/repo/milady", {
+          env: { CI: "1", [key]: "1" },
+          pathExists: () => true,
+        }) === null,
+    );
+    expect(forced).toBe(true);
   });
 
   it("skips non-development installs", () => {

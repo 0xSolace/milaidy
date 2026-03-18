@@ -149,8 +149,7 @@ export class ElizaTUI {
 
     // ── Header: compact branding (hints live in footer) ─────────────
     const logo =
-      tuiTheme.bold(tuiTheme.accent("Eliza")) +
-      tuiTheme.dim(` — ${agentName}`);
+      tuiTheme.bold(tuiTheme.accent("Eliza")) + tuiTheme.dim(` — ${agentName}`);
 
     this.chatContainer.addChild(new Spacer(1));
     this.chatContainer.addChild(new Text(logo, 1, 0));

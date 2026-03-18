@@ -9,6 +9,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  applyAppCoreMiladyVrmStatePatch,
+  applyAppCoreMiladyVrmTypesPatch,
+  applyAppCoreMiladyVrmViewerPatch,
   applyAgentSkillsCatalogFetchPatch,
   applyExtensionlessJsExportAliases,
   applyMissingLifecycleScriptPatch,
@@ -18,6 +21,7 @@ import {
   findPackageFilePaths,
   findPackageJsonPaths,
   patchAgentSkillsCatalogFetch,
+  patchAppCoreMiladyAssets,
   patchBrokenElizaCoreRuntimeDists,
   patchBunExports,
   patchExtensionlessJsExports,
@@ -536,6 +540,196 @@ describe("patch-bun-exports", () => {
 
       const updated = JSON.parse(readFileSync(pkgPath, "utf8"));
       expect(updated.scripts).toBeUndefined();
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("applyAppCoreMiladyVrmStatePatch rewrites the bundled avatar roster to milady assets", () => {
+    const tmp = mkdtempSync(join(tmpdir(), "patch-bun-exports-test-"));
+    try {
+      const filePath = join(
+        tmp,
+        "node_modules",
+        "@elizaos",
+        "app-core",
+        "state",
+        "vrm.js",
+      );
+      mkdirSync(join(filePath, ".."), { recursive: true });
+      writeFileSync(
+        filePath,
+        `import { resolveAppAssetUrl } from "../utils/asset-url";
+/** Number of bundled VRM avatars shipped with the app. */
+const BASE_VRM_COUNT = 4;
+export const VRM_COUNT = BASE_VRM_COUNT;
+/**
+ * Maps logical avatar indices (1-4) to the original source file numbers.
+ * Index 1 → eliza-1, Index 2 → eliza-4, Index 3 → eliza-5, Index 4 → eliza-9.
+ */
+const VRM_INDEX_MAP = [1, 4, 5, 9];
+export function getVrmUrl(index) {
+  const sourceIndex = resolveSourceIndex(index);
+  return resolveAppAssetUrl(\`vrms/eliza-\${sourceIndex}.vrm.gz\`);
+}
+export function getVrmPreviewUrl(index) {
+  const sourceIndex = resolveSourceIndex(index);
+  return resolveAppAssetUrl(\`vrms/previews/eliza-\${sourceIndex}.png\`);
+}
+export function getVrmBackgroundUrl(index) {
+  const sourceIndex = resolveSourceIndex(index);
+  const EXT = "png";
+  return resolveAppAssetUrl(\`vrms/backgrounds/eliza-\${sourceIndex}.\${EXT}\`);
+}
+export function getVrmTitle(index) {
+  const sourceIndex = resolveSourceIndex(index);
+  return \`ELIZA-\${String(sourceIndex).padStart(2, "0")}\`;
+}
+`,
+        "utf8",
+      );
+
+      const patched = applyAppCoreMiladyVrmStatePatch(filePath);
+      expect(patched).toBe(true);
+
+      const updated = readFileSync(filePath, "utf8");
+      expect(updated).toContain("const BASE_VRM_COUNT = 8;");
+      expect(updated).toContain(
+        "const VRM_INDEX_MAP = [1, 2, 3, 4, 5, 6, 7, 8];",
+      );
+      expect(updated).toContain("vrms/milady-${sourceIndex}.vrm.gz");
+      expect(updated).toContain("vrms/previews/milady-${sourceIndex}.png");
+      expect(updated).toContain("vrms/backgrounds/milady-${sourceIndex}.${EXT}");
+      expect(updated).toContain("MILADY-${String(sourceIndex).padStart(2, \"0\")}");
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("applyAppCoreMiladyVrmTypesPatch expands the declared roster size", () => {
+    const tmp = mkdtempSync(join(tmpdir(), "patch-bun-exports-test-"));
+    try {
+      const filePath = join(
+        tmp,
+        "node_modules",
+        "@elizaos",
+        "app-core",
+        "state",
+        "vrm.d.ts",
+      );
+      mkdirSync(join(filePath, ".."), { recursive: true });
+      writeFileSync(filePath, "export declare const VRM_COUNT = 4;\n", "utf8");
+
+      const patched = applyAppCoreMiladyVrmTypesPatch(filePath);
+      expect(patched).toBe(true);
+      expect(readFileSync(filePath, "utf8")).toContain(
+        "export declare const VRM_COUNT = 8;",
+      );
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("applyAppCoreMiladyVrmViewerPatch repoints the default fallback avatar", () => {
+    const tmp = mkdtempSync(join(tmpdir(), "patch-bun-exports-test-"));
+    try {
+      const filePath = join(
+        tmp,
+        "node_modules",
+        "@elizaos",
+        "app-core",
+        "components",
+        "avatar",
+        "VrmViewer.js",
+      );
+      mkdirSync(join(filePath, ".."), { recursive: true });
+      writeFileSync(
+        filePath,
+        'const DEFAULT_VRM_PATH = resolveAppAssetUrl("vrms/eliza-1.vrm.gz");\n',
+        "utf8",
+      );
+
+      const patched = applyAppCoreMiladyVrmViewerPatch(filePath);
+      expect(patched).toBe(true);
+      expect(readFileSync(filePath, "utf8")).toContain(
+        'const DEFAULT_VRM_PATH = resolveAppAssetUrl("vrms/milady-1.vrm.gz");',
+      );
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("patchAppCoreMiladyAssets patches app-core runtime files and logs", () => {
+    const tmp = mkdtempSync(join(tmpdir(), "patch-bun-exports-test-"));
+    try {
+      const rootPkgDir = join(tmp, "node_modules", "@elizaos", "app-core");
+      const cachedPkgDir = join(
+        tmp,
+        "node_modules",
+        ".bun",
+        "@elizaos+app-core@2.0.0-alpha.53",
+        "node_modules",
+        "@elizaos",
+        "app-core",
+      );
+
+      for (const pkgDir of [rootPkgDir, cachedPkgDir]) {
+        mkdirSync(join(pkgDir, "state"), { recursive: true });
+        mkdirSync(join(pkgDir, "components", "avatar"), { recursive: true });
+        writeFileSync(
+          join(pkgDir, "state", "vrm.js"),
+          `const BASE_VRM_COUNT = 4;
+const VRM_INDEX_MAP = [1, 4, 5, 9];
+export function getVrmUrl(index) {
+  return resolveAppAssetUrl(\`vrms/eliza-\${index}.vrm.gz\`);
+}
+export function getVrmPreviewUrl(index) {
+  return resolveAppAssetUrl(\`vrms/previews/eliza-\${index}.png\`);
+}
+export function getVrmBackgroundUrl(index) {
+  const EXT = "png";
+  return resolveAppAssetUrl(\`vrms/backgrounds/eliza-\${index}.\${EXT}\`);
+}
+export function getVrmTitle(index) {
+  return \`ELIZA-\${String(index).padStart(2, "0")}\`;
+}
+`,
+          "utf8",
+        );
+        writeFileSync(
+          join(pkgDir, "state", "vrm.d.ts"),
+          "export declare const VRM_COUNT = 4;\n",
+          "utf8",
+        );
+        writeFileSync(
+          join(pkgDir, "components", "avatar", "VrmViewer.js"),
+          'const DEFAULT_VRM_PATH = resolveAppAssetUrl("vrms/eliza-1.vrm.gz");\n',
+          "utf8",
+        );
+      }
+
+      const logs: string[] = [];
+      const patched = patchAppCoreMiladyAssets(tmp, (msg) => logs.push(msg));
+      expect(patched).toBe(true);
+      expect(
+        logs.some((line) =>
+          line.includes("@elizaos/app-core state/vrm.js"),
+        ),
+      ).toBe(true);
+      expect(
+        logs.some((line) =>
+          line.includes("@elizaos/app-core components/avatar/VrmViewer.js"),
+        ),
+      ).toBe(true);
+      expect(readFileSync(join(rootPkgDir, "state", "vrm.js"), "utf8")).toContain(
+        "vrms/milady-${index}.vrm.gz",
+      );
+      expect(readFileSync(join(rootPkgDir, "state", "vrm.d.ts"), "utf8")).toContain(
+        "export declare const VRM_COUNT = 8;",
+      );
+      expect(
+        readFileSync(join(cachedPkgDir, "components", "avatar", "VrmViewer.js"), "utf8"),
+      ).toContain('vrms/milady-1.vrm.gz');
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }
