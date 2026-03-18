@@ -22,7 +22,9 @@
  */
 
 import { execFile } from "node:child_process";
+import fsSync from "node:fs";
 import fs from "node:fs/promises";
+import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -32,6 +34,11 @@ import { requestRestart } from "../runtime/restart";
 import { getPluginInfo, type RegistryPluginInfo } from "./registry-client";
 
 const execFileAsync = promisify(execFile);
+const require = createRequire(import.meta.url);
+const RELEASE_CHANNEL_ENV_KEYS = [
+  "MILADY_PLUGIN_RELEASE_CHANNEL",
+  "ELIZA_PLUGIN_RELEASE_CHANNEL",
+] as const;
 
 // ---------------------------------------------------------------------------
 // Input validation — prevent shell injection
@@ -146,6 +153,62 @@ function pluginDir(pluginName: string): string {
   return path.join(pluginsBaseDir(), sanitisePackageName(pluginName));
 }
 
+function normaliseReleaseChannel(
+  value: string | undefined,
+): "alpha" | "next" | null {
+  const normalized = value?.trim().toLowerCase();
+  if (normalized === "alpha" || normalized === "next") {
+    return normalized;
+  }
+  return null;
+}
+
+function resolveCurrentElizaReleaseChannel(): "alpha" | "next" | null {
+  for (const envKey of RELEASE_CHANNEL_ENV_KEYS) {
+    const configuredChannel = normaliseReleaseChannel(process.env[envKey]);
+    if (configuredChannel) {
+      return configuredChannel;
+    }
+  }
+
+  try {
+    const pkgPath = require.resolve("@elizaos/autonomous/package.json");
+    const pkg = JSON.parse(fsSync.readFileSync(pkgPath, "utf8")) as {
+      version?: unknown;
+    };
+    const version =
+      typeof pkg.version === "string" ? pkg.version.toLowerCase() : "";
+
+    if (version.includes("alpha")) {
+      return "alpha";
+    }
+    if (version.includes("next")) {
+      return "next";
+    }
+  } catch {
+    // Fall back to registry metadata below.
+  }
+
+  return null;
+}
+
+function resolveInstallVersion(
+  canonicalName: string,
+  info: RegistryPluginInfo,
+  requestedVersion?: string,
+): string {
+  if (requestedVersion) {
+    return requestedVersion;
+  }
+
+  const currentReleaseChannel = resolveCurrentElizaReleaseChannel();
+  if (canonicalName.startsWith("@elizaos/") && currentReleaseChannel) {
+    return currentReleaseChannel;
+  }
+
+  return info.npm.v2Version || info.npm.v1Version || "next";
+}
+
 // ---------------------------------------------------------------------------
 // Package manager detection
 // ---------------------------------------------------------------------------
@@ -214,9 +277,11 @@ async function _installPlugin(
 
   // Determine the canonical package name and version to install
   const canonicalName = info.name;
-  // Use requested version if provided, otherwise use registry version
-  const npmVersion =
-    requestedVersion || info.npm.v2Version || info.npm.v1Version || "next";
+  const npmVersion = resolveInstallVersion(
+    canonicalName,
+    info,
+    requestedVersion,
+  );
   const localPath = info.localPath;
   const targetDir = pluginDir(canonicalName);
 

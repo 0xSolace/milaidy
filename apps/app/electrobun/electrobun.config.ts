@@ -48,6 +48,8 @@ export default {
       // the canonical runtime entry (`entry.js start`).
       // Paths are relative to apps/app/electrobun/ (where electrobun build is run).
       "../../../dist": "milady-dist",
+      "../../../plugins.json": "milady-dist/plugins.json",
+      "../../../package.json": "milady-dist/package.json",
       // libMacWindowEffects.dylib is macOS-only — only copy when building on macOS.
       // On Windows/Linux this file does not exist and the copy would fail the build.
       ...(process.platform === "darwin"

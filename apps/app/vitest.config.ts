@@ -1,5 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import type { Plugin } from "vite";
 import { defineConfig } from "vitest/config";
 import {
   getAppCoreSourceRoot,
@@ -9,7 +10,43 @@ import {
 const here = path.dirname(fileURLToPath(import.meta.url));
 const appCorePackageRoot = getAppCoreSourceRoot(here);
 
+const bridgeStubPath = path.join(
+  here,
+  "..",
+  "..",
+  "test",
+  "stubs",
+  "app-core-bridge.ts",
+);
+
+/**
+ * Custom Vite plugin that redirects @elizaos/app-core/bridge imports to
+ * the test stub before Vite's built-in resolver tries to resolve through
+ * the package's exports map (which may reference native bindings that are
+ * unavailable in the test environment).
+ */
+function appCoreBridgeStubPlugin(): Plugin {
+  return {
+    name: "app-core-bridge-stub",
+    enforce: "pre",
+    resolveId(source) {
+      if (source.includes("app-core/bridge")) {
+        console.log("[app-core-bridge-stub] resolveId called for:", source);
+      }
+      if (
+        source === "@elizaos/app-core/bridge/electrobun-rpc" ||
+        source === "@elizaos/app-core/bridge/electrobun-runtime" ||
+        source === "@elizaos/app-core/bridge"
+      ) {
+        return bridgeStubPath;
+      }
+      return null;
+    },
+  };
+}
+
 export default defineConfig({
+  plugins: [appCoreBridgeStubPlugin()],
   resolve: {
     alias: [
       {
@@ -22,28 +59,6 @@ export default defineConfig({
       },
       ...(appCorePackageRoot
         ? [
-            {
-              find: "@elizaos/app-core/bridge/electrobun-rpc",
-              replacement: path.join(
-                here,
-                "..",
-                "..",
-                "test",
-                "stubs",
-                "app-core-bridge.ts",
-              ),
-            },
-            {
-              find: "@elizaos/app-core/bridge",
-              replacement: path.join(
-                here,
-                "..",
-                "..",
-                "test",
-                "stubs",
-                "app-core-bridge.ts",
-              ),
-            },
             {
               find: /^@elizaos\/app-core\/(.*)/,
               replacement: path.join(appCorePackageRoot, "$1"),

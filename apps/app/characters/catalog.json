@@ -51,28 +51,46 @@
   ],
   "injectedCharacters": [
     {
-      "catchphrase": "Noted.",
-      "name": "Rin",
-      "avatarAssetId": 1,
-      "voicePresetId": "alice"
-    },
-    {
       "catchphrase": "uwu~",
-      "name": "Ai",
-      "avatarAssetId": 2,
+      "name": "Chen",
+      "avatarAssetId": 1,
       "voicePresetId": "sarah"
     },
     {
+      "catchphrase": "hell yeah",
+      "name": "Jin",
+      "avatarAssetId": 2,
+      "voicePresetId": "adam"
+    },
+    {
       "catchphrase": "lol k",
-      "name": "Anzu",
+      "name": "Kei",
       "avatarAssetId": 3,
       "voicePresetId": "lily"
     },
     {
-      "catchphrase": "hehe~",
-      "name": "Aya",
+      "catchphrase": "Noted.",
+      "name": "Momo",
       "avatarAssetId": 4,
+      "voicePresetId": "alice"
+    },
+    {
+      "catchphrase": "hehe~",
+      "name": "Rin",
+      "avatarAssetId": 5,
       "voicePresetId": "gigi"
+    },
+    {
+      "catchphrase": "...",
+      "name": "Ryu",
+      "avatarAssetId": 6,
+      "voicePresetId": "daniel"
+    },
+    {
+      "catchphrase": "lmao kms",
+      "name": "Satoshi",
+      "avatarAssetId": 7,
+      "voicePresetId": "callum"
     }
   ]
 }

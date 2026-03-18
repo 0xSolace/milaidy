@@ -3,31 +3,26 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ensureApiTokenForBindHost, resolveCorsOrigin } from "./server";
 
 describe("ensureApiTokenForBindHost", () => {
-  let previousToken: string | undefined;
-  let previousBind: string | undefined;
-  let previousAllowedOrigins: string | undefined;
+  // Track both ELIZA_* and MILADY_* brand aliases since the server.ts wrapper
+  // syncs between them via syncMiladyEnvToEliza / syncElizaEnvToMilady.
+  const envKeys = [
+    "ELIZA_API_TOKEN",
+    "ELIZA_API_BIND",
+    "ELIZA_ALLOWED_ORIGINS",
+    "MILADY_API_TOKEN",
+    "MILADY_API_BIND",
+    "MILADY_ALLOWED_ORIGINS",
+  ];
+  const savedEnv = new Map<string, string | undefined>();
 
   beforeEach(() => {
-    previousToken = process.env.ELIZA_API_TOKEN;
-    previousBind = process.env.ELIZA_API_BIND;
-    previousAllowedOrigins = process.env.ELIZA_ALLOWED_ORIGINS;
+    for (const k of envKeys) savedEnv.set(k, process.env[k]);
   });
 
   afterEach(() => {
-    if (previousToken === undefined) {
-      delete process.env.ELIZA_API_TOKEN;
-    } else {
-      process.env.ELIZA_API_TOKEN = previousToken;
-    }
-    if (previousBind === undefined) {
-      delete process.env.ELIZA_API_BIND;
-    } else {
-      process.env.ELIZA_API_BIND = previousBind;
-    }
-    if (previousAllowedOrigins === undefined) {
-      delete process.env.ELIZA_ALLOWED_ORIGINS;
-    } else {
-      process.env.ELIZA_ALLOWED_ORIGINS = previousAllowedOrigins;
+    for (const [k, v] of savedEnv) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
     }
     vi.restoreAllMocks();
   });

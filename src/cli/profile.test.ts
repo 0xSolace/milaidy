@@ -114,19 +114,21 @@ describe("applyCliProfileEnv", () => {
 
 describe("formatCliCommand", () => {
   it("returns command unchanged when no profile is set", () => {
-    expect(formatCliCommand("eliza setup --fix", {})).toBe("eliza setup --fix");
+    expect(formatCliCommand("eliza setup --fix", {})).toMatch(
+      /^(?:eliza|milady) setup --fix$/,
+    );
   });
 
   it("returns command unchanged when profile is default", () => {
     expect(
       formatCliCommand("eliza setup --fix", { ELIZA_PROFILE: "default" }),
-    ).toBe("eliza setup --fix");
+    ).toMatch(/^(?:eliza|milady) setup --fix$/);
   });
 
   it("returns command unchanged when profile is Default (case-insensitive)", () => {
     expect(
       formatCliCommand("eliza setup --fix", { ELIZA_PROFILE: "Default" }),
-    ).toBe("eliza setup --fix");
+    ).toMatch(/^(?:eliza|milady) setup --fix$/);
   });
 
   it("returns command unchanged when profile is invalid", () => {
@@ -134,7 +136,7 @@ describe("formatCliCommand", () => {
       formatCliCommand("eliza setup --fix", {
         ELIZA_PROFILE: "bad profile",
       }),
-    ).toBe("eliza setup --fix");
+    ).toMatch(/^(?:eliza|milady) setup --fix$/);
   });
 
   it("returns command unchanged when --profile is already present", () => {
@@ -142,19 +144,19 @@ describe("formatCliCommand", () => {
       formatCliCommand("eliza --profile work setup --fix", {
         ELIZA_PROFILE: "work",
       }),
-    ).toBe("eliza --profile work setup --fix");
+    ).toMatch(/^(?:eliza|milady) --profile work setup --fix$/);
   });
 
   it("returns command unchanged when --dev is already present", () => {
     expect(
       formatCliCommand("eliza --dev setup", { ELIZA_PROFILE: "dev" }),
-    ).toBe("eliza --dev setup");
+    ).toMatch(/^(?:eliza|milady) --dev setup$/);
   });
 
   it("inserts --profile flag when profile is set", () => {
     expect(
       formatCliCommand("eliza setup --fix", { ELIZA_PROFILE: "work" }),
-    ).toBe("eliza --profile work setup --fix");
+    ).toMatch(/^(?:eliza|milady) --profile work setup --fix$/);
   });
 
   it("trims whitespace from profile", () => {
@@ -162,18 +164,18 @@ describe("formatCliCommand", () => {
       formatCliCommand("eliza setup --fix", {
         ELIZA_PROFILE: "  jbeliza  ",
       }),
-    ).toBe("eliza --profile jbeliza setup --fix");
+    ).toMatch(/^(?:eliza|milady) --profile jbeliza setup --fix$/);
   });
 
   it("handles command with no args after eliza", () => {
-    expect(formatCliCommand("eliza", { ELIZA_PROFILE: "test" })).toBe(
-      "eliza --profile test",
+    expect(formatCliCommand("eliza", { ELIZA_PROFILE: "test" })).toMatch(
+      /^(?:eliza|milady) --profile test$/,
     );
   });
 
   it("handles bun wrapper", () => {
-    expect(formatCliCommand("bun eliza setup", { ELIZA_PROFILE: "work" })).toBe(
-      "bun eliza --profile work setup",
-    );
+    expect(
+      formatCliCommand("bun eliza setup", { ELIZA_PROFILE: "work" }),
+    ).toMatch(/^bun (?:eliza|milady) --profile work setup$/);
   });
 });

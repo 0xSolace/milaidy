@@ -414,10 +414,11 @@ describe("createPiAiHandler", () => {
 
       await handler(runtime as unknown, { prompt: "test" } as unknown);
 
-      // Verify stream was called with signal in options (3rd arg)
-      const lastCallArgs = mockStream.mock.calls[0];
-      const optionsArg = lastCallArgs[lastCallArgs.length - 1];
-      expect(optionsArg).toHaveProperty("signal", controller.signal);
+      // Verify stream was called with signal in options (last arg)
+      const signalCallArgs =
+        mockStream.mock.calls[mockStream.mock.calls.length - 1];
+      const signalOptionsArg = signalCallArgs[signalCallArgs.length - 1];
+      expect(signalOptionsArg).toHaveProperty("signal", controller.signal);
     });
 
     it("extracts abortSignal from params as fallback", async () => {
@@ -443,9 +444,10 @@ describe("createPiAiHandler", () => {
         } as unknown,
       );
 
-      const lastCallArgs = mockStream.mock.calls[0];
-      const optionsArg = lastCallArgs[lastCallArgs.length - 1];
-      expect(optionsArg).toHaveProperty("signal", controller.signal);
+      const fbCallArgs =
+        mockStream.mock.calls[mockStream.mock.calls.length - 1];
+      const fbOptionsArg = fbCallArgs[fbCallArgs.length - 1];
+      expect(fbOptionsArg).toHaveProperty("signal", controller.signal);
     });
   });
 
@@ -527,9 +529,10 @@ describe("createPiAiHandler", () => {
 
       await handler(runtime as unknown, { prompt: "test" } as unknown);
 
-      const lastCallArgs = mockStream.mock.calls[0];
-      const optionsArg = lastCallArgs[lastCallArgs.length - 1];
-      expect(optionsArg).toHaveProperty("apiKey", "test-api-key");
+      const apiKeyCallArgs =
+        mockStream.mock.calls[mockStream.mock.calls.length - 1];
+      const apiKeyOptionsArg = apiKeyCallArgs[apiKeyCallArgs.length - 1];
+      expect(apiKeyOptionsArg).toHaveProperty("apiKey", "test-api-key");
     });
 
     it("omits apiKey from stream options when getApiKey returns undefined", async () => {
@@ -550,9 +553,10 @@ describe("createPiAiHandler", () => {
 
       await handler(runtime as unknown, { prompt: "test" } as unknown);
 
-      const lastCallArgs2 = mockStream.mock.calls[0];
-      const optionsArg2 = lastCallArgs2[lastCallArgs2.length - 1];
-      expect(optionsArg2).not.toHaveProperty("apiKey");
+      const noKeyCallArgs =
+        mockStream.mock.calls[mockStream.mock.calls.length - 1];
+      const noKeyOptionsArg = noKeyCallArgs[noKeyCallArgs.length - 1];
+      expect(noKeyOptionsArg).not.toHaveProperty("apiKey");
     });
   });
 });

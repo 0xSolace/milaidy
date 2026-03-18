@@ -45,6 +45,7 @@ const UNUSED_ANIMATION_PATHS = [
 // Pinned to a specific commit for reproducible installs (supply-chain safety).
 const AVATARS_REPO = "https://github.com/eliza-ai/avatars.git";
 const AVATARS_COMMIT = "50f6bf0ad6db583581d4cbaeb377ca005b45195b";
+const AVATARS_REF = process.env.MILADY_AVATARS_REF?.trim() || "";
 const TAG = "[ensure-avatars]";
 const CHARACTERS_VRM = join(ROOT, "apps", "app", "characters", "vrm");
 
@@ -214,12 +215,12 @@ export function runEnsureAvatars({
     }
 
     // Clone and checkout pinned commit for reproducibility.
-    // Uses --depth 1 + fetch for speed (avoids full history).
-    // TODO: Pin the initial clone to a tag (e.g. --branch v1.0) so the
-    //       shallow clone fetches a known ref instead of the current default
-    //       branch HEAD.  The checkout below still locks to AVATARS_COMMIT,
-    //       so correctness is unaffected — a tag would just save one fetch.
-    _exec(`git clone --depth 1 ${AVATARS_REPO} "${tmpDir}"`, {
+    // Uses --depth 1 + fetch for speed (avoids full history). When an explicit
+    // ref/tag is supplied via MILADY_AVATARS_REF we clone that shallow ref first.
+    const cloneArgs = AVATARS_REF
+      ? `git clone --depth 1 --branch "${AVATARS_REF}" ${AVATARS_REPO} "${tmpDir}"`
+      : `git clone --depth 1 ${AVATARS_REPO} "${tmpDir}"`;
+    _exec(cloneArgs, {
       cwd: ROOT,
       stdio: "inherit",
     });

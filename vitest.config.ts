@@ -55,6 +55,24 @@ export default defineConfig({
       ...(appCoreSourceRoot
         ? [
             {
+              find: "@elizaos/app-core/bridge/electrobun-rpc",
+              replacement: path.join(
+                repoRoot,
+                "test",
+                "stubs",
+                "app-core-bridge.ts",
+              ),
+            },
+            {
+              find: "@elizaos/app-core/bridge/electrobun-runtime",
+              replacement: path.join(
+                repoRoot,
+                "test",
+                "stubs",
+                "app-core-bridge.ts",
+              ),
+            },
+            {
               find: "@elizaos/app-core/bridge",
               replacement: path.join(
                 repoRoot,

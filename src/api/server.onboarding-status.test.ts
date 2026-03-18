@@ -67,13 +67,29 @@ const RUNTIME_STUB = {
 } as AgentRuntime;
 
 describe("GET /api/onboarding/status", () => {
-  const originalStateDir = process.env.ELIZA_STATE_DIR;
+  /** Env keys that startApiServer / upstream may hydrate into process.env. */
+  const ENV_KEYS_TO_SAVE = [
+    "ELIZA_STATE_DIR",
+    "MILADY_STATE_DIR",
+    "MILADY_CONFIG_PATH",
+    "EVM_PRIVATE_KEY",
+    "SOLANA_PRIVATE_KEY",
+  ] as const;
+
+  const savedEnv = new Map<string, string | undefined>();
+
+  for (const key of ENV_KEYS_TO_SAVE) {
+    savedEnv.set(key, process.env[key]);
+  }
 
   afterEach(async () => {
-    if (originalStateDir === undefined) {
-      delete process.env.ELIZA_STATE_DIR;
-    } else {
-      process.env.ELIZA_STATE_DIR = originalStateDir;
+    for (const key of ENV_KEYS_TO_SAVE) {
+      const original = savedEnv.get(key);
+      if (original === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = original;
+      }
     }
   });
 
@@ -82,6 +98,7 @@ describe("GET /api/onboarding/status", () => {
       path.join(os.tmpdir(), "eliza-onboarding-status-"),
     );
     process.env.ELIZA_STATE_DIR = tempDir;
+    process.env.MILADY_STATE_DIR = tempDir;
     await fs.writeFile(
       path.join(tempDir, "eliza.json"),
       JSON.stringify({
@@ -123,6 +140,7 @@ describe("GET /api/onboarding/status", () => {
       path.join(os.tmpdir(), "eliza-onboarding-status-"),
     );
     process.env.ELIZA_STATE_DIR = tempDir;
+    process.env.MILADY_STATE_DIR = tempDir;
     await fs.writeFile(
       path.join(tempDir, "eliza.json"),
       JSON.stringify({
@@ -156,6 +174,7 @@ describe("GET /api/onboarding/status", () => {
       path.join(os.tmpdir(), "eliza-onboarding-status-"),
     );
     process.env.ELIZA_STATE_DIR = tempDir;
+    process.env.MILADY_STATE_DIR = tempDir;
     await fs.writeFile(
       path.join(tempDir, "eliza.json"),
       JSON.stringify({
@@ -188,6 +207,7 @@ describe("GET /api/onboarding/status", () => {
       path.join(os.tmpdir(), "eliza-onboarding-status-"),
     );
     process.env.ELIZA_STATE_DIR = tempDir;
+    process.env.MILADY_STATE_DIR = tempDir;
     await fs.writeFile(
       path.join(tempDir, "eliza.json"),
       JSON.stringify({

@@ -345,123 +345,347 @@ export function patchMissingLifecycleScript(
   return patched;
 }
 
+function loadMiladyCharacterCatalog(root) {
+  const catalogPath = resolve(root, "apps/app/characters/catalog.json");
+  const rawCatalog = JSON.parse(readFileSync(catalogPath, "utf8"));
+  const assets = Array.isArray(rawCatalog.assets) ? rawCatalog.assets : [];
+  const injectedCharacters = Array.isArray(rawCatalog.injectedCharacters)
+    ? rawCatalog.injectedCharacters
+    : [];
+
+  if (assets.length === 0) {
+    throw new Error(
+      `[patch-deps] Missing bundled avatar assets in ${catalogPath}.`,
+    );
+  }
+
+  const assetById = new Map(assets.map((asset) => [asset.id, asset]));
+  const normalizedInjectedCharacters = injectedCharacters.map((character) => {
+    const avatarAsset = assetById.get(character.avatarAssetId);
+    if (!avatarAsset) {
+      throw new Error(
+        `[patch-deps] Unknown avatarAssetId ${character.avatarAssetId} in ${catalogPath}.`,
+      );
+    }
+
+    return {
+      ...character,
+      avatarAsset,
+    };
+  });
+
+  return {
+    assets,
+    injectedCharacters: normalizedInjectedCharacters,
+  };
+}
+
+function loadMiladyOnboardingPresetsSource(root) {
+  const sourcePath = resolve(root, "src/onboarding-presets.ts");
+  return readFileSync(sourcePath, "utf8");
+}
+
+function toAppCoreRelativeAssetPath(path) {
+  return String(path).replace(/^\/+/, "");
+}
+
+function buildAppCoreMiladyVrmStateSource(catalog) {
+  const assetEntries = catalog.assets
+    .map(
+      (asset) => `  {
+    title: ${JSON.stringify(asset.title)},
+    vrmPath: resolveAppAssetUrl(${JSON.stringify(
+      toAppCoreRelativeAssetPath(`/vrms/${asset.slug}.vrm.gz`),
+    )}),
+    previewPath: resolveAppAssetUrl(${JSON.stringify(
+      toAppCoreRelativeAssetPath(`/vrms/previews/${asset.slug}.png`),
+    )}),
+    backgroundPath: resolveAppAssetUrl(${JSON.stringify(
+      toAppCoreRelativeAssetPath(`/vrms/backgrounds/${asset.slug}.png`),
+    )}),
+  },`,
+    )
+    .join("\n");
+
+  return `import { resolveAppAssetUrl } from "../utils/asset-url";
+/** Bundled Milady VRM asset roster. Generated from apps/app/characters/catalog.json. */
+const BUNDLED_VRM_ASSETS = [
+${assetEntries}
+];
+export const VRM_COUNT = BUNDLED_VRM_ASSETS.length;
+function normalizeAvatarIndex(index) {
+    if (!Number.isFinite(index))
+        return 1;
+    const n = Math.trunc(index);
+    if (n === 0)
+        return 0;
+    if (n < 1 || n > VRM_COUNT)
+        return 1;
+    return n;
+}
+function resolveBundledVrmAsset(index) {
+    const normalized = normalizeAvatarIndex(index);
+    const safe = normalized > 0 ? normalized : 1;
+    return BUNDLED_VRM_ASSETS[safe - 1] ?? BUNDLED_VRM_ASSETS[0];
+}
+/** Resolve a bundled VRM index (1–N) to its public asset URL. */
+export function getVrmUrl(index) {
+    return resolveBundledVrmAsset(index).vrmPath;
+}
+/** Resolve a bundled VRM index (1–N) to its preview thumbnail URL. */
+export function getVrmPreviewUrl(index) {
+    return resolveBundledVrmAsset(index).previewPath;
+}
+/** Resolve a bundled VRM index (1-N) to its custom background URL. */
+export function getVrmBackgroundUrl(index) {
+    return resolveBundledVrmAsset(index).backgroundPath;
+}
+const COMPANION_THEME_BACKGROUND_INDEX = {
+    light: 3,
+    dark: 4,
+};
+/** Resolve the fixed companion-mode background for the current UI theme. */
+export function getCompanionBackgroundUrl(theme) {
+    return getVrmBackgroundUrl(COMPANION_THEME_BACKGROUND_INDEX[theme]);
+}
+/** Human-readable roster title for bundled avatars. */
+export function getVrmTitle(index) {
+    return resolveBundledVrmAsset(index).title;
+}
+/** Whether a bundled index points to the official Eliza avatar set. */
+export function isOfficialVrmIndex(_index) {
+    return false;
+}
+/** Whether a VRM index requires an explicit 180° face-camera flip instead of auto-detection. */
+export function getVrmNeedsFlip(index) {
+    const normalized = normalizeAvatarIndex(index);
+    if (normalized <= VRM_COUNT)
+        return false;
+    return false;
+}
+export { normalizeAvatarIndex };
+`;
+}
+
+function buildAppCoreMiladyVrmTypesSource(catalog) {
+  return `import type { UiTheme } from "./ui-preferences";
+export declare const VRM_COUNT = ${catalog.assets.length};
+declare function normalizeAvatarIndex(index: number): number;
+/** Resolve a bundled VRM index (1–N) to its public asset URL. */
+export declare function getVrmUrl(index: number): string;
+/** Resolve a bundled VRM index (1–N) to its preview thumbnail URL. */
+export declare function getVrmPreviewUrl(index: number): string;
+/** Resolve a bundled VRM index (1-N) to its custom background URL. */
+export declare function getVrmBackgroundUrl(index: number): string;
+/** Resolve the fixed companion-mode background for the current UI theme. */
+export declare function getCompanionBackgroundUrl(theme: UiTheme): string;
+/** Human-readable roster title for bundled avatars. */
+export declare function getVrmTitle(index: number): string;
+/** Whether a bundled index points to the official Eliza avatar set. */
+export declare function isOfficialVrmIndex(_index: number): boolean;
+/** Whether a VRM index requires an explicit 180° face-camera flip instead of auto-detection. */
+export declare function getVrmNeedsFlip(index: number): boolean;
+export { normalizeAvatarIndex };
+`;
+}
+
+function buildIdentityPresetsSource(catalog) {
+  const entries = catalog.injectedCharacters
+    .map(
+      (character) =>
+        `    ${JSON.stringify(character.catchphrase)}: { name: ${JSON.stringify(character.name)}, avatarIndex: ${character.avatarAsset.id} },`,
+    )
+    .join("\n");
+
+  return `const IDENTITY_PRESETS = {
+${entries}
+};`;
+}
+
+function buildCharacterPresetMetaSource(catalog) {
+  const entries = catalog.injectedCharacters
+    .map(
+      (character) =>
+        `    ${JSON.stringify(character.catchphrase)}: { name: ${JSON.stringify(character.name)}, avatarIndex: ${character.avatarAsset.id}, voicePresetId: ${JSON.stringify(character.voicePresetId ?? null)} },`,
+    )
+    .join("\n");
+
+  return `const CHARACTER_PRESET_META = {
+${entries}
+};`;
+}
+
 /**
  * @elizaos/app-core alpha.53 still ships the upstream Eliza avatar roster
- * (4 slots pointing at eliza-1/4/5/9), but Milady bundles 8 contiguous
- * milady-* assets. Patch the published bundle so runtime avatar URLs match the
- * shipped files in dev, tests, and packaged builds.
+ * (4 slots pointing at eliza-1/4/5/9), but Milady owns the asset catalog.
+ * Patch the published bundle so runtime avatar URLs and injected characters
+ * derive from apps/app/characters/catalog.json.
  */
-export function applyAppCoreMiladyVrmStatePatch(filePath) {
+export function applyAppCoreMiladyVrmStatePatch(filePath, catalog) {
   if (!existsSync(filePath)) return false;
 
   const compatSource = readFileSync(filePath, "utf8");
-  if (
-    compatSource.includes("const BASE_VRM_COUNT = 8;") &&
-    compatSource.includes("const VRM_INDEX_MAP = [1, 2, 3, 4, 5, 6, 7, 8];") &&
-    compatSource.includes(`vrms/milady-\${sourceIndex}.vrm.gz`) &&
-    compatSource.includes(
-      "bundled Milady source files.\n */\nconst VRM_INDEX_MAP",
-    )
-  ) {
-    return false;
-  }
+  const generatedSource = buildAppCoreMiladyVrmStateSource(catalog);
+  if (compatSource === generatedSource) return false;
 
-  let updatedSource = compatSource;
-  updatedSource = updatedSource.replace(
-    "const BASE_VRM_COUNT = 4;",
-    "const BASE_VRM_COUNT = 8;",
-  );
-  updatedSource = updatedSource.replace(
-    `/**
- * Maps logical avatar indices (1-4) to the original source file numbers.
- * Index 1 → eliza-1, Index 2 → eliza-4, Index 3 → eliza-5, Index 4 → eliza-9.
- */
-`,
-    `/**
- * Maps logical avatar indices (1-8) directly to bundled Milady source files.
- */
-`,
-  );
-  updatedSource = updatedSource.replace(
-    "const VRM_INDEX_MAP = [1, 4, 5, 9];",
-    "const VRM_INDEX_MAP = [1, 2, 3, 4, 5, 6, 7, 8];",
-  );
-  updatedSource = updatedSource.replace(
-    " */const VRM_INDEX_MAP = [1, 2, 3, 4, 5, 6, 7, 8];",
-    " */\nconst VRM_INDEX_MAP = [1, 2, 3, 4, 5, 6, 7, 8];",
-  );
-  updatedSource = updatedSource
-    .replaceAll("eliza-", "milady-")
-    .replaceAll("ELIZA-", "MILADY-");
-
-  if (updatedSource === compatSource) return false;
-
-  writeFileSync(filePath, updatedSource, "utf8");
+  writeFileSync(filePath, generatedSource, "utf8");
   return true;
 }
 
 /**
  * Keep the published app-core declaration file in sync with the runtime VRM
- * patch so TS consumers see the expanded bundled roster size.
+ * patch so TS consumers see the catalog-driven bundled roster size.
  */
-export function applyAppCoreMiladyVrmTypesPatch(filePath) {
+export function applyAppCoreMiladyVrmTypesPatch(filePath, catalog) {
   if (!existsSync(filePath)) return false;
 
   const compatSource = readFileSync(filePath, "utf8");
-  if (compatSource.includes("export declare const VRM_COUNT = 8;")) {
-    return false;
+  const generatedSource = buildAppCoreMiladyVrmTypesSource(catalog);
+  if (compatSource === generatedSource) return false;
+
+  writeFileSync(filePath, generatedSource, "utf8");
+  return true;
+}
+
+/**
+ * The default VRM fallback path in VrmViewer must point at the first bundled
+ * Milady asset so initial renders still succeed before state loads.
+ */
+export function applyAppCoreMiladyVrmViewerPatch(filePath, catalog) {
+  if (!existsSync(filePath)) return false;
+
+  const compatSource = readFileSync(filePath, "utf8");
+  const defaultAsset = catalog.assets[0];
+  const updatedSource = compatSource.replace(
+    /const DEFAULT_VRM_PATH = resolveAppAssetUrl\(".*?"\);/,
+    `const DEFAULT_VRM_PATH = resolveAppAssetUrl(${JSON.stringify(
+      toAppCoreRelativeAssetPath(`/vrms/${defaultAsset.slug}.vrm.gz`),
+    )});`,
+  );
+  if (updatedSource === compatSource) return false;
+
+  writeFileSync(filePath, updatedSource, "utf8");
+  return true;
+}
+
+export function applyAppCoreMiladyIdentityStepPatch(filePath, catalog) {
+  if (!existsSync(filePath)) return false;
+
+  const compatSource = readFileSync(filePath, "utf8");
+  let updatedSource = compatSource.replace(
+    /const IDENTITY_PRESETS = \{[\s\S]*?\};/,
+    buildIdentityPresetsSource(catalog),
+  );
+  updatedSource = updatedSource.replaceAll(
+    "styles.slice(0, 4)",
+    `styles.slice(0, ${catalog.injectedCharacters.length})`,
+  );
+  if (updatedSource === compatSource) return false;
+
+  writeFileSync(filePath, updatedSource, "utf8");
+  return true;
+}
+
+export function applyAppCoreMiladyCharacterViewPatch(filePath, catalog) {
+  if (!existsSync(filePath)) return false;
+
+  const compatSource = readFileSync(filePath, "utf8");
+  let updatedSource = compatSource.replace(
+    /const CHARACTER_PRESET_META = \{[\s\S]*?\};/,
+    buildCharacterPresetMetaSource(catalog),
+  );
+  updatedSource = updatedSource.replace(
+    /\(index % \d+\) \+ 1/,
+    `(index % ${catalog.assets.length}) + 1`,
+  );
+  updatedSource = updatedSource.replace(
+    /characterRoster\.slice\(0, \d+\)/,
+    `characterRoster.slice(0, ${catalog.injectedCharacters.length})`,
+  );
+  if (updatedSource === compatSource) return false;
+
+  writeFileSync(filePath, updatedSource, "utf8");
+  return true;
+}
+
+/**
+ * Milady owns the onboarding preset roster, but the published autonomous
+ * package still serves upstream style presets. Replace the installed module
+ * with Milady's local preset source so the onboarding API and runtime expose
+ * the same Milady-specific characters that app-core is patched to display.
+ */
+export function applyAutonomousMiladyOnboardingPresetsPatch(filePath, source) {
+  if (!existsSync(filePath)) return false;
+
+  const compatSource = readFileSync(filePath, "utf8");
+  if (compatSource === source) return false;
+
+  writeFileSync(filePath, source, "utf8");
+  return true;
+}
+
+export function patchAutonomousMiladyOnboardingPresets(
+  root,
+  log = console.log,
+  source = loadMiladyOnboardingPresetsSource(root),
+) {
+  const candidates = findPackageFilePaths(
+    root,
+    "@elizaos/autonomous",
+    "packages/autonomous/src/onboarding-presets.js",
+  );
+
+  let patched = false;
+  for (const filePath of candidates) {
+    if (!applyAutonomousMiladyOnboardingPresetsPatch(filePath, source)) {
+      continue;
+    }
+    patched = true;
+    log(
+      "[patch-deps] Patched @elizaos/autonomous packages/autonomous/src/onboarding-presets.js: onboarding presets now derive from Milady.",
+    );
   }
 
-  const updatedSource = compatSource.replace(
-    "export declare const VRM_COUNT = 4;",
-    "export declare const VRM_COUNT = 8;",
-  );
-  if (updatedSource === compatSource) return false;
-
-  writeFileSync(filePath, updatedSource, "utf8");
-  return true;
+  return patched;
 }
 
 /**
- * The default VRM fallback path in VrmViewer must point at Milady's first
- * bundled avatar so initial renders still succeed before state loads.
+ * Patch all installed @elizaos/app-core copies so bundled avatar URLs and
+ * injected character metadata resolve from Milady's shared asset catalog.
  */
-export function applyAppCoreMiladyVrmViewerPatch(filePath) {
-  if (!existsSync(filePath)) return false;
-
-  const compatSource = readFileSync(filePath, "utf8");
-  if (compatSource.includes("vrms/milady-1.vrm.gz")) return false;
-
-  const updatedSource = compatSource.replace(
-    'const DEFAULT_VRM_PATH = resolveAppAssetUrl("vrms/eliza-1.vrm.gz");',
-    'const DEFAULT_VRM_PATH = resolveAppAssetUrl("vrms/milady-1.vrm.gz");',
-  );
-  if (updatedSource === compatSource) return false;
-
-  writeFileSync(filePath, updatedSource, "utf8");
-  return true;
-}
-
-/**
- * Patch all installed @elizaos/app-core copies so bundled avatar URLs resolve
- * to Milady's public assets instead of the upstream Eliza asset names.
- */
-export function patchAppCoreMiladyAssets(root, log = console.log) {
+export function patchAppCoreMiladyAssets(
+  root,
+  log = console.log,
+  catalog = loadMiladyCharacterCatalog(root),
+) {
   const patchTargets = [
     {
       relativePath: "state/vrm.js",
       apply: applyAppCoreMiladyVrmStatePatch,
-      description: "runtime avatar roster now targets milady-* assets",
+      description: "runtime avatar roster now derives from the shared catalog",
     },
     {
       relativePath: "state/vrm.d.ts",
       apply: applyAppCoreMiladyVrmTypesPatch,
-      description: "type declarations now expose the Milady roster size",
+      description:
+        "type declarations now expose the catalog-driven roster size",
     },
     {
       relativePath: "components/avatar/VrmViewer.js",
       apply: applyAppCoreMiladyVrmViewerPatch,
-      description: "default VRM fallback now targets milady-1",
+      description: "default VRM fallback now targets the first catalog asset",
+    },
+    {
+      relativePath: "components/onboarding/IdentityStep.js",
+      apply: applyAppCoreMiladyIdentityStepPatch,
+      description:
+        "onboarding character presets now derive from the shared catalog",
+    },
+    {
+      relativePath: "components/CharacterView.js",
+      apply: applyAppCoreMiladyCharacterViewPatch,
+      description:
+        "character roster metadata now derives from the shared catalog",
     },
   ];
 
@@ -474,7 +698,7 @@ export function patchAppCoreMiladyAssets(root, log = console.log) {
     );
 
     for (const filePath of candidates) {
-      if (!target.apply(filePath)) continue;
+      if (!target.apply(filePath, catalog)) continue;
       patched = true;
       log(
         `[patch-deps] Patched @elizaos/app-core ${target.relativePath}: ${target.description}.`,

@@ -24,6 +24,7 @@ import { fileURLToPath } from "node:url";
 import {
   patchAgentSkillsCatalogFetch,
   patchAppCoreMiladyAssets,
+  patchAutonomousMiladyOnboardingPresets,
   patchBrokenElizaCoreRuntimeDists,
   patchBunExports,
   patchExtensionlessJsExports,
@@ -60,6 +61,7 @@ patchExtensionlessJsExports(root, "@noble/hashes");
 patchNobleHashesCompat(root);
 patchProperLockfileSignalExitCompat(root);
 patchBrokenElizaCoreRuntimeDists(root);
+patchAutonomousMiladyOnboardingPresets(root);
 patchAppCoreMiladyAssets(root);
 
 /**
