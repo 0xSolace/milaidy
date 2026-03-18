@@ -855,7 +855,7 @@ function persistCompatPluginMutation(
   saveElizaConfig(config);
 
   const refreshed = (
-    buildPluginListResponse(null).plugins as unknown as CompatPluginRecord[]
+    buildPluginListResponse(null).plugins as CompatPluginRecord[]
   ).find((candidate) => candidate.id === pluginId);
 
   return {
@@ -1057,7 +1057,7 @@ async function handleMiladyCompatRoute(
     );
     const plugin = (
       buildPluginListResponse(state.current)
-        .plugins as unknown as CompatPluginRecord[]
+        .plugins as CompatPluginRecord[]
     ).find((candidate) => candidate.id === pluginId);
 
     if (!plugin) {
@@ -1201,7 +1201,7 @@ export async function startApiServer(
   syncMiladyEnvToEliza();
   syncElizaEnvToMilady();
   const compatState: CompatRuntimeState = {
-    current: (args[0]?.runtime as unknown as AgentRuntime | null) ?? null,
+    current: (args[0]?.runtime as AgentRuntime | null) ?? null,
   };
   const restoreCreateServer = patchHttpCreateServerForMiladyCompat(compatState);
 

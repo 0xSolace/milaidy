@@ -112,7 +112,7 @@ const mockShowItemInFolder = electrobunBun.Utils.showItemInFolder as ReturnType<
   typeof vi.fn
 >;
 const mockSpawn = (
-  globalThis as unknown as { Bun: { spawn: ReturnType<typeof vi.fn> } }
+  globalThis as { Bun: { spawn: ReturnType<typeof vi.fn> } }
 ).Bun.spawn;
 const mockIsAppActive = macEffects.isAppActive as ReturnType<typeof vi.fn>;
 const mockMakeKeyAndOrderFront = macEffects.makeKeyAndOrderFront as ReturnType<
@@ -546,7 +546,7 @@ describe("DesktopManager", () => {
 
       mockIsAppActive.mockReturnValue(false);
       manager.setMainWindow(
-        fakeWindow as unknown as Parameters<DesktopManager["setMainWindow"]>[0],
+        fakeWindow as Parameters<DesktopManager["setMainWindow"]>[0],
       );
 
       await vi.advanceTimersByTimeAsync(600);

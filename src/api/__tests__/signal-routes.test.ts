@@ -93,7 +93,7 @@ describe("handleSignalRoute", () => {
     for (let i = 0; i < MAX_PAIRING_SESSIONS; i += 1) {
       sessions.set(
         `account-${i}`,
-        mockSession as unknown as SignalPairingSession,
+        mockSession as SignalPairingSession,
       );
     }
 

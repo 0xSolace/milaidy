@@ -78,7 +78,7 @@ describe("Shell plugin classification", () => {
     const config = {
       features: { browser: true, computeruse: true },
       channels: { discord: { token: "test" } },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-shell")).toBe(true);
   });

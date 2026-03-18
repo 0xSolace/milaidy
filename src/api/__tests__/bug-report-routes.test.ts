@@ -19,7 +19,7 @@ function makeCtx(
   return {
     req: {
       socket: { remoteAddress: "127.0.0.1" },
-    } as unknown as http.IncomingMessage,
+    } as http.IncomingMessage,
     res: {} as http.ServerResponse,
     json: vi.fn(),
     error: vi.fn(),

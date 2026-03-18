@@ -31,7 +31,7 @@ export const whatsappPlugin: Plugin = {
 
   // TypeScript cannot verify static+constructor ServiceClass shape; the class
   // properly extends Service and implements all required static methods.
-  services: [WhatsAppBaileysService as unknown as ServiceClass],
+  services: [WhatsAppBaileysService as ServiceClass],
 
   actions: [sendWhatsAppMessage],
 

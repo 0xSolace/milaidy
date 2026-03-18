@@ -22,7 +22,7 @@ function createBridgeHarness() {
   const runtime = {
     agentId: "agent-1",
     character: { name: "Eliza" },
-  } as unknown as AgentRuntime;
+  } as unknown as unknown as AgentRuntime;
 
   const tui = {
     addToChatContainer: (component: {
@@ -31,7 +31,7 @@ function createBridgeHarness() {
       addedComponents.push(component);
     },
     requestRender,
-  } as unknown as ElizaTUI;
+  } as Partial<ElizaTUI> as ElizaTUI;
 
   const bridge = new ElizaTUIBridge(runtime, tui, {
     apiBaseUrl: "http://localhost:3137",
@@ -48,7 +48,7 @@ describe("ElizaTUIBridge proactive websocket routing", () => {
   it("renders proactive messages only for the active conversation", () => {
     const { bridge, addedComponents, requestRender } = createBridgeHarness();
 
-    const access = bridge as unknown as BridgeTestAccess;
+    const access = bridge as BridgeTestAccess;
     access.conversationId = "conv-active";
 
     access.handleApiWsMessage({
@@ -75,7 +75,7 @@ describe("ElizaTUIBridge proactive websocket routing", () => {
   it("does not suppress proactive messages from stale streamed text", () => {
     const { bridge, addedComponents, requestRender } = createBridgeHarness();
 
-    const access = bridge as unknown as BridgeTestAccess;
+    const access = bridge as BridgeTestAccess;
     access.conversationId = "conv-active";
     access.streamedText = "repeatable status update";
 
@@ -93,7 +93,7 @@ describe("ElizaTUIBridge proactive websocket routing", () => {
     vi.useFakeTimers();
 
     const { bridge } = createBridgeHarness();
-    const access = bridge as unknown as BridgeTestAccess;
+    const access = bridge as BridgeTestAccess;
 
     access.streamedText = "final reply";
     access.ensureAssistantComponent();
@@ -106,7 +106,7 @@ describe("ElizaTUIBridge proactive websocket routing", () => {
 
   it("allows final text updates after assistant finalize", () => {
     const { bridge, addedComponents } = createBridgeHarness();
-    const access = bridge as unknown as BridgeTestAccess;
+    const access = bridge as BridgeTestAccess;
 
     access.streamedText = "stream chunk";
     access.ensureAssistantComponent();
@@ -125,7 +125,7 @@ describe("ElizaTUIBridge proactive websocket routing", () => {
     const { bridge } = createBridgeHarness();
     const close = vi.fn();
 
-    const access = bridge as unknown as BridgeTestAccess;
+    const access = bridge as BridgeTestAccess;
     access.apiWsClient = { close };
     access.pendingRender = setTimeout(() => {}, 10_000);
 
@@ -141,7 +141,7 @@ describe("ElizaTUIBridge proactive websocket routing", () => {
   it("ignores proactive websocket events after dispose", () => {
     const { bridge, addedComponents, requestRender } = createBridgeHarness();
 
-    const access = bridge as unknown as BridgeTestAccess;
+    const access = bridge as BridgeTestAccess;
     access.conversationId = "conv-active";
     access.dispose();
 

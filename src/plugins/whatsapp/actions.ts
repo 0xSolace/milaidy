@@ -100,7 +100,7 @@ export const sendWhatsAppMessage: Action = {
           source: "whatsapp",
           channelId: jid,
           roomId: message.roomId,
-        } as unknown as TargetInfo,
+        } as Partial<TargetInfo> as TargetInfo,
         {
           text: messageText,
         } as Content,

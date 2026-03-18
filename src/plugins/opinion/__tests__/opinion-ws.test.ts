@@ -62,7 +62,7 @@ describe("OpinionWsService", () => {
     const service = new OpinionWsService();
     await service.initialize({
       logger: { warn: () => {} },
-    } as unknown as IAgentRuntime);
+    } as Partial<IAgentRuntime> as IAgentRuntime);
     expect(service.isConnected).toBe(false);
     if (original) process.env.OPINION_API_KEY = original;
   });
@@ -82,7 +82,7 @@ describe("OpinionWsService", () => {
       warnSpy = vi.fn();
       mockRuntime = {
         logger: { info: vi.fn(), warn: warnSpy },
-      } as unknown as IAgentRuntime;
+      } as Partial<IAgentRuntime> as IAgentRuntime;
 
       service = new OpinionWsService();
       process.env.OPINION_API_KEY = "test-key";

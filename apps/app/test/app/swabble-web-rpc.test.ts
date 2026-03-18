@@ -20,7 +20,7 @@ let processorStub: ProcessorStub;
 function installAudioStubs(): void {
   const mockStream = {
     getTracks: () => [{ stop: vi.fn() }],
-  } as unknown as MediaStream;
+  } as Partial<MediaStream> as MediaStream;
 
   if (!navigator.mediaDevices) {
     Object.defineProperty(navigator, "mediaDevices", {

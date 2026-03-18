@@ -60,7 +60,7 @@ let SDK_HOST: string;
 async function loadSdk() {
   try {
     const sdk = await import("@opinion-labs/opinion-clob-sdk");
-    SdkClient = sdk.Client as unknown as
+    SdkClient = sdk.Client as
       | (new (
           opts: Record<string, unknown>,
         ) => SdkClientInstance)

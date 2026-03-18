@@ -65,7 +65,7 @@ describe.skipIf(!hasModule)("training service importModelToOllama", () => {
       benchmark: { status: "not_run", lastRunAt: null, output: null },
     };
     (
-      service as unknown as {
+      service as {
         models: Map<string, TrainingModelRecord>;
       }
     ).models.set(model.id, model);

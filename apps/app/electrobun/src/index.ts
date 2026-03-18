@@ -525,7 +525,7 @@ function wireRpcAndModules(
   win: BrowserWindow,
 ): (message: string, payload?: unknown) => void {
   // Access the rpc instance from the webview (set during window creation)
-  const rpc = win.webview.rpc as unknown as ElectrobunRpcInstance | undefined;
+  const rpc = win.webview.rpc as ElectrobunRpcInstance | undefined;
 
   // Create the sendToWebview callback that native modules use to push events.
   // Uses typed RPC push messages instead of JS evaluation.

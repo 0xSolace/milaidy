@@ -25,9 +25,9 @@ describe("opinionContextProvider", () => {
   it("returns empty text when no positions", async () => {
     mockGetPositions.mockResolvedValue({ result: [] });
     const result = await opinionContextProvider.get(
-      {} as unknown as IAgentRuntime,
-      {} as unknown as Memory,
-      {} as unknown as State,
+      {} as Partial<IAgentRuntime> as IAgentRuntime,
+      {} as Partial<Memory> as Memory,
+      {} as Partial<State> as State,
     );
     expect(result.text).toBe("Opinion: connected, no open positions");
   });
@@ -45,9 +45,9 @@ describe("opinionContextProvider", () => {
       ],
     });
     const result = await opinionContextProvider.get(
-      {} as unknown as IAgentRuntime,
-      {} as unknown as Memory,
-      {} as unknown as State,
+      {} as Partial<IAgentRuntime> as IAgentRuntime,
+      {} as Partial<Memory> as Memory,
+      {} as Partial<State> as State,
     );
     expect(result.text).toContain("CPI");
     expect(result.text).toContain("Opinion:");
@@ -56,9 +56,9 @@ describe("opinionContextProvider", () => {
   it("returns empty text when client not ready", async () => {
     mockIsReady.value = false;
     const result = await opinionContextProvider.get(
-      {} as unknown as IAgentRuntime,
-      {} as unknown as Memory,
-      {} as unknown as State,
+      {} as Partial<IAgentRuntime> as IAgentRuntime,
+      {} as Partial<Memory> as Memory,
+      {} as Partial<State> as State,
     );
     expect(result.text).toBe("");
     mockIsReady.value = true;

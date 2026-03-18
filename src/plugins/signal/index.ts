@@ -28,7 +28,7 @@ export const signalPlugin: Plugin = {
   name: "signal",
   description: "Signal messaging via native Presage bindings (device linking)",
 
-  services: [SignalNativeService as unknown as ServiceClass],
+  services: [SignalNativeService as ServiceClass],
 
   actions: [sendSignalMessage],
 

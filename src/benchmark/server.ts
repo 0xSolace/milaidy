@@ -403,11 +403,11 @@ async function collectSessionDiagnostics(
 
   const providerNames = runtime.providers.map((provider) => provider.name);
   const evaluatorNames =
-    (runtime as unknown as { evaluators?: Array<{ name?: string }> }).evaluators
+    (runtime as { evaluators?: Array<{ name?: string }> }).evaluators
       ?.map((evaluator) => evaluator?.name ?? "")
       .filter((name) => name.length > 0) ?? [];
   const actionNames =
-    (runtime as unknown as { actions?: Array<{ name?: string }> }).actions
+    (runtime as { actions?: Array<{ name?: string }> }).actions
       ?.map((action) => action?.name?.toUpperCase() ?? "")
       .filter((name) => name.length > 0) ?? [];
 
@@ -761,7 +761,7 @@ export async function startBenchmarkServer() {
   await runtime.initialize();
   disableManualCompactionAction(runtime);
   const modelHandlers = (
-    runtime as unknown as { models?: Map<string, unknown[]> }
+    runtime as { models?: Map<string, unknown[]> }
   ).models;
   const modelHandlerSummary = Object.fromEntries(
     [...(modelHandlers?.entries() ?? [])].map(([modelType, handlers]) => [
@@ -821,7 +821,7 @@ export async function startBenchmarkServer() {
     },
   };
 
-  const runtimeWithServiceOverride = runtime as unknown as {
+  const runtimeWithServiceOverride = runtime as {
     getService: (serviceType: string) => unknown;
   };
   const originalGetService =

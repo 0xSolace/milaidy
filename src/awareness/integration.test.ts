@@ -17,7 +17,7 @@ function fakeRuntime(): IAgentRuntime {
     getSetting: () => null,
     getService: () => null,
     clients: [],
-  } as unknown as IAgentRuntime;
+  } as Partial<IAgentRuntime> as IAgentRuntime;
 }
 
 describe("self-awareness integration", () => {
@@ -33,7 +33,7 @@ describe("self-awareness integration", () => {
     const provider = createSelfStatusProvider(registry);
     const providerResult = await provider.get(
       runtime,
-      {} as Memory,
+      {} as unknown as Memory,
       {} as State,
     );
     expect(providerResult.text).toContain("[Self Status v1]");

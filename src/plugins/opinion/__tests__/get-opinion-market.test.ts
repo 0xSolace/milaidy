@@ -33,10 +33,10 @@ describe("GET_OPINION_MARKET", () => {
   });
   it("returns market detail with orderbook", async () => {
     const result = await getOpinionMarketAction.handler(
-      {} as unknown as IAgentRuntime,
-      {} as unknown as Memory,
-      {} as unknown as State,
-      { parameters: { marketId: 813 } } as unknown as Record<string, unknown>,
+      {} as Partial<IAgentRuntime> as IAgentRuntime,
+      {} as Partial<Memory> as Memory,
+      {} as Partial<State> as State,
+      { parameters: { marketId: 813 } } as Record<string, unknown>,
     );
     expect(result.success).toBe(true);
     expect(result.text).toContain("CPI");
@@ -44,10 +44,10 @@ describe("GET_OPINION_MARKET", () => {
   });
   it("rejects missing marketId", async () => {
     const result = await getOpinionMarketAction.handler(
-      {} as unknown as IAgentRuntime,
-      {} as unknown as Memory,
-      {} as unknown as State,
-      { parameters: {} } as unknown as Record<string, unknown>,
+      {} as Partial<IAgentRuntime> as IAgentRuntime,
+      {} as Partial<Memory> as Memory,
+      {} as Partial<State> as State,
+      { parameters: {} } as Record<string, unknown>,
     );
     expect(result.success).toBe(false);
   });

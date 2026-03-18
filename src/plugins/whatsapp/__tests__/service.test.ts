@@ -52,7 +52,7 @@ function createMockRuntime(overrides: Record<string, unknown> = {}) {
       debug: vi.fn(),
     },
     ...overrides,
-  } as unknown as Parameters<typeof WhatsAppBaileysService.start>[0];
+  } as Parameters<typeof WhatsAppBaileysService.start>[0];
 }
 
 // ---------------------------------------------------------------------------
@@ -238,7 +238,7 @@ describe("WhatsAppBaileysService", () => {
 
       WhatsAppBaileysService.registerSendHandlers(
         runtime,
-        svc as unknown as Parameters<
+        svc as Parameters<
           typeof WhatsAppBaileysService.registerSendHandlers
         >[1],
       );
@@ -522,7 +522,7 @@ describe("handleIncomingMessage()", () => {
 
   function callHandle(msg: Record<string, unknown>): Promise<void> {
     return (
-      svc as unknown as {
+      svc as {
         handleIncomingMessage(m: Record<string, unknown>): Promise<void>;
       }
     ).handleIncomingMessage(msg);
@@ -687,7 +687,7 @@ describe("handleIncomingMessage()", () => {
     const results = await callback({ text: "Hi there!" });
 
     const sock = (
-      svc as unknown as { sock: { sendMessage: ReturnType<typeof vi.fn> } }
+      svc as { sock: { sendMessage: ReturnType<typeof vi.fn> } }
     ).sock;
     expect(sock.sendMessage).toHaveBeenCalledWith(
       "5511999999999@s.whatsapp.net",
@@ -708,7 +708,7 @@ describe("handleIncomingMessage()", () => {
     const results = await callback({ text: "Hi", target: "discord" });
 
     const sock = (
-      svc as unknown as { sock: { sendMessage: ReturnType<typeof vi.fn> } }
+      svc as { sock: { sendMessage: ReturnType<typeof vi.fn> } }
     ).sock;
     expect(sock.sendMessage).not.toHaveBeenCalled();
     expect(results).toHaveLength(0);
@@ -725,7 +725,7 @@ describe("handleIncomingMessage()", () => {
     const results = await callback({ text: "   " });
 
     const sock = (
-      svc as unknown as { sock: { sendMessage: ReturnType<typeof vi.fn> } }
+      svc as { sock: { sendMessage: ReturnType<typeof vi.fn> } }
     ).sock;
     expect(sock.sendMessage).not.toHaveBeenCalled();
     expect(results).toHaveLength(0);

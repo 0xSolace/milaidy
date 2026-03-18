@@ -49,7 +49,7 @@ describe("Computer Use plugin classification", () => {
   it("@elizaos/plugin-computeruse is added via features.computeruse = true", () => {
     const config = {
       features: { computeruse: true },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-computeruse")).toBe(true);
   });
@@ -57,7 +57,7 @@ describe("Computer Use plugin classification", () => {
   it("@elizaos/plugin-computeruse is added via features.computeruse = { enabled: true }", () => {
     const config = {
       features: { computeruse: { enabled: true } },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-computeruse")).toBe(true);
   });
@@ -65,7 +65,7 @@ describe("Computer Use plugin classification", () => {
   it("@elizaos/plugin-computeruse is NOT loaded when features.computeruse = { enabled: false }", () => {
     const config = {
       features: { computeruse: { enabled: false } },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-computeruse")).toBe(false);
   });
@@ -77,7 +77,7 @@ describe("Computer Use plugin classification", () => {
           computeruse: { enabled: true },
         },
       },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-computeruse")).toBe(true);
   });
@@ -89,7 +89,7 @@ describe("Computer Use plugin classification", () => {
           computeruse: { enabled: false },
         },
       },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-computeruse")).toBe(false);
   });
@@ -97,7 +97,7 @@ describe("Computer Use plugin classification", () => {
   it("does not interfere with core plugins when computeruse is enabled", () => {
     const config = {
       features: { computeruse: true },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     // Core plugins should still all be present
     expect(names.has("@elizaos/plugin-sql")).toBe(true);

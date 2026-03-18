@@ -16,7 +16,7 @@ function mockRuntime(registry: AwarenessRegistry) {
       if (name === "AWARENESS_REGISTRY") return registry;
       return null;
     }),
-  } as unknown as Parameters<typeof getSelfStatusAction.handler>[0];
+  } as Parameters<typeof getSelfStatusAction.handler>[0];
 }
 
 describe("GET_SELF_STATUS action", () => {
@@ -70,7 +70,7 @@ describe("GET_SELF_STATUS action", () => {
   });
 
   it("returns error when registry not available", async () => {
-    const rt = { getService: vi.fn(() => null) } as unknown as Parameters<
+    const rt = { getService: vi.fn(() => null) } as Parameters<
       typeof getSelfStatusAction.handler
     >[0];
     const result = await getSelfStatusAction.handler(

@@ -335,7 +335,7 @@ function createRuntimeForStreamTests(options: {
     getCache: async () => null,
     setCache: async () => {},
   };
-  return runtimeSubset as AgentRuntime;
+  return runtimeSubset as unknown as AgentRuntime;
 }
 
 function createRuntimeForAutonomySurfaceTests(options: {
@@ -464,7 +464,7 @@ function createRuntimeForAutonomySurfaceTests(options: {
     setCache: async () => {},
   };
 
-  return runtimeSubset as AgentRuntime;
+  return runtimeSubset as unknown as AgentRuntime;
 }
 
 function createRuntimeForWorkbenchCrudTests(options?: {
@@ -528,7 +528,7 @@ function createRuntimeForWorkbenchCrudTests(options?: {
     },
   };
 
-  return runtimeSubset as AgentRuntime;
+  return runtimeSubset as unknown as AgentRuntime;
 }
 
 function createRuntimeForChatSseTests(options?: {
@@ -639,7 +639,7 @@ function createRuntimeForChatSseTests(options?: {
     setCache: async () => {},
   };
 
-  return runtimeSubset as AgentRuntime;
+  return runtimeSubset as unknown as AgentRuntime;
 }
 
 function createRuntimeForCompatEndpointTests(): AgentRuntime {
@@ -674,7 +674,7 @@ function createRuntimeForCompatEndpointTests(): AgentRuntime {
     setCache: async () => {},
   };
 
-  return runtimeSubset as AgentRuntime;
+  return runtimeSubset as unknown as AgentRuntime;
 }
 
 function createRuntimeForCreditNoResponseTests(): AgentRuntime {
@@ -712,7 +712,7 @@ function createRuntimeForCreditNoResponseTests(): AgentRuntime {
     setCache: async () => {},
   };
 
-  return runtimeSubset as AgentRuntime;
+  return runtimeSubset as unknown as AgentRuntime;
 }
 
 function createRuntimeForCreditLiteralNoResponseTests(): AgentRuntime {
@@ -750,7 +750,7 @@ function createRuntimeForCreditLiteralNoResponseTests(): AgentRuntime {
     setCache: async () => {},
   };
 
-  return runtimeSubset as AgentRuntime;
+  return runtimeSubset as unknown as AgentRuntime;
 }
 
 function createRuntimeForCreditErrorTests(): AgentRuntime {
@@ -774,7 +774,7 @@ function createRuntimeForCreditErrorTests(): AgentRuntime {
     setCache: async () => {},
   };
 
-  return runtimeSubset as AgentRuntime;
+  return runtimeSubset as unknown as AgentRuntime;
 }
 
 // ---------------------------------------------------------------------------
@@ -1564,7 +1564,7 @@ describe("API Server E2E (no runtime)", () => {
           query.count === 1 ? ([{ createdAt: restoredAt }] as never[]) : [],
         getCache: async () => null,
         setCache: async () => {},
-      } as Partial<AgentRuntime> as AgentRuntime;
+      } as unknown as unknown as AgentRuntime;
 
       const streamServer = await startApiServer({ port: 0, runtime });
       try {
@@ -1615,7 +1615,7 @@ describe("API Server E2E (no runtime)", () => {
           query.count === 1 ? ([{ createdAt: restoredAt }] as never[]) : [],
         getCache: async () => null,
         setCache: async () => {},
-      } as Partial<AgentRuntime> as AgentRuntime;
+      } as unknown as unknown as AgentRuntime;
 
       const streamServer = await startApiServer({ port: 0, runtime });
       try {
@@ -3061,7 +3061,7 @@ describe("API Server E2E (no runtime)", () => {
         createTask: async () => crypto.randomUUID() as UUID,
         updateTask: async () => {},
         deleteTask: async () => {},
-      } as unknown as AgentRuntime;
+      } as unknown as unknown as AgentRuntime;
 
       const streamServer = await startApiServer({ port: 0, runtime });
       const streamPort = streamServer.port;

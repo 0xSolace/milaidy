@@ -29,7 +29,7 @@ function createRuntimeStub(): AgentRuntime {
   return {
     character,
     useModel: vi.fn(async () => "generated output"),
-  } as unknown as AgentRuntime;
+  } as unknown as unknown as AgentRuntime;
 }
 
 describe("character routes", () => {
@@ -113,7 +113,7 @@ describe("character routes", () => {
     expect(result.status).toBe(200);
     expect(state.agentName).toBe("Sakuya");
     expect(
-      (state.runtime as unknown as { character: Record<string, unknown> })
+      (state.runtime as { character: Record<string, unknown> })
         .character.name,
     ).toBe("Sakuya");
     expect(result.payload).toMatchObject({
@@ -142,7 +142,7 @@ describe("character routes", () => {
 
     expect(result.status).toBe(200);
     expect(
-      (state.runtime as unknown as { character: Record<string, unknown> })
+      (state.runtime as { character: Record<string, unknown> })
         .character.messageExamples,
     ).toEqual(messageExamples);
   });
@@ -185,7 +185,7 @@ describe("character routes", () => {
     });
     expect(state.agentName).toBe("Sakuya");
     expect(
-      (state.runtime as unknown as { character: Record<string, unknown> })
+      (state.runtime as { character: Record<string, unknown> })
         .character,
     ).toMatchObject(fullCharacter);
 
@@ -283,7 +283,7 @@ describe("character routes", () => {
     expect(result.status).toBe(200);
     expect(result.payload).toMatchObject({ generated: "generated output" });
     expect(
-      (state.runtime as unknown as { useModel: ReturnType<typeof vi.fn> })
+      (state.runtime as { useModel: ReturnType<typeof vi.fn> })
         .useModel,
     ).toHaveBeenCalledTimes(1);
   });
@@ -305,7 +305,7 @@ describe("character routes", () => {
     expect(result.status).toBe(200);
     expect(result.payload).toMatchObject({ generated: "generated output" });
     expect(
-      (state.runtime as unknown as { useModel: ReturnType<typeof vi.fn> })
+      (state.runtime as { useModel: ReturnType<typeof vi.fn> })
         .useModel,
     ).toHaveBeenCalledTimes(1);
   });
@@ -317,7 +317,7 @@ describe("character routes", () => {
       body: {
         field: "not-real",
         context: {},
-      } as unknown as Record<string, unknown>,
+      } as Record<string, unknown>,
     });
 
     expect(result.status).toBe(400);

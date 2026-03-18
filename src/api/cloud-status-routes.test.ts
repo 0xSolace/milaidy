@@ -23,7 +23,7 @@ function runtimeWithCloudAuth(cloudAuth: unknown): AgentRuntime {
     getService: vi.fn((name: string) =>
       name === "CLOUD_AUTH" ? cloudAuth : null,
     ),
-  } as unknown as AgentRuntime;
+  } as unknown as unknown as AgentRuntime;
 }
 
 async function invoke(args: {
@@ -186,7 +186,7 @@ describe("cloud status routes", () => {
       status: 200,
       json: async () => ({ balance: 1.5 }),
     }));
-    vi.stubGlobal("fetch", fetchMock as unknown as typeof fetch);
+    vi.stubGlobal("fetch", fetchMock as typeof fetch);
 
     const result = await invoke({
       method: "GET",
@@ -225,7 +225,7 @@ describe("cloud status routes", () => {
       status: 200,
       json: async () => ({ balance: 1.5 }),
     }));
-    vi.stubGlobal("fetch", fetchMock as unknown as typeof fetch);
+    vi.stubGlobal("fetch", fetchMock as typeof fetch);
 
     const result = await invoke({
       method: "GET",
@@ -252,7 +252,7 @@ describe("cloud status routes", () => {
         ok: false,
         status: 302,
         json: async () => ({}),
-      })) as unknown as typeof fetch,
+      })) as typeof fetch,
     );
 
     const result = await invoke({
@@ -277,7 +277,7 @@ describe("cloud status routes", () => {
         ok: true,
         status: 200,
         json: async () => ({ nope: true }),
-      })) as unknown as typeof fetch,
+      })) as typeof fetch,
     );
 
     const result = await invoke({

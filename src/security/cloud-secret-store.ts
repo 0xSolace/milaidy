@@ -37,7 +37,7 @@ const _dockerFallback: string | undefined = process.env[CLOUD_KEY_NAME];
 export function scrubCloudKeyFromEnv(): void {
   const current = process.env[CLOUD_KEY_NAME];
   if (current !== undefined) {
-    (_store as unknown as { _secret: string | undefined })._secret = current;
+    (_store as { _secret: string | undefined })._secret = current;
     delete process.env[CLOUD_KEY_NAME];
   }
 }
@@ -52,7 +52,7 @@ export function scrubCloudKeyFromEnv(): void {
  */
 export function getCloudSecret(): string | undefined {
   return (
-    (_store as unknown as { _secret: string | undefined })._secret ??
+    (_store as { _secret: string | undefined })._secret ??
     process.env[CLOUD_KEY_NAME] ??
     _dockerFallback
   );
@@ -68,5 +68,5 @@ export function isStoreNonEnumerable(): boolean {
 
 /** @internal — test-only reset */
 export function __resetCloudSecretStoreForTests(): void {
-  (_store as unknown as { _secret: string | undefined })._secret = undefined;
+  (_store as { _secret: string | undefined })._secret = undefined;
 }

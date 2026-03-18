@@ -63,7 +63,7 @@ describe("Code writing plugin classification", () => {
           },
         },
       },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-code")).toBe(true);
     expect(names.has("@elizaos/plugin-shell")).toBe(true);

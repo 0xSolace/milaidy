@@ -709,7 +709,7 @@ describe("trajectory collection bridge e2e", () => {
       metadata: {
         type: "message",
       },
-    } as unknown as Memory;
+    } as Partial<Memory> as Memory;
 
     await onMessageReceived?.({
       runtime,
@@ -747,7 +747,7 @@ describe("trajectory collection bridge e2e", () => {
       metadata: {
         type: "message",
       },
-    } as unknown as Memory;
+    } as Partial<Memory> as Memory;
 
     await onMessageSent?.({
       runtime,

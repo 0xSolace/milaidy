@@ -146,7 +146,7 @@ export class ElizaTUIBridge {
   }
 
   private getPiTuiCompat(): PiTUI {
-    return this.tui.getTUI() as unknown as PiTUI;
+    return this.tui.getTUI() as PiTUI;
   }
 
   private getActionEventRouteDecision(

@@ -106,7 +106,7 @@ function stubFetch(response: { ok: boolean; status: number; body: unknown }) {
       ok: response.ok,
       status: response.status,
       json: vi.fn().mockResolvedValue(response.body),
-    } as unknown as Response),
+    } as Partial<Response> as Response),
   );
 }
 

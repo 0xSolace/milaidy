@@ -27,7 +27,7 @@ export function formatModelSpec(parts: ModelSpecParts): string {
  * so we expose a safely-typed wrapper for dynamic strings.
  */
 export function getPiModel(provider: string, modelId: string): Model<Api> {
-  const getModelUnsafe = getModel as unknown as (
+  const getModelUnsafe = getModel as (
     p: string,
     m: string,
   ) => Model<Api>;

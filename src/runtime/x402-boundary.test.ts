@@ -165,7 +165,7 @@ describe("applyX402ConfigToEnv – propagation boundaries", () => {
         maxTotalUsd: 100,
         dbPath: "/tmp/x402.db",
       },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
 
     applyX402ConfigToEnv(config);
 
@@ -195,7 +195,7 @@ describe("applyX402ConfigToEnv – propagation boundaries", () => {
         apiKey: "safe-key",
         baseUrl: "https://safe.example.com",
       },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
 
     applyX402ConfigToEnv(config);
 
@@ -210,7 +210,7 @@ describe("applyX402ConfigToEnv – propagation boundaries", () => {
 
     const config = {
       x402: { enabled: false, apiKey: "should-not-appear" },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
 
     applyX402ConfigToEnv(config);
 
@@ -231,7 +231,7 @@ describe("applyX402ConfigToEnv – propagation boundaries", () => {
 
     const config = {
       x402: { enabled: true, apiKey: "", baseUrl: "" },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
 
     applyX402ConfigToEnv(config);
 
@@ -246,7 +246,7 @@ describe("applyX402ConfigToEnv – propagation boundaries", () => {
 
     const config = {
       x402: { enabled: true, apiKey: "new-key" },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
 
     applyX402ConfigToEnv(config);
 
@@ -274,7 +274,7 @@ describe("x402 plugin mapping", () => {
   afterEach(() => snap.restore());
 
   it("collectPluginNames includes @elizaos/plugin-x402 when config.x402.enabled", () => {
-    const config = { x402: { enabled: true } } as unknown as ElizaConfig;
+    const config = { x402: { enabled: true } } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-x402")).toBe(true);
   });
@@ -293,7 +293,7 @@ describe("x402 plugin mapping", () => {
     const config = {
       x402: { enabled: true },
       features: { x402: true },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
 
     const names = collectPluginNames(config);
     const x402Entries = [...names].filter((n) => n === "@elizaos/plugin-x402");
@@ -387,7 +387,7 @@ describe("x402 disabled-by-default safety", () => {
   it("x402 config with privateKey but no enabled flag does not propagate to env", () => {
     const config = {
       x402: { privateKey: "0xDEADBEEF", apiKey: "key-123" },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
 
     applyX402ConfigToEnv(config);
 
@@ -399,7 +399,7 @@ describe("x402 disabled-by-default safety", () => {
   it("x402 config with enabled: undefined is treated as disabled", () => {
     const config = {
       x402: { enabled: undefined, apiKey: "key-456" },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
 
     applyX402ConfigToEnv(config);
 
@@ -411,7 +411,7 @@ describe("x402 disabled-by-default safety", () => {
     process.env.ANTHROPIC_API_KEY = "test";
     const config = {
       x402: { privateKey: "0xDEADBEEF" },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-x402")).toBe(false);
   });

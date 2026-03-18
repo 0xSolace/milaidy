@@ -90,7 +90,7 @@ describe("conversation message truncation route", () => {
     getMemories,
     deleteMemory,
     adapter: {},
-  } as unknown as AgentRuntime;
+  } as unknown as unknown as AgentRuntime;
 
   beforeAll(async () => {
     const server = await startApiServer({ port: 0 });

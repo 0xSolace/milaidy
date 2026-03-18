@@ -11,7 +11,7 @@ vi.mock("node:dns/promises", () => ({
   lookup: vi.fn(),
 }));
 
-const mockedDnsLookup = dnsLookup as unknown as {
+const mockedDnsLookup = dnsLookup as {
   mockRejectedValue: (value: unknown) => unknown;
   mockResolvedValue: (value: unknown) => unknown;
 };

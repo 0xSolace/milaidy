@@ -96,13 +96,13 @@ describe("CUA plugin mapping — feature flags and config entries", () => {
   afterEach(() => snap.restore());
 
   it("features.cua = true loads @elizaos/plugin-cua", () => {
-    const config = { features: { cua: true } } as unknown as ElizaConfig;
+    const config = { features: { cua: true } } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-cua")).toBe(true);
   });
 
   it("features.cua = false does NOT load @elizaos/plugin-cua", () => {
-    const config = { features: { cua: false } } as unknown as ElizaConfig;
+    const config = { features: { cua: false } } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-cua")).toBe(false);
   });
@@ -110,7 +110,7 @@ describe("CUA plugin mapping — feature flags and config entries", () => {
   it("features.cua = { enabled: true } loads @elizaos/plugin-cua", () => {
     const config = {
       features: { cua: { enabled: true } },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-cua")).toBe(true);
   });
@@ -118,7 +118,7 @@ describe("CUA plugin mapping — feature flags and config entries", () => {
   it("features.cua = { enabled: false } does NOT load @elizaos/plugin-cua", () => {
     const config = {
       features: { cua: { enabled: false } },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-cua")).toBe(false);
   });
@@ -131,7 +131,7 @@ describe("CUA plugin mapping — feature flags and config entries", () => {
   it("CUA and computeruse are separate plugins with separate mappings", () => {
     const config = {
       features: { cua: true, computeruse: true },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-cua")).toBe(true);
     expect(names.has("@elizaos/plugin-computeruse")).toBe(true);
@@ -162,7 +162,7 @@ describe("CUA auto-enable via environment variables", () => {
   });
 
   it("CUA_API_KEY triggers auto-enable via applyPluginAutoEnable", () => {
-    const config = { plugins: {} } as unknown as ElizaConfig;
+    const config = { plugins: {} } as Partial<ElizaConfig> as ElizaConfig;
     const result = applyPluginAutoEnable({
       config,
       env: { CUA_API_KEY: "test-cua-key" },
@@ -171,7 +171,7 @@ describe("CUA auto-enable via environment variables", () => {
   });
 
   it("CUA_HOST triggers auto-enable via applyPluginAutoEnable", () => {
-    const config = { plugins: {} } as unknown as ElizaConfig;
+    const config = { plugins: {} } as Partial<ElizaConfig> as ElizaConfig;
     const result = applyPluginAutoEnable({
       config,
       env: { CUA_HOST: "http://localhost:8000" },
@@ -180,7 +180,7 @@ describe("CUA auto-enable via environment variables", () => {
   });
 
   it("neither CUA env var set does NOT auto-enable plugin", () => {
-    const config = { plugins: {} } as unknown as ElizaConfig;
+    const config = { plugins: {} } as Partial<ElizaConfig> as ElizaConfig;
     const result = applyPluginAutoEnable({ config, env: {} });
     expect(result.changes.some((c) => c.includes("plugin-cua"))).toBe(false);
   });
@@ -192,7 +192,7 @@ describe("CUA auto-enable via environment variables", () => {
 
 describe("CUA in auto-enable mapping", () => {
   it("applyPluginAutoEnable adds @elizaos/plugin-cua when CUA_API_KEY is set", () => {
-    const config = { plugins: {} } as unknown as ElizaConfig;
+    const config = { plugins: {} } as Partial<ElizaConfig> as ElizaConfig;
     const result = applyPluginAutoEnable({
       config,
       env: { CUA_API_KEY: "test-key" },
@@ -201,7 +201,7 @@ describe("CUA in auto-enable mapping", () => {
   });
 
   it("applyPluginAutoEnable does NOT add CUA when no CUA env vars are set", () => {
-    const config = { plugins: {} } as unknown as ElizaConfig;
+    const config = { plugins: {} } as Partial<ElizaConfig> as ElizaConfig;
     const result = applyPluginAutoEnable({ config, env: {} });
     expect(result.changes.some((c) => c.includes("plugin-cua"))).toBe(false);
   });
@@ -239,7 +239,7 @@ describe("CUA security boundaries", () => {
     process.env.CUA_API_KEY = "test-key";
     const config = {
       features: { cua: true },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     const cuaEntries = [...names].filter((n) => n === "@elizaos/plugin-cua");
     expect(cuaEntries).toHaveLength(1);

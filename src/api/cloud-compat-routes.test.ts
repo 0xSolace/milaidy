@@ -48,7 +48,7 @@ function makeReq(opts: {
   url?: string;
   body?: string;
 }): http.IncomingMessage {
-  const emitter = new EventEmitter() as unknown as http.IncomingMessage;
+  const emitter = new EventEmitter() as http.IncomingMessage;
   emitter.url = opts.url ?? "/api/cloud/compat/agents";
   // Schedule body emission after construction
   if (opts.body) {
@@ -329,7 +329,7 @@ describe("cloud-compat-routes", () => {
             baseUrl: "https://cloud.example.com",
             serviceKey: "svc-key-123",
           },
-        } as unknown as ElizaConfig,
+        } as Partial<ElizaConfig> as ElizaConfig,
       };
 
       await handleCloudCompatRoute(

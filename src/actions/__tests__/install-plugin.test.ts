@@ -15,7 +15,7 @@ function mockJsonResponse(response: {
           throw new Error("invalid json");
         })
       : vi.fn(async () => response.body),
-  } as unknown as Response;
+  } as Partial<Response> as Response;
 }
 
 describe("installPluginAction", () => {

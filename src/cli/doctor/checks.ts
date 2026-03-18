@@ -73,10 +73,10 @@ export const MODEL_KEY_VARS = [
 
 export function checkRuntime(): CheckResult {
   const isBun =
-    typeof (globalThis as Record<string, unknown>).Bun !== "undefined";
+    typeof (globalThis as unknown as Record<string, unknown>).Bun !== "undefined";
 
   if (isBun) {
-    const bun = (globalThis as Record<string, unknown>).Bun as {
+    const bun = (globalThis as unknown as Record<string, unknown>).Bun as {
       version: string;
     };
     const [major] = bun.version.split(".").map(Number);

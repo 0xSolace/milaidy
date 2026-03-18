@@ -50,7 +50,7 @@ describe("opinionContributor", () => {
       ],
     });
     const summary = await opinionContributor.summary(
-      {} as unknown as IAgentRuntime,
+      {} as Partial<IAgentRuntime> as IAgentRuntime,
     );
     expect(summary.length).toBeLessThanOrEqual(SUMMARY_CHAR_LIMIT);
   });
@@ -58,7 +58,7 @@ describe("opinionContributor", () => {
   it("summary returns not connected when client not ready", async () => {
     mockIsReady.value = false;
     const summary = await opinionContributor.summary(
-      {} as unknown as IAgentRuntime,
+      {} as Partial<IAgentRuntime> as IAgentRuntime,
     );
     expect(summary).toBe("Opinion: not connected");
     mockIsReady.value = true;

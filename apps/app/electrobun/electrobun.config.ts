@@ -108,7 +108,7 @@ export default {
         "disable-accelerated-video-decode": false,
         "disable-accelerated-video-encode": false,
         "disable-gpu-memory-buffer-video-frames": false,
-      } as unknown as Record<string, string | true>,
+      } as Record<string, string | true>,
     },
     win: {
       bundleCEF: true,

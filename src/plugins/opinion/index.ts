@@ -67,7 +67,7 @@ export const opinionPlugin: Plugin = {
 
   providers: [opinionContextProvider],
 
-  services: [OpinionWsService as unknown as ServiceClass],
+  services: [OpinionWsService as ServiceClass],
 };
 
 export default opinionPlugin;

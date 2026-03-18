@@ -85,7 +85,7 @@ export const sendSignalMessage: Action = {
           source: "signal",
           channelId: phoneNumber,
           roomId: message.roomId,
-        } as unknown as TargetInfo,
+        } as Partial<TargetInfo> as TargetInfo,
         {
           text: messageText,
         } as Content,

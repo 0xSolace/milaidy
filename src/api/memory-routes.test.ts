@@ -18,7 +18,7 @@ function buildMemory(overrides: Partial<Memory> = {}): Memory {
     content: { text: "" },
     createdAt: 1,
     ...overrides,
-  } as Memory;
+  } as unknown as Memory;
 }
 
 describe("memory routes", () => {
@@ -48,7 +48,7 @@ describe("memory routes", () => {
             }
           : null,
       getServiceLoadPromise: async () => undefined,
-    } as unknown as AgentRuntime;
+    } as unknown as unknown as AgentRuntime;
   });
 
   const invoke = createRouteInvoker<

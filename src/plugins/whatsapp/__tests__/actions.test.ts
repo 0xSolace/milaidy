@@ -15,7 +15,7 @@ function createMockRuntime(hasWhatsApp = true) {
       error: vi.fn(),
       debug: vi.fn(),
     },
-  } as unknown as Parameters<typeof sendWhatsAppMessage.handler>[0];
+  } as Parameters<typeof sendWhatsAppMessage.handler>[0];
 }
 
 function stubMessage(

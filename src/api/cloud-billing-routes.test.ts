@@ -40,7 +40,7 @@ function makeState(
 }
 
 function makeReq(opts: { url?: string; body?: string }): http.IncomingMessage {
-  const emitter = new EventEmitter() as unknown as http.IncomingMessage;
+  const emitter = new EventEmitter() as http.IncomingMessage;
   emitter.url = opts.url ?? "/api/cloud/billing/summary";
 
   if (opts.body) {

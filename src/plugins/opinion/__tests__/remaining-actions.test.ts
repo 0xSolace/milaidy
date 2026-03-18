@@ -32,10 +32,10 @@ import { redeemOpinionAction } from "../actions/redeem-opinion.js";
 describe("CHECK_OPINION_POSITIONS", () => {
   it("returns formatted positions", async () => {
     const result = await checkOpinionPositionsAction.handler(
-      {} as unknown as IAgentRuntime,
-      {} as unknown as Memory,
-      {} as unknown as State,
-      {} as unknown as Record<string, unknown>,
+      {} as Partial<IAgentRuntime> as IAgentRuntime,
+      {} as Partial<Memory> as Memory,
+      {} as Partial<State> as State,
+      {} as Record<string, unknown>,
     );
     expect(result.success).toBe(true);
     expect(result.text).toContain("CPI");
@@ -45,10 +45,10 @@ describe("CHECK_OPINION_POSITIONS", () => {
 describe("CANCEL_OPINION_ORDER", () => {
   it("cancels by orderId", async () => {
     const result = await cancelOpinionOrderAction.handler(
-      {} as unknown as IAgentRuntime,
-      {} as unknown as Memory,
-      {} as unknown as State,
-      { parameters: { orderId: "o1" } } as unknown as Record<string, unknown>,
+      {} as Partial<IAgentRuntime> as IAgentRuntime,
+      {} as Partial<Memory> as Memory,
+      {} as Partial<State> as State,
+      { parameters: { orderId: "o1" } } as Record<string, unknown>,
     );
     expect(result.success).toBe(true);
   });
@@ -57,20 +57,20 @@ describe("CANCEL_OPINION_ORDER", () => {
 describe("REDEEM_OPINION", () => {
   it("redeems resolved market", async () => {
     const result = await redeemOpinionAction.handler(
-      {} as unknown as IAgentRuntime,
-      {} as unknown as Memory,
-      {} as unknown as State,
-      { parameters: { marketId: 813 } } as unknown as Record<string, unknown>,
+      {} as Partial<IAgentRuntime> as IAgentRuntime,
+      {} as Partial<Memory> as Memory,
+      {} as Partial<State> as State,
+      { parameters: { marketId: 813 } } as Record<string, unknown>,
     );
     expect(result.success).toBe(true);
     expect(result.text).toContain("0xhash123");
   });
   it("rejects missing marketId", async () => {
     const result = await redeemOpinionAction.handler(
-      {} as unknown as IAgentRuntime,
-      {} as unknown as Memory,
-      {} as unknown as State,
-      { parameters: {} } as unknown as Record<string, unknown>,
+      {} as Partial<IAgentRuntime> as IAgentRuntime,
+      {} as Partial<Memory> as Memory,
+      {} as Partial<State> as State,
+      { parameters: {} } as Record<string, unknown>,
     );
     expect(result.success).toBe(false);
   });

@@ -38,7 +38,7 @@ function createState(createAgent: (args: unknown) => Promise<unknown>) {
         createAgent,
       }),
     },
-  } as unknown as CloudRouteState;
+  } as Partial<CloudRouteState> as CloudRouteState;
 }
 
 // Keep these route tests hermetic: login helpers should never call the live cloud service.
@@ -86,7 +86,7 @@ describe("handleCloudRoute", () => {
       cloudManager: {
         getClient: () => null,
       },
-    } as unknown as CloudRouteState;
+    } as Partial<CloudRouteState> as CloudRouteState;
 
     const handled = await handleCloudRoute(
       req,
@@ -139,7 +139,7 @@ describe("handleCloudRoute", () => {
       cloudManager: {
         getClient: () => null,
       },
-    } as unknown as CloudRouteState;
+    } as Partial<CloudRouteState> as CloudRouteState;
 
     const handled = await handleCloudRoute(
       req,
@@ -168,7 +168,7 @@ describe("handleCloudRoute", () => {
           listAgents: listAgentsMock,
         }),
       },
-    } as unknown as CloudRouteState;
+    } as Partial<CloudRouteState> as CloudRouteState;
     const { res, getStatus, getJson } = createMockHttpResponse();
 
     const handled = await handleCloudRoute(
@@ -306,7 +306,7 @@ describe("handleCloudRoute", () => {
         getClientStatus: vi.fn(),
         getStatus: vi.fn(),
       },
-    } as unknown as CloudRouteState;
+    } as Partial<CloudRouteState> as CloudRouteState;
     const { res, getStatus, getJson } = createMockHttpResponse();
 
     const handled = await handleCloudRoute(
@@ -344,7 +344,7 @@ describe("handleCloudRoute", () => {
         connect: connectMock,
         getStatus: statusMock,
       },
-    } as unknown as CloudRouteState;
+    } as Partial<CloudRouteState> as CloudRouteState;
     const { res, getStatus, getJson } = createMockHttpResponse();
 
     const handled = await handleCloudRoute(
@@ -378,7 +378,7 @@ describe("handleCloudRoute", () => {
       cloudManager: {
         getClient: () => null,
       },
-    } as unknown as CloudRouteState;
+    } as Partial<CloudRouteState> as CloudRouteState;
     const { res, getStatus, getJson } = createMockHttpResponse();
 
     const handled = await handleCloudRoute(
@@ -410,7 +410,7 @@ describe("handleCloudRoute", () => {
         getActiveAgentId: () => validAgentId,
         disconnect: disconnectMock,
       },
-    } as unknown as CloudRouteState;
+    } as Partial<CloudRouteState> as CloudRouteState;
     const { res, getStatus, getJson } = createMockHttpResponse();
 
     const handled = await handleCloudRoute(
@@ -449,7 +449,7 @@ describe("handleCloudRoute", () => {
         getActiveAgentId: () => differentAgentId,
         disconnect: disconnectMock,
       },
-    } as unknown as CloudRouteState;
+    } as Partial<CloudRouteState> as CloudRouteState;
     const { res, getStatus, getJson } = createMockHttpResponse();
 
     const handled = await handleCloudRoute(
@@ -480,7 +480,7 @@ describe("handleCloudRoute", () => {
         getActiveAgentId: vi.fn(),
         disconnect: disconnectMock,
       },
-    } as unknown as CloudRouteState;
+    } as Partial<CloudRouteState> as CloudRouteState;
     const { res, getStatus, getJson } = createMockHttpResponse();
     const handled = await handleCloudRoute(
       createMockIncomingMessage({
@@ -517,7 +517,7 @@ describe("handleCloudRoute", () => {
         connect: connectMock,
         getStatus: statusMock,
       },
-    } as unknown as CloudRouteState;
+    } as Partial<CloudRouteState> as CloudRouteState;
     const { res, getStatus, getJson } = createMockHttpResponse();
     const handled = await handleCloudRoute(
       createMockIncomingMessage({
@@ -551,7 +551,7 @@ describe("handleCloudRoute", () => {
       config: {},
       runtime: null,
       cloudManager: null,
-    } as unknown as CloudRouteState;
+    } as Partial<CloudRouteState> as CloudRouteState;
     const { res, getStatus, getJson } = createMockHttpResponse();
 
     const handled = await handleCloudRoute(
@@ -585,7 +585,7 @@ describe("handleCloudRoute", () => {
         connect: connectMock,
         getStatus: statusMock,
       },
-    } as unknown as CloudRouteState;
+    } as Partial<CloudRouteState> as CloudRouteState;
     const { res, getStatus, getJson } = createMockHttpResponse();
     const handled = await handleCloudRoute(
       createMockIncomingMessage({
@@ -638,7 +638,7 @@ describe("handleCloudRoute", () => {
       cloudManager: {
         disconnect: disconnectMock,
       },
-    } as unknown as CloudRouteState;
+    } as Partial<CloudRouteState> as CloudRouteState;
 
     const { res, getStatus, getJson } = createMockHttpResponse();
     const handled = await handleCloudRoute(
@@ -686,7 +686,7 @@ describe("handleCloudRoute", () => {
         updateAgent: vi.fn(async () => undefined),
       },
       cloudManager: null,
-    } as unknown as CloudRouteState;
+    } as Partial<CloudRouteState> as CloudRouteState;
 
     const { res, getStatus, getJson } = createMockHttpResponse();
     const handled = await handleCloudRoute(
@@ -727,7 +727,7 @@ describe("handleCloudRoute", () => {
       cloudManager: {
         disconnect: vi.fn(),
       },
-    } as unknown as CloudRouteState;
+    } as Partial<CloudRouteState> as CloudRouteState;
 
     const { res, getStatus, getJson } = createMockHttpResponse();
     const handled = await handleCloudRoute(
@@ -760,7 +760,7 @@ describe("handleCloudRoute", () => {
       },
       runtime: null,
       cloudManager: null,
-    } as unknown as CloudRouteState;
+    } as Partial<CloudRouteState> as CloudRouteState;
 
     const { res, getStatus, getJson } = createMockHttpResponse();
     const handled = await handleCloudRoute(
@@ -801,7 +801,7 @@ describe("handleCloudRoute", () => {
         updateAgent: updateAgentMock,
       },
       cloudManager: null,
-    } as unknown as CloudRouteState;
+    } as Partial<CloudRouteState> as CloudRouteState;
 
     const { res, getStatus, getJson } = createMockHttpResponse();
     const handled = await handleCloudRoute(
@@ -829,7 +829,7 @@ describe("handleCloudRoute", () => {
       cloudManager: {
         disconnect: vi.fn(),
       },
-    } as unknown as CloudRouteState;
+    } as Partial<CloudRouteState> as CloudRouteState;
 
     const { res, getStatus, getJson } = createMockHttpResponse();
     const handled = await handleCloudRoute(
@@ -875,7 +875,7 @@ describe("handleCloudRoute", () => {
       cloudManager: {
         disconnect: disconnectMock,
       },
-    } as unknown as CloudRouteState;
+    } as Partial<CloudRouteState> as CloudRouteState;
 
     const { res, getStatus, getJson } = createMockHttpResponse();
     const handled = await handleCloudRoute(
@@ -1006,7 +1006,7 @@ describe("handleCloudRoute", () => {
       cloudManager: {
         disconnect: disconnectMock,
       },
-    } as unknown as CloudRouteState;
+    } as Partial<CloudRouteState> as CloudRouteState;
 
     const { res, getStatus, getJson } = createMockHttpResponse();
     const handled = await handleCloudRoute(
@@ -1055,7 +1055,7 @@ function cloudState(): CloudRouteState {
     config: { cloud: { baseUrl: "https://test.elizacloud.ai" } },
     cloudManager: null,
     runtime: null,
-  } as unknown as CloudRouteState;
+  } as Partial<CloudRouteState> as CloudRouteState;
 }
 
 describe("handleCloudRoute timeout behavior", () => {
@@ -1162,7 +1162,7 @@ describe("handleCloudRoute timeout behavior", () => {
     state.cloudManager = {
       getClient: vi.fn(() => ({ deleteAgent: vi.fn() })),
       init: initMock,
-    } as unknown as CloudRouteState["cloudManager"];
+    } as CloudRouteState["cloudManager"];
     fetchMock.mockResolvedValue({
       ok: true,
       headers: new Headers(),
@@ -1197,7 +1197,7 @@ describe("handleCloudRoute timeout behavior", () => {
     state.cloudManager = {
       getClient: () => null,
       init: vi.fn(),
-    } as unknown as CloudRouteState["cloudManager"];
+    } as CloudRouteState["cloudManager"];
     fetchMock.mockResolvedValue({
       ok: true,
       headers: new Headers(),
@@ -1360,7 +1360,7 @@ describe("handleCloudRoute timeout behavior", () => {
     state.cloudManager = {
       getClient: () => null,
       init: initMock,
-    } as unknown as CloudRouteState["cloudManager"];
+    } as CloudRouteState["cloudManager"];
     state.runtime = {
       agentId: "00000000-0000-0000-0000-000000000001",
       character: { secrets: {} },
@@ -1418,7 +1418,7 @@ describe("handleCloudRoute timeout behavior", () => {
     state.cloudManager = {
       getClient: () => null,
       init: initMock,
-    } as unknown as CloudRouteState["cloudManager"];
+    } as CloudRouteState["cloudManager"];
 
     const { res, getJson } = createMockHttpResponse<Record<string, unknown>>();
     const handled = await handleCloudRoute(
@@ -1455,7 +1455,7 @@ describe("handleCloudRoute timeout behavior", () => {
     state.cloudManager = {
       getClient: () => null,
       init: initMock,
-    } as unknown as CloudRouteState["cloudManager"];
+    } as CloudRouteState["cloudManager"];
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -1521,7 +1521,7 @@ describe("handleCloudRoute timeout behavior", () => {
     state.cloudManager = {
       getClient: () => null,
       init: initMock,
-    } as unknown as CloudRouteState["cloudManager"];
+    } as CloudRouteState["cloudManager"];
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -1576,7 +1576,7 @@ describe("handleCloudRoute timeout behavior", () => {
     state.cloudManager = {
       getClient: () => null,
       init: initMock,
-    } as unknown as CloudRouteState["cloudManager"];
+    } as CloudRouteState["cloudManager"];
 
     const handled = await handleCloudRoute(
       createMockIncomingMessage({
@@ -1613,7 +1613,7 @@ describe("handleCloudRoute timeout behavior", () => {
     state.cloudManager = {
       getClient: () => null,
       init: initMock,
-    } as unknown as CloudRouteState["cloudManager"];
+    } as CloudRouteState["cloudManager"];
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -1752,7 +1752,7 @@ describe("handleCloudRoute timeout behavior", () => {
         config: {},
         runtime: null,
         cloudManager: null,
-      } as unknown as CloudRouteState;
+      } as Partial<CloudRouteState> as CloudRouteState;
 
       const req = createMockIncomingMessage({
         method: "POST",
@@ -1781,7 +1781,7 @@ describe("handleCloudRoute timeout behavior", () => {
         config: { cloud: { enabled: true, apiKey: "ck-leaked" } },
         runtime: null,
         cloudManager: null,
-      } as unknown as CloudRouteState;
+      } as Partial<CloudRouteState> as CloudRouteState;
 
       const req = createMockIncomingMessage({
         method: "POST",
@@ -1810,7 +1810,7 @@ describe("handleCloudRoute timeout behavior", () => {
         config: {},
         runtime: null,
         cloudManager: null,
-      } as unknown as CloudRouteState;
+      } as Partial<CloudRouteState> as CloudRouteState;
 
       // Use GET /api/cloud/login/status?sessionId=... which is where
       // the upstream handler processes the "authenticated" response and
@@ -1852,7 +1852,7 @@ describe("handleCloudRoute timeout behavior", () => {
         config: {},
         runtime: null,
         cloudManager: null,
-      } as unknown as CloudRouteState;
+      } as Partial<CloudRouteState> as CloudRouteState;
 
       const req = createMockIncomingMessage({
         method: "POST",

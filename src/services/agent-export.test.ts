@@ -73,7 +73,7 @@ function makeMemory(overrides: Partial<Memory> = {}): Memory {
     type: "messages",
     createdAt: Date.now(),
     ...overrides,
-  } as Memory;
+  } as unknown as Memory;
 }
 
 function makeEntity(overrides: Partial<Entity> = {}): Entity {
@@ -518,7 +518,7 @@ function createMockAdapter(db: MockDb): IDatabaseAdapter<object> {
     getPairingAllowlist: async () => [],
     createPairingAllowlistEntry: async () => uuid(),
     deletePairingAllowlistEntry: async () => {},
-  } as unknown as IDatabaseAdapter<object>;
+  } as unknown as } as unknown as as Partial<IDatabaseAdapter<object>> as IDatabaseAdapter<object>;
 }
 
 function createMockRuntime(db: MockDb): AgentRuntime {
@@ -527,7 +527,7 @@ function createMockRuntime(db: MockDb): AgentRuntime {
     agentId: AGENT_ID,
     adapter,
     character: { name: "TestAgent" },
-  } as unknown as AgentRuntime;
+  } as unknown as unknown as AgentRuntime;
 }
 
 // ---------------------------------------------------------------------------
@@ -938,7 +938,7 @@ describe("agent-export", () => {
         agentId: AGENT_ID,
         adapter: null,
         character: { name: "Test" },
-      } as unknown as AgentRuntime;
+      } as unknown as unknown as AgentRuntime;
 
       await expect(exportAgent(noAdapterRuntime, "pass")).rejects.toThrow(
         /database adapter/i,
@@ -950,7 +950,7 @@ describe("agent-export", () => {
         agentId: AGENT_ID,
         adapter: null,
         character: { name: "Test" },
-      } as unknown as AgentRuntime;
+      } as unknown as unknown as AgentRuntime;
 
       await expect(
         importAgent(noAdapterRuntime, Buffer.alloc(100), "pass"),
@@ -1291,7 +1291,7 @@ describe("agent-export", () => {
         ...makeMemory({ roomId: room.id, content: { text: "fallback" } }),
         metadata: undefined,
         type: "facts",
-      } as unknown as Memory;
+      } as Partial<Memory> as Memory;
 
       sourceDb.memories.push(
         msgMem,
@@ -1811,7 +1811,7 @@ describe("agent-export", () => {
           createAgent: async () => false,
           createAgents: async () => [],
         },
-      } as unknown as AgentRuntime;
+      } as unknown as unknown as AgentRuntime;
 
       const err = await importAgent(
         failRuntime,

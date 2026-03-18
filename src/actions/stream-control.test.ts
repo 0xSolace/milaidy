@@ -31,7 +31,7 @@ describe("stream control actions", () => {
 
   beforeEach(() => {
     mockFetch.mockReset();
-    globalThis.fetch = mockFetch as unknown as typeof fetch;
+    globalThis.fetch = mockFetch as typeof fetch;
   });
 
   afterEach(() => {

@@ -169,7 +169,7 @@ describe("subscription routes", () => {
       authUrl: "https://auth.example/anthropic",
       submitCode,
       credentials: Promise.resolve({ expires: Date.now() + 60000 }),
-    } as unknown as import("../auth/index").AnthropicFlow;
+    } as import("../auth/index").AnthropicFlow;
 
     const result = await invoke({
       method: "POST",
@@ -189,7 +189,7 @@ describe("subscription routes", () => {
       submitCode,
       close: vi.fn(),
       credentials: Promise.resolve({ expires: Date.now() + 60000 }),
-    } as unknown as import("../auth/index").CodexFlow;
+    } as import("../auth/index").CodexFlow;
 
     const result = await invoke({
       method: "POST",

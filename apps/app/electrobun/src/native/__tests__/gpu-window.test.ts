@@ -110,9 +110,9 @@ type MockWGPUViewConstructor = Mock<
 type SendToWebview = (message: string, payload?: unknown) => void;
 
 const MockGpuWindow =
-  electrobunBun.GpuWindow as unknown as MockGpuWindowConstructor;
+  electrobunBun.GpuWindow as MockGpuWindowConstructor;
 const MockWGPUView =
-  electrobunBun.WGPUView as unknown as MockWGPUViewConstructor;
+  electrobunBun.WGPUView as MockWGPUViewConstructor;
 
 // ---------------------------------------------------------------------------
 // Helpers

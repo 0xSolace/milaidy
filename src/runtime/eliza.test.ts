@@ -264,7 +264,7 @@ describe("collectPluginNames", () => {
   it("does not load @elizaos/plugin-shell when features.shellEnabled is false", () => {
     const config = {
       features: { shellEnabled: false },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-shell")).toBe(false);
   });
@@ -273,7 +273,7 @@ describe("collectPluginNames", () => {
     const config = {
       plugins: { allow: ["@elizaos/plugin-shell"] },
       features: { shellEnabled: false },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-shell")).toBe(false);
   });
@@ -304,7 +304,7 @@ describe("collectPluginNames", () => {
     process.env.ELIZA_USE_PI_AI = "1";
     const config = {
       cloud: { enabled: true },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
 
     expect(names.has("@elizaos/plugin-elizacloud")).toBe(true);
@@ -319,7 +319,7 @@ describe("collectPluginNames", () => {
           openai: { enabled: true },
         },
       },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
 
     const names = collectPluginNames(config);
 
@@ -335,7 +335,7 @@ describe("collectPluginNames", () => {
           openai: { enabled: false },
         },
       },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-openai")).toBe(false);
   });
@@ -349,7 +349,7 @@ describe("collectPluginNames", () => {
           groq: { enabled: true },
         },
       },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-groq")).toBe(true);
     expect(names.has("@elizaos/plugin-openai")).toBe(false);
@@ -370,7 +370,7 @@ describe("collectPluginNames", () => {
     const config = {
       plugins: { allow: ["browser"] },
       connectors: { discord: { token: "tok" } },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-browser")).toBe(true);
     expect(names.has("@elizaos/plugin-discord")).toBe(true);
@@ -379,7 +379,7 @@ describe("collectPluginNames", () => {
   it("normalizes repoprompt short IDs in plugins.allow", () => {
     const config = {
       plugins: { allow: ["repoprompt", "repoPrompt"] },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
 
     expect(names.has("@elizaos/plugin-repoprompt")).toBe(true);
@@ -388,7 +388,7 @@ describe("collectPluginNames", () => {
   it("normalizes streaming-base short IDs in plugins.allow", () => {
     const config = {
       plugins: { allow: ["streaming-base"] },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
 
     expect(names.has("@elizaos/plugin-streaming-base")).toBe(true);
@@ -397,7 +397,7 @@ describe("collectPluginNames", () => {
   it("normalizes cua short IDs in plugins.allow", () => {
     const config = {
       plugins: { allow: ["cua"] },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
 
     expect(names.has("@elizaos/plugin-cua")).toBe(true);
@@ -406,7 +406,7 @@ describe("collectPluginNames", () => {
   it("loads CUA plugin when features.cua is enabled", () => {
     const config = {
       features: { cua: true },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
 
     expect(names.has("@elizaos/plugin-cua")).toBe(true);
@@ -415,7 +415,7 @@ describe("collectPluginNames", () => {
   it("does not load CUA plugin when features.cua.enabled is false", () => {
     const config = {
       features: { cua: { enabled: false } },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
 
     expect(names.has("@elizaos/plugin-cua")).toBe(false);
@@ -424,7 +424,7 @@ describe("collectPluginNames", () => {
   it("loads x402 plugin when config.x402.enabled is true", () => {
     const config = {
       x402: { enabled: true },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
 
     expect(names.has("@elizaos/plugin-x402")).toBe(true);
@@ -433,7 +433,7 @@ describe("collectPluginNames", () => {
   it("does not load x402 plugin when config.x402.enabled is false", () => {
     const config = {
       x402: { enabled: false },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
 
     expect(names.has("@elizaos/plugin-x402")).toBe(false);
@@ -442,7 +442,7 @@ describe("collectPluginNames", () => {
   it("normalizes x402 short IDs in plugins.allow", () => {
     const config = {
       plugins: { allow: ["x402"] },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
 
     expect(names.has("@elizaos/plugin-x402")).toBe(true);
@@ -451,7 +451,7 @@ describe("collectPluginNames", () => {
   it("loads x402 plugin via features.x402 flag", () => {
     const config = {
       features: { x402: true },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
 
     expect(names.has("@elizaos/plugin-x402")).toBe(true);
@@ -460,7 +460,7 @@ describe("collectPluginNames", () => {
   it("does not load x402 when features.x402.enabled is false", () => {
     const config = {
       features: { x402: { enabled: false } },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
 
     expect(names.has("@elizaos/plugin-x402")).toBe(false);
@@ -475,7 +475,7 @@ describe("collectPluginNames", () => {
   it("normalizes short plugin IDs in plugins.allow", () => {
     const config = {
       plugins: { allow: ["discord"] },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-discord")).toBe(true);
   });
@@ -485,7 +485,7 @@ describe("collectPluginNames", () => {
       plugins: {
         entries: { telegram: { enabled: true } },
       },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-telegram")).toBe(true);
   });
@@ -495,7 +495,7 @@ describe("collectPluginNames", () => {
       plugins: {
         entries: { "streaming-base": { enabled: true } },
       },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
 
     expect(names.has("@elizaos/plugin-streaming-base")).toBe(true);
@@ -506,7 +506,7 @@ describe("collectPluginNames", () => {
       plugins: {
         entries: { "x-streaming": { enabled: true } },
       },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
 
     expect(names.has("@elizaos/plugin-x-streaming")).toBe(true);
@@ -520,7 +520,7 @@ describe("collectPluginNames", () => {
       plugins: {
         entries: { telegram: { enabled: true } },
       },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-telegram")).toBe(true);
   });
@@ -530,7 +530,7 @@ describe("collectPluginNames", () => {
       plugins: {
         entries: { telegram: { enabled: false } },
       },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-telegram")).toBe(false);
   });
@@ -538,7 +538,7 @@ describe("collectPluginNames", () => {
   it("does not add connector plugins for empty connector configs", () => {
     const config = {
       connectors: { telegram: null },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-telegram")).toBe(false);
   });
@@ -564,14 +564,14 @@ describe("collectPluginNames", () => {
   it("respects feature flags in config.features", () => {
     const config = {
       features: { someFeature: true, another: { enabled: false } },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     expect(() => collectPluginNames(config)).not.toThrow();
   });
 
   it("adds @elizaos/plugin-repoprompt when features.repoprompt = true", () => {
     const config = {
       features: { repoprompt: true },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
 
     expect(names.has("@elizaos/plugin-repoprompt")).toBe(true);
@@ -580,7 +580,7 @@ describe("collectPluginNames", () => {
   it("does not add @elizaos/plugin-repoprompt when features.repoprompt = false", () => {
     const config = {
       features: { repoprompt: false },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
 
     expect(names.has("@elizaos/plugin-repoprompt")).toBe(false);
@@ -608,7 +608,7 @@ describe("collectPluginNames", () => {
           },
         },
       },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-weather")).toBe(true);
     expect(names.has("@elizaos/plugin-custom")).toBe(true);
@@ -620,7 +620,7 @@ describe("collectPluginNames", () => {
   });
 
   it("handles empty plugins.installs gracefully", () => {
-    const config = { plugins: { installs: {} } } as unknown as ElizaConfig;
+    const config = { plugins: { installs: {} } } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     // Should still have all core plugins, no crash
     expect(names.has("@elizaos/plugin-sql")).toBe(true);
@@ -628,7 +628,7 @@ describe("collectPluginNames", () => {
   });
 
   it("handles undefined plugins.installs gracefully", () => {
-    const config = { plugins: {} } as unknown as ElizaConfig;
+    const config = { plugins: {} } as Partial<ElizaConfig> as ElizaConfig;
     expect(() => collectPluginNames(config)).not.toThrow();
   });
 
@@ -639,7 +639,7 @@ describe("collectPluginNames", () => {
           "@elizaos/plugin-bad": null,
         },
       },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     // null records should be skipped (the typeof check catches this)
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-bad")).toBe(false);
@@ -658,7 +658,7 @@ describe("collectPluginNames", () => {
           },
         },
       },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     // Core
     expect(names.has("@elizaos/plugin-sql")).toBe(true);
@@ -676,7 +676,7 @@ describe("collectPluginNames", () => {
   it("adds @elizaos/plugin-vision when features.vision = true", () => {
     const config = {
       features: { vision: true },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-vision")).toBe(true);
   });
@@ -684,7 +684,7 @@ describe("collectPluginNames", () => {
   it("does NOT add @elizaos/plugin-vision when features.vision = false", () => {
     const config = {
       features: { vision: false },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-vision")).toBe(false);
   });
@@ -698,7 +698,7 @@ describe("collectPluginNames", () => {
   it("defaults runtime vision mode to OFF when vision is enabled but unset", () => {
     const config = {
       features: { vision: true },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     expect(resolveVisionModeSetting(config, {} as NodeJS.ProcessEnv)).toBe(
       "OFF",
     );
@@ -707,7 +707,7 @@ describe("collectPluginNames", () => {
   it("preserves an explicit VISION_MODE when vision is enabled", () => {
     const config = {
       features: { vision: true },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     expect(
       resolveVisionModeSetting(config, {
         VISION_MODE: "SCREEN",
@@ -719,7 +719,7 @@ describe("collectPluginNames", () => {
     const config = {
       cloud: { enabled: true },
       features: { vision: false },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-elizacloud")).toBe(true);
     expect(names.has("@elizaos/plugin-vision")).toBe(false);
@@ -728,7 +728,7 @@ describe("collectPluginNames", () => {
   it("adds @elizaos/plugin-obsidian when features.obsidian = true", () => {
     const config = {
       features: { obsidian: true },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-obsidian")).toBe(true);
   });
@@ -736,7 +736,7 @@ describe("collectPluginNames", () => {
   it("adds @elizaos/plugin-obsidian when plugins.allow includes obsidian", () => {
     const config = {
       plugins: { allow: ["obsidian"] },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-obsidian")).toBe(true);
   });
@@ -753,7 +753,7 @@ describe("collectPluginNames", () => {
     ];
     const config = {
       plugins: { allow: optionalPlugins },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
 
     const names = collectPluginNames(config);
 
@@ -791,7 +791,7 @@ describe("repairBrokenInstallRecord", () => {
           },
         },
       },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
 
     const changed = repairBrokenInstallRecord(
       config,
@@ -808,7 +808,7 @@ describe("repairBrokenInstallRecord", () => {
   });
 
   it("returns false when no install record exists", () => {
-    const config = { plugins: { installs: {} } } as unknown as ElizaConfig;
+    const config = { plugins: { installs: {} } } as Partial<ElizaConfig> as ElizaConfig;
     expect(repairBrokenInstallRecord(config, "@elizaos/plugin-discord")).toBe(
       false,
     );
@@ -824,7 +824,7 @@ describe("repairBrokenInstallRecord", () => {
           },
         },
       },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
 
     expect(repairBrokenInstallRecord(config, "@elizaos/plugin-discord")).toBe(
       false,
@@ -872,7 +872,7 @@ describe("applyConnectorSecretsToEnv", () => {
   it("copies legacy Discord botToken from config to env", () => {
     const config = {
       connectors: { discord: { botToken: "discord-tok-legacy" } },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     applyConnectorSecretsToEnv(config);
     expect(process.env.DISCORD_API_TOKEN).toBe("discord-tok-legacy");
     expect(process.env.DISCORD_BOT_TOKEN).toBe("discord-tok-legacy");
@@ -922,7 +922,7 @@ describe("applyConnectorSecretsToEnv", () => {
   it("handles unknown connector names gracefully", () => {
     const config = {
       connectors: { unknownConnector: { token: "tok" } },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     expect(() => applyConnectorSecretsToEnv(config)).not.toThrow();
   });
 
@@ -980,7 +980,7 @@ describe("autoResolveDiscordAppId", () => {
     process.env.DISCORD_API_TOKEN = "tok";
 
     const fetchMock = vi.fn();
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock as typeof fetch;
 
     await autoResolveDiscordAppId();
 
@@ -990,7 +990,7 @@ describe("autoResolveDiscordAppId", () => {
 
   it("no-ops when no Discord token exists", async () => {
     const fetchMock = vi.fn();
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock as typeof fetch;
 
     await autoResolveDiscordAppId();
 
@@ -1008,7 +1008,7 @@ describe("autoResolveDiscordAppId", () => {
       status: 200,
       json: async () => ({ id: "app-123" }),
     }));
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock as typeof fetch;
 
     await autoResolveDiscordAppId();
 
@@ -1034,7 +1034,7 @@ describe("autoResolveDiscordAppId", () => {
     globalThis.fetch = vi.fn(async () => ({
       ok: false,
       status: 401,
-    })) as unknown as typeof fetch;
+    })) as typeof fetch;
 
     await autoResolveDiscordAppId();
 
@@ -1052,7 +1052,7 @@ describe("autoResolveDiscordAppId", () => {
 
     globalThis.fetch = vi.fn(async () => {
       throw new Error("network down");
-    }) as unknown as typeof fetch;
+    }) as typeof fetch;
 
     await autoResolveDiscordAppId();
 
@@ -1140,7 +1140,7 @@ describe("applyX402ConfigToEnv", () => {
         apiKey: "x402-key",
         baseUrl: "https://x402.example",
       },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
 
     applyX402ConfigToEnv(config);
 
@@ -1160,7 +1160,7 @@ describe("applyX402ConfigToEnv", () => {
         apiKey: "new-key",
         baseUrl: "https://new.example",
       },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
 
     applyX402ConfigToEnv(config);
 
@@ -1176,7 +1176,7 @@ describe("applyX402ConfigToEnv", () => {
         apiKey: "x402-key",
         baseUrl: "https://x402.example",
       },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
 
     applyX402ConfigToEnv(config);
 
@@ -1196,7 +1196,7 @@ describe("applyX402ConfigToEnv", () => {
   it("sets only X402_ENABLED when apiKey and baseUrl are absent", () => {
     const config = {
       x402: { enabled: true },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
 
     applyX402ConfigToEnv(config);
 
@@ -1214,7 +1214,7 @@ describe("applyX402ConfigToEnv", () => {
         baseUrl: "https://x402.example",
         privateKey: privateKeyValue,
       },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
 
     applyX402ConfigToEnv(config);
 
@@ -1418,7 +1418,7 @@ describe("shutdownRuntime", () => {
       stop: vi.fn(async () => {
         calls.push("stop");
       }),
-    } as unknown as import("@elizaos/core").AgentRuntime;
+    } as import("@elizaos/core").AgentRuntime;
 
     await shutdownRuntime(runtime, "test");
 
@@ -1433,7 +1433,7 @@ describe("shutdownRuntime", () => {
       stop: vi.fn(async () => {
         throw stopError;
       }),
-    } as unknown as import("@elizaos/core").AgentRuntime;
+    } as import("@elizaos/core").AgentRuntime;
 
     await expect(shutdownRuntime(runtime, "test")).rejects.toThrow(
       "stop failed",
@@ -1451,7 +1451,7 @@ describe("shutdownRuntime", () => {
         }),
       },
       stop,
-    } as unknown as import("@elizaos/core").AgentRuntime;
+    } as import("@elizaos/core").AgentRuntime;
 
     await expect(shutdownRuntime(runtime, "test")).rejects.toThrow(
       "close failed",
@@ -1489,7 +1489,7 @@ describe("buildCharacterFromConfig", () => {
   it("falls back to config.ui.assistant.name", () => {
     const config = {
       ui: { assistant: { name: "Reimu" } },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const char = buildCharacterFromConfig(config);
     expect(char.name).toBe("Reimu");
   });
@@ -1634,7 +1634,7 @@ describe("resolvePrimaryModel", () => {
   it("returns undefined when model has no primary", () => {
     const config = {
       agents: { defaults: { model: { fallbacks: ["gpt-5-mini"] } } },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     expect(resolvePrimaryModel(config)).toBeUndefined();
   });
 });

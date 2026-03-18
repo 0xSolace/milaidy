@@ -22,7 +22,7 @@ describe("self-status provider", () => {
     const provider = createSelfStatusProvider(registry);
     const result = await provider.get(
       {} as IAgentRuntime,
-      {} as Memory,
+      {} as unknown as Memory,
       {} as State,
     );
     expect(result.text).toContain("[Self Status v1]");
@@ -34,7 +34,7 @@ describe("self-status provider", () => {
     const provider = createSelfStatusProvider(registry);
     const result = await provider.get(
       {} as IAgentRuntime,
-      {} as Memory,
+      {} as unknown as Memory,
       {} as State,
     );
     expect(result.text).toContain("[Self Status v1]");

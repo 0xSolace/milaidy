@@ -203,7 +203,7 @@ describe("plugin loading parity across modes", () => {
           },
         },
       },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
 
     const names = collectPluginNames(config);
     // Core
@@ -326,7 +326,7 @@ describe("character building parity", () => {
     expect(
       buildCharacterFromConfig({
         ui: { assistant: { name: "Reimu" } },
-      } as unknown as ElizaConfig).name,
+      } as Partial<ElizaConfig> as ElizaConfig).name,
     ).toBe("Reimu");
 
     // Default fallback — upstream uses "Eliza", eliza fork uses "Eliza"

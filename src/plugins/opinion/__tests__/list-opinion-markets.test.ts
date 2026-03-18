@@ -34,10 +34,10 @@ describe("LIST_OPINION_MARKETS", () => {
 
   it("handler returns formatted market list", async () => {
     const result = await listOpinionMarketsAction.handler(
-      {} as unknown as IAgentRuntime,
-      {} as unknown as Memory,
-      {} as unknown as State,
-      { parameters: {} } as unknown as Record<string, unknown>,
+      {} as Partial<IAgentRuntime> as IAgentRuntime,
+      {} as Partial<Memory> as Memory,
+      {} as Partial<State> as State,
+      { parameters: {} } as Record<string, unknown>,
     );
     expect(result.success).toBe(true);
     expect(result.text).toContain("CPI");
@@ -46,8 +46,8 @@ describe("LIST_OPINION_MARKETS", () => {
 
   it("validate returns true when client is ready", async () => {
     const valid = await listOpinionMarketsAction.validate?.(
-      {} as unknown as IAgentRuntime,
-      {} as unknown as Memory,
+      {} as Partial<IAgentRuntime> as IAgentRuntime,
+      {} as Partial<Memory> as Memory,
     );
     expect(valid).toBe(true);
   });

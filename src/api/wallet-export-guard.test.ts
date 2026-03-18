@@ -10,7 +10,7 @@ function mockReq(ip = "192.168.1.1", ua = "test-agent"): http.IncomingMessage {
   return {
     headers: { "user-agent": ua },
     socket: { remoteAddress: ip },
-  } as unknown as http.IncomingMessage;
+  } as http.IncomingMessage;
 }
 
 const alwaysAllow = () => null;
@@ -206,7 +206,7 @@ describe("wallet-export-guard", () => {
         "x-forwarded-for": "203.0.113.50, 10.0.0.1",
       },
       socket: { remoteAddress: "127.0.0.1" },
-    } as unknown as http.IncomingMessage;
+    } as http.IncomingMessage;
 
     guard(req, { confirm: true, requestNonce: true });
 

@@ -65,7 +65,7 @@ function mockFetchResponse(params: {
     json: params.jsonReject
       ? vi.fn().mockRejectedValue(new Error("invalid json"))
       : vi.fn().mockResolvedValue(params.body),
-  } as unknown as Response);
+  } as Partial<Response> as Response);
 
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;

@@ -43,7 +43,7 @@ function createFixture() {
   };
 
   const service = new RegistryService(
-    txService as unknown as TxService,
+    txService as TxService,
     "0x2222222222222222222222222222222222222222",
   );
 

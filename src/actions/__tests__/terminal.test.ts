@@ -5,7 +5,7 @@ import { createElizaPlugin } from "../../runtime/eliza-plugin";
 function mockResponse(response: { ok: boolean }): Response {
   return {
     ok: response.ok,
-  } as unknown as Response;
+  } as Partial<Response> as Response;
 }
 
 describe("terminalAction", () => {

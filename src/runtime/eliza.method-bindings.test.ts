@@ -26,7 +26,7 @@ describe("installRuntimeMethodBindings", () => {
       getConversationLength: vi.fn(() => 0),
       getRoom: vi.fn(async () => ({ worldId: "world-from-room" })),
       createComponent,
-    } as unknown as AgentRuntime & {
+    } as AgentRuntime & {
       createComponent: (input: Record<string, unknown>) => Promise<boolean>;
     };
 
@@ -58,7 +58,7 @@ describe("installRuntimeMethodBindings", () => {
       createEntities,
       getEntitiesByIds: vi.fn(async () => []),
       ensureEntityExists,
-    } as unknown as AgentRuntime & {
+    } as AgentRuntime & {
       createEntities: (
         entities: Array<{ id: string; agentId: string; names: string[] }>,
       ) => Promise<string[]>;
@@ -94,7 +94,7 @@ describe("installRuntimeMethodBindings", () => {
       getConversationLength: vi.fn(() => 0),
       createEntities,
       getEntitiesByIds: vi.fn(async () => []),
-    } as unknown as AgentRuntime & {
+    } as AgentRuntime & {
       createEntities: (
         entities: Array<{ id: string; agentId: string; names: string[] }>,
       ) => Promise<string[]>;

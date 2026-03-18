@@ -108,7 +108,7 @@ async function getPluginManager(): Promise<PluginManagerLike> {
   const { PluginManagerService } = await import(
     "@elizaos/plugin-plugin-manager"
   );
-  const PluginManagerServiceCtor = PluginManagerService as unknown as new (
+  const PluginManagerServiceCtor = PluginManagerService as new (
     runtime: IAgentRuntime,
   ) => PluginManagerLike;
   const mockRuntime = {
@@ -123,7 +123,7 @@ async function getPluginManager(): Promise<PluginManagerLike> {
     registerProvider: () => {},
     registerEvaluator: () => {},
     registerEvent: () => {},
-  } as unknown as IAgentRuntime;
+  } as Partial<IAgentRuntime> as IAgentRuntime;
   return new PluginManagerServiceCtor(mockRuntime);
 }
 

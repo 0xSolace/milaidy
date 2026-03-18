@@ -40,7 +40,7 @@ function fakeModel(
   provider = "anthropic",
   id = "claude-sonnet-4-20250514",
 ): Model<Api> {
-  return { provider, id } as unknown as Model<Api>;
+  return { provider, id } as Partial<Model<Api>> as Model<Api>;
 }
 
 function fakeRuntime() {

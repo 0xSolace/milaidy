@@ -27,7 +27,7 @@ vi.mock("../services/agent-export", () => ({
 function createRuntimeStub(): AgentRuntime {
   return {
     character: { name: "Eliza" },
-  } as unknown as AgentRuntime;
+  } as unknown as unknown as AgentRuntime;
 }
 
 function createMockResponse() {
@@ -46,7 +46,7 @@ function createMockResponse() {
             ? chunk
             : Buffer.from(chunk, "utf-8");
     },
-  } as unknown as http.ServerResponse;
+  } as http.ServerResponse;
 
   return { res, headers, getBody: () => body };
 }

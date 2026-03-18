@@ -64,7 +64,7 @@ const RUNTIME_STUB = {
   getMemories: async () => [],
   getCache: async () => null,
   setCache: async () => {},
-} as AgentRuntime;
+} as unknown as unknown as AgentRuntime;
 
 describe("GET /api/onboarding/status", () => {
   /** Env keys that startApiServer / upstream may hydrate into process.env. */

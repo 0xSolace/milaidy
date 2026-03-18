@@ -41,7 +41,7 @@ function createFixture(dropEnabled: boolean = true) {
   };
 
   const service = new DropService(
-    txService as unknown as TxService,
+    txService as TxService,
     "0x4444444444444444444444444444444444444444",
     dropEnabled,
   );

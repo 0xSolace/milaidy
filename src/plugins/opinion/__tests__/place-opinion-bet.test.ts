@@ -17,31 +17,31 @@ describe("PLACE_OPINION_BET", () => {
   });
   it("rejects missing side", async () => {
     const result = await placeOpinionBetAction.handler(
-      {} as unknown as IAgentRuntime,
-      {} as unknown as Memory,
-      {} as unknown as State,
+      {} as Partial<IAgentRuntime> as IAgentRuntime,
+      {} as Partial<Memory> as Memory,
+      {} as Partial<State> as State,
       {
         parameters: { marketId: 1, tokenId: "abc", amount: "10" },
-      } as unknown as Record<string, unknown>,
+      } as Record<string, unknown>,
     );
     expect(result.success).toBe(false);
   });
   it("rejects invalid amount", async () => {
     const result = await placeOpinionBetAction.handler(
-      {} as unknown as IAgentRuntime,
-      {} as unknown as Memory,
-      {} as unknown as State,
+      {} as Partial<IAgentRuntime> as IAgentRuntime,
+      {} as Partial<Memory> as Memory,
+      {} as Partial<State> as State,
       {
         parameters: { marketId: 1, tokenId: "abc", side: "buy", amount: "-5" },
-      } as unknown as Record<string, unknown>,
+      } as Record<string, unknown>,
     );
     expect(result.success).toBe(false);
   });
   it("places bet successfully", async () => {
     const result = await placeOpinionBetAction.handler(
-      {} as unknown as IAgentRuntime,
-      {} as unknown as Memory,
-      {} as unknown as State,
+      {} as Partial<IAgentRuntime> as IAgentRuntime,
+      {} as Partial<Memory> as Memory,
+      {} as Partial<State> as State,
       {
         parameters: {
           marketId: 813,
@@ -50,7 +50,7 @@ describe("PLACE_OPINION_BET", () => {
           amount: "10",
           price: "0.55",
         },
-      } as unknown as Record<string, unknown>,
+      } as Record<string, unknown>,
     );
     expect(result.success).toBe(true);
     expect(result.text).toContain("order-123");

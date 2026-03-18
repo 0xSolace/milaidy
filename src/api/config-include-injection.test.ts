@@ -45,7 +45,7 @@ describe("$include config injection — saveElizaConfig defense-in-depth", () =>
     const config = {
       logging: { level: "error" },
       $include: "/etc/passwd",
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
 
     saveElizaConfig(config);
     const written = JSON.parse(fs.readFileSync(tmpConfigPath, "utf-8"));
@@ -61,7 +61,7 @@ describe("$include config injection — saveElizaConfig defense-in-depth", () =>
         SOME_KEY: "value",
         $include: "~/.eliza/auth/credentials.json",
       },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
 
     saveElizaConfig(config);
     const written = JSON.parse(fs.readFileSync(tmpConfigPath, "utf-8"));
@@ -81,7 +81,7 @@ describe("$include config injection — saveElizaConfig defense-in-depth", () =>
           },
         },
       },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
 
     saveElizaConfig(config);
     const written = JSON.parse(fs.readFileSync(tmpConfigPath, "utf-8"));
@@ -94,7 +94,7 @@ describe("$include config injection — saveElizaConfig defense-in-depth", () =>
     const config = {
       logging: { level: "error" },
       agents: [{ name: "alice", $include: "/etc/hosts" }, { name: "bob" }],
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
 
     saveElizaConfig(config);
     const written = JSON.parse(fs.readFileSync(tmpConfigPath, "utf-8"));
@@ -112,7 +112,7 @@ describe("$include config injection — saveElizaConfig defense-in-depth", () =>
         INCLUDE: "also-fine",
         $other: "fine-too",
       },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
 
     saveElizaConfig(config);
     const written = JSON.parse(fs.readFileSync(tmpConfigPath, "utf-8"));

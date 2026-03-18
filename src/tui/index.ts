@@ -174,7 +174,7 @@ function createApiModeRuntimeStub(agentName: string): AgentRuntime {
     ensureRoomExists: noopAsync,
     ensureConnection: noopAsync,
     stop: noopAsync,
-  } as unknown as AgentRuntime;
+  } as unknown as unknown as AgentRuntime;
 }
 
 export async function launchTUI(

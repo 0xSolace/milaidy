@@ -1181,7 +1181,7 @@ describe("Reverse mapping consistency", () => {
 describe("DesktopManager — tray", () => {
   let manager: DesktopManager;
   let sendFn: Mock<SendToWebview>;
-  const MockTray = electrobunBun.Tray as unknown as ReturnType<typeof vi.fn>;
+  const MockTray = electrobunBun.Tray as ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -1361,7 +1361,7 @@ describe("DesktopManager — window management", () => {
     sendFn = vi.fn();
     manager.setSendToWebview(sendFn);
     manager.setMainWindow(
-      fakeWindow as unknown as Parameters<DesktopManager["setMainWindow"]>[0],
+      fakeWindow as Parameters<DesktopManager["setMainWindow"]>[0],
     );
   });
 
@@ -1642,15 +1642,15 @@ describe("DesktopManager — clipboard", () => {
   });
 
   it("clipboardAvailableFormats() gracefully handles missing API (returns empty array)", async () => {
-    const saved = (mockUtils as unknown as Record<string, unknown>)
+    const saved = (mockUtils as Record<string, unknown>)
       .clipboardAvailableFormats;
     (
-      mockUtils as unknown as Record<string, unknown>
+      mockUtils as Record<string, unknown>
     ).clipboardAvailableFormats = undefined;
     const result = await manager.clipboardAvailableFormats();
     expect(result.formats).toEqual([]);
     (
-      mockUtils as unknown as Record<string, unknown>
+      mockUtils as Record<string, unknown>
     ).clipboardAvailableFormats = saved;
   });
 });
@@ -1824,10 +1824,10 @@ describe("DesktopManager — app lifecycle", () => {
 
 describe("DesktopManager — auto launch", () => {
   let manager: DesktopManager;
-  const mockExistsSync = nodeFs.existsSync as unknown as Mock<
+  const mockExistsSync = nodeFs.existsSync as Mock<
     typeof nodeFs.existsSync
   >;
-  const mockReadFileSync = nodeFs.readFileSync as unknown as Mock<
+  const mockReadFileSync = nodeFs.readFileSync as Mock<
     typeof nodeFs.readFileSync
   >;
 
@@ -1866,7 +1866,7 @@ describe("DesktopManager — auto launch", () => {
     setPlatform("darwin");
     mockExistsSync.mockReturnValue(false);
     const mockSpawn = (
-      globalThis as unknown as { Bun: { spawn: ReturnType<typeof vi.fn> } }
+      globalThis as { Bun: { spawn: ReturnType<typeof vi.fn> } }
     ).Bun.spawn;
     await manager.setAutoLaunch({ enabled: false });
     expect(mockSpawn).not.toHaveBeenCalled();
@@ -2166,7 +2166,7 @@ describe("MacWindowEffects — API surface", () => {
   });
 
   it("functions that take a pointer return boolean", () => {
-    const fakePtr = Symbol("ptr") as unknown as import("bun:ffi").Pointer;
+    const fakePtr = Symbol("ptr") as import("bun:ffi").Pointer;
     expect(typeof macEffects.enableVibrancy(fakePtr)).toBe("boolean");
     expect(typeof macEffects.ensureShadow(fakePtr)).toBe("boolean");
     expect(typeof macEffects.setTrafficLightsPosition(fakePtr, 10, 8)).toBe(
@@ -2217,7 +2217,7 @@ describe("CanvasManager — URL security (navigate)", () => {
       on: vi.fn(),
       ptr: null,
     };
-    (mgr as unknown as { windows: Map<string, unknown> }).windows.set(
+    (mgr as { windows: Map<string, unknown> }).windows.set(
       "test-id",
       {
         id: "test-id",
@@ -2249,7 +2249,7 @@ describe("CanvasManager — URL security (navigate)", () => {
       on: vi.fn(),
       ptr: null,
     };
-    (mgr as unknown as { windows: Map<string, unknown> }).windows.set(
+    (mgr as { windows: Map<string, unknown> }).windows.set(
       "test-id",
       {
         id: "test-id",
@@ -2283,7 +2283,7 @@ describe("CanvasManager — URL security (navigate)", () => {
       on: vi.fn(),
       ptr: null,
     };
-    (mgr as unknown as { windows: Map<string, unknown> }).windows.set(
+    (mgr as { windows: Map<string, unknown> }).windows.set(
       "test-id",
       {
         id: "test-id",
@@ -2323,7 +2323,7 @@ describe("CanvasManager — URL security (navigate)", () => {
       on: vi.fn(),
       ptr: null,
     };
-    (mgr as unknown as { windows: Map<string, unknown> }).windows.set(
+    (mgr as { windows: Map<string, unknown> }).windows.set(
       "test-id",
       {
         id: "test-id",
@@ -2357,7 +2357,7 @@ describe("CanvasManager — eval security", () => {
       webview: { url: "https://external.com", rpc: null, loadURL: vi.fn() },
       on: vi.fn(),
     };
-    (mgr as unknown as { windows: Map<string, unknown> }).windows.set("win-1", {
+    (mgr as { windows: Map<string, unknown> }).windows.set("win-1", {
       id: "win-1",
       window: fakeWin,
       url: "https://external.com",
@@ -2385,7 +2385,7 @@ describe("CanvasManager — eval security", () => {
       },
       on: vi.fn(),
     };
-    (mgr as unknown as { windows: Map<string, unknown> }).windows.set("win-2", {
+    (mgr as { windows: Map<string, unknown> }).windows.set("win-2", {
       id: "win-2",
       window: fakeWin,
       url: "http://localhost:3000/",
@@ -2407,7 +2407,7 @@ describe("CanvasManager — eval security", () => {
       },
       on: vi.fn(),
     };
-    (mgr as unknown as { windows: Map<string, unknown> }).windows.set("win-3", {
+    (mgr as { windows: Map<string, unknown> }).windows.set("win-3", {
       id: "win-3",
       window: fakeWin,
       url: "about:blank",
@@ -2443,7 +2443,7 @@ describe("CanvasManager — window operations", () => {
     id: string,
     win: ReturnType<typeof makeWindow>,
   ) {
-    (mgr as unknown as { windows: Map<string, unknown> }).windows.set(id, {
+    (mgr as { windows: Map<string, unknown> }).windows.set(id, {
       id,
       window: win,
       url: "about:blank",
@@ -2572,7 +2572,7 @@ describe("CanvasManager — window creation via BrowserWindow", () => {
 
   it("createWindow() calls new BrowserWindow() with correct options", async () => {
     const MockBrowserWindow =
-      electrobunBun.BrowserWindow as unknown as MockBrowserWindowCtor;
+      electrobunBun.BrowserWindow as MockBrowserWindowCtor;
     MockBrowserWindow.mockClear();
     const mgr = new CanvasManager();
     const result = await mgr.createWindow({
@@ -2593,7 +2593,7 @@ describe("CanvasManager — window creation via BrowserWindow", () => {
 
   it("createWindow() uses defaults when options are minimal", async () => {
     const MockBrowserWindow =
-      electrobunBun.BrowserWindow as unknown as MockBrowserWindowCtor;
+      electrobunBun.BrowserWindow as MockBrowserWindowCtor;
     MockBrowserWindow.mockClear();
     const mgr = new CanvasManager();
     await mgr.createWindow({});
@@ -3593,7 +3593,7 @@ describe("pushApiBaseToRenderer — injects API base into webview RPC", () => {
 describe("loadWindowState — window state persistence", () => {
   // loadWindowState is not exported, so we test it via the index.ts startup-bootstrap.
   // For direct logic testing, we exercise the branches manually here.
-  const mockFs = nodeFs as unknown as {
+  const mockFs = nodeFs as {
     existsSync: Mock<typeof nodeFs.existsSync>;
     readFileSync: Mock<typeof nodeFs.readFileSync>;
   };
@@ -3675,7 +3675,7 @@ describe("applyMacOSWindowEffects — native effect constants", () => {
       configurable: true,
     });
     try {
-      const fakePtr = Symbol("ptr") as unknown as import("bun:ffi").Pointer;
+      const fakePtr = Symbol("ptr") as import("bun:ffi").Pointer;
       // On non-darwin, all macEffects functions get null from getLib()
       // and return false (no-op). Verify they don't throw.
       expect(() => macEffects.enableVibrancy(fakePtr)).not.toThrow();

@@ -83,7 +83,7 @@ afterEach(() => {
   vi.restoreAllMocks();
   // Reset the runtime reference — setCustomActionsRuntime only accepts
   // IAgentRuntime, so cast through unknown to clear it for test isolation.
-  setCustomActionsRuntime(undefined as unknown as IAgentRuntime);
+  setCustomActionsRuntime(undefined as IAgentRuntime);
 });
 
 // ============================================================================
@@ -98,7 +98,7 @@ describe("registerCustomActionLive", () => {
 
   it("returns an Action and registers it when runtime is set", () => {
     const rt = mockRuntime();
-    setCustomActionsRuntime(rt as unknown as IAgentRuntime);
+    setCustomActionsRuntime(rt as IAgentRuntime);
 
     const action = registerCustomActionLive(makeDef());
 
@@ -111,7 +111,7 @@ describe("registerCustomActionLive", () => {
 
   it("preserves similes from the definition", () => {
     const rt = mockRuntime();
-    setCustomActionsRuntime(rt as unknown as IAgentRuntime);
+    setCustomActionsRuntime(rt as IAgentRuntime);
 
     const action = registerCustomActionLive(
       makeDef({ similes: ["ALIAS_A", "ALIAS_B"] }),

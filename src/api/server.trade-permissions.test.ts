@@ -15,7 +15,7 @@ import {
 function makeConfig(tradePermissionMode: unknown): ElizaConfig {
   return {
     features: { tradePermissionMode },
-  } as unknown as ElizaConfig;
+  } as Partial<ElizaConfig> as ElizaConfig;
 }
 
 // ── resolveTradePermissionMode ─────────────────────────────────────────────

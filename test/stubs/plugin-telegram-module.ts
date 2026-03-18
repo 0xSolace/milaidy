@@ -60,6 +60,6 @@ const telegramPlugin = {
   name: "@elizaos/plugin-telegram",
   description: "Vitest stub for the published Telegram plugin",
   services: [TelegramService],
-} as unknown as Plugin;
+} as Partial<Plugin> as Plugin;
 
 export default telegramPlugin;

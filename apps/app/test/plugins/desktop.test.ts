@@ -51,7 +51,7 @@ describe("@miladyai/capacitor-desktop", () => {
     };
     gainNode.connect.mockReturnValue(gainNode);
     const dest = {};
-    (globalThis as Record<string, unknown>).AudioContext = class {
+    (globalThis as unknown as Record<string, unknown>).AudioContext = class {
       createOscillator() {
         const osc = {
           type: "sine",
@@ -76,7 +76,7 @@ describe("@miladyai/capacitor-desktop", () => {
     // jsdom location.reload is read-only; replace location entirely
     (window as unknown as Record<string, unknown>).location = new URL(
       "http://localhost/",
-    ) as unknown as Location;
+    ) as Location;
     (window as unknown as Record<string, unknown>).location = {
       ...(window as unknown as Record<string, unknown>).location,
       reload: vi.fn(),

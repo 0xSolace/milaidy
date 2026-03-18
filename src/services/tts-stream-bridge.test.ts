@@ -88,7 +88,7 @@ function withEnv(
 // ---------------------------------------------------------------------------
 
 beforeEach(() => {
-  (spawn as unknown as ReturnType<typeof vi.fn>).mockReset();
+  vi.mocked(spawn).mockReset();
   vi.restoreAllMocks();
 });
 
@@ -427,7 +427,7 @@ describe("TtsStreamBridge.speak()", () => {
       stdout: mockStdout,
       stdin: mockStdin,
     });
-    (spawn as unknown as ReturnType<typeof vi.fn>).mockReturnValueOnce(
+    vi.mocked(spawn).mockReturnValueOnce(
       mockProc,
     );
 
@@ -476,7 +476,7 @@ describe("TtsStreamBridge.speak()", () => {
       stdout: mockStdout,
       stdin: mockStdin,
     });
-    (spawn as unknown as ReturnType<typeof vi.fn>).mockReturnValueOnce(
+    vi.mocked(spawn).mockReturnValueOnce(
       mockProc,
     );
 
@@ -524,7 +524,7 @@ describe("TtsStreamBridge.speak()", () => {
       stdout: mockStdout,
       stdin: mockStdin,
     });
-    (spawn as unknown as ReturnType<typeof vi.fn>).mockReturnValueOnce(
+    vi.mocked(spawn).mockReturnValueOnce(
       mockProc,
     );
 
@@ -593,7 +593,7 @@ describe("TtsStreamBridge.speak()", () => {
       stdout: mockStdout,
       stdin: mockStdin,
     });
-    (spawn as unknown as ReturnType<typeof vi.fn>).mockReturnValueOnce(
+    vi.mocked(spawn).mockReturnValueOnce(
       mockProc,
     );
 
@@ -666,7 +666,7 @@ describe("decodeMp3ToPcm via speak()", () => {
       stdout: mockStdout,
       stdin: mockStdin,
     });
-    (spawn as unknown as ReturnType<typeof vi.fn>).mockReturnValueOnce(
+    vi.mocked(spawn).mockReturnValueOnce(
       mockProc,
     );
 
@@ -681,7 +681,7 @@ describe("decodeMp3ToPcm via speak()", () => {
     await speakPromise;
 
     // Verify FFmpeg was spawned with correct decode args
-    const spawnCalls = (spawn as unknown as ReturnType<typeof vi.fn>).mock
+    const spawnCalls = vi.mocked(spawn).mock
       .calls;
     expect(spawnCalls.length).toBe(1);
     const [cmd, args] = spawnCalls[0];

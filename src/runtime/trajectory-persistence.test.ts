@@ -50,7 +50,7 @@ function createRuntimeWithTrajectoryLogger(logger: Record<string, unknown>): {
     logger: {
       warn: vi.fn(),
     },
-  } as unknown as IAgentRuntime;
+  } as Partial<IAgentRuntime> as IAgentRuntime;
   return { runtime, dbExecute };
 }
 
@@ -106,7 +106,7 @@ describe("DatabaseTrajectoryLogger defaults", () => {
   it("starts enabled outside production", () => {
     const runtime = {
       adapter: {},
-    } as unknown as IAgentRuntime;
+    } as Partial<IAgentRuntime> as IAgentRuntime;
     const enabled = withNodeEnv("development", () => {
       const logger = new DatabaseTrajectoryLogger(runtime);
       return logger.isEnabled();
@@ -117,7 +117,7 @@ describe("DatabaseTrajectoryLogger defaults", () => {
   it("starts disabled in production", () => {
     const runtime = {
       adapter: {},
-    } as unknown as IAgentRuntime;
+    } as Partial<IAgentRuntime> as IAgentRuntime;
     const enabled = withNodeEnv("production", () => {
       const logger = new DatabaseTrajectoryLogger(runtime);
       return logger.isEnabled();
@@ -254,7 +254,7 @@ describe("installDatabaseTrajectoryLogger", () => {
 
     // Set orchestrator context on the runtime
     (
-      runtime as unknown as Record<string, unknown>
+      runtime as Record<string, unknown>
     ).__orchestratorTrajectoryCtx = {
       source: "orchestrator",
       decisionType: "stall-check",
@@ -448,7 +448,7 @@ describe("computeBySource", () => {
           execute: vi.fn(async () => queryResult),
         },
       },
-    } as unknown as IAgentRuntime;
+    } as Partial<IAgentRuntime> as IAgentRuntime;
   }
 
   it("returns source counts from SQL result rows", async () => {
@@ -491,7 +491,7 @@ describe("computeBySource", () => {
           }),
         },
       },
-    } as unknown as IAgentRuntime;
+    } as Partial<IAgentRuntime> as IAgentRuntime;
     const result = await computeBySource(runtime);
     expect(result).toEqual({});
   });
@@ -508,7 +508,7 @@ describe("shouldRunObservationExtraction", () => {
     const runtime = {
       evaluators: [],
       getSetting: vi.fn(() => undefined),
-    } as unknown as IAgentRuntime;
+    } as Partial<IAgentRuntime> as IAgentRuntime;
     expect(shouldRunObservationExtraction(runtime)).toBe(true);
   });
 
@@ -516,7 +516,7 @@ describe("shouldRunObservationExtraction", () => {
     const runtime = {
       evaluators: [{ name: "REFLECTION" }],
       getSetting: vi.fn(() => undefined),
-    } as unknown as IAgentRuntime;
+    } as Partial<IAgentRuntime> as IAgentRuntime;
     expect(shouldRunObservationExtraction(runtime)).toBe(false);
   });
 
@@ -524,7 +524,7 @@ describe("shouldRunObservationExtraction", () => {
     const runtime = {
       evaluators: [{ name: "RELATIONSHIP_EXTRACTION" }],
       getSetting: vi.fn(() => undefined),
-    } as unknown as IAgentRuntime;
+    } as Partial<IAgentRuntime> as IAgentRuntime;
     expect(shouldRunObservationExtraction(runtime)).toBe(false);
   });
 
@@ -534,7 +534,7 @@ describe("shouldRunObservationExtraction", () => {
       getSetting: vi.fn((key: string) =>
         key === "TRAJECTORY_OBSERVATION_EXTRACTION" ? "true" : undefined,
       ),
-    } as unknown as IAgentRuntime;
+    } as Partial<IAgentRuntime> as IAgentRuntime;
     expect(shouldRunObservationExtraction(runtime)).toBe(true);
   });
 
@@ -544,7 +544,7 @@ describe("shouldRunObservationExtraction", () => {
       getSetting: vi.fn((key: string) =>
         key === "TRAJECTORY_OBSERVATION_EXTRACTION" ? "false" : undefined,
       ),
-    } as unknown as IAgentRuntime;
+    } as Partial<IAgentRuntime> as IAgentRuntime;
     expect(shouldRunObservationExtraction(runtime)).toBe(false);
   });
 
@@ -554,7 +554,7 @@ describe("shouldRunObservationExtraction", () => {
       getSetting: vi.fn((key: string) =>
         key === "TRAJECTORY_OBSERVATION_EXTRACTION" ? "maybe" : undefined,
       ),
-    } as unknown as IAgentRuntime;
+    } as Partial<IAgentRuntime> as IAgentRuntime;
     expect(shouldRunObservationExtraction(runtime)).toBe(false);
   });
 });
@@ -673,7 +673,7 @@ describe("observation buffer", () => {
         db: { execute: vi.fn(async () => ({ rows: [] })) },
       },
       agentId: "test-agent",
-    } as unknown as IAgentRuntime;
+    } as Partial<IAgentRuntime> as IAgentRuntime;
 
     pushChatExchange(runtime, {
       userPrompt: "I prefer TypeScript",
@@ -698,7 +698,7 @@ describe("observation buffer", () => {
         db: { execute: vi.fn(async () => ({ rows: [] })) },
       },
       agentId: "test-agent",
-    } as unknown as IAgentRuntime;
+    } as Partial<IAgentRuntime> as IAgentRuntime;
 
     pushChatExchange(runtime, {
       userPrompt: "I prefer TypeScript and I work on eliza",
@@ -724,7 +724,7 @@ describe("observation buffer", () => {
         db: { execute: vi.fn(async () => ({ rows: [] })) },
       },
       agentId: "test-agent",
-    } as unknown as IAgentRuntime;
+    } as Partial<IAgentRuntime> as IAgentRuntime;
 
     pushChatExchange(runtime, {
       userPrompt: "first message",
@@ -756,7 +756,7 @@ describe("observation buffer", () => {
         db: { execute: vi.fn(async () => ({ rows: [] })) },
       },
       agentId: "test-agent",
-    } as unknown as IAgentRuntime;
+    } as Partial<IAgentRuntime> as IAgentRuntime;
 
     pushChatExchange(runtime, {
       userPrompt: "test",
@@ -779,7 +779,7 @@ describe("observation buffer", () => {
         db: { execute: vi.fn(async () => ({ rows: [] })) },
       },
       agentId: "test-agent",
-    } as unknown as IAgentRuntime;
+    } as Partial<IAgentRuntime> as IAgentRuntime;
 
     pushChatExchange(runtime, {
       userPrompt: "test",
@@ -796,7 +796,7 @@ describe("observation buffer", () => {
     let capturedCtx: unknown;
     const runtime = {
       useModel: vi.fn(async function (this: unknown) {
-        capturedCtx = (runtime as unknown as Record<string, unknown>)
+        capturedCtx = (runtime as Record<string, unknown>)
           .__orchestratorTrajectoryCtx;
         return "[]";
       }),
@@ -804,7 +804,7 @@ describe("observation buffer", () => {
         db: { execute: vi.fn(async () => ({ rows: [] })) },
       },
       agentId: "test-agent",
-    } as unknown as IAgentRuntime;
+    } as Partial<IAgentRuntime> as IAgentRuntime;
 
     pushChatExchange(runtime, {
       userPrompt: "test",
@@ -823,7 +823,7 @@ describe("observation buffer", () => {
 
     // After the call, the context should be cleaned up
     expect(
-      (runtime as unknown as Record<string, unknown>)
+      (runtime as Record<string, unknown>)
         .__orchestratorTrajectoryCtx,
     ).toBeUndefined();
   });
@@ -837,7 +837,7 @@ describe("observation buffer", () => {
         db: { execute: vi.fn(async () => ({ rows: [] })) },
       },
       agentId: "test-agent",
-    } as unknown as IAgentRuntime;
+    } as Partial<IAgentRuntime> as IAgentRuntime;
 
     pushChatExchange(runtime, {
       userPrompt: "test",
@@ -849,7 +849,7 @@ describe("observation buffer", () => {
     const result = await flushObservationBuffer(runtime);
     expect(result).toEqual([]);
     expect(
-      (runtime as unknown as Record<string, unknown>)
+      (runtime as Record<string, unknown>)
         .__orchestratorTrajectoryCtx,
     ).toBeUndefined();
   });
@@ -919,7 +919,7 @@ describe("pruneOldTrajectories", () => {
       },
       getServicesByType: () => [],
       getService: () => null,
-    } as unknown as IAgentRuntime;
+    } as Partial<IAgentRuntime> as IAgentRuntime;
 
     const result = await pruneOldTrajectories(runtime, 30);
     expect(result).toBe(5);
@@ -953,7 +953,7 @@ describe("pruneOldTrajectories", () => {
       },
       getServicesByType: () => [],
       getService: () => null,
-    } as unknown as IAgentRuntime;
+    } as Partial<IAgentRuntime> as IAgentRuntime;
 
     const result = await pruneOldTrajectories(runtime, 30);
     expect(result).toBe(0);
@@ -993,7 +993,7 @@ describe("pruneOldTrajectories", () => {
       },
       getServicesByType: () => [],
       getService: () => null,
-    } as unknown as IAgentRuntime;
+    } as Partial<IAgentRuntime> as IAgentRuntime;
 
     const result = await pruneOldTrajectories(runtime, 30);
     expect(result).toBe(2);
@@ -1036,7 +1036,7 @@ describe("pruneOldTrajectories", () => {
       },
       getServicesByType: () => [],
       getService: () => null,
-    } as unknown as IAgentRuntime;
+    } as Partial<IAgentRuntime> as IAgentRuntime;
 
     const result = await pruneOldTrajectories(runtime, 30);
     expect(result).toBeNull();

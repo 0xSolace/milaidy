@@ -47,7 +47,7 @@ function setExecFileHandler(
     | { stdout?: string; stderr?: string }
     | Promise<undefined | { stdout?: string; stderr?: string }>,
 ) {
-  (execFile as unknown as ReturnType<typeof vi.fn>).mockImplementation(((
+  vi.mocked(execFile).mockImplementation(((
     file,
     args,
     options,
@@ -242,7 +242,7 @@ describe("core-eject", () => {
       expect(result.ejectedPath).toBe(monorepoDir);
       expect(result.error).toContain("already ejected");
       expect(
-        execFile as unknown as ReturnType<typeof vi.fn>,
+        execFile as ReturnType<typeof vi.fn>,
       ).not.toHaveBeenCalledWith(
         "git",
         expect.arrayContaining(["clone"]),

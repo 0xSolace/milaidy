@@ -69,7 +69,7 @@ describe("Browser plugin classification", () => {
   it("@elizaos/plugin-browser is added via features.browser config", () => {
     const config = {
       features: { browser: true },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-browser")).toBe(true);
   });
@@ -81,7 +81,7 @@ describe("Browser plugin classification", () => {
           browser: { enabled: true },
         },
       },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-browser")).toBe(true);
   });
@@ -94,7 +94,7 @@ describe("Browser plugin classification", () => {
   it("@elizaos/plugin-browser is NOT loaded when features.browser is false", () => {
     const config = {
       features: { browser: { enabled: false } },
-    } as unknown as ElizaConfig;
+    } as Partial<ElizaConfig> as ElizaConfig;
     const names = collectPluginNames(config);
     expect(names.has("@elizaos/plugin-browser")).toBe(false);
   });

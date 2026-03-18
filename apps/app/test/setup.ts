@@ -46,7 +46,7 @@ type RpcRequestMap = Record<string, (params?: unknown) => unknown>;
 
 function isInjectedElectrobunRuntime(): boolean {
   if (typeof window === "undefined") return false;
-  const w = window as Record<string, unknown>;
+  const w = window as unknown as Record<string, unknown>;
   return (
     typeof w.__electrobunWindowId === "number" ||
     typeof w.__electrobunWebviewId === "number"
@@ -56,7 +56,7 @@ function isInjectedElectrobunRuntime(): boolean {
 vi.mock("@elizaos/app-core/bridge/electrobun-rpc", () => {
   function getElectrobunRendererRpc() {
     if (typeof window === "undefined") return null;
-    const w = window as Record<string, unknown>;
+    const w = window as unknown as Record<string, unknown>;
     return (
       (w.__ELIZA_ELECTROBUN_RPC__ as unknown) ??
       (w.__MILADY_ELECTROBUN_RPC__ as unknown) ??
@@ -106,7 +106,7 @@ vi.mock("@elizaos/app-core/bridge/electrobun-rpc", () => {
 vi.mock("@elizaos/app-core/bridge", () => {
   function getElectrobunRendererRpc() {
     if (typeof window === "undefined") return null;
-    const w = window as Record<string, unknown>;
+    const w = window as unknown as Record<string, unknown>;
     return (
       (w.__ELIZA_ELECTROBUN_RPC__ as unknown) ??
       (w.__MILADY_ELECTROBUN_RPC__ as unknown) ??
@@ -214,7 +214,7 @@ function ensureObj(
 
 const nav: Record<string, unknown> =
   typeof globalThis.navigator !== "undefined"
-    ? (globalThis.navigator as unknown as Record<string, unknown>)
+    ? (globalThis.navigator as Record<string, unknown>)
     : {};
 
 if (typeof globalThis.navigator === "undefined") {
@@ -413,7 +413,7 @@ if (typeof globalThis.HTMLCanvasElement !== "undefined") {
       globalAlpha: 1,
       fillStyle: "#000",
       strokeStyle: "#000",
-    }) as unknown as CanvasRenderingContext2D;
+    }) as CanvasRenderingContext2D;
 
   Object.defineProperty(globalThis.HTMLCanvasElement.prototype, "getContext", {
     value: vi.fn((contextType: string) =>

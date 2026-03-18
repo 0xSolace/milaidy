@@ -23,7 +23,7 @@ class MockStreamResponseWriter extends EventEmitter {
 function asStreamableResponse(
   writer: MockStreamResponseWriter,
 ): Parameters<typeof streamResponseBodyWithByteLimit>[1] {
-  return writer as unknown as Parameters<
+  return writer as Parameters<
     typeof streamResponseBodyWithByteLimit
   >[1];
 }

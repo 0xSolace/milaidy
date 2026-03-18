@@ -39,7 +39,7 @@ describe("auth routes", () => {
       socket: {
         remoteAddress: args.remoteAddress ?? "127.0.0.1",
       },
-    } as unknown as http.IncomingMessage;
+    } as http.IncomingMessage;
     const res = {} as http.ServerResponse;
 
     const response = {

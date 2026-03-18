@@ -5,7 +5,7 @@ import { sendMessageAction } from "./send-message";
 function mockRuntime(service: unknown) {
   return {
     getService: vi.fn(() => service),
-  } as unknown as Parameters<typeof sendMessageAction.handler>[0];
+  } as Parameters<typeof sendMessageAction.handler>[0];
 }
 
 describe("SEND_MESSAGE action", () => {

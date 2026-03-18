@@ -41,7 +41,7 @@ import { PluginsOverlayDataBridge } from "./plugins-overlay-data";
 
 function createBridge(apiBaseUrl?: string): PluginsOverlayDataBridge {
   return new PluginsOverlayDataBridge({
-    runtime: {} as AgentRuntime,
+    runtime: {} as unknown as unknown as AgentRuntime,
     apiBaseUrl,
     onClose: () => {},
     requestRender: () => {},
