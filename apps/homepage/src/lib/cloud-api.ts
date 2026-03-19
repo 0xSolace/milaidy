@@ -3,6 +3,8 @@ import { CLOUD_BASE } from "./runtime-config";
 export interface CloudAgentDetail {
   id: string;
   name: string;
+  /** Backend returns agentName; mapped to name by listAgents(). */
+  agentName?: string;
   status: string;
   model?: string;
   bridgeUrl?: string;
@@ -65,13 +67,18 @@ export class CloudClient {
     >("/api/v1/milady/agents", {
       method: "GET",
     });
-    return Array.isArray(data)
+    const raw = Array.isArray(data)
       ? data
       : ((data as { agents?: CloudAgentDetail[]; data?: CloudAgentDetail[] })
           .agents ??
           (data as { agents?: CloudAgentDetail[]; data?: CloudAgentDetail[] })
             .data ??
           []);
+    // Backend returns agentName; normalize to name for the rest of the app
+    return raw.map((a) => ({
+      ...a,
+      name: a.name || a.agentName || a.id,
+    }));
   }
 
   async getAgent(agentId: string): Promise<CloudAgentDetail> {
@@ -259,6 +266,21 @@ export class CloudClient {
   // Billing settings
   async getBillingSettings(): Promise<object> {
     return this.request("/api/v1/billing/settings", { method: "GET" });
+  }
+
+  // Pairing token (for opening Web UI with auth handoff)
+  async getPairingToken(agentId: string): Promise<{
+    token: string;
+    redirectUrl: string;
+    expiresIn: number;
+  }> {
+    const res = await this.request<
+      | { token: string; redirectUrl: string; expiresIn: number }
+      | { data: { token: string; redirectUrl: string; expiresIn: number } }
+    >(`/api/v1/milady/agents/${agentId}/pairing-token`, { method: "POST" });
+    // Backend may wrap in { data: ... } or return flat
+    if ("data" in res && res.data?.redirectUrl) return res.data;
+    return res as { token: string; redirectUrl: string; expiresIn: number };
   }
 
   // Session info

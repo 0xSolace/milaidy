@@ -1,13 +1,13 @@
 import { useCallback, useState } from "react";
 import { useAgents } from "../../lib/AgentProvider";
 import { isAuthenticated } from "../../lib/auth";
-import { CLOUD_BASE } from "../../lib/runtime-config";
+import { openWebUIWithPairing, openWebUIDirect } from "../../lib/open-web-ui";
 import { AgentCard } from "./AgentCard";
 import { AgentDetail } from "./AgentDetail";
 import { CreateAgentForm } from "./CreateAgentForm";
 
 export function AgentGrid() {
-  const { agents, loading, refresh } = useAgents();
+  const { filteredAgents: agents, loading, refresh } = useAgents();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
@@ -37,13 +37,10 @@ export function AgentGrid() {
   );
 
   const getWebUIUrl = useCallback((agent: typeof agents[0]) => {
-    // If the cloud API returned a webUiUrl, use that directly
+    // Prefer the webUiUrl set by AgentProvider (from cloud API or sandbox URL)
     if (agent.webUiUrl) return agent.webUiUrl;
-    // For cloud agents, open Eliza Cloud's agent page
-    if (agent.source === "cloud" && agent.cloudAgentId) {
-      return `${CLOUD_BASE}/agents/${agent.cloudAgentId}`;
-    }
     // For self-hosted/remote, sourceUrl IS the web UI
+    // TODO: Integrate pairing token flow for proper auth handoff (see WEB_UI_URL_NOTES.md)
     return agent.sourceUrl;
   }, []);
 
@@ -115,7 +112,7 @@ export function AgentGrid() {
                   agent={{
                     agentName: agent.name,
                     state: agent.status,
-                    model: agent.model ?? "—",
+                    model: agent.model,
                     uptime: agent.uptime,
                     memories: agent.memories,
                   }}
@@ -124,6 +121,9 @@ export function AgentGrid() {
                   webUiUrl={getWebUIUrl(agent)}
                   nodeId={agent.nodeId}
                   lastHeartbeat={agent.lastHeartbeat}
+                  billing={agent.billing}
+                  createdAt={agent.createdAt}
+                  region={agent.region}
                   onPlay={() => handleAction(agent.id, "play")}
                   onResume={() => handleAction(agent.id, "resume")}
                   onPause={() => handleAction(agent.id, "pause")}
@@ -132,8 +132,14 @@ export function AgentGrid() {
                     setSelectedId(selectedId === agent.id ? null : agent.id)
                   }
                   onOpenUI={() => {
+                    // Cloud agents: use pairing token flow for proper auth handoff
+                    if (agent.source === "cloud" && agent.cloudClient && agent.cloudAgentId) {
+                      openWebUIWithPairing(agent.cloudAgentId, agent.cloudClient);
+                      return;
+                    }
+                    // Local/remote agents: open directly (no pairing token needed)
                     const url = getWebUIUrl(agent);
-                    if (url) window.open(url, "_blank", "noopener,noreferrer");
+                    if (url) openWebUIDirect(url);
                   }}
                   selected={selectedId === agent.id}
                 />
@@ -149,7 +155,7 @@ export function AgentGrid() {
             agent={{
               agentName: selected.name,
               state: selected.status,
-              model: selected.model ?? "—",
+              model: selected.model,
               uptime: selected.uptime,
               memories: selected.memories,
             }}
@@ -174,24 +180,33 @@ function EmptyState({ onCreateClick }: { onCreateClick: () => void }) {
         </svg>
       </div>
       <h3 className="text-lg font-medium text-text-light mb-2">
-        No agents yet
+        No agents discovered
       </h3>
       <p className="text-sm text-text-muted text-center max-w-sm mb-6 leading-relaxed">
-        {authed
-          ? "Create your first agent on Eliza Cloud, or connect to a self-hosted Milady instance."
-          : "Sign in with Eliza Cloud to see your hosted agents, or connect a remote backend."}
+        Start Milady locally to see your agents here. You can also connect to a
+        remote instance or{" "}
+        {authed ? "manage cloud agents" : "sign in to Eliza Cloud"} for hosted options.
       </p>
-      <button
-        type="button"
-        onClick={onCreateClick}
-        className="flex items-center gap-2 px-5 py-2.5 bg-brand text-dark font-medium text-sm rounded-xl
-          hover:bg-brand-hover active:scale-[0.98] transition-all duration-150"
-      >
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-        </svg>
-        Create Agent
-      </button>
+      <div className="flex items-center gap-3">
+        <a
+          href="/#install"
+          className="flex items-center gap-2 px-5 py-2.5 bg-brand text-dark font-medium text-sm rounded-xl
+            hover:bg-brand-hover active:scale-[0.98] transition-all duration-150"
+        >
+          Get the Desktop App
+        </a>
+        <button
+          type="button"
+          onClick={onCreateClick}
+          className="flex items-center gap-2 px-5 py-2.5 text-text-muted text-sm font-medium rounded-xl border border-border
+            hover:text-text-light hover:border-text-muted hover:bg-surface transition-all duration-150"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          Create Cloud Agent
+        </button>
+      </div>
     </div>
   );
 }

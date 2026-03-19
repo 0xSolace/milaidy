@@ -53,6 +53,8 @@ export async function cloudLoginPoll(
 export interface CloudAgent {
   id: string;
   name: string;
+  /** Backend returns agentName; normalized to name by fetchCloudAgents(). */
+  agentName?: string;
   status: string;
   model?: string;
   createdAt?: string;
@@ -68,7 +70,9 @@ export async function fetchCloudAgents(): Promise<CloudAgent[]> {
     });
     if (!res.ok) return [];
     const data = await res.json();
-    return Array.isArray(data) ? data : (data.agents ?? data.data ?? []);
+    const raw: CloudAgent[] = Array.isArray(data) ? data : (data.agents ?? data.data ?? []);
+    // Backend returns agentName; normalize to name
+    return raw.map((a) => ({ ...a, name: a.name || a.agentName || a.id }));
   } catch {
     return [];
   }
