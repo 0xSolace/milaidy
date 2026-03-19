@@ -372,6 +372,13 @@
         ]
         "href": "/changelog"
       }
+    ],
+    "anchors": [
+      {
+        "anchor": "Changelog",
+        "href": "/changelog",
+        "icon": "clock-rotate-left"
+      }
     ]
   },
   "footer": {
