@@ -132,6 +132,7 @@
     "@bufbuild/protobuf": "^2.11.0",
     "@clack/prompts": "^1.1.0",
     "@electric-sql/pglite": "^0.3.16",
+    "@elizaos/app-core": "alpha",
     "@elizaos/app-hyperscape": "1.0.0",
     "@elizaos/autonomous": "2.0.0-alpha.67",
     "@elizaos/core": "2.0.0-alpha.65",
