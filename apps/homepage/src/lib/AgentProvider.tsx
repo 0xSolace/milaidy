@@ -188,7 +188,8 @@ export function AgentProvider({ children }: { children: ReactNode }) {
 
     // Build a set of cloud agent names/ids for cross-referencing.
     // When cloud auth succeeded, use cross-reference to scope sandbox agents to this user.
-    // When cloud auth failed, show ALL discovered sandboxes (fallback for self-hosted setups).
+    // On production (non-localhost), require cloud auth — don't leak all sandboxes to anonymous users.
+    // On localhost/self-hosted setups, fall back to showing all sandboxes for convenience.
     const cloudAgentNames = new Set(
       results
         .filter((a) => a.source === "cloud")
@@ -198,19 +199,34 @@ export function AgentProvider({ children }: { children: ReactNode }) {
       results.filter((a) => a.source === "cloud").map((a) => a.cloudAgentId),
     );
 
+    const isLocalhost =
+      typeof window !== "undefined" &&
+      (window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1");
+
     if (sandboxes.length > 0) {
-      // When cloud auth succeeded and returned agents, filter sandboxes to only matching ones.
-      // When cloud auth failed (or returned 0 agents), show all sandboxes as fallback.
-      const ownedSandboxes =
-        cloudAuthOk && cloudAgentNames.size > 0
-          ? sandboxes.filter((sb) => {
-              const nameMatch = cloudAgentNames.has(
-                (sb.agent_name || "").toLowerCase(),
-              );
-              const idMatch = cloudAgentIds.has(sb.id);
-              return nameMatch || idMatch;
-            })
-          : sandboxes;
+      // On production: require cloud auth to see sandbox agents (prevents leaking all agents to anonymous users).
+      // On localhost: fall back to showing all sandboxes for self-hosted/dev convenience.
+      let ownedSandboxes: typeof sandboxes;
+      if (cloudAuthOk && cloudAgentNames.size > 0) {
+        // Cloud auth succeeded with agents — filter sandboxes to matching ones only
+        ownedSandboxes = sandboxes.filter((sb) => {
+          const nameMatch = cloudAgentNames.has(
+            (sb.agent_name || "").toLowerCase(),
+          );
+          const idMatch = cloudAgentIds.has(sb.id);
+          return nameMatch || idMatch;
+        });
+      } else if (cloudAuthOk) {
+        // Cloud auth succeeded but user has 0 agents — show nothing
+        ownedSandboxes = [];
+      } else if (isLocalhost) {
+        // Localhost/self-hosted: show all sandboxes as fallback (no cloud auth needed)
+        ownedSandboxes = sandboxes;
+      } else {
+        // Production without auth: don't show any sandbox agents
+        ownedSandboxes = [];
+      }
 
       // Build a lookup from cloud agent name (lowercase) → index in results
       const cloudAgentIndexByName = new Map<string, number>();
