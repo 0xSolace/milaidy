@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { useAgents } from "../../lib/AgentProvider";
 import { isAuthenticated } from "../../lib/auth";
-import { openWebUIWithPairing, openWebUIDirect } from "../../lib/open-web-ui";
+import { openWebUIDirect, openWebUIWithPairing } from "../../lib/open-web-ui";
 import { AgentCard } from "./AgentCard";
 import { AgentDetail } from "./AgentDetail";
 import { CreateAgentForm } from "./CreateAgentForm";
@@ -16,7 +16,11 @@ export function AgentGrid() {
       const agent = agents.find((a) => a.id === agentId);
       if (!agent) return;
       try {
-        if (agent.source === "cloud" && agent.cloudClient && agent.cloudAgentId) {
+        if (
+          agent.source === "cloud" &&
+          agent.cloudClient &&
+          agent.cloudAgentId
+        ) {
           if (action === "play" || action === "resume") {
             await agent.cloudClient.resumeAgent(agent.cloudAgentId);
           } else if (action === "pause" || action === "stop") {
@@ -36,7 +40,7 @@ export function AgentGrid() {
     [agents, refresh],
   );
 
-  const getWebUIUrl = useCallback((agent: typeof agents[0]) => {
+  const getWebUIUrl = useCallback((agent: (typeof agents)[0]) => {
     // Prefer the webUiUrl set by AgentProvider (from cloud API or sandbox URL)
     if (agent.webUiUrl) return agent.webUiUrl;
     // For self-hosted/remote, sourceUrl IS the web UI
@@ -61,9 +65,7 @@ export function AgentGrid() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-text-light">
-            Your Agents
-          </h2>
+          <h2 className="text-xl font-semibold text-text-light">Your Agents</h2>
           <p className="text-sm text-text-muted mt-1">
             {agents.length === 0
               ? "No agents discovered yet"
@@ -78,8 +80,19 @@ export function AgentGrid() {
               hover:bg-brand-hover active:scale-[0.98] transition-all duration-150
               shadow-[0_0_16px_rgba(240,185,11,0.12)]"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            <svg
+              aria-hidden="true"
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2.5}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 4v16m8-8H4"
+              />
             </svg>
             New Agent
           </button>
@@ -103,48 +116,52 @@ export function AgentGrid() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
           {agents.map((agent, i) => (
-              <div
-                key={agent.id}
-                className="animate-fade-up"
-                style={{ animationDelay: `${i * 60}ms` }}
-              >
-                <AgentCard
-                  agent={{
-                    agentName: agent.name,
-                    state: agent.status,
-                    model: agent.model,
-                    uptime: agent.uptime,
-                    memories: agent.memories,
-                  }}
-                  source={agent.source}
-                  sourceUrl={agent.sourceUrl}
-                  webUiUrl={getWebUIUrl(agent)}
-                  nodeId={agent.nodeId}
-                  lastHeartbeat={agent.lastHeartbeat}
-                  billing={agent.billing}
-                  createdAt={agent.createdAt}
-                  region={agent.region}
-                  onPlay={() => handleAction(agent.id, "play")}
-                  onResume={() => handleAction(agent.id, "resume")}
-                  onPause={() => handleAction(agent.id, "pause")}
-                  onStop={() => handleAction(agent.id, "stop")}
-                  onSelect={() =>
-                    setSelectedId(selectedId === agent.id ? null : agent.id)
+            <div
+              key={agent.id}
+              className="animate-fade-up"
+              style={{ animationDelay: `${i * 60}ms` }}
+            >
+              <AgentCard
+                agent={{
+                  agentName: agent.name,
+                  state: agent.status,
+                  model: agent.model,
+                  uptime: agent.uptime,
+                  memories: agent.memories,
+                }}
+                source={agent.source}
+                sourceUrl={agent.sourceUrl}
+                webUiUrl={getWebUIUrl(agent)}
+                nodeId={agent.nodeId}
+                lastHeartbeat={agent.lastHeartbeat}
+                billing={agent.billing}
+                createdAt={agent.createdAt}
+                region={agent.region}
+                onPlay={() => handleAction(agent.id, "play")}
+                onResume={() => handleAction(agent.id, "resume")}
+                onPause={() => handleAction(agent.id, "pause")}
+                onStop={() => handleAction(agent.id, "stop")}
+                onSelect={() =>
+                  setSelectedId(selectedId === agent.id ? null : agent.id)
+                }
+                onOpenUI={() => {
+                  // Cloud agents: use pairing token flow for proper auth handoff
+                  if (
+                    agent.source === "cloud" &&
+                    agent.cloudClient &&
+                    agent.cloudAgentId
+                  ) {
+                    openWebUIWithPairing(agent.cloudAgentId, agent.cloudClient);
+                    return;
                   }
-                  onOpenUI={() => {
-                    // Cloud agents: use pairing token flow for proper auth handoff
-                    if (agent.source === "cloud" && agent.cloudClient && agent.cloudAgentId) {
-                      openWebUIWithPairing(agent.cloudAgentId, agent.cloudClient);
-                      return;
-                    }
-                    // Local/remote agents: open directly (no pairing token needed)
-                    const url = getWebUIUrl(agent);
-                    if (url) openWebUIDirect(url);
-                  }}
-                  selected={selectedId === agent.id}
-                />
-              </div>
-            ))}
+                  // Local/remote agents: open directly (no pairing token needed)
+                  const url = getWebUIUrl(agent);
+                  if (url) openWebUIDirect(url);
+                }}
+                selected={selectedId === agent.id}
+              />
+            </div>
+          ))}
         </div>
       )}
 
@@ -175,8 +192,19 @@ function EmptyState({ onCreateClick }: { onCreateClick: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 animate-fade-up">
       <div className="w-16 h-16 rounded-2xl bg-surface border border-border flex items-center justify-center mb-6">
-        <svg className="w-8 h-8 text-text-muted/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+        <svg
+          aria-hidden="true"
+          className="w-8 h-8 text-text-muted/30"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"
+          />
         </svg>
       </div>
       <h3 className="text-lg font-medium text-text-light mb-2">
@@ -185,7 +213,8 @@ function EmptyState({ onCreateClick }: { onCreateClick: () => void }) {
       <p className="text-sm text-text-muted text-center max-w-sm mb-6 leading-relaxed">
         Start Milady locally to see your agents here. You can also connect to a
         remote instance or{" "}
-        {authed ? "manage cloud agents" : "sign in to Eliza Cloud"} for hosted options.
+        {authed ? "manage cloud agents" : "sign in to Eliza Cloud"} for hosted
+        options.
       </p>
       <div className="flex items-center gap-3">
         <a
@@ -201,8 +230,19 @@ function EmptyState({ onCreateClick }: { onCreateClick: () => void }) {
           className="flex items-center gap-2 px-5 py-2.5 text-text-muted text-sm font-medium rounded-xl border border-border
             hover:text-text-light hover:border-text-muted hover:bg-surface transition-all duration-150"
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          <svg
+            aria-hidden="true"
+            className="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2.5}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 4v16m8-8H4"
+            />
           </svg>
           Create Cloud Agent
         </button>

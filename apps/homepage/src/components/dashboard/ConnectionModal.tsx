@@ -1,7 +1,12 @@
 import { useState } from "react";
 
 interface ConnectionModalProps {
-  onSubmit: (data: { name: string; url: string; type: "remote"; token?: string }) => void;
+  onSubmit: (data: {
+    name: string;
+    url: string;
+    type: "remote";
+    token?: string;
+  }) => void;
   onClose: () => void;
 }
 
@@ -14,8 +19,11 @@ export function ConnectionModal({ onSubmit, onClose }: ConnectionModalProps) {
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-dark/70 backdrop-blur-sm"
       onClick={(e) => e.target === e.currentTarget && onClose()}
-      onKeyDown={() => {}}
-      role="presentation"
+      onKeyDown={(e) => {
+        if (e.key === "Escape") onClose();
+      }}
+      role="dialog"
+      aria-modal="true"
     >
       <div className="bg-surface border border-border rounded-2xl p-6 w-full max-w-md mx-4 space-y-5 animate-fade-up shadow-2xl">
         <div>
@@ -53,8 +61,7 @@ export function ConnectionModal({ onSubmit, onClose }: ConnectionModalProps) {
 
         <label className="block">
           <span className="text-sm text-text-muted">
-            Access Key{" "}
-            <span className="text-text-muted/50">(optional)</span>
+            Access Key <span className="text-text-muted/50">(optional)</span>
           </span>
           <input
             value={token}

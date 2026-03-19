@@ -3,7 +3,6 @@ import { AgentProvider, useAgents } from "../../lib/AgentProvider";
 import { isAuthenticated } from "../../lib/auth";
 import { AgentGrid } from "./AgentGrid";
 import { CloudLoginBanner } from "./AuthGate";
-import { BillingPanel } from "./BillingPanel";
 import { CreditsPanel } from "./CreditsPanel";
 import { LogsPanel } from "./LogsPanel";
 import { MetricsPanel } from "./MetricsPanel";

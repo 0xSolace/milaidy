@@ -25,7 +25,7 @@ export function LogsPanel() {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [logs]);
+  }, []);
 
   return (
     <div className="space-y-3">
@@ -35,6 +35,7 @@ export function LogsPanel() {
       >
         {logs.map((log, i) => (
           <div
+            // biome-ignore lint/suspicious/noArrayIndexKey: logs lack unique IDs
             key={`${log.timestamp}-${i}`}
             className="flex gap-3 py-0.5 hover:bg-surface/50 px-1 -mx-1 rounded"
           >
@@ -51,8 +52,19 @@ export function LogsPanel() {
         ))}
       </div>
       <p className="text-xs text-text-muted/50 flex items-center gap-1.5">
-        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <svg
+          aria-hidden="true"
+          className="w-3.5 h-3.5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
         </svg>
         Simulated data — logs API not yet available
       </p>

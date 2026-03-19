@@ -23,7 +23,9 @@ export function BillingPanel() {
   if (!isAuthenticated()) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
-        <p className="text-sm text-text-muted">Sign in with Eliza Cloud to view billing.</p>
+        <p className="text-sm text-text-muted">
+          Sign in with Eliza Cloud to view billing.
+        </p>
       </div>
     );
   }
@@ -47,9 +49,7 @@ export function BillingPanel() {
         </p>
       </div>
 
-      {error && (
-        <p className="text-sm text-text-muted">{error}</p>
-      )}
+      {error && <p className="text-sm text-text-muted">{error}</p>}
 
       {billingSettings && (
         <div className="bg-surface rounded-2xl border border-border p-6">

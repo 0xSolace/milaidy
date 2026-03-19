@@ -6,7 +6,14 @@ import { ConnectionModal } from "./ConnectionModal";
 export type SourceFilter = "all" | "local" | "cloud" | "remote";
 
 export function SourceBar() {
-  const { agents, loading, refresh, addRemoteUrl, sourceFilter, setSourceFilter } = useAgents();
+  const {
+    agents,
+    loading,
+    refresh,
+    addRemoteUrl,
+    sourceFilter,
+    setSourceFilter,
+  } = useAgents();
   const [showAddRemote, setShowAddRemote] = useState(false);
 
   const cloudCount = agents.filter((a) => a.source === "cloud").length;
@@ -107,13 +114,9 @@ function SourceTab({
           : "text-text-muted hover:text-text-light hover:bg-surface/50"
       }`}
     >
-      {dotColor && (
-        <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
-      )}
+      {dotColor && <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />}
       <span>{label}</span>
-      {count > 0 && (
-        <span className="text-text-muted/60">({count})</span>
-      )}
+      {count > 0 && <span className="text-text-muted/60">({count})</span>}
     </button>
   );
 }

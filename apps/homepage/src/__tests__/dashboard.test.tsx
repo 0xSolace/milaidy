@@ -91,7 +91,9 @@ describe("ConnectionModal", () => {
     render(<ConnectionModal onSubmit={onSubmit} onClose={onClose} />);
 
     expect(screen.getByPlaceholderText("My Remote Agent")).toBeTruthy();
-    expect(screen.getByPlaceholderText("https://my-agent.example.com")).toBeTruthy();
+    expect(
+      screen.getByPlaceholderText("https://my-agent.example.com"),
+    ).toBeTruthy();
   });
 
   it("Connect button is disabled when name is empty", () => {
@@ -121,9 +123,12 @@ describe("ConnectionModal", () => {
     fireEvent.change(screen.getByPlaceholderText("My Remote Agent"), {
       target: { value: "Test Agent" },
     });
-    fireEvent.change(screen.getByPlaceholderText("https://my-agent.example.com"), {
-      target: { value: "http://10.0.0.5:2138" },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText("https://my-agent.example.com"),
+      {
+        target: { value: "http://10.0.0.5:2138" },
+      },
+    );
 
     const connectBtn = screen.getByText("Connect");
     expect(connectBtn).not.toBeDisabled();
@@ -284,7 +289,12 @@ describe("AgentDetail", () => {
 
   it("renders Overview tab by default", () => {
     const { container } = render(
-      <AgentDetail agent={agent} managedAgent={managedAgent} connectionId="local-default" muted={false} />,
+      <AgentDetail
+        agent={agent}
+        managedAgent={managedAgent}
+        connectionId="local-default"
+        muted={false}
+      />,
     );
     expect(container.textContent).toContain("Status");
     expect(container.textContent).toContain("Model");
@@ -292,13 +302,25 @@ describe("AgentDetail", () => {
 
   it("shows agent name in header", () => {
     const { container } = render(
-      <AgentDetail agent={agent} managedAgent={managedAgent} connectionId="local-default" muted={false} />,
+      <AgentDetail
+        agent={agent}
+        managedAgent={managedAgent}
+        connectionId="local-default"
+        muted={false}
+      />,
     );
     expect(container.textContent).toContain("Detail Agent");
   });
 
   it("renders all tab buttons", () => {
-    render(<AgentDetail agent={agent} managedAgent={managedAgent} connectionId="local-default" muted={false} />);
+    render(
+      <AgentDetail
+        agent={agent}
+        managedAgent={managedAgent}
+        connectionId="local-default"
+        muted={false}
+      />,
+    );
     expect(screen.getByText("Overview")).toBeTruthy();
     expect(screen.getByText("Metrics")).toBeTruthy();
     expect(screen.getByText("Logs")).toBeTruthy();
@@ -307,7 +329,12 @@ describe("AgentDetail", () => {
 
   it("switches to Logs tab", () => {
     const { container } = render(
-      <AgentDetail agent={agent} managedAgent={managedAgent} connectionId="local-default" muted={false} />,
+      <AgentDetail
+        agent={agent}
+        managedAgent={managedAgent}
+        connectionId="local-default"
+        muted={false}
+      />,
     );
     fireEvent.click(screen.getByText("Logs"));
     const text = container.textContent ?? "";
@@ -317,7 +344,14 @@ describe("AgentDetail", () => {
   });
 
   it("switches to Snapshots tab", () => {
-    render(<AgentDetail agent={agent} managedAgent={managedAgent} connectionId="local-default" muted={false} />);
+    render(
+      <AgentDetail
+        agent={agent}
+        managedAgent={managedAgent}
+        connectionId="local-default"
+        muted={false}
+      />,
+    );
     fireEvent.click(screen.getByText("Snapshots"));
     expect(screen.getByText("Export Agent")).toBeTruthy();
   });
@@ -398,11 +432,7 @@ describe("AgentCard regression", () => {
 
   it("shows source label", () => {
     const { container } = render(
-      <AgentCard
-        {...baseProps}
-        source="cloud"
-        agent={makeAgent()}
-      />,
+      <AgentCard {...baseProps} source="cloud" agent={makeAgent()} />,
     );
     expect(container.textContent).toContain("Cloud");
   });

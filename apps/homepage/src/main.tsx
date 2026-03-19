@@ -2,8 +2,8 @@ import "./styles.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
-import { setToken } from "./lib/auth";
 import { Nav } from "./components/Nav";
+import { setToken } from "./lib/auth";
 import { AppRoutes } from "./router";
 
 // Allow setting the API token via URL param: ?token=eliza_xxx

@@ -70,7 +70,8 @@ const MILADY_AGENT_BASE_DOMAIN = "waifu.fun";
 function agentsEqual(a: ManagedAgent[], b: ManagedAgent[]): boolean {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
-    const aa = a[i], bb = b[i];
+    const aa = a[i],
+      bb = b[i];
     if (
       aa.id !== bb.id ||
       aa.name !== bb.name ||
@@ -81,7 +82,8 @@ function agentsEqual(a: ManagedAgent[], b: ManagedAgent[]): boolean {
       aa.webUiUrl !== bb.webUiUrl ||
       aa.sourceUrl !== bb.sourceUrl ||
       aa.lastHeartbeat !== bb.lastHeartbeat
-    ) return false;
+    )
+      return false;
   }
   return true;
 }
@@ -95,18 +97,20 @@ export function AgentProvider({ children }: { children: ReactNode }) {
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
 
   // Sort agents: local first, then remote, then cloud (memoized to avoid re-creating on every render)
-  const sortedAgents = useMemo(() =>
-    [...agents].sort((a, b) => {
-      const order: Record<string, number> = { local: 0, remote: 1, cloud: 2 };
-      return (order[a.source] ?? 3) - (order[b.source] ?? 3);
-    }),
+  const sortedAgents = useMemo(
+    () =>
+      [...agents].sort((a, b) => {
+        const order: Record<string, number> = { local: 0, remote: 1, cloud: 2 };
+        return (order[a.source] ?? 3) - (order[b.source] ?? 3);
+      }),
     [agents],
   );
 
-  const filteredAgents = useMemo(() =>
-    sourceFilter === "all"
-      ? sortedAgents
-      : sortedAgents.filter((a) => a.source === sourceFilter),
+  const filteredAgents = useMemo(
+    () =>
+      sourceFilter === "all"
+        ? sortedAgents
+        : sortedAgents.filter((a) => a.source === sourceFilter),
     [sortedAgents, sourceFilter],
   );
 
@@ -167,7 +171,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
       node_id?: string;
       last_heartbeat_at?: string;
     }> = [];
-    const authToken = getToken();
+    const _authToken = getToken();
     for (const url of getSandboxDiscoveryUrls()) {
       try {
         const sandboxRes = await fetch(url, {
@@ -191,21 +195,22 @@ export function AgentProvider({ children }: { children: ReactNode }) {
         .map((a) => a.name.toLowerCase()),
     );
     const cloudAgentIds = new Set(
-      results
-        .filter((a) => a.source === "cloud")
-        .map((a) => a.cloudAgentId),
+      results.filter((a) => a.source === "cloud").map((a) => a.cloudAgentId),
     );
 
     if (sandboxes.length > 0) {
       // When cloud auth succeeded and returned agents, filter sandboxes to only matching ones.
       // When cloud auth failed (or returned 0 agents), show all sandboxes as fallback.
-      const ownedSandboxes = cloudAuthOk && cloudAgentNames.size > 0
-        ? sandboxes.filter((sb) => {
-            const nameMatch = cloudAgentNames.has((sb.agent_name || "").toLowerCase());
-            const idMatch = cloudAgentIds.has(sb.id);
-            return nameMatch || idMatch;
-          })
-        : sandboxes;
+      const ownedSandboxes =
+        cloudAuthOk && cloudAgentNames.size > 0
+          ? sandboxes.filter((sb) => {
+              const nameMatch = cloudAgentNames.has(
+                (sb.agent_name || "").toLowerCase(),
+              );
+              const idMatch = cloudAgentIds.has(sb.id);
+              return nameMatch || idMatch;
+            })
+          : sandboxes;
 
       // Build a lookup from cloud agent name (lowercase) → index in results
       const cloudAgentIndexByName = new Map<string, number>();
@@ -216,89 +221,79 @@ export function AgentProvider({ children }: { children: ReactNode }) {
       }
 
       for (const sb of ownedSandboxes) {
-          discoveredIds.add(sb.id);
-          // Each sandbox is accessible at https://{uuid}.waifu.fun
-          const url = `https://${sb.id}.${MILADY_AGENT_BASE_DOMAIN}`;
-          const apiToken = sb.api_token;
-          const client = new CloudApiClient({
-            url,
-            type: "remote",
-            authToken: apiToken,
-          });
+        discoveredIds.add(sb.id);
+        // Each sandbox is accessible at https://{uuid}.waifu.fun
+        const url = `https://${sb.id}.${MILADY_AGENT_BASE_DOMAIN}`;
+        const apiToken = sb.api_token;
+        const client = new CloudApiClient({
+          url,
+          type: "remote",
+          authToken: apiToken,
+        });
 
-          // Check if this sandbox matches an existing cloud agent (dedup by name)
-          const sbName = (sb.agent_name || "").toLowerCase();
-          const matchingCloudIdx = cloudAgentIndexByName.get(sbName);
+        // Check if this sandbox matches an existing cloud agent (dedup by name)
+        const sbName = (sb.agent_name || "").toLowerCase();
+        const matchingCloudIdx = cloudAgentIndexByName.get(sbName);
 
-          if (matchingCloudIdx !== undefined) {
-            // Merge sandbox data INTO the existing cloud agent instead of creating a duplicate.
-            // Cloud agent is preferred (richer data), but sandbox provides live status + connectivity.
-            const cloudEntry = results[matchingCloudIdx];
-            cloudEntry.sourceUrl = url;
-            cloudEntry.client = client;
-            cloudEntry.nodeId = sb.node_id;
-            cloudEntry.lastHeartbeat = sb.last_heartbeat_at;
-            // Set webUiUrl to the sandbox's public URL (https://{uuid}.waifu.fun)
-            // TODO: Integrate pairing token flow for proper auth handoff (see WEB_UI_URL_NOTES.md)
-            cloudEntry.webUiUrl = url;
-            // Try to enrich with live status from the sandbox
-            try {
-              await client.health();
-              try {
-                const status = await client.getAgentStatus();
-                // Only override cloud fields if sandbox has real data
-                if (status.state && status.state !== "unknown") cloudEntry.status = status.state;
-                if (status.model && status.model !== "—") cloudEntry.model = status.model;
-                if (status.uptime) cloudEntry.uptime = status.uptime;
-                if (status.memories) cloudEntry.memories = status.memories;
-              } catch {
-                // Health OK but no detailed status — mark as running if cloud says unknown
-                if (cloudEntry.status === "unknown") cloudEntry.status = "running";
-              }
-            } catch {
-              // Sandbox unreachable — keep cloud data as-is
-            }
-            continue;
-          }
-
-          // No matching cloud agent — add as standalone remote agent
+        if (matchingCloudIdx !== undefined) {
+          // Merge sandbox data INTO the existing cloud agent instead of creating a duplicate.
+          // Cloud agent is preferred (richer data), but sandbox provides live status + connectivity.
+          const cloudEntry = results[matchingCloudIdx];
+          cloudEntry.sourceUrl = url;
+          cloudEntry.client = client;
+          cloudEntry.nodeId = sb.node_id;
+          cloudEntry.lastHeartbeat = sb.last_heartbeat_at;
+          // Set webUiUrl to the sandbox's public URL (https://{uuid}.waifu.fun)
+          // TODO: Integrate pairing token flow for proper auth handoff (see WEB_UI_URL_NOTES.md)
+          cloudEntry.webUiUrl = url;
+          // Try to enrich with live status from the sandbox
           try {
             await client.health();
             try {
               const status = await client.getAgentStatus();
-              results.push({
-                id: `milady-${sb.id}`,
-                name: status.agentName || sb.agent_name || sb.id,
-                source: "remote",
-                status: status.state,
-                model: status.model,
-                uptime: status.uptime,
-                memories: status.memories,
-                sourceUrl: url,
-                webUiUrl: url,
-                client,
-                nodeId: sb.node_id,
-                lastHeartbeat: sb.last_heartbeat_at,
-              });
+              // Only override cloud fields if sandbox has real data
+              if (status.state && status.state !== "unknown")
+                cloudEntry.status = status.state;
+              if (status.model && status.model !== "—")
+                cloudEntry.model = status.model;
+              if (status.uptime) cloudEntry.uptime = status.uptime;
+              if (status.memories) cloudEntry.memories = status.memories;
             } catch {
-              results.push({
-                id: `milady-${sb.id}`,
-                name: sb.agent_name || sb.id,
-                source: "remote",
-                status: "running",
-                sourceUrl: url,
-                webUiUrl: url,
-                client,
-                nodeId: sb.node_id,
-                lastHeartbeat: sb.last_heartbeat_at,
-              });
+              // Health OK but no detailed status — mark as running if cloud says unknown
+              if (cloudEntry.status === "unknown")
+                cloudEntry.status = "running";
             }
+          } catch {
+            // Sandbox unreachable — keep cloud data as-is
+          }
+          continue;
+        }
+
+        // No matching cloud agent — add as standalone remote agent
+        try {
+          await client.health();
+          try {
+            const status = await client.getAgentStatus();
+            results.push({
+              id: `milady-${sb.id}`,
+              name: status.agentName || sb.agent_name || sb.id,
+              source: "remote",
+              status: status.state,
+              model: status.model,
+              uptime: status.uptime,
+              memories: status.memories,
+              sourceUrl: url,
+              webUiUrl: url,
+              client,
+              nodeId: sb.node_id,
+              lastHeartbeat: sb.last_heartbeat_at,
+            });
           } catch {
             results.push({
               id: `milady-${sb.id}`,
               name: sb.agent_name || sb.id,
               source: "remote",
-              status: "unknown",
+              status: "running",
               sourceUrl: url,
               webUiUrl: url,
               client,
@@ -306,7 +301,20 @@ export function AgentProvider({ children }: { children: ReactNode }) {
               lastHeartbeat: sb.last_heartbeat_at,
             });
           }
+        } catch {
+          results.push({
+            id: `milady-${sb.id}`,
+            name: sb.agent_name || sb.id,
+            source: "remote",
+            status: "unknown",
+            sourceUrl: url,
+            webUiUrl: url,
+            client,
+            nodeId: sb.node_id,
+            lastHeartbeat: sb.last_heartbeat_at,
+          });
         }
+      }
     }
 
     // 3. Local agent (auto-probe configured local backend)
@@ -401,7 +409,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     }
 
     // Only update state if data actually changed (prevents unnecessary re-renders)
-    setAgents((prev) => agentsEqual(prev, results) ? prev : results);
+    setAgents((prev) => (agentsEqual(prev, results) ? prev : results));
     setLoading(false);
   }, []);
 
@@ -428,23 +436,30 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     [fetchAll],
   );
 
-  const contextValue = useMemo<AgentContextValue>(() => ({
-    agents: sortedAgents,
-    filteredAgents,
-    loading,
-    cloudClient: cloudClientRef.current,
-    sourceFilter,
-    setSourceFilter,
-    refresh: fetchAll,
-    addRemoteUrl,
-    removeRemote,
-  }), [sortedAgents, filteredAgents, loading, sourceFilter, fetchAll, addRemoteUrl, removeRemote]);
-
-  return (
-    <AgentContext value={contextValue}>
-      {children}
-    </AgentContext>
+  const contextValue = useMemo<AgentContextValue>(
+    () => ({
+      agents: sortedAgents,
+      filteredAgents,
+      loading,
+      cloudClient: cloudClientRef.current,
+      sourceFilter,
+      setSourceFilter,
+      refresh: fetchAll,
+      addRemoteUrl,
+      removeRemote,
+    }),
+    [
+      sortedAgents,
+      filteredAgents,
+      loading,
+      sourceFilter,
+      fetchAll,
+      addRemoteUrl,
+      removeRemote,
+    ],
   );
+
+  return <AgentContext value={contextValue}>{children}</AgentContext>;
 }
 
 function mapCloudStatus(status: string): ManagedAgent["status"] {

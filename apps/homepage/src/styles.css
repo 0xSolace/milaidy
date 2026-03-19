@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap");
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
@@ -10,9 +10,9 @@
   --color-dark: #0c0c0e;
   --color-dark-secondary: #121214;
   --color-light: #f5f5f5;
-  --color-brand: #F0B90B;
+  --color-brand: #f0b90b;
   --color-brand-hover: #d4a30a;
-  --color-accent: #FCD535;
+  --color-accent: #fcd535;
   --color-text-light: #ececf0;
   --color-text-dark: #0c0c0e;
   --color-text-muted: #7c7c8a;
@@ -49,13 +49,21 @@ body {
 }
 
 @keyframes marquee {
-  0% { transform: translateX(0%); }
-  100% { transform: translateX(-100%); }
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
 }
 
 @keyframes marquee-vertical {
-  0% { transform: translateY(0%); }
-  100% { transform: translateY(-100%); }
+  0% {
+    transform: translateY(0%);
+  }
+  100% {
+    transform: translateY(-100%);
+  }
 }
 
 .animate-marquee {
@@ -138,8 +146,13 @@ body {
 }
 
 @keyframes clock-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.2; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
 }
 
 /* ── Hero Download Dock ──────────────────────────────────────────── */
@@ -322,10 +335,14 @@ body {
 }
 
 @media (min-width: 640px) {
-  .download-icons { gap: 20px; }
+  .download-icons {
+    gap: 20px;
+  }
 }
 
-.download-icons li { margin: 0; }
+.download-icons li {
+  margin: 0;
+}
 
 .download-icons .download {
   display: flex;
@@ -345,7 +362,10 @@ body {
 }
 
 @media (min-width: 640px) {
-  .download-icons .download { width: 56px; height: 56px; }
+  .download-icons .download {
+    width: 56px;
+    height: 56px;
+  }
 }
 
 .download-icons .download i {
@@ -354,7 +374,9 @@ body {
 }
 
 @media (min-width: 640px) {
-  .download-icons .download i { font-size: 22px; }
+  .download-icons .download i {
+    font-size: 22px;
+  }
 }
 
 .download-icons .download .df,
@@ -381,7 +403,10 @@ body {
 }
 
 @media (min-width: 640px) {
-  .download-icons .download:hover { min-width: 56px; padding: 6px 14px; }
+  .download-icons .download:hover {
+    min-width: 56px;
+    padding: 6px 14px;
+  }
 }
 
 .download-icons .download:hover i {
@@ -425,8 +450,12 @@ body {
 
 /* Subtle shimmer for loading states */
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 .animate-shimmer {
@@ -442,8 +471,13 @@ body {
 
 /* Status dot pulse */
 @keyframes status-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 currentColor; }
-  50% { box-shadow: 0 0 0 4px transparent; }
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 currentColor;
+  }
+  50% {
+    box-shadow: 0 0 0 4px transparent;
+  }
 }
 
 .status-dot-pulse {

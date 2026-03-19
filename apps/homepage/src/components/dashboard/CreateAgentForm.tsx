@@ -24,7 +24,7 @@ export function CreateAgentForm({ onCreated, onCancel }: CreateAgentFormProps) {
   const [step, setStep] = useState<CreateStep>("form");
   const [error, setError] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
-  const [createdAgentId, setCreatedAgentId] = useState<string | null>(null);
+  const [_createdAgentId, setCreatedAgentId] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Clean up polling on unmount
@@ -79,7 +79,8 @@ export function CreateAgentForm({ onCreated, onCancel }: CreateAgentFormProps) {
 
       const result = await cc.createAgent({
         name: name.trim(),
-        environmentVars: Object.keys(environmentVars).length > 0 ? environmentVars : undefined,
+        environmentVars:
+          Object.keys(environmentVars).length > 0 ? environmentVars : undefined,
       });
 
       setCreatedAgentId(result.id);
@@ -118,7 +119,8 @@ export function CreateAgentForm({ onCreated, onCancel }: CreateAgentFormProps) {
   }, [name, envVars, onCreated, pollJob]);
 
   const addEnvVar = () => setEnvVars([...envVars, { key: "", value: "" }]);
-  const removeEnvVar = (i: number) => setEnvVars(envVars.filter((_, idx) => idx !== i));
+  const removeEnvVar = (i: number) =>
+    setEnvVars(envVars.filter((_, idx) => idx !== i));
   const updateEnvVar = (i: number, field: "key" | "value", val: string) => {
     const updated = [...envVars];
     updated[i] = { ...updated[i], [field]: val };
@@ -135,11 +137,24 @@ export function CreateAgentForm({ onCreated, onCancel }: CreateAgentFormProps) {
           {step === "done" ? (
             <>
               <div className="w-14 h-14 rounded-full bg-emerald-500/10 flex items-center justify-center mb-4">
-                <svg className="w-7 h-7 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                <svg
+                  aria-hidden="true"
+                  className="w-7 h-7 text-emerald-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M5 13l4 4L19 7"
+                  />
                 </svg>
               </div>
-              <h3 className="text-lg font-medium text-text-light mb-1">Agent Created!</h3>
+              <h3 className="text-lg font-medium text-text-light mb-1">
+                Agent Created!
+              </h3>
               <p className="text-sm text-text-muted">
                 {name} is now live. Redirecting…
               </p>
@@ -154,7 +169,7 @@ export function CreateAgentForm({ onCreated, onCancel }: CreateAgentFormProps) {
               </h3>
               <p className="text-sm text-text-muted">
                 {jobStatus
-                  ? PROGRESS_MESSAGES[jobStatus.status] ?? "Working…"
+                  ? (PROGRESS_MESSAGES[jobStatus.status] ?? "Working…")
                   : step === "creating"
                     ? "Setting up your agent on Eliza Cloud…"
                     : "Spinning up the sandbox environment…"}
@@ -166,9 +181,14 @@ export function CreateAgentForm({ onCreated, onCancel }: CreateAgentFormProps) {
                   <div
                     className="h-full bg-brand rounded-full transition-all duration-700 ease-out"
                     style={{
-                      width: step === "creating" ? "30%" :
-                        jobStatus?.status === "pending" ? "50%" :
-                        jobStatus?.status === "in_progress" ? "75%" : "45%",
+                      width:
+                        step === "creating"
+                          ? "30%"
+                          : jobStatus?.status === "pending"
+                            ? "50%"
+                            : jobStatus?.status === "in_progress"
+                              ? "75%"
+                              : "45%",
                     }}
                   />
                 </div>
@@ -193,8 +213,19 @@ export function CreateAgentForm({ onCreated, onCancel }: CreateAgentFormProps) {
 
       {!authenticated ? (
         <div className="flex items-center gap-3 px-4 py-3 bg-brand/5 border border-brand/20 rounded-xl">
-          <svg className="w-5 h-5 text-brand flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <svg
+            aria-hidden="true"
+            className="w-5 h-5 text-brand flex-shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
           </svg>
           <span className="text-sm text-text-muted">
             Go to{" "}
@@ -213,14 +244,21 @@ export function CreateAgentForm({ onCreated, onCancel }: CreateAgentFormProps) {
         <div className="space-y-4">
           {/* Agent name */}
           <div>
-            <label className="block text-xs text-text-muted mb-1.5">Agent Name</label>
+            <label
+              htmlFor="agent-name-input"
+              className="block text-xs text-text-muted mb-1.5"
+            >
+              Agent Name
+            </label>
             <input
+              id="agent-name-input"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !showEnvVars && handleCreate()}
+              onKeyDown={(e) =>
+                e.key === "Enter" && !showEnvVars && handleCreate()
+              }
               placeholder="e.g. my-milady-agent"
-              autoFocus
               className="w-full px-4 py-2.5 bg-dark border border-border rounded-xl text-[15px]
                 text-text-light placeholder:text-text-muted/50
                 focus:border-brand/50 focus:outline-none focus:ring-1 focus:ring-brand/20
@@ -236,13 +274,18 @@ export function CreateAgentForm({ onCreated, onCancel }: CreateAgentFormProps) {
               className="flex items-center gap-2 text-xs text-text-muted hover:text-text-light transition-colors"
             >
               <svg
+                aria-hidden="true"
                 className={`w-3 h-3 transition-transform ${showEnvVars ? "rotate-90" : ""}`}
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
                 strokeWidth={2}
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M9 5l7 7-7 7"
+                />
               </svg>
               Environment Variables
               {envVars.length > 0 && (
@@ -255,6 +298,7 @@ export function CreateAgentForm({ onCreated, onCancel }: CreateAgentFormProps) {
             {showEnvVars && (
               <div className="mt-3 space-y-2">
                 {envVars.map((ev, i) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: env vars have no stable ID
                   <div key={i} className="flex gap-2">
                     <input
                       type="text"
@@ -279,8 +323,19 @@ export function CreateAgentForm({ onCreated, onCancel }: CreateAgentFormProps) {
                       onClick={() => removeEnvVar(i)}
                       className="px-2 text-text-muted hover:text-red-400 transition-colors"
                     >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      <svg
+                        aria-hidden="true"
+                        className="w-4 h-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
                       </svg>
                     </button>
                   </div>
@@ -307,8 +362,19 @@ export function CreateAgentForm({ onCreated, onCancel }: CreateAgentFormProps) {
                 disabled:opacity-30 disabled:cursor-not-allowed
                 flex items-center gap-2 shadow-[0_0_16px_rgba(240,185,11,0.12)]"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              <svg
+                aria-hidden="true"
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M13 10V3L4 14h7v7l9-11h-7z"
+                />
               </svg>
               Create &amp; Deploy
             </button>

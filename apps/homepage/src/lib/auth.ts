@@ -70,7 +70,9 @@ export async function fetchCloudAgents(): Promise<CloudAgent[]> {
     });
     if (!res.ok) return [];
     const data = await res.json();
-    const raw: CloudAgent[] = Array.isArray(data) ? data : (data.agents ?? data.data ?? []);
+    const raw: CloudAgent[] = Array.isArray(data)
+      ? data
+      : (data.agents ?? data.data ?? []);
     // Backend returns agentName; normalize to name
     return raw.map((a) => ({ ...a, name: a.name || a.agentName || a.id }));
   } catch {

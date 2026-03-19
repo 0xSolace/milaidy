@@ -6,7 +6,6 @@ import {
   useState,
 } from "react";
 import {
-  clearToken,
   cloudLogin,
   cloudLoginPoll,
   isAuthenticated,
@@ -24,7 +23,11 @@ type AuthState =
  * CloudLoginBanner — an inline, dismissible banner that lets users optionally
  * sign in to Eliza Cloud for hosted agent management. Does NOT block the UI.
  */
-export function CloudLoginBanner({ onAuthenticated }: { onAuthenticated?: () => void }) {
+export function CloudLoginBanner({
+  onAuthenticated,
+}: {
+  onAuthenticated?: () => void;
+}) {
   const [state, setState] = useState<AuthState>("checking");
   const [error, setError] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState(false);
@@ -92,12 +95,13 @@ export function CloudLoginBanner({ onAuthenticated }: { onAuthenticated?: () => 
         ) : (
           <>
             <p className="text-sm text-text-muted">
-              <span className="text-text-light font-medium">Want cloud agents?</span>{" "}
-              Sign in to Eliza Cloud to create and manage hosted agents alongside your local ones.
+              <span className="text-text-light font-medium">
+                Want cloud agents?
+              </span>{" "}
+              Sign in to Eliza Cloud to create and manage hosted agents
+              alongside your local ones.
             </p>
-            {error && (
-              <p className="text-xs text-red-400 mt-1">{error}</p>
-            )}
+            {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
           </>
         )}
       </div>

@@ -71,9 +71,9 @@ export class CloudClient {
       ? data
       : ((data as { agents?: CloudAgentDetail[]; data?: CloudAgentDetail[] })
           .agents ??
-          (data as { agents?: CloudAgentDetail[]; data?: CloudAgentDetail[] })
-            .data ??
-          []);
+        (data as { agents?: CloudAgentDetail[]; data?: CloudAgentDetail[] })
+          .data ??
+        []);
     // Backend returns agentName; normalize to name for the rest of the app
     return raw.map((a) => ({
       ...a,
@@ -97,18 +97,20 @@ export class CloudClient {
     };
     if (config.characterId) payload.characterId = config.characterId;
     if (config.config) payload.agentConfig = config.config;
-    if (config.environmentVars) payload.environmentVars = config.environmentVars;
+    if (config.environmentVars)
+      payload.environmentVars = config.environmentVars;
 
-    const res = await this.request<{ success?: boolean; data?: { id: string }; id?: string }>(
-      "/api/v1/milady/agents",
-      {
-        method: "POST",
-        body: JSON.stringify(payload),
-      },
-    );
+    const res = await this.request<{
+      success?: boolean;
+      data?: { id: string };
+      id?: string;
+    }>("/api/v1/milady/agents", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
     // Backend wraps response in { success, data: { id, ... } }
-    return { id: (res.data?.id ?? res.id)! };
-  
+    const id = res.data?.id ?? res.id ?? "";
+    return { id };
   }
 
   async deleteAgent(agentId: string): Promise<void> {
@@ -347,7 +349,10 @@ export class CloudApiClient {
     return headers;
   }
 
-  private async rawFetch(path: string, opts: RequestInit = {}): Promise<Response> {
+  private async rawFetch(
+    path: string,
+    opts: RequestInit = {},
+  ): Promise<Response> {
     return fetch(`${this.baseUrl}${path}`, {
       ...opts,
       headers: this.buildHeaders(opts),

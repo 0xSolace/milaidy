@@ -54,7 +54,9 @@ export async function openWebUIWithPairing(
     popup.close();
     const message = err instanceof Error ? err.message : String(err);
     if (message.includes("404") || message.includes("not found")) {
-      showToast("Agent not found or not running. Please start the agent first.");
+      showToast(
+        "Agent not found or not running. Please start the agent first.",
+      );
     } else if (message.includes("401") || message.includes("403")) {
       showToast("Authentication expired. Please sign in again.");
     } else {

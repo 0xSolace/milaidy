@@ -30,11 +30,7 @@ export function Nav() {
           onClick={scrollTo("top")}
           className="group flex items-center gap-2.5 transition-opacity hover:opacity-80"
         >
-          <img
-            src="/logo.png"
-            alt="Milady"
-            className="w-7 h-7 rounded-lg"
-          />
+          <img src="/logo.png" alt="Milady" className="w-7 h-7 rounded-lg" />
           <span className="text-lg font-semibold tracking-tight text-text-light">
             Milady
           </span>
@@ -45,9 +41,10 @@ export function Nav() {
           <Link
             to="/dashboard"
             className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-150
-              ${isOnDashboard
-                ? "text-brand bg-brand/10"
-                : "text-text-muted hover:text-text-light hover:bg-surface"
+              ${
+                isOnDashboard
+                  ? "text-brand bg-brand/10"
+                  : "text-text-muted hover:text-text-light hover:bg-surface"
               }`}
           >
             Dashboard
