@@ -161,7 +161,7 @@ export function HeroInstallDock() {
         </Link>
         <span className="text-white/10">·</span>
         <a
-          href="https://github.com/0xSolace/milaidy"
+          href="https://github.com/milady-ai/milady"
           target="_blank"
           rel="noopener noreferrer"
           className="hover:text-brand/70 transition-colors duration-200"

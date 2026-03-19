@@ -154,7 +154,6 @@ describe("AgentCard", () => {
     onStop: vi.fn(),
     onSelect: vi.fn(),
     selected: false,
-    muted: false,
   };
 
   function makeAgent(overrides: Partial<AgentStatus> = {}): AgentStatus {
@@ -293,7 +292,6 @@ describe("AgentDetail", () => {
         agent={agent}
         managedAgent={managedAgent}
         connectionId="local-default"
-        muted={false}
       />,
     );
     expect(container.textContent).toContain("Status");
@@ -306,7 +304,6 @@ describe("AgentDetail", () => {
         agent={agent}
         managedAgent={managedAgent}
         connectionId="local-default"
-        muted={false}
       />,
     );
     expect(container.textContent).toContain("Detail Agent");
@@ -318,7 +315,6 @@ describe("AgentDetail", () => {
         agent={agent}
         managedAgent={managedAgent}
         connectionId="local-default"
-        muted={false}
       />,
     );
     expect(screen.getByText("Overview")).toBeTruthy();
@@ -333,7 +329,6 @@ describe("AgentDetail", () => {
         agent={agent}
         managedAgent={managedAgent}
         connectionId="local-default"
-        muted={false}
       />,
     );
     fireEvent.click(screen.getByText("Logs"));
@@ -349,7 +344,6 @@ describe("AgentDetail", () => {
         agent={agent}
         managedAgent={managedAgent}
         connectionId="local-default"
-        muted={false}
       />,
     );
     fireEvent.click(screen.getByText("Snapshots"));
@@ -369,7 +363,6 @@ describe("AgentCard regression", () => {
     onStop: vi.fn(),
     onSelect: vi.fn(),
     selected: false,
-    muted: false,
   };
 
   function makeAgent(overrides: Partial<AgentStatus> = {}): AgentStatus {

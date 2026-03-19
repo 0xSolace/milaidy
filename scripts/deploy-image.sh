@@ -10,7 +10,7 @@
 #                         current image of targeted containers)
 #   --container-id ID     Deploy to a specific container (by name or ID)
 #   --all                 Deploy to ALL milady containers on milady-core-1
-#   --server HOST         SSH target (default: root@88.99.66.168)
+#   --server HOST         SSH target (default: ${DEPLOY_SERVER:-"root@your-server"})
 #   --list                List running milady containers and exit
 #   --dry-run             Show what would be done without doing it
 #   -h, --help            Show this help
@@ -31,7 +31,7 @@
 set -euo pipefail
 
 # ── Server config ─────────────────────────────────────────────────────────────
-DEFAULT_SERVER="root@88.99.66.168"
+DEFAULT_SERVER="${DEPLOY_SERVER:-"root@your-server"}"
 SSH_KEY="${SSH_KEY:-$HOME/.ssh/id_ed25519}"
 SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=20"
 

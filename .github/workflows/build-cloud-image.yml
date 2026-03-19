@@ -26,7 +26,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: milady-ai/milaidy/agent
+  IMAGE_NAME: milady-ai/milady/agent
 
 permissions:
   contents: read

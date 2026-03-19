@@ -8,7 +8,7 @@
 # Options:
 #   --version VER    Override version string (default: read from package.json)
 #   --tag TAG        Docker image tag (default: v{version})
-#   --remote         Build on milady-core-1 (root@88.99.66.168) instead of locally
+#   --remote         Build on milady-core-1 (${BUILD_SERVER:-"root@your-server"}) instead of locally
 #   --push           After local build, push/load image to milady-core-1
 #   --no-install     Skip bun install (if deps are already up to date)
 #   --no-tsdown      Skip tsdown build (if dist/ is already built)
@@ -22,8 +22,8 @@
 #   ./scripts/build-image.sh --version 2.0.0-alpha.54    # Build specific version
 #
 # Context:
-#   - Repo:         /home/shad0w/projects/milaidy-dev
-#   - Build server: root@88.99.66.168 (milady-core-1)
+#   - Repo:         $(git rev-parse --show-toplevel)
+#   - Build server: ${BUILD_SERVER:-"root@your-server"} (milady-core-1)
 #   - Image name:   milady/agent:{tag}
 #
 # What this does:
@@ -39,7 +39,7 @@
 set -euo pipefail
 
 # ── Build server config ───────────────────────────────────────────────────────
-BUILD_SERVER="root@88.99.66.168"
+BUILD_SERVER="${BUILD_SERVER:-"root@your-build-server"}"
 SSH_KEY="${SSH_KEY:-$HOME/.ssh/id_ed25519}"
 SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=20"
 
@@ -80,10 +80,10 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# ── Verify we're in the milaidy-dev repo root ─────────────────────────────────
+# ── Verify we're in the milady repo root ─────────────────────────────────
 # Look for canonical markers: package.json with "miladyai" name and apps/app/vite.config.ts
 if [[ ! -f "package.json" ]] || ! grep -q '"miladyai"' package.json 2>/dev/null; then
-  die "Not in milaidy-dev repo root. Run from /home/shad0w/projects/milaidy-dev"
+  die "Not in milady repo root. Run from $(git rev-parse --show-toplevel)"
 fi
 if [[ ! -f "apps/app/vite.config.ts" ]]; then
   die "apps/app/vite.config.ts not found. Are you in the right directory?"

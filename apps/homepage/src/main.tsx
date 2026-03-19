@@ -7,7 +7,10 @@ import { setToken } from "./lib/auth";
 import { AppRoutes } from "./router";
 
 // Allow setting the API token via URL param: ?token=eliza_xxx
-// Stores in localStorage and strips the param from the URL for security.
+// Stores in localStorage and immediately strips the param from the URL.
+// NOTE: The token may briefly appear in server/CDN access logs before replaceState
+// executes. This is an accepted tradeoff for OAuth-style redirect flows; production
+// deployments should use short-lived tokens and HTTPS-only.
 const url = new URL(window.location.href);
 const tokenParam = url.searchParams.get("token");
 if (tokenParam) {

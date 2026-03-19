@@ -35,7 +35,13 @@ export function CreateAgentForm({ onCreated, onCancel }: CreateAgentFormProps) {
   }, []);
 
   const pollJob = useCallback(
-    async (cc: CloudClient, jobId: string) => {
+    async (cc: CloudClient, jobId: string, attempt = 0) => {
+      const MAX_ATTEMPTS = 60; // ~2.5 min at 2.5s intervals
+      if (attempt >= MAX_ATTEMPTS) {
+        setStep("error");
+        setError("Provisioning timed out. Please check the dashboard.");
+        return;
+      }
       try {
         const status = await cc.getJobStatus(jobId);
         setJobStatus(status);
@@ -46,11 +52,17 @@ export function CreateAgentForm({ onCreated, onCancel }: CreateAgentFormProps) {
           setStep("error");
           setError(status.error ?? "Provisioning failed.");
         } else {
-          pollRef.current = setTimeout(() => pollJob(cc, jobId), 2500);
+          pollRef.current = setTimeout(
+            () => pollJob(cc, jobId, attempt + 1),
+            2500,
+          );
         }
       } catch {
-        // Network error during polling — retry a few times
-        pollRef.current = setTimeout(() => pollJob(cc, jobId), 5000);
+        // Network error during polling — retry with backoff
+        pollRef.current = setTimeout(
+          () => pollJob(cc, jobId, attempt + 1),
+          5000,
+        );
       }
     },
     [onCreated],
