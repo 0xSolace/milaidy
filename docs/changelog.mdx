@@ -5,6 +5,7 @@ description: What's new in Milady — features, improvements, and fixes.
 description: The latest updates and improvements to Milady.
 ---
 
+<Update label="2026-04-09" description="Week of April 3–9" tags={["Feature", "Update"]}>
 <Update label="2026-04-09" description="Week of April 3–9" tags={["Feature", "Update", "Fix"]}>
 ## Opinion markets plugin
 
@@ -22,6 +23,14 @@ The Settings view now includes a Coding Agents section where you can choose the 
 
 When connected to Eliza Cloud, you can now enable or disable individual cloud services — inference, RPC, media, TTS, and embeddings — instead of toggling the entire cloud connection. This lets you keep cloud RPC while using a local model provider, for example. See the [cloud guide](/guides/cloud) for details.
 
+## Character generation API format update
+
+The `POST /api/character/generate` endpoint now returns `chatExamples` in the `messageExamples` schema — conversation groups with `{name, content}` message objects instead of the previous `{user, content}` flat array. The `"system"` field type is also now accepted. See the [Character API reference](/rest/character) for the updated response format.
+
+## Updates
+
+- **Credit exhaustion errors surfaced clearly** — Cloud provider billing errors (HTTP 402 and 429) are now detected and shown in the dashboard with actionable guidance instead of generic failure messages.
+- **Knowledge service retry** — When the knowledge service is still loading, requests return a `Retry-After` header and the client auto-retries with exponential backoff, preventing failed queries during startup. See the [Knowledge API reference](/rest/knowledge) for details.
 ## Updates
 
 - **Credit exhaustion errors surfaced clearly** — Cloud provider billing errors (HTTP 402 and 429) are now detected and shown in the dashboard with actionable guidance instead of generic failure messages.
