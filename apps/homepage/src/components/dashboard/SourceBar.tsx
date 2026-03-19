@@ -13,51 +13,38 @@ export function SourceBar() {
   const authed = isAuthenticated();
 
   return (
-    <div className="px-8 py-3 border-b border-white/10 flex items-center gap-6 text-xs font-mono">
-      {/* Cloud source */}
-      <div className="flex items-center gap-2">
-        <span
-          className={`w-1.5 h-1.5 rounded-full ${authed && cloudCount > 0 ? "bg-green-500" : authed ? "bg-yellow-500" : "bg-white/20"}`}
+    <div className="px-6 md:px-8 py-3 border-b border-border flex items-center gap-5 text-xs">
+      {/* Sources */}
+      <div className="flex items-center gap-4">
+        <SourceDot
+          label={!authed ? "Cloud" : `Cloud (${cloudCount})`}
+          active={authed && cloudCount > 0}
+          warning={authed && cloudCount === 0}
         />
-        <span className="text-text-muted">
-          {!authed
-            ? "cloud (not connected)"
-            : cloudCount > 0
-              ? `cloud (${cloudCount})`
-              : "cloud (0 agents)"}
-        </span>
+        <SourceDot
+          label={localCount > 0 ? `Local (${localCount})` : "Local"}
+          active={localCount > 0}
+        />
+        {remoteCount > 0 && (
+          <SourceDot label={`Remote (${remoteCount})`} active />
+        )}
       </div>
 
-      {/* Local source */}
-      <div className="flex items-center gap-2">
-        <span
-          className={`w-1.5 h-1.5 rounded-full ${localCount > 0 ? "bg-green-500" : "bg-white/20"}`}
-        />
-        <span className="text-text-muted">
-          {localCount > 0 ? `local (${localCount})` : "local (offline)"}
-        </span>
-      </div>
-
-      {/* Remote source */}
-      {remoteCount > 0 && (
-        <div className="flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-          <span className="text-text-muted">remote ({remoteCount})</span>
-        </div>
-      )}
-
-      <div className="ml-auto flex items-center gap-3">
+      <div className="ml-auto flex items-center gap-2">
         <button
           type="button"
           onClick={() => setShowAddRemote(true)}
-          className="text-text-muted hover:text-brand transition-colors uppercase tracking-widest"
+          className="text-text-muted hover:text-text-light px-3 py-1.5 rounded-lg
+            hover:bg-surface transition-all duration-150 text-xs"
         >
-          + Remote
+          + Connect
         </button>
         <button
           type="button"
           onClick={() => refresh()}
-          className={`text-text-muted hover:text-brand transition-colors uppercase tracking-widest ${loading ? "animate-pulse" : ""}`}
+          className={`text-text-muted hover:text-text-light px-3 py-1.5 rounded-lg
+            hover:bg-surface transition-all duration-150 text-xs
+            ${loading ? "animate-pulse" : ""}`}
         >
           Refresh
         </button>
@@ -66,12 +53,37 @@ export function SourceBar() {
       {showAddRemote && (
         <ConnectionModal
           onSubmit={(data) => {
-            addRemoteUrl(data.name, data.url);
+            addRemoteUrl(data.name, data.url, data.token);
             setShowAddRemote(false);
           }}
           onClose={() => setShowAddRemote(false)}
         />
       )}
+    </div>
+  );
+}
+
+function SourceDot({
+  label,
+  active,
+  warning,
+}: {
+  label: string;
+  active: boolean;
+  warning?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span
+        className={`w-1.5 h-1.5 rounded-full ${
+          active
+            ? "bg-emerald-400"
+            : warning
+              ? "bg-amber-400"
+              : "bg-text-muted/30"
+        }`}
+      />
+      <span className="text-text-muted">{label}</span>
     </div>
   );
 }
