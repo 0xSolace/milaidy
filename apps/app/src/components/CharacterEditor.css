@@ -273,7 +273,7 @@
   border: none;
   background: none;
   padding: 0;
-  margin: 0 -2px;
+  margin: 0 -0.75rem;
   opacity: 0.65;
 }
 
@@ -338,6 +338,17 @@
 .ce-roster-card-name--active {
   background: rgba(0, 0, 0, 0.78);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.ce-roster-card-catchphrase {
+  font-size: clamp(7px, 1vw, 9px);
+  font-style: italic;
+  color: rgba(250, 204, 21, 0.7);
+  text-align: center;
+  padding: 1px 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ce-roster-empty {
@@ -707,8 +718,9 @@
 }
 
 .ce-save-btn {
+  height: 2.25rem !important;
   border-radius: 0.75rem !important;
-  padding: 0 2rem !important;
+  padding: 0 1.5rem !important;
   font-size: 13px !important;
   font-weight: 700 !important;
   letter-spacing: 0.05em;

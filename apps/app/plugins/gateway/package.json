@@ -74,7 +74,8 @@
   },
   "capacitor": {
     "ios": {
-      "src": "ios"
+      "src": "ios",
+      "podName": "MiladyCapacitorGateway"
     },
     "android": {
       "src": "android"

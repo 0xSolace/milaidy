@@ -244,10 +244,60 @@ async function tuiAction(options: {
 
     if (options.localRuntime) {
       const { bootElizaRuntime } = await import("../../runtime/eliza");
-      const runtime = await bootElizaRuntime({ requireConfig: true });
-      await launchTUI(runtime, {
-        modelOverride: options.model,
+      const { LoadingScreen } = await import("../../tui/loading-screen");
+      const { BootProgressReporter } = await import(
+        "../../runtime/boot-progress"
+      );
+
+      const reporter = new BootProgressReporter();
+      const loadingScreen = new LoadingScreen();
+
+      reporter.on("progress", (event) => {
+        loadingScreen.update(event.progress, event.label, event.detail);
       });
+
+      loadingScreen.start();
+      reporter.phase("config");
+
+      try {
+        reporter.phase("embeddings");
+        const runtime = await bootElizaRuntime({
+          requireConfig: true,
+          onEmbeddingProgress: (phase, detail) => {
+            if (phase === "downloading" && detail) {
+              // Parse percentage from detail like "model.gguf 45% of 95.0 MB"
+              const pctMatch = detail.match(/(\d+)%/);
+              const fraction = pctMatch
+                ? Number.parseInt(pctMatch[1], 10) / 100
+                : 0;
+              reporter.subProgress(
+                "embeddings",
+                fraction,
+                `Downloading ${detail}`,
+              );
+            } else {
+              const labels: Record<string, string> = {
+                checking: "Checking embedding model",
+                downloading: "Downloading embedding model",
+                loading: "Loading embedding model",
+                ready: "Embedding model ready",
+              };
+              reporter.phase("embeddings", detail ?? labels[phase]);
+            }
+          },
+        });
+
+        reporter.phase("runtime");
+        reporter.complete();
+        loadingScreen.stop();
+
+        await launchTUI(runtime, {
+          modelOverride: options.model,
+        });
+      } catch (err) {
+        loadingScreen.stop();
+        throw err;
+      }
       return;
     }
 

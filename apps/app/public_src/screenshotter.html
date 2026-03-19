@@ -271,12 +271,19 @@ async function renderVRM(asset, modules) {
       action.play();
       // Simulate the render loop with small time steps to let the
       // animation system properly interpolate bone transforms.
+      // We skip vrm.update() during simulation to avoid spring bone
+      // (hair) physics — otherwise hair is mid-bounce on the first frames.
       const targetTime = 4.0;
       const step = 1 / 30; // 30fps simulation
       for (let t = 0; t < targetTime; t += step) {
         mixer.update(step);
-        vrm.update(step);
       }
+      // Reset spring bones to rest pose so hair hangs naturally
+      // without any physics bounce, then do a single VRM update.
+      if (vrm.springBoneManager) {
+        vrm.springBoneManager.reset();
+      }
+      vrm.update(0);
     } else {
       console.warn(`${slug}: no idle clip, rendering T-pose`);
     }

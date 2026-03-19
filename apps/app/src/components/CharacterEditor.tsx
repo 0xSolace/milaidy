@@ -7,6 +7,7 @@
 
 import { client } from "@elizaos/app-core/api";
 import {
+  APP_EMOTE_EVENT,
   dispatchWindowEvent,
   VOICE_CONFIG_UPDATED_EVENT,
 } from "@elizaos/app-core/events";
@@ -323,13 +324,29 @@ export function CharacterEditor({
 
   const commitCharacterSelection = useCallback(
     (entry: CharacterRosterEntry, applyDefaults: boolean) => {
+      const isNewCharacter = selectedCharacterId !== entry.id;
       setSelectedCharacterId(entry.id);
       setState("selectedVrmIndex", entry.avatarIndex);
-      if (!voiceSelectionLocked && selectedCharacterId !== entry.id) {
+      if (!voiceSelectionLocked && isNewCharacter) {
         applyVoicePresetForEntry(entry);
       }
       if (applyDefaults) {
         applyCharacterDefaults(entry);
+      }
+      // Play emote and speak catchphrase on character switch
+      if (isNewCharacter && entry.catchphrase) {
+        // Dispatch a wave emote after the VRM swaps in
+        setTimeout(() => {
+          dispatchWindowEvent(APP_EMOTE_EVENT, {
+            emoteId: "wave",
+            path: "/animations/emotes/waving-both-hands.glb",
+            duration: 2.5,
+            loop: false,
+            showOverlay: false,
+          });
+        }, 800);
+        // Speak the catchphrase via TTS
+        void client.streamVoiceSpeak(entry.catchphrase).catch(() => {});
       }
     },
     [
@@ -1096,9 +1113,9 @@ export function CharacterEditor({
             </Button>
           </div>
 
-          {/* Select Character — only in roster view, centered */}
+          {/* Save Character */}
           <Button
-            size="lg"
+            size="sm"
             className="ce-save-btn"
             disabled={characterSaving || voiceSaving}
             onClick={() => void handleSaveAll()}
@@ -1106,9 +1123,8 @@ export function CharacterEditor({
             {characterSaving || voiceSaving ? "saving..." : "Save Character"}
           </Button>
 
-          {/* Save Character — only in customize view */}
+          {/* Back to roster — only in customize view */}
           {customizing && (
-
             <Button
               type="button"
               variant="default"

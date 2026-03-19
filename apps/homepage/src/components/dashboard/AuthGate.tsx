@@ -74,7 +74,8 @@ export function AuthGate({ children }: { children: ReactNode }) {
     setState("unauthenticated");
   }, []);
 
-  const handleSkip = useCallback(() => {
+  const _handleSkip = useCallback(() => {
+    // Cloud-only mode: skip is disabled, Eliza Cloud account required
     setState("authenticated");
   }, []);
 
@@ -95,7 +96,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
       <div className="max-w-sm w-full space-y-6 p-6">
         <div className="text-center">
           <h2 className="text-xl font-medium text-text-light mb-2">
-            Milady Cloud
+            Eliza Cloud
           </h2>
           <p className="text-text-muted text-sm">
             Sign in with your Eliza Cloud account to manage your agents.
@@ -120,13 +121,9 @@ export function AuthGate({ children }: { children: ReactNode }) {
             >
               Login with Eliza Cloud
             </button>
-            <button
-              type="button"
-              onClick={handleSkip}
-              className="w-full px-4 py-2 border border-white/10 text-text-muted font-mono text-xs uppercase tracking-widest rounded hover:border-white/30 transition-colors"
-            >
-              Skip (local only)
-            </button>
+            <p className="text-text-muted/50 text-[10px] text-center font-mono">
+              An Eliza Cloud account is required to use Milady Cloud.
+            </p>
           </div>
         )}
 

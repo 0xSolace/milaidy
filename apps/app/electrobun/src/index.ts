@@ -1226,9 +1226,26 @@ async function main(): Promise<void> {
     console.warn("[Main] Tray creation failed:", err);
   }
 
-  // Start agent in background
+  // Agent startup is now deferred until after onboarding completes.
+  // The renderer triggers agent start via the `agentStart` RPC handler
+  // when the user selects local mode and finishes onboarding.
+  // For sandbox/remote modes, no embedded agent is needed — the renderer
+  // connects directly to the cloud or remote API base.
+  //
+  // However, if an external API base is configured via env vars (e.g.
+  // MILADY_DESKTOP_API_BASE), inject it immediately so the renderer can
+  // connect without onboarding a local agent.
   if (currentWindow) {
-    void startAgent(currentWindow);
+    const rt = resolveDesktopRuntimeMode(
+      process.env as Record<string, string | undefined>,
+    );
+    if (rt.mode === "external" && rt.externalApi.base) {
+      pushApiBaseToRenderer(
+        currentWindow,
+        rt.externalApi.base,
+        process.env.MILADY_API_TOKEN,
+      );
+    }
   }
 
   // Check for updates

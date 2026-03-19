@@ -57,7 +57,8 @@
   },
   "capacitor": {
     "ios": {
-      "src": "ios"
+      "src": "ios",
+      "podName": "MiladyCapacitorCanvas"
     },
     "android": {
       "src": "android"

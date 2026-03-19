@@ -4,6 +4,26 @@ import os from "node:os";
 import path from "node:path";
 import { getLogPrefix } from "../utils/log-prefix.js";
 
+/**
+ * Callback for reporting download/init progress.
+ * @param phase - Current phase: "checking", "downloading", "loading", "ready"
+ * @param detail - Human-readable detail (e.g. "45% of 95 MB")
+ */
+export type EmbeddingProgressCallback = (
+  phase: "checking" | "downloading" | "loading" | "ready",
+  detail?: string,
+) => void;
+
+/**
+ * Callback for raw download byte progress.
+ * @param downloaded - Bytes received so far
+ * @param total - Total bytes expected (null if Content-Length unavailable)
+ */
+export type DownloadProgressCallback = (
+  downloaded: number,
+  total: number | null,
+) => void;
+
 export interface EmbeddingManagerConfig {
   /** GGUF model filename (default: detected hardware preset) */
   model?: string;
@@ -19,6 +39,8 @@ export interface EmbeddingManagerConfig {
   idleTimeoutMs?: number;
   /** Models directory (default: ~/.eliza/models) */
   modelsDir?: string;
+  /** Optional callback for reporting initialization progress phases. */
+  onProgress?: EmbeddingProgressCallback;
 }
 
 export interface EmbeddingManagerStats {
@@ -208,10 +230,19 @@ function resolveModelPath(modelsDir: string, filename: string): string {
   return resolvedPath;
 }
 
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  if (bytes < 1024 * 1024 * 1024)
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
+
 function downloadFile(
   url: string,
   dest: string,
   maxRedirects = 5,
+  onProgress?: DownloadProgressCallback,
 ): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     let settled = false;
@@ -231,6 +262,7 @@ function downloadFile(
       const file = fs.createWriteStream(dest);
       let bytesReceived = 0;
       let expectedBytes: number | null = null;
+      let lastProgressPercent = -1;
 
       const settleError = (err: Error) => {
         if (settled) return;
@@ -307,6 +339,16 @@ function downloadFile(
             }
             res.on("data", (chunk: Buffer) => {
               bytesReceived += chunk.length;
+              if (onProgress) {
+                // Throttle callbacks to every 2% to avoid excessive updates
+                const pct = expectedBytes
+                  ? Math.floor((bytesReceived / expectedBytes) * 50)
+                  : -1;
+                if (pct !== lastProgressPercent) {
+                  lastProgressPercent = pct;
+                  onProgress(bytesReceived, expectedBytes);
+                }
+              }
             });
             res.pipe(file);
             file.on("finish", settleSuccess);
@@ -323,13 +365,20 @@ export async function ensureModel(
   modelsDir: string,
   repo: string,
   filename: string,
-  force = false,
+  force?: boolean,
+  onProgress?: EmbeddingProgressCallback,
 ): Promise<string> {
   const safeRepo = sanitizeModelRepo(repo);
   const safeFilename = sanitizeModelFilename(filename);
   const modelPath = resolveModelPath(modelsDir, safeFilename);
   if (force) safeUnlink(modelPath);
-  if (fs.existsSync(modelPath)) return modelPath;
+
+  onProgress?.("checking", safeFilename);
+
+  if (fs.existsSync(modelPath)) {
+    onProgress?.("ready", "model already downloaded");
+    return modelPath;
+  }
 
   const log = getLogger();
   fs.mkdirSync(path.resolve(modelsDir), { recursive: true });
@@ -339,7 +388,20 @@ export async function ensureModel(
     `${getLogPrefix()} Downloading embedding model: ${safeFilename} from ${safeRepo}...`,
   );
 
-  await downloadFile(url, modelPath);
+  onProgress?.("downloading", `${safeFilename} from ${safeRepo}`);
+
+  const downloadOnProgress: DownloadProgressCallback | undefined = onProgress
+    ? (downloaded, total) => {
+        const totalStr = total ? formatBytes(total) : "unknown size";
+        const pct = total ? Math.round((downloaded / total) * 100) : 0;
+        onProgress(
+          "downloading",
+          `${safeFilename} ${pct}% of ${totalStr}`,
+        );
+      }
+    : undefined;
+
+  await downloadFile(url, modelPath, 5, downloadOnProgress);
   log.info(`${getLogPrefix()} Embedding model downloaded: ${modelPath}`);
   return modelPath;
 }

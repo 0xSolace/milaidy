@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Milady Cloud Agent — Slim Image
+# Eliza Cloud Agent — Slim Image
 #
 # Multi-stage build:
 #   1. builder  — full monorepo install + tsdown build

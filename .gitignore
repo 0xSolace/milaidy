@@ -141,3 +141,4 @@ apps/app/public/vrms/previews/*.png
 apps/app/public/vrms/backgrounds/*.jpg
 apps/app/public/vrms/previews/*.jpg
 apps/app/public/vrms/*.jpg
+apps/app/ios/App/build*/

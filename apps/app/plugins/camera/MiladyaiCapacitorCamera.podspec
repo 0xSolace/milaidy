@@ -3,7 +3,7 @@ require 'json'
 package = JSON.parse(File.read(File.join(__dir__, 'package.json')))
 
 Pod::Spec.new do |s|
-  s.name = 'MiladyCapacitorScreencapture'
+  s.name = 'MiladyaiCapacitorCamera'
   s.version = package['version']
   s.summary = package['description']
   s.license = package['license'] || { :type => 'MIT' }
@@ -14,5 +14,5 @@ Pod::Spec.new do |s|
   s.ios.deployment_target = '15.0'
   s.dependency 'Capacitor'
   s.swift_version = '5.9'
-  s.frameworks = 'ReplayKit', 'AVFoundation', 'Photos'
+  s.frameworks = 'AVFoundation', 'Photos', 'UIKit'
 end

@@ -13,6 +13,7 @@ import {
   DEFAULT_MODELS_DIR,
   type EmbeddingManagerConfig,
   type EmbeddingManagerStats,
+  type EmbeddingProgressCallback,
   ensureModel,
   getErrorMessage,
   getLogger,
@@ -64,6 +65,7 @@ export class ElizaEmbeddingManager {
   private readonly gpuLayers: "auto" | "max" | number;
   private readonly idleTimeoutMs: number;
   private readonly modelsDir: string;
+  private readonly onProgress: EmbeddingProgressCallback | undefined;
 
   // Runtime state
   private llama: LlamaInstance | null = null;
@@ -93,6 +95,7 @@ export class ElizaEmbeddingManager {
     this.gpuLayers = config.gpuLayers ?? detected.gpuLayers;
     this.idleTimeoutMs = config.idleTimeoutMs ?? DEFAULT_IDLE_TIMEOUT_MS;
     this.modelsDir = config.modelsDir ?? DEFAULT_MODELS_DIR;
+    this.onProgress = config.onProgress;
   }
 
   async generateEmbedding(text: string): Promise<number[]> {
@@ -170,6 +173,15 @@ export class ElizaEmbeddingManager {
     };
   }
 
+  /**
+   * Eagerly initialize the embedding model (download if needed + load).
+   * Call during boot to avoid lazy-init delays on first embedding request.
+   */
+  async warmup(): Promise<void> {
+    if (this.disposed) return;
+    await this.ensureInitialized();
+  }
+
   private async ensureInitialized(): Promise<void> {
     if (this.initialized && this.embeddingModel && this.embeddingContext)
       return;
@@ -199,7 +211,11 @@ export class ElizaEmbeddingManager {
       this.modelsDir,
       this.modelRepo,
       this.model,
+      false,
+      this.onProgress,
     );
+
+    this.onProgress?.("loading", this.model);
 
     const { getLlama, LlamaLogLevel } = await importNodeLlamaCpp();
 
@@ -279,6 +295,7 @@ export class ElizaEmbeddingManager {
     this.embeddingContext = context;
     this.initialized = true;
     log.info(`${getLogPrefix()} Embedding model loaded: ${this.model}`);
+    this.onProgress?.("ready", this.model);
 
     this.startIdleTimer();
   }
@@ -358,8 +375,10 @@ export class ElizaEmbeddingManager {
 }
 
 export type {
+  DownloadProgressCallback,
   EmbeddingManagerConfig,
   EmbeddingManagerStats,
+  EmbeddingProgressCallback,
 } from "./embedding-manager-support.js";
 export {
   checkDimensionMigration,

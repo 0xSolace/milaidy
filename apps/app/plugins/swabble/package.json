@@ -57,7 +57,8 @@
   },
   "capacitor": {
     "ios": {
-      "src": "ios"
+      "src": "ios",
+      "podName": "MiladyCapacitorSwabble"
     },
     "android": {
       "src": "android"

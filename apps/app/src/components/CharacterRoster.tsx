@@ -14,15 +14,15 @@ export const INSET_CLIP =
 
 export const CHARACTER_PRESET_META: Record<
   string,
-  { name: string; avatarIndex: number; voicePresetId?: string }
+  { name: string; avatarIndex: number; voicePresetId?: string; catchphrase: string }
 > = {
-  "uwu~": { name: "Chen", avatarIndex: 1, voicePresetId: "sarah" },
-  "hell yeah": { name: "Jin", avatarIndex: 2, voicePresetId: "adam" },
-  "lol k": { name: "Kei", avatarIndex: 3, voicePresetId: "lily" },
-  "Noted.": { name: "Momo", avatarIndex: 4, voicePresetId: "alice" },
-  "hehe~": { name: "Rin", avatarIndex: 5, voicePresetId: "gigi" },
-  "...": { name: "Ryu", avatarIndex: 6, voicePresetId: "daniel" },
-  "lmao kms": { name: "Satoshi", avatarIndex: 7, voicePresetId: "callum" },
+  "uwu~": { name: "Chen", avatarIndex: 1, voicePresetId: "sarah", catchphrase: "uwu~" },
+  "hell yeah": { name: "Jin", avatarIndex: 2, voicePresetId: "adam", catchphrase: "hell yeah" },
+  "lol k": { name: "Kei", avatarIndex: 3, voicePresetId: "lily", catchphrase: "lol k" },
+  "Noted.": { name: "Momo", avatarIndex: 4, voicePresetId: "alice", catchphrase: "Noted." },
+  "hehe~": { name: "Rin", avatarIndex: 5, voicePresetId: "gigi", catchphrase: "hehe~" },
+  "...": { name: "Ryu", avatarIndex: 6, voicePresetId: "daniel", catchphrase: "..." },
+  "lmao kms": { name: "Satoshi", avatarIndex: 7, voicePresetId: "callum", catchphrase: "lmao kms" },
 };
 
 /* ── Types ────────────────────────────────────────────────────────────── */
@@ -32,6 +32,7 @@ export type CharacterRosterEntry = {
   name: string;
   avatarIndex: number;
   voicePresetId?: string;
+  catchphrase: string;
   preset: any;
 };
 
@@ -48,6 +49,7 @@ export function resolveRosterEntries(
       name: meta?.name ?? fallbackName,
       avatarIndex: meta?.avatarIndex ?? (index % 8) + 1,
       voicePresetId: meta?.voicePresetId,
+      catchphrase: meta?.catchphrase ?? preset.catchphrase ?? "",
       preset,
     };
   });
@@ -129,6 +131,11 @@ export function CharacterRoster({
                   >
                     {entry.name}
                   </div>
+                  {isSelected && entry.catchphrase && (
+                    <div className="ce-roster-card-catchphrase">
+                      "{entry.catchphrase}"
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

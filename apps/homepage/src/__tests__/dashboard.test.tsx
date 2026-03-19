@@ -513,7 +513,7 @@ describe("AuthGate", () => {
     expect(result?.getByText("Dashboard Content")).toBeTruthy();
   });
 
-  it("shows Milady Cloud heading in login view", async () => {
+  it("shows Eliza Cloud heading in login view", async () => {
     let result: ReturnType<typeof render>;
     await act(async () => {
       const { AuthGate } = await import("../components/dashboard/AuthGate");
@@ -523,6 +523,6 @@ describe("AuthGate", () => {
         </AuthGate>,
       );
     });
-    expect(result?.getByText("Milady Cloud")).toBeTruthy();
+    expect(result?.getByText("Eliza Cloud")).toBeTruthy();
   });
 });

@@ -10,14 +10,22 @@ export * from "@elizaos/autonomous/runtime/eliza";
 
 import {
   applyCloudConfigToEnv as upstreamApplyCloudConfigToEnv,
+  type BootElizaRuntimeOptions,
   bootElizaRuntime as upstreamBootElizaRuntime,
   buildCharacterFromConfig as upstreamBuildCharacterFromConfig,
   collectPluginNames as upstreamCollectPluginNames,
   shutdownRuntime as upstreamShutdownRuntime,
   startEliza as upstreamStartEliza,
+  type StartElizaOptions,
 } from "@elizaos/autonomous/runtime/eliza";
 import { HISTORY_KNOWLEDGE } from "../knowledge/history";
 import { ensureRuntimeSqlCompatibility } from "../utils/sql-compat";
+import type { EmbeddingProgressCallback } from "./embedding-manager-support.js";
+import { detectEmbeddingPreset } from "./embedding-presets.js";
+import {
+  DEFAULT_MODELS_DIR,
+  ensureModel,
+} from "./embedding-manager-support.js";
 
 const BRAND_ENV_ALIASES = [
   ["MILADY_USE_PI_AI", "ELIZA_USE_PI_AI"],
@@ -258,26 +266,85 @@ async function repairRuntimeAfterBoot(
   return runtime;
 }
 
+/**
+ * Eagerly download the embedding model file if not already present.
+ * This ensures the GGUF is on disk before the runtime's first
+ * generateEmbedding() call, avoiding a silent stall on first use.
+ */
+async function warmupEmbeddingModel(
+  onProgress?: EmbeddingProgressCallback,
+): Promise<void> {
+  // Skip if cloud embeddings are disabled (no local model needed)
+  if (
+    process.env.MILADY_CLOUD_EMBEDDINGS_DISABLED === "1" ||
+    process.env.ELIZA_CLOUD_EMBEDDINGS_DISABLED === "1"
+  ) {
+    logger.info("[milady] Cloud embeddings disabled — skipping embedding model warmup");
+    return;
+  }
+
+  const preset = detectEmbeddingPreset();
+  const modelsDir = process.env.MODELS_DIR ?? DEFAULT_MODELS_DIR;
+
+  const progressCb: EmbeddingProgressCallback = (phase, detail) => {
+    // Always log to stdout for server/container monitoring
+    if (phase === "downloading") {
+      logger.info(`[milady] Embedding model: ${detail ?? "downloading..."}`);
+    } else if (phase === "loading") {
+      logger.info(`[milady] Embedding model: loading ${detail ?? ""}`);
+    } else if (phase === "ready") {
+      logger.info(`[milady] Embedding model: ready (${detail ?? ""})`);
+    }
+    // Forward to caller's callback (e.g. for TUI loading screen)
+    onProgress?.(phase, detail);
+  };
+
+  try {
+    await ensureModel(modelsDir, preset.modelRepo, preset.model, false, progressCb);
+  } catch (err) {
+    // Non-fatal: the plugin will attempt its own download on first use
+    logger.warn(
+      `[milady] Embedding model warmup failed (will retry on first use): ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
+export interface BootElizaRuntimeOptionsExt extends BootElizaRuntimeOptions {
+  /** Optional callback for embedding model download/init progress. */
+  onEmbeddingProgress?: EmbeddingProgressCallback;
+}
+
 export async function bootElizaRuntime(
-  ...args: Parameters<typeof upstreamBootElizaRuntime>
+  opts: BootElizaRuntimeOptionsExt = {},
 ): Promise<Awaited<ReturnType<typeof upstreamBootElizaRuntime>>> {
   syncMiladyEnvToEliza();
 
   try {
-    const runtime = await upstreamBootElizaRuntime(...args);
+    // Eagerly download the embedding model before the full runtime boot.
+    // This way the TUI loading screen (or server logs) can show download
+    // progress instead of the app silently stalling on first embedding call.
+    await warmupEmbeddingModel(opts.onEmbeddingProgress);
+
+    const runtime = await upstreamBootElizaRuntime(opts);
     return runtime ? await repairRuntimeAfterBoot(runtime) : runtime;
   } finally {
     syncElizaEnvToMilady();
   }
 }
 
+export interface StartElizaOptionsExt extends StartElizaOptions {
+  /** Optional callback for embedding model download/init progress. */
+  onEmbeddingProgress?: EmbeddingProgressCallback;
+}
+
 export async function startEliza(
-  ...args: Parameters<typeof upstreamStartEliza>
+  options?: StartElizaOptionsExt,
 ): Promise<Awaited<ReturnType<typeof upstreamStartEliza>>> {
   syncMiladyEnvToEliza();
 
   try {
-    const options = args[0];
+    // Eagerly download the embedding model with progress reporting
+    await warmupEmbeddingModel(options?.onEmbeddingProgress);
 
     if (options?.serverOnly) {
       let currentRuntime =
@@ -345,7 +412,7 @@ export async function startEliza(
       return currentRuntime;
     }
 
-    const runtime = await upstreamStartEliza(...args);
+    const runtime = await upstreamStartEliza(options);
     return runtime ? await repairRuntimeAfterBoot(runtime) : runtime;
   } finally {
     syncElizaEnvToMilady();

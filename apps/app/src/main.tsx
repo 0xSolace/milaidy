@@ -41,7 +41,6 @@ import { createRoot } from "react-dom/client";
 
 const MILADY_BRANDING: Partial<BrandingConfig> = {
   appName: "Milady",
-  cloudName: "Milady Cloud",
   orgName: "milady-ai",
   repoName: "milady",
   docsUrl: "https://docs.milady.ai",
