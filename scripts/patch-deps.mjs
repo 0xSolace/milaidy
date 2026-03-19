@@ -116,6 +116,58 @@ function patchPluginPdfBrokenDefault() {
 patchPluginPdfBrokenDefault();
 
 /**
+ * Patch @elizaos/plugin-sql UUID validation regex.
+ *
+ * The upstream plugin strictly checks for UUID versions 1-5, but ElizaOS
+ * generates custom version 0 UUIDs. We patch the regex to allow version 0.
+ * Remove once upstream fixes its isValidUUID method.
+ */
+function patchPluginSqlUUID() {
+  const relPaths = ["dist/node/index.node.js", "dist/browser/index.browser.js"];
+  const searchDirs = [resolve(root, "node_modules/@elizaos/plugin-sql")];
+  // Also search inside .bun cache
+  const bunCacheDir = resolve(root, "node_modules/.bun");
+  if (existsSync(bunCacheDir)) {
+    try {
+      for (const entry of readdirSync(bunCacheDir)) {
+        if (entry.startsWith("@elizaos+plugin-sql@")) {
+          searchDirs.push(
+            resolve(bunCacheDir, entry, "node_modules/@elizaos/plugin-sql"),
+          );
+        }
+      }
+    } catch {}
+  }
+
+  let patched = 0;
+  for (const dir of searchDirs) {
+    for (const relPath of relPaths) {
+      const target = resolve(dir, relPath);
+      if (!existsSync(target)) continue;
+      let src = readFileSync(target, "utf8");
+
+      const searchString =
+        "/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i";
+      const replaceString =
+        "/^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i";
+
+      if (!src.includes(searchString)) continue;
+
+      src = src.replace(searchString, replaceString);
+      writeFileSync(target, src, "utf8");
+      patched++;
+      console.log(`[patch-deps] Applied plugin-sql UUID regex fix: ${target}`);
+    }
+  }
+  if (patched > 0) {
+    console.log(
+      `[patch-deps] plugin-sql: fixed ${patched} UUID validation check(s).`,
+    );
+  }
+}
+patchPluginSqlUUID();
+
+/**
  * Patch @elizaos/autonomous ensureBrowserServerLink() file extension.
  *
  * The upstream code checks for `dist/index` without `.js` extension, but

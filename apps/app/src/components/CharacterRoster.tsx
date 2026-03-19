@@ -119,11 +119,6 @@ export function CharacterRoster({
                   >
                     {entry.name}
                   </div>
-                  {isSelected && entry.catchphrase && (
-                    <div className="ce-roster-card-catchphrase">
-                      "{entry.catchphrase}"
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
