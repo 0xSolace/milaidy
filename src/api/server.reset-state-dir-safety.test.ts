@@ -34,4 +34,10 @@ describe("isSafeResetStateDir", () => {
       isSafeResetStateDir("/Users/alice/not-eliza-backup", "/Users/alice"),
     ).toBe(false);
   });
+
+  it("accepts .milady state dir under home (custom namespace)", () => {
+    expect(isSafeResetStateDir("/Users/alice/.milady", "/Users/alice")).toBe(
+      true,
+    );
+  });
 });

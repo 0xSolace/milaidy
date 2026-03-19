@@ -609,6 +609,40 @@ export function applyAppCoreMiladyCharacterViewPatch(filePath, catalog) {
 }
 
 /**
+ * Patch App.js ViewRouter to check for a custom character editor component
+ * registered on window.__MILADY_CHARACTER_EDITOR__ before falling back to the
+ * built-in CharacterView.
+ */
+export function applyAppCoreMiladyViewRouterPatch(filePath) {
+  if (!existsSync(filePath)) return false;
+
+  const compatSource = readFileSync(filePath, "utf8");
+
+  // Already patched?
+  if (compatSource.includes("__MILADY_CHARACTER_EDITOR__")) return false;
+
+  const oldCase = `case "character":
+            case "character-select":
+                return (_jsx(TabScrollView, { children: _jsx(CharacterView, { sceneOverlay: characterSceneVisible }) }));`;
+
+  if (!compatSource.includes(oldCase)) return false;
+
+  const newCase = `case "character":
+            case "character-select": {
+                const _CE = typeof window !== "undefined" && window.__MILADY_CHARACTER_EDITOR__;
+                return _CE
+                    ? _jsx(TabScrollView, { children: _jsx(_CE, { sceneOverlay: characterSceneVisible }) })
+                    : _jsx(TabScrollView, { children: _jsx(CharacterView, { sceneOverlay: characterSceneVisible }) });
+            }`;
+
+  const updatedSource = compatSource.replace(oldCase, newCase);
+  if (updatedSource === compatSource) return false;
+
+  writeFileSync(filePath, updatedSource, "utf8");
+  return true;
+}
+
+/**
  * Milady owns the onboarding preset roster, but the published autonomous
  * package still serves upstream style presets. Replace the installed module
  * with Milady's local preset source so the onboarding API and runtime expose
@@ -698,6 +732,12 @@ export function patchAppCoreMiladyAssets(
       apply: applyAppCoreMiladyCharacterViewPatch,
       description:
         "character roster metadata now derives from the shared catalog",
+    },
+    {
+      relativePath: "App.js",
+      apply: (filePath) => applyAppCoreMiladyViewRouterPatch(filePath),
+      description:
+        "ViewRouter now checks for window.__MILADY_CHARACTER_EDITOR__ override",
     },
   ];
 

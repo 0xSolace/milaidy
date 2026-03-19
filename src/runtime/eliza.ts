@@ -16,6 +16,7 @@ import {
   shutdownRuntime as upstreamShutdownRuntime,
   startEliza as upstreamStartEliza,
 } from "@elizaos/autonomous/runtime/eliza";
+import { HISTORY_KNOWLEDGE } from "../knowledge/history";
 import { ensureRuntimeSqlCompatibility } from "../utils/sql-compat";
 
 const BRAND_ENV_ALIASES = [
@@ -127,13 +128,26 @@ export function applyCloudConfigToEnv(
   return result;
 }
 
+/** Preset knowledge items baked into every character at boot. */
+const PRESET_KNOWLEDGE = [
+  { item: { case: "path" as const, value: HISTORY_KNOWLEDGE } },
+];
+
 export function buildCharacterFromConfig(
   ...args: Parameters<typeof upstreamBuildCharacterFromConfig>
 ): ReturnType<typeof upstreamBuildCharacterFromConfig> {
   syncMiladyEnvToEliza();
-  const result = upstreamBuildCharacterFromConfig(...args);
+  const character = upstreamBuildCharacterFromConfig(...args);
   syncElizaEnvToMilady();
-  return result;
+
+  // Inject preset knowledge so every agent starts with foundational
+  // context about ELIZA, elizaOS, and the Milady project.
+  character.knowledge = [
+    ...PRESET_KNOWLEDGE,
+    ...(character.knowledge ?? []),
+  ];
+
+  return character;
 }
 
 async function ensureAutonomyBootstrapContext(

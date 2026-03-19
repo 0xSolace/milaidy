@@ -391,7 +391,6 @@ export function registerSetupCommand(program: Command) {
 
           await ensureAgentWorkspace({
             dir: workspaceDir,
-            ensureBootstrapFiles: true,
           });
 
           console.log(

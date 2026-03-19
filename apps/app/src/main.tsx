@@ -7,6 +7,7 @@
 
 import "@elizaos/app-core/styles/styles.css";
 import "./native-plugin-entrypoints";
+import { CharacterEditor } from "./components/CharacterEditor";
 
 import { App as CapacitorApp } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
@@ -84,8 +85,13 @@ interface ShareTargetPayload {
 declare global {
   interface Window {
     __MILADY_SHARE_QUEUE__?: ShareTargetPayload[];
+    __MILADY_CHARACTER_EDITOR__?: typeof CharacterEditor;
+    __MILADY_API_BASE__?: string;
   }
 }
+
+// Register custom character editor for app-core's ViewRouter to pick up
+window.__MILADY_CHARACTER_EDITOR__ = CharacterEditor;
 
 function dispatchShareTarget(payload: ShareTargetPayload): void {
   if (!window.__MILADY_SHARE_QUEUE__) {
