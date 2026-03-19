@@ -103,7 +103,7 @@ window.__MILADY_CHARACTER_EDITOR__ = CharacterEditor;
 
 // Point Eliza Cloud API to the correct base URL (default is api.eliza.ai).
 (window as Record<string, unknown>).__ELIZA_CLOUD_API_BASE__ =
-  "https://www.elizacloud.ai";
+  import.meta.env.VITE_CLOUD_BASE ?? "https://www.elizacloud.ai";
 
 // Override the VRM asset roster with Milady characters so avatar URLs
 // resolve to milady-*.vrm.gz instead of the upstream eliza-*.vrm.gz.

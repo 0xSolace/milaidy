@@ -1,5 +1,6 @@
 /** Single source of truth for the Eliza Cloud base URL. */
-export const CLOUD_BASE = "https://www.elizacloud.ai";
+export const CLOUD_BASE =
+  import.meta.env.VITE_CLOUD_BASE ?? "https://www.elizacloud.ai";
 
 // ---------------------------------------------------------------------------
 // Cloud API types
