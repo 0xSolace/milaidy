@@ -60,18 +60,12 @@ export function AuthGate({ children }: { children: ReactNode }) {
             setState("error");
             setError("Session expired. Please try again.");
           }
-          // Otherwise keep polling
         }
       }, 2000);
     } catch (err) {
       setState("error");
       setError(`Failed to start login: ${err}`);
     }
-  }, []);
-
-  const _handleLogout = useCallback(() => {
-    clearToken();
-    setState("unauthenticated");
   }, []);
 
   const handleSkip = useCallback(() => {
@@ -81,7 +75,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   if (state === "checking") {
     return (
       <div className="min-h-screen bg-dark flex items-center justify-center">
-        <div className="text-text-muted font-mono text-sm">Loading...</div>
+        <div className="w-6 h-6 rounded-full border-2 border-brand/30 border-t-brand animate-spin" />
       </div>
     );
   }
@@ -91,23 +85,34 @@ export function AuthGate({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-dark flex items-center justify-center pt-20">
-      <div className="max-w-sm w-full space-y-6 p-6">
-        <div className="text-center">
-          <h2 className="text-xl font-medium text-text-light mb-2">
-            Milady Cloud
-          </h2>
-          <p className="text-text-muted text-sm">
-            Sign in with your Eliza Cloud account to manage your agents.
+    <div className="min-h-screen bg-dark flex items-center justify-center px-4">
+      <div className="max-w-md w-full animate-fade-up" style={{ animationDelay: "0.1s" }}>
+        {/* Logo area */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-surface border border-border mb-6">
+            <img
+              src="/logo.png"
+              alt="Milady"
+              className="w-10 h-10 rounded-lg"
+            />
+          </div>
+          <h1 className="text-2xl font-semibold tracking-tight text-text-light mb-3">
+            Welcome to Milady Cloud
+          </h1>
+          <p className="text-text-muted text-[15px] leading-relaxed max-w-sm mx-auto">
+            Sign in with Eliza Cloud to create and manage your agents from one place.
           </p>
         </div>
 
         {state === "polling" ? (
-          <div className="text-center space-y-3">
-            <div className="text-brand font-mono text-sm animate-pulse">
-              Waiting for authentication...
+          <div className="text-center space-y-5">
+            <div className="inline-flex items-center gap-3 px-5 py-3 bg-surface rounded-xl border border-border">
+              <div className="w-4 h-4 rounded-full border-2 border-brand/30 border-t-brand animate-spin" />
+              <span className="text-text-light text-sm">
+                Waiting for authentication…
+              </span>
             </div>
-            <p className="text-text-muted text-xs">
+            <p className="text-text-muted text-sm">
               Complete the login in the browser tab that opened.
             </p>
           </div>
@@ -116,29 +121,33 @@ export function AuthGate({ children }: { children: ReactNode }) {
             <button
               type="button"
               onClick={handleLogin}
-              className="w-full px-4 py-2 bg-brand text-dark font-mono text-xs uppercase tracking-widest rounded hover:bg-brand-hover transition-colors"
+              className="w-full px-5 py-3.5 bg-brand text-dark font-medium text-[15px] rounded-xl
+                hover:bg-brand-hover active:scale-[0.98] transition-all duration-150
+                shadow-[0_0_20px_rgba(240,185,11,0.15)]"
             >
-              Login with Eliza Cloud
+              Sign in with Eliza Cloud
             </button>
             <button
               type="button"
               onClick={handleSkip}
-              className="w-full px-4 py-2 border border-white/10 text-text-muted font-mono text-xs uppercase tracking-widest rounded hover:border-white/30 transition-colors"
+              className="w-full px-5 py-3 text-text-muted text-sm rounded-xl
+                hover:text-text-light hover:bg-surface transition-all duration-150"
             >
-              Skip (local only)
+              Continue without account
             </button>
           </div>
         )}
 
         {error && (
-          <div className="space-y-2">
-            <div className="text-red-500 font-mono text-xs text-center">
+          <div className="mt-6 space-y-3">
+            <div className="px-4 py-3 bg-red-500/8 border border-red-500/20 rounded-xl text-red-400 text-sm text-center">
               {error}
             </div>
             <button
               type="button"
               onClick={() => setState("unauthenticated")}
-              className="w-full px-4 py-2 border border-white/10 text-text-muted font-mono text-xs uppercase tracking-widest rounded hover:border-white/30 transition-colors"
+              className="w-full px-5 py-3 text-text-muted text-sm rounded-xl
+                hover:text-text-light hover:bg-surface transition-all duration-150"
             >
               Try Again
             </button>

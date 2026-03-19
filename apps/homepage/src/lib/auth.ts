@@ -1,3 +1,5 @@
+import { CLOUD_BASE } from "./runtime-config";
+
 const TOKEN_KEY = "milady-cloud-token";
 
 export function getToken(): string | null {
@@ -15,8 +17,6 @@ export function clearToken(): void {
 export function isAuthenticated(): boolean {
   return getToken() !== null;
 }
-
-const CLOUD_BASE = "https://www.elizacloud.ai";
 
 export async function cloudLogin(): Promise<{
   sessionId: string;
