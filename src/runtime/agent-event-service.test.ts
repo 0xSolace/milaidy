@@ -77,4 +77,22 @@ describe("createMiladyPlugin", () => {
     expect(schema.enum).not.toContain("run");
     expect(schema.enum).not.toContain("walk");
   });
+
+  it("honours DISABLE_EMOTES by removing PLAY_EMOTE at init", async () => {
+    const plugin = createMiladyPlugin();
+    const runtime = {
+      character: { settings: { DISABLE_EMOTES: true } },
+      getService: vi.fn(() => null),
+      getTaskWorker: vi.fn(() => null),
+      registerTaskWorker: vi.fn(),
+    };
+
+    // Call init to trigger DISABLE_EMOTES check
+    await plugin.init?.({}, runtime as never);
+
+    const emoteAction = plugin.actions?.find(
+      (action) => action.name === "PLAY_EMOTE",
+    );
+    expect(emoteAction).toBeUndefined();
+  });
 });

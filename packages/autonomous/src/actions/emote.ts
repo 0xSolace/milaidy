@@ -31,7 +31,8 @@ export const emoteAction: Action = {
   ],
 
   description:
-    "Play a one-shot emote animation on the avatar, then return to idle. " +
+    "Play a one-shot emote animation on your 3D VRM avatar, then return to idle. " +
+    "Use whenever a visible gesture, reaction, or trick helps convey emotion. " +
     "This is a silent non-blocking visual side action that does not create " +
     "chat text on its own. Only call it when you set the required emote " +
     "parameter to a valid emote ID. If you also want speech, chain it " +

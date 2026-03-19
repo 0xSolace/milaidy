@@ -7,6 +7,7 @@
  */
 
 import type {
+  IAgentRuntime,
   Plugin,
   Provider,
   ProviderResult,
@@ -68,6 +69,10 @@ export function createMiladyPlugin(config?: MiladyPluginConfig): Plugin {
   // Emote IDs are now declared as an enum on the PLAY_EMOTE action parameter,
   // so they appear in the `# Available Actions` section automatically via
   // core's formatActions. No separate provider injection needed.
+  //
+  // Backwards-compat: character.settings.DISABLE_EMOTES still works — when set,
+  // the PLAY_EMOTE action is excluded at init time so it never appears in the
+  // prompt. Previously this was checked per-request in the emote provider.
 
   // Custom actions provider — tells the LLM about available custom actions.
   const customActionsProvider: Provider = {
@@ -103,16 +108,24 @@ export function createMiladyPlugin(config?: MiladyPluginConfig): Plugin {
     },
   };
 
-  return {
+  const plugin: Plugin = {
     name: "milady",
     description:
       "Milady workspace context, session keys, and lifecycle actions",
 
     services: [AgentEventService as unknown as ServiceClass],
 
-    init: async (_pluginConfig, runtime) => {
+    init: async (_pluginConfig, runtime: IAgentRuntime) => {
       registerTriggerTaskWorker(runtime);
       setCustomActionsRuntime(runtime);
+
+      // Honour DISABLE_EMOTES: remove PLAY_EMOTE so it never appears in prompts.
+      if (runtime.character?.settings?.DISABLE_EMOTES) {
+        const idx = plugin.actions?.findIndex((a) => a.name === "PLAY_EMOTE");
+        if (idx != null && idx >= 0) {
+          plugin.actions?.splice(idx, 1);
+        }
+      }
     },
 
     providers: [
@@ -137,4 +150,6 @@ export function createMiladyPlugin(config?: MiladyPluginConfig): Plugin {
       ...loadCustomActions(),
     ],
   };
+
+  return plugin;
 }
