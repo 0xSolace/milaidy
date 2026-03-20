@@ -220,7 +220,7 @@ vi.mock("../native/agent", () => ({
     })),
     getPort: vi.fn(() => null),
     setSendToWebview: vi.fn(),
-    onStatusChange: vi.fn(() => () => { }),
+    onStatusChange: vi.fn(() => () => {}),
     dispose: vi.fn(),
   })),
   AgentManager: class MockAgentManager {
@@ -230,7 +230,7 @@ vi.mock("../native/agent", () => ({
     getStatus = vi.fn();
     getPort = vi.fn(() => null);
     setSendToWebview = vi.fn();
-    onStatusChange = vi.fn(() => () => { });
+    onStatusChange = vi.fn(() => () => {});
     dispose = vi.fn();
   },
   resolveConfigDir: vi.fn(() => "/mock/config/Milady"),
@@ -4141,6 +4141,16 @@ describe("System permissions (automated)", () => {
 
   it.todo("Requesting accessibility opens System Preferences (OS interaction)");
   it.todo("Permission status reflects actual system state (OS interaction)");
+});
+
+describe("Desktop background notice (automated)", () => {
+  it("desktopShowBackgroundNotice returns whether a notice was shown", async () => {
+    const { handlers } = await captureHandlers();
+    const result = (await handlers.desktopShowBackgroundNotice()) as {
+      shown: boolean;
+    };
+    expect(typeof result.shown).toBe("boolean");
+  });
 });
 
 describe("Deep links and URL schemes (automated)", () => {

@@ -1,5 +1,9 @@
 import crypto from "node:crypto";
 import process from "node:process";
+
+/** Maximum accumulated streamed text before truncation (1MB). */
+const MAX_STREAMED_LENGTH = 1_000_000;
+
 import {
   type ActionEventPayload,
   type AgentRuntime,
@@ -273,6 +277,7 @@ export class ElizaTUIBridge {
     ]);
 
     this.runtime.registerEvent(EventType.ACTION_STARTED, async (payload) => {
+      if (this.disposed) return;
       const p = payload as ActionEventPayload;
       const actionName = p.content.actions?.[0] ?? "action";
 
@@ -315,6 +320,7 @@ export class ElizaTUIBridge {
     });
 
     this.runtime.registerEvent(EventType.ACTION_COMPLETED, async (payload) => {
+      if (this.disposed) return;
       const p = payload as ActionEventPayload;
       const actionName = p.content.actions?.[0] ?? "action";
 
@@ -712,6 +718,9 @@ export class ElizaTUIBridge {
 
         fullText = mergeStreamingText(fullText, chunk);
         this.streamedText = mergeStreamingText(this.streamedText, chunk);
+        if (this.streamedText.length > MAX_STREAMED_LENGTH) {
+          this.streamedText = this.streamedText.slice(0, MAX_STREAMED_LENGTH);
+        }
         this.ensureAssistantComponent();
         this.scheduleAssistantUpdate();
         return;
@@ -735,29 +744,40 @@ export class ElizaTUIBridge {
 
         fullText = mergeStreamingText(fullText, parsed.text);
         this.streamedText = mergeStreamingText(this.streamedText, parsed.text);
+        if (this.streamedText.length > MAX_STREAMED_LENGTH) {
+          this.streamedText = this.streamedText.slice(0, MAX_STREAMED_LENGTH);
+        }
         this.ensureAssistantComponent();
         this.scheduleAssistantUpdate();
       }
     };
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-      buffer += decoder.decode(value, { stream: true });
-      const drained = drainSseEvents(buffer);
-      buffer = drained.remaining;
+        buffer += decoder.decode(value, { stream: true });
+        const drained = drainSseEvents(buffer);
+        buffer = drained.remaining;
 
-      for (const rawEvent of drained.events) {
-        for (const payload of extractSseDataPayloads(rawEvent)) {
+        for (const rawEvent of drained.events) {
+          for (const payload of extractSseDataPayloads(rawEvent)) {
+            parsePayload(payload);
+          }
+        }
+      }
+
+      if (buffer.trim()) {
+        for (const payload of extractSseDataPayloads(buffer)) {
           parsePayload(payload);
         }
       }
-    }
-
-    if (buffer.trim()) {
-      for (const payload of extractSseDataPayloads(buffer)) {
-        parsePayload(payload);
+    } finally {
+      try {
+        reader.cancel();
+      } catch {
+        /* ignore cancel errors */
       }
     }
 

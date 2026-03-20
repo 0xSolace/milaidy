@@ -6,6 +6,8 @@
  */
 
 import "@elizaos/app-core/styles/styles.css";
+import "./brand-gold.css";
+import "./onboarding-overrides.css";
 import "./native-plugin-entrypoints";
 
 import { App as CapacitorApp } from "@capacitor/app";
@@ -13,6 +15,7 @@ import { Capacitor } from "@capacitor/core";
 import { Keyboard } from "@capacitor/keyboard";
 import { StatusBar, Style } from "@capacitor/status-bar";
 import { App } from "@elizaos/app-core";
+import { client } from "@elizaos/app-core/api";
 // Import Capacitor bridge utilities
 import {
   initializeCapacitorBridge,
@@ -37,7 +40,22 @@ import { Agent } from "@miladyai/capacitor-agent";
 import { Desktop } from "@miladyai/capacitor-desktop";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { installLocalProviderCloudPreferencePatch } from "./cloud-preference-patch";
 import { CharacterEditor } from "./components/CharacterEditor";
+import { DesktopOnboardingRuntime } from "./DesktopOnboardingRuntime";
+import { DesktopSurfaceNavigationRuntime } from "./DesktopSurfaceNavigationRuntime";
+import { DetachedShellRoot } from "./DetachedShellRoot";
+import { installDesktopPermissionsClientPatch } from "./desktop-permissions-client";
+import {
+  applyForceFreshOnboardingReset,
+  installForceFreshOnboardingClientPatch,
+} from "./onboarding-reset";
+import {
+  isDetachedWindowShell,
+  resolveWindowShellRoute,
+  shouldInstallMainWindowOnboardingPatches,
+  syncDetachedShellLocation,
+} from "./window-shell";
 
 const MILADY_BRANDING: Partial<BrandingConfig> = {
   appName: "Milady",
@@ -66,13 +84,6 @@ function isDesktopPlatform(): boolean {
   return isElectrobunRuntime();
 }
 
-function isSettingsShell(): boolean {
-  if (typeof window === "undefined") return false;
-  return (
-    new URLSearchParams(window.location.search).get("shell") === "settings"
-  );
-}
-
 function isWebPlatform(): boolean {
   return platform === "web" && !isElectrobunRuntime();
 }
@@ -98,17 +109,16 @@ declare global {
   }
 }
 
-// Dev escape hatch: ?reset in URL clears persisted connection state so the
-// app always shows fresh onboarding instead of polling a dead backend.
-if (new URLSearchParams(window.location.search).has("reset")) {
-  localStorage.removeItem("eliza:connection-mode");
-  localStorage.removeItem("eliza:onboarding-step");
-  localStorage.removeItem("eliza:onboarding-complete");
-  // Strip ?reset from URL to avoid loop
-  const clean = new URL(window.location.href);
-  clean.searchParams.delete("reset");
-  window.history.replaceState(null, "", clean.toString());
+const windowShellRoute = resolveWindowShellRoute();
+
+// Dev escape hatch: ?reset forces a truly fresh onboarding session by clearing
+// persisted state and temporarily suppressing stale backend resume config.
+if (shouldInstallMainWindowOnboardingPatches(windowShellRoute)) {
+  applyForceFreshOnboardingReset();
+  installForceFreshOnboardingClientPatch(client);
 }
+installLocalProviderCloudPreferencePatch(client);
+installDesktopPermissionsClientPatch(client);
 
 // Register custom character editor for app-core's ViewRouter to pick up
 window.__MILADY_CHARACTER_EDITOR__ = CharacterEditor;
@@ -443,7 +453,15 @@ function mountReactApp(): void {
   createRoot(rootEl).render(
     <StrictMode>
       <AppProvider branding={MILADY_BRANDING}>
-        <App />
+        {isDetachedWindowShell(windowShellRoute) ? (
+          <DetachedShellRoot route={windowShellRoute} />
+        ) : (
+          <>
+            <DesktopOnboardingRuntime />
+            <DesktopSurfaceNavigationRuntime />
+            <App />
+          </>
+        )}
       </AppProvider>
     </StrictMode>,
   );
@@ -505,6 +523,25 @@ function injectPopoutApiBase(): void {
   }
 }
 
+function injectDetachedShellApiBase(): void {
+  const apiBase = new URLSearchParams(window.location.search).get("apiBase");
+  if (apiBase) {
+    window.__MILADY_API_BASE__ = apiBase;
+  }
+}
+
+function applyStoredDetachedShellTheme(): void {
+  try {
+    const stored = localStorage.getItem("milady:ui-theme");
+    const theme = stored === "light" ? "light" : "dark";
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    document.documentElement.setAttribute("data-theme", theme);
+  } catch {
+    document.documentElement.classList.add("dark");
+    document.documentElement.setAttribute("data-theme", "dark");
+  }
+}
+
 /**
  * Main initialization
  */
@@ -529,25 +566,10 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (isSettingsShell()) {
-    // Settings shell — inject the API base from URL params so the client
-    // connects to the same agent backend as the main window.
-    const settingsParams = new URLSearchParams(window.location.search);
-    const settingsApiBase = settingsParams.get("apiBase");
-    if (settingsApiBase) {
-      window.__MILADY_API_BASE__ = settingsApiBase;
-    }
-    // Apply stored theme (default to dark)
-    try {
-      const stored = localStorage.getItem("milady:ui-theme");
-      const theme = stored === "light" ? "light" : "dark";
-      document.documentElement.classList.toggle("dark", theme === "dark");
-      document.documentElement.setAttribute("data-theme", theme);
-    } catch {
-      document.documentElement.classList.add("dark");
-      document.documentElement.setAttribute("data-theme", "dark");
-    }
-    // Initialize storage and bridge so AppProvider can read cached auth state.
+  if (isDetachedWindowShell(windowShellRoute)) {
+    injectDetachedShellApiBase();
+    applyStoredDetachedShellTheme();
+    syncDetachedShellLocation(windowShellRoute);
     await initializeStorageBridge();
     initializeCapacitorBridge();
     mountReactApp();

@@ -146,6 +146,7 @@ describe("collectPluginNames", () => {
     "MILADY_CLOUD_MEDIA_DISABLED",
     "MILADY_CLOUD_EMBEDDINGS_DISABLED",
     "MILADY_CLOUD_RPC_DISABLED",
+    "MILADY_DISABLE_LOCAL_EMBEDDINGS",
     "ELIZA_CLOUD_TTS_DISABLED",
     "ELIZA_CLOUD_MEDIA_DISABLED",
     "ELIZA_CLOUD_EMBEDDINGS_DISABLED",
@@ -774,6 +775,20 @@ describe("collectPluginNames", () => {
     for (const id of Object.keys(CHANNEL_PLUGIN_MAP)) {
       expect(CHANNEL_PLUGIN_MAP[id]).toBe(CONNECTOR_PLUGINS[id]);
     }
+  });
+
+  it("normalizes internal connector plugin names in collectPluginNames()", () => {
+    const names = collectPluginNames({
+      connectors: {
+        signal: { authDir: "/tmp/signal" },
+        whatsapp: { authDir: "/tmp/whatsapp" },
+      },
+    } as Partial<ElizaConfig> as ElizaConfig);
+
+    expect(names.has("@elizaos/plugin-signal")).toBe(true);
+    expect(names.has("@elizaos/plugin-whatsapp")).toBe(true);
+    expect(names.has("@miladyai/plugin-signal")).toBe(false);
+    expect(names.has("@miladyai/plugin-whatsapp")).toBe(false);
   });
 });
 
@@ -1498,9 +1513,9 @@ describe("buildCharacterFromConfig", () => {
     expect(char.name).toBe("Reimu");
   });
 
-  it("defaults to 'Eliza' or 'Eliza' when no name is configured", () => {
+  it("defaults to 'Milady' when no name is configured", () => {
     const char = buildCharacterFromConfig({} as ElizaConfig);
-    expect(["Eliza", "Eliza"]).toContain(char.name);
+    expect(char.name).toBe("Milady");
   });
 
   it("collects API keys from process.env as secrets", () => {
@@ -1562,19 +1577,24 @@ describe("buildCharacterFromConfig", () => {
     expect(char.system).toContain("{{name}}");
   });
 
+  it("does not inject implicit knowledge sources", () => {
+    const char = buildCharacterFromConfig({} as ElizaConfig);
+    expect(char.knowledge ?? []).toHaveLength(0);
+  });
+
   it("does not throw when agents.list is empty", () => {
     const config = { agents: { list: [] } } as ElizaConfig;
     expect(() => buildCharacterFromConfig(config)).not.toThrow();
-    expect(["Eliza", "Eliza"]).toContain(buildCharacterFromConfig(config).name);
+    expect(buildCharacterFromConfig(config).name).toBe("Milady");
   });
 
   it("builds a character with name from agents.list and default personality", () => {
     const config = {
-      agents: { list: [{ id: "main", name: "Reimu" }] },
+      agents: { list: [{ id: "main", name: "Chen" }] },
     } as ElizaConfig;
     const char = buildCharacterFromConfig(config);
 
-    expect(char.name).toBe("Reimu");
+    expect(char.name).toBe("Chen");
     expect(Array.isArray(char.bio)).toBe(true);
     expect((char.bio as string[])[0]).toContain("{{name}}");
     expect(char.system).toContain("{{name}}");
@@ -1583,13 +1603,43 @@ describe("buildCharacterFromConfig", () => {
 
   it("backfills bundled preset posts for default named characters", () => {
     const config = {
-      agents: { list: [{ id: "main", name: "Sakuya" }] },
+      agents: { list: [{ id: "main", name: "Momo" }] },
     } as ElizaConfig;
     const char = buildCharacterFromConfig(config);
 
-    expect(char.name).toBe("Sakuya");
+    expect(char.name).toBe("Momo");
     expect(char.postExamples.length).toBeGreaterThan(0);
     expect(char.messageExamples.length).toBeGreaterThan(0);
+  });
+
+  it("normalizes legacy messageExamples from saved agent config", () => {
+    const config = {
+      agents: {
+        list: [
+          {
+            id: "main",
+            name: "Sakuya",
+            messageExamples: [
+              [
+                { user: "{{user1}}", content: { text: "status?" } },
+                { user: "{{agentName}}", content: { text: "On track." } },
+              ],
+            ],
+          },
+        ],
+      },
+    } as ElizaConfig;
+
+    const char = buildCharacterFromConfig(config);
+
+    expect(char.messageExamples).toEqual([
+      {
+        examples: [
+          { name: "{{user1}}", content: { text: "status?" } },
+          { name: "Sakuya", content: { text: "On track." } },
+        ],
+      },
+    ]);
   });
 
   it("hydrates username and topics from agent config", () => {

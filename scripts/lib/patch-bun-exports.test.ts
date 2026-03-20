@@ -20,6 +20,7 @@ import {
   applyMissingLifecycleScriptPatch,
   applyNobleHashesCompat,
   applyPatchToPackageJson,
+  applyPluginVisionPermissionPatch,
   applyProperLockfileSignalExitCompat,
   findPackageFilePaths,
   findPackageJsonPaths,
@@ -31,6 +32,7 @@ import {
   patchExtensionlessJsExports,
   patchMissingLifecycleScript,
   patchNobleHashesCompat,
+  patchPluginVisionPermissionHandling,
   patchProperLockfileSignalExitCompat,
   repairElizaCoreRuntimeDist,
 } from "./patch-bun-exports.mjs";
@@ -236,6 +238,143 @@ describe("patch-bun-exports", () => {
 
       const updated = JSON.parse(readFileSync(pkgPath, "utf8"));
       expect(updated.exports["."].bun).toBeUndefined();
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("applyPluginVisionPermissionPatch disables eager camera mode and permission retry spam", () => {
+    const tmp = mkdtempSync(join(tmpdir(), "patch-plugin-vision-test-"));
+    try {
+      const bundlePath = join(tmp, "index.js");
+      writeFileSync(
+        bundlePath,
+        `class VisionService {
+  camera = null;
+  lastFrame = null;
+  DEFAULT_CONFIG = {
+    visionMode: "CAMERA" /* CAMERA */,
+  };
+  async initializeCameraVision() {
+    const toolCheck = await this.checkCameraTools();
+  }
+  startFrameProcessing() {
+    if (this.frameProcessingInterval) {
+      return;
+    }
+    this.frameProcessingInterval = setInterval(async () => {
+      if (!this.isProcessing && this.camera) {
+      }
+    }, this.visionConfig.updateInterval || 100);
+  }
+  async captureAndProcessFrame() {
+    if (!this.camera) {
+      return;
+    }
+    try {
+      await this.camera.capture();
+    } catch (error) {
+      logger14.error("[VisionService] Error capturing frame:", error);
+    }
+  }
+  async captureImage() {
+    try {
+      return await this.camera.capture();
+    } catch (error) {
+      logger14.error("[VisionService] Failed to capture image:", error);
+      return null;
+    }
+  }
+}`,
+        "utf8",
+      );
+
+      expect(applyPluginVisionPermissionPatch(bundlePath)).toBe(true);
+
+      const patched = readFileSync(bundlePath, "utf8");
+      expect(patched).toContain('visionMode: "OFF" /* OFF */');
+      expect(patched).toContain("cameraPermissionDenied = false;");
+      expect(patched).toContain(
+        "this.frameProcessingInterval || this.cameraPermissionDenied",
+      );
+      expect(patched).toContain(
+        "Camera permission not granted; disabling camera capture until permission is granted.",
+      );
+      expect(patched).toContain(
+        'this.visionConfig.visionMode = "OFF" /* OFF */;',
+      );
+      expect(patched).toContain(
+        "Camera permission not granted; skipping image capture.",
+      );
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("patchPluginVisionPermissionHandling patches plugin-vision bundles under root and bun cache", () => {
+    const tmp = mkdtempSync(join(tmpdir(), "patch-plugin-vision-root-"));
+    try {
+      const rootBundle = join(
+        tmp,
+        "node_modules",
+        "@elizaos",
+        "plugin-vision",
+        "dist",
+        "index.js",
+      );
+      mkdirSync(join(rootBundle, ".."), { recursive: true });
+      writeFileSync(
+        rootBundle,
+        `class VisionService {
+  camera = null;
+  lastFrame = null;
+  DEFAULT_CONFIG = {
+    visionMode: "CAMERA" /* CAMERA */,
+  };
+  async initializeCameraVision() {
+    const toolCheck = await this.checkCameraTools();
+  }
+  startFrameProcessing() {
+    if (this.frameProcessingInterval) {
+      return;
+    }
+    this.frameProcessingInterval = setInterval(async () => {
+      if (!this.isProcessing && this.camera) {
+      }
+    }, this.visionConfig.updateInterval || 100);
+  }
+  async captureAndProcessFrame() {
+    if (!this.camera) {
+      return;
+    }
+    try {
+      await this.camera.capture();
+    } catch (error) {
+      logger14.error("[VisionService] Error capturing frame:", error);
+    }
+  }
+  async captureImage() {
+    try {
+      return await this.camera.capture();
+    } catch (error) {
+      logger14.error("[VisionService] Failed to capture image:", error);
+      return null;
+    }
+  }
+}`,
+        "utf8",
+      );
+
+      const logs: string[] = [];
+      expect(
+        patchPluginVisionPermissionHandling(tmp, (msg) => logs.push(msg)),
+      ).toBe(true);
+
+      const patched = readFileSync(rootBundle, "utf8");
+      expect(patched).toContain('visionMode: "OFF" /* OFF */');
+      expect(logs.some((line) => line.includes("@elizaos/plugin-vision"))).toBe(
+        true,
+      );
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }
@@ -856,7 +995,7 @@ const avatarIndex = meta?.avatarIndex ?? (index % 4) + 1;
           "utf8",
         ),
       ).toContain(
-        '"uwu~": { name: "Ai", avatarIndex: 2, voicePresetId: "sarah" }',
+        `"I'm here to help you.": { name: "Ai", avatarIndex: 2, voicePresetId: "sarah" }`,
       );
       expect(
         readFileSync(
@@ -913,6 +1052,17 @@ const avatarIndex = meta?.avatarIndex ?? (index % 4) + 1;
         "src",
         "onboarding-presets.js",
       );
+      const tsPkgPath = join(
+        tmp,
+        "node_modules",
+        ".bun",
+        "@elizaos+autonomous@2.0.0-alpha.74",
+        "node_modules",
+        "@elizaos",
+        "autonomous",
+        "src",
+        "onboarding-presets.ts",
+      );
       const cachedPkgPath = join(
         tmp,
         "node_modules",
@@ -929,15 +1079,17 @@ const avatarIndex = meta?.avatarIndex ?? (index % 4) + 1;
 
       mkdirSync(join(rootSourcePath, ".."), { recursive: true });
       mkdirSync(join(rootPkgPath, ".."), { recursive: true });
+      mkdirSync(join(tsPkgPath, ".."), { recursive: true });
       mkdirSync(join(cachedPkgPath, ".."), { recursive: true });
 
       const miladySource =
-        'export const SHARED_STYLE_RULES = ["Keep responses brief."];\nexport const STYLE_PRESETS = ["milady"];\n';
+        'export const SHARED_STYLE_RULES = ["Keep responses brief."] as const;\nexport const CHARACTER_PRESET_META: Record<string, { avatarIndex: number }> = { chen: { avatarIndex: 1 } };\n';
       writeFileSync(rootSourcePath, miladySource, "utf8");
       writeFileSync(
         rootPkgPath,
         'export const STYLE_PRESETS = ["upstream"];\n',
       );
+      writeFileSync(tsPkgPath, 'export const STYLE_PRESETS = ["upstream"];\n');
       writeFileSync(
         cachedPkgPath,
         'export const STYLE_PRESETS = ["upstream"];\n',
@@ -949,8 +1101,17 @@ const avatarIndex = meta?.avatarIndex ?? (index % 4) + 1;
       );
 
       expect(patched).toBe(true);
-      expect(readFileSync(rootPkgPath, "utf8")).toBe(miladySource);
-      expect(readFileSync(cachedPkgPath, "utf8")).toBe(miladySource);
+      const patchedJsSource = readFileSync(rootPkgPath, "utf8");
+      expect(patchedJsSource).toContain(
+        'export const SHARED_STYLE_RULES = ["Keep responses brief."];',
+      );
+      expect(patchedJsSource).toContain(
+        "export const CHARACTER_PRESET_META = { chen: { avatarIndex: 1 } };",
+      );
+      expect(patchedJsSource).not.toContain("as const");
+      expect(patchedJsSource).not.toContain("Record<");
+      expect(readFileSync(cachedPkgPath, "utf8")).toBe(patchedJsSource);
+      expect(readFileSync(tsPkgPath, "utf8")).toBe(miladySource);
       expect(
         logs.some((line) =>
           line.includes(

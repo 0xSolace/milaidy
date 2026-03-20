@@ -12,6 +12,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, resolve } from "node:path";
+import ts from "typescript";
 
 const ELIZA_CORE_RUNTIME_FILES = [
   "dist/index.js",
@@ -380,9 +381,20 @@ function loadMiladyCharacterCatalog(root) {
   };
 }
 
-function loadMiladyOnboardingPresetsSource(root) {
+function loadMiladyOnboardingPresetsSource(root, targetPath) {
   const sourcePath = resolve(root, "src/onboarding-presets.ts");
-  return readFileSync(sourcePath, "utf8");
+  const source = readFileSync(sourcePath, "utf8");
+  if (!targetPath?.endsWith(".js")) {
+    return source;
+  }
+
+  return ts.transpileModule(source, {
+    fileName: sourcePath,
+    compilerOptions: {
+      module: ts.ModuleKind.ESNext,
+      target: ts.ScriptTarget.ES2022,
+    },
+  }).outputText;
 }
 
 function toAppCoreRelativeAssetPath(path) {
@@ -696,7 +708,7 @@ function stripTypeScriptSyntax(src) {
 export function patchAutonomousMiladyOnboardingPresets(
   root,
   log = console.log,
-  source = loadMiladyOnboardingPresetsSource(root),
+  source,
 ) {
   const candidates = [
     ...findPackageFilePaths(
@@ -718,7 +730,9 @@ export function patchAutonomousMiladyOnboardingPresets(
 
   let patched = false;
   for (const filePath of candidates) {
-    if (!applyAutonomousMiladyOnboardingPresetsPatch(filePath, source)) {
+    const nextSource =
+      source ?? loadMiladyOnboardingPresetsSource(root, filePath);
+    if (!applyAutonomousMiladyOnboardingPresetsPatch(filePath, nextSource)) {
       continue;
     }
     patched = true;
@@ -907,6 +921,123 @@ export function applyAgentSkillsCatalogFetchPatch(filePath) {
 
   writeFileSync(filePath, updatedSource, "utf8");
   return true;
+}
+
+/**
+ * @elizaos/plugin-vision currently defaults to CAMERA mode and keeps retrying
+ * imagesnap/fswebcam/ffmpeg when OS camera permission is denied. In the
+ * desktop app this spams logs and can interfere with startup. Patch the
+ * published bundle so camera capture defaults to OFF and a permission denial
+ * disables the camera loop until the user explicitly re-enables it.
+ */
+export function applyPluginVisionPermissionPatch(filePath) {
+  if (!existsSync(filePath)) return false;
+
+  let source = readFileSync(filePath, "utf8");
+  if (
+    source.includes(
+      "Camera permission not granted; disabling camera capture until permission is granted.",
+    )
+  ) {
+    return false;
+  }
+
+  const replacements = [
+    [
+      '    visionMode: "CAMERA" /* CAMERA */,',
+      '    visionMode: "OFF" /* OFF */,',
+    ],
+    [
+      "  camera = null;\n  lastFrame = null;",
+      "  camera = null;\n  cameraPermissionDenied = false;\n  lastFrame = null;",
+    ],
+    [
+      "  async initializeCameraVision() {\n    const toolCheck = await this.checkCameraTools();",
+      "  async initializeCameraVision() {\n    this.cameraPermissionDenied = false;\n    const toolCheck = await this.checkCameraTools();",
+    ],
+    [
+      "  startFrameProcessing() {\n    if (this.frameProcessingInterval) {\n      return;\n    }",
+      "  startFrameProcessing() {\n    if (this.frameProcessingInterval || this.cameraPermissionDenied) {\n      return;\n    }",
+    ],
+    [
+      "      if (!this.isProcessing && this.camera) {",
+      "      if (!this.isProcessing && this.camera && !this.cameraPermissionDenied) {",
+    ],
+    [
+      "    if (!this.camera) {\n      return;\n    }",
+      "    if (!this.camera || this.cameraPermissionDenied) {\n      return;\n    }",
+    ],
+    [
+      `    } catch (error) {
+      logger14.error("[VisionService] Error capturing frame:", error);
+    }`,
+      `    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (/camera access not granted|permission denied|not authorized|not permitted|device access denied/i.test(errorMessage)) {
+        if (!this.cameraPermissionDenied) {
+          logger14.warn("[VisionService] Camera permission not granted; disabling camera capture until permission is granted.");
+        }
+        this.cameraPermissionDenied = true;
+        this.camera = null;
+        if (this.frameProcessingInterval) {
+          clearInterval(this.frameProcessingInterval);
+          this.frameProcessingInterval = null;
+        }
+        if (this.visionConfig.visionMode === "BOTH" /* BOTH */) {
+          this.visionConfig.visionMode = "SCREEN" /* SCREEN */;
+        } else if (this.visionConfig.visionMode === "CAMERA" /* CAMERA */) {
+          this.visionConfig.visionMode = "OFF" /* OFF */;
+        }
+        return;
+      }
+      logger14.error("[VisionService] Error capturing frame:", error);
+    }`,
+    ],
+    [
+      `    } catch (error) {
+      logger14.error("[VisionService] Failed to capture image:", error);
+      return null;
+    }`,
+      `    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (/camera access not granted|permission denied|not authorized|not permitted|device access denied/i.test(errorMessage)) {
+        logger14.warn("[VisionService] Camera permission not granted; skipping image capture.");
+        this.cameraPermissionDenied = true;
+        this.camera = null;
+        return null;
+      }
+      logger14.error("[VisionService] Failed to capture image:", error);
+      return null;
+    }`,
+    ],
+  ];
+
+  for (const [searchValue, replaceValue] of replacements) {
+    if (!source.includes(searchValue)) return false;
+    source = source.replace(searchValue, replaceValue);
+  }
+
+  writeFileSync(filePath, source, "utf8");
+  return true;
+}
+
+export function patchPluginVisionPermissionHandling(root, log = console.log) {
+  const candidates = findPackageFilePaths(
+    root,
+    "@elizaos/plugin-vision",
+    "dist/index.js",
+  );
+
+  let patched = false;
+  for (const filePath of candidates) {
+    if (!applyPluginVisionPermissionPatch(filePath)) continue;
+    patched = true;
+    log(
+      `[patch-deps] Patched @elizaos/plugin-vision camera permission handling: ${filePath}`,
+    );
+  }
+
+  return patched;
 }
 
 /**
