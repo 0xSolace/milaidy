@@ -37,8 +37,6 @@ const requiredWorkflowSnippets = [
   "run: bun run release:check",
   "for attempt in 1 2 3; do",
   `bun install failed on attempt \${attempt}; retrying in 15 seconds`,
-  "key: bun-electrobun-validate-$" + "{{ hashFiles('bun.lock') }}",
-  "restore-keys: bun-electrobun-validate-",
   "name: Ensure avatar assets",
   "node scripts/ensure-avatars.mjs",
   "Install quiet macOS packaging wrappers",
@@ -109,6 +107,17 @@ const requiredWorkflowSnippets = [
 const forbiddenWorkflowSnippets = [
   ' -name "*.exe" -o \\',
   'bun install -g "rcedit@4.0.1"',
+  "name: Cache Bun install",
+  "path: ~/.bun/install/cache",
+  "restore-keys: bun-electrobun-validate-",
+  "restore-keys: bun-electrobun-$" +
+    "{{ matrix.platform.artifact-name }}" +
+    "-",
+  "key: bun-electrobun-validate-$" + "{{ hashFiles('bun.lock') }}",
+  "key: bun-electrobun-$" +
+    "{{ matrix.platform.artifact-name }}" +
+    "-$" +
+    "{{ hashFiles('bun.lock') }}",
 ];
 const requiredElectrobunConfigSnippets = [
   'postBuild: "scripts/postwrap-sign-runtime-macos.ts"',
@@ -130,6 +139,11 @@ type RootPackageJson = {
   files?: string[];
   scripts?: Record<string, string>;
 };
+const cloudAgentTemplateReleaseDependencies = [
+  "@elizaos/core",
+  "@elizaos/plugin-elizacloud",
+  "@elizaos/plugin-sql",
+] as const;
 
 /**
  * Returns true if the version specifier is an exact pinned version
@@ -278,6 +292,22 @@ export function hasLifecycleScriptReferencingMissingFile(
   return !pathExists(resolve(packageDir, relativeTarget));
 }
 
+export function findFloatingDependencySpecs(
+  pkg: RootPackageJson,
+  dependencyNames: readonly string[],
+): Array<{ name: string; specifier: string }> {
+  const dependencies = pkg.dependencies ?? {};
+
+  return dependencyNames.flatMap((name) => {
+    const specifier = dependencies[name];
+    if (!isExactVersionSpecifier(specifier)) {
+      return [{ name, specifier: specifier ?? "<missing>" }];
+    }
+
+    return [];
+  });
+}
+
 function readExistingReleaseCheckFile(
   label: string,
   candidates: readonly string[],
@@ -410,6 +440,26 @@ function assertOrchestratorVersionPinned() {
     console.error(
       `release-check: ${orchestratorPackageName} must be pinned to an exact version (e.g. "0.3.14"), but found "${version}". Floating tags like "next" or ranges like "^0.3.14" are not allowed for release builds.`,
     );
+    process.exit(1);
+  }
+}
+
+function assertCloudAgentTemplateDependenciesPinned() {
+  const cloudAgentPackage = JSON.parse(
+    readFileSync("deploy/cloud-agent-template/package.json", "utf8"),
+  ) as RootPackageJson;
+  const floating = findFloatingDependencySpecs(
+    cloudAgentPackage,
+    cloudAgentTemplateReleaseDependencies,
+  );
+
+  if (floating.length > 0) {
+    console.error(
+      "release-check: deploy/cloud-agent-template/package.json must pin release dependencies to exact versions.",
+    );
+    for (const dependency of floating) {
+      console.error(`  - ${dependency.name}: ${dependency.specifier}`);
+    }
     process.exit(1);
   }
 }
@@ -580,6 +630,32 @@ function assertWindowsSmokeScriptHasLeadingParamBlock() {
   }
 }
 
+function assertInnoBuildScriptHasTimeoutAndHeartbeat() {
+  const script = readFileSync("packaging/inno/build-inno.ps1", "utf8");
+  const requiredSnippets = [
+    "$isccTimeout = [TimeSpan]::FromMinutes(25)",
+    "$isccHeartbeatInterval = [TimeSpan]::FromSeconds(30)",
+    "Write-Host \"Starting ISCC.exe: $isccPath $($isccArgumentDisplay -join ' ')\"",
+    "Start-Process -FilePath $isccPath",
+    'Write-Host "ISCC.exe still running after $([math]::Round($elapsed.TotalMinutes, 1)) minutes..."',
+    "Stop-Process -Id $isccProcess.Id -Force",
+    'throw "ISCC.exe timed out after $([int]$isccTimeout.TotalMinutes) minutes while building the Windows installer."',
+  ];
+  const missingSnippets = requiredSnippets.filter(
+    (snippet) => !script.includes(snippet),
+  );
+
+  if (missingSnippets.length > 0) {
+    console.error(
+      "release-check: build-inno.ps1 must supervise ISCC.exe with heartbeat logging and a hard timeout.",
+    );
+    for (const snippet of missingSnippets) {
+      console.error(`  - ${snippet}`);
+    }
+    process.exit(1);
+  }
+}
+
 function assertMacSmokeScriptLaunchesPackagedLauncherDirectly() {
   const script = readFileSync(
     "apps/app/electrobun/scripts/smoke-test.sh",
@@ -714,11 +790,13 @@ function main() {
   assertElectrobunConfigHasPostWrapSigner();
   assertMacArtifactStagerLooksCorrect();
   assertWindowsSmokeScriptHasLeadingParamBlock();
+  assertInnoBuildScriptHasTimeoutAndHeartbeat();
   assertMacSmokeScriptLaunchesPackagedLauncherDirectly();
   assertServerDynamicHyperscapeImport();
   assertStartApiServerCatchBlockSafety();
   assertBundledAgentOrchestratorInstallFix();
   assertOrchestratorVersionPinned();
+  assertCloudAgentTemplateDependenciesPinned();
   const localHotspots = findLocalPackHotspots();
   if (shouldSkipExactPackDryRun(localHotspots)) {
     runFastLocalPackCheck(localHotspots);

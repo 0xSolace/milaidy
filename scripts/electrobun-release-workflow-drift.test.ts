@@ -123,6 +123,19 @@ describe("Electrobun release workflow drift", () => {
     expect(workflow).toContain(`bun install failed after \${attempt} attempts`);
   });
 
+  it("does not restore Bun install cache during desktop builds", () => {
+    const workflow = fs.readFileSync(WORKFLOW_PATH, "utf8");
+    const buildJobLabel = "name: Build $" + "{{ matrix.platform.name }}";
+    const buildSection = workflow.slice(
+      workflow.indexOf(buildJobLabel),
+      workflow.indexOf("  create-release:"),
+    );
+
+    expect(buildSection).not.toContain("name: Cache Bun install");
+    expect(buildSection).not.toContain("path: ~/.bun/install/cache");
+    expect(buildSection).not.toContain("bun-electrobun-");
+  });
+
   it("installs Inno Setup on Windows without relying on winget", () => {
     const workflow = fs.readFileSync(WORKFLOW_PATH, "utf8");
 
@@ -137,17 +150,16 @@ describe("Electrobun release workflow drift", () => {
     );
   });
 
-  it("uses a non-matrix cache key in validate-release", () => {
+  it("does not restore Bun install cache in validate-release", () => {
     const workflow = fs.readFileSync(WORKFLOW_PATH, "utf8");
     const validateSection = workflow.slice(
       workflow.indexOf("name: Validate Release Inputs"),
       workflow.indexOf("  build:"),
     );
 
-    expect(validateSection).toContain(
-      "key: bun-electrobun-validate-$" + "{{ hashFiles('bun.lock') }}",
-    );
-    expect(validateSection).toContain("restore-keys: bun-electrobun-validate-");
+    expect(validateSection).not.toContain("name: Cache Bun install");
+    expect(validateSection).not.toContain("path: ~/.bun/install/cache");
+    expect(validateSection).not.toContain("bun-electrobun-validate-");
     expect(validateSection).not.toContain("matrix.platform.artifact-name");
   });
 
@@ -303,6 +315,26 @@ describe("Electrobun release workflow drift", () => {
       'Join-Path $sourceDir "Resources\\app\\milady-dist\\entry.js"',
     );
     expect(script).toContain("Resolve-Path $sourceDir");
+  });
+
+  it("bounds hung Inno compiler runs with heartbeat logging and a hard timeout", () => {
+    const script = fs.readFileSync(INNO_BUILD_SCRIPT_PATH, "utf8");
+
+    expect(script).toContain("$isccTimeout = [TimeSpan]::FromMinutes(25)");
+    expect(script).toContain(
+      "$isccHeartbeatInterval = [TimeSpan]::FromSeconds(30)",
+    );
+    expect(script).toContain(
+      "Write-Host \"Starting ISCC.exe: $isccPath $($isccArgumentDisplay -join ' ')\"",
+    );
+    expect(script).toContain("Start-Process -FilePath $isccPath");
+    expect(script).toContain(
+      'Write-Host "ISCC.exe still running after $([math]::Round($elapsed.TotalMinutes, 1)) minutes..."',
+    );
+    expect(script).toContain("Stop-Process -Id $isccProcess.Id -Force");
+    expect(script).toContain(
+      'throw "ISCC.exe timed out after $([int]$isccTimeout.TotalMinutes) minutes while building the Windows installer."',
+    );
   });
 
   it("treats the staged macOS app as an intermediate signed bundle, not a notarized final artifact", () => {
