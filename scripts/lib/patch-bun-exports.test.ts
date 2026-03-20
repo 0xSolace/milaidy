@@ -1,4 +1,5 @@
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -22,6 +23,7 @@ import {
   applyPatchToPackageJson,
   applyPluginVisionPermissionPatch,
   applyProperLockfileSignalExitCompat,
+  bustStaleBunCache,
   findPackageFilePaths,
   findPackageJsonPaths,
   patchAgentSkillsCatalogFetch,
@@ -1294,6 +1296,105 @@ const avatarIndex = meta?.avatarIndex ?? (index % 4) + 1;
       );
       expect(patched).toBe(true);
       expect(logs.some((l) => l.includes("proper-lockfile"))).toBe(true);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("bustStaleBunCache", () => {
+  function makeTmp() {
+    return mkdtempSync(join(tmpdir(), "bust-cache-"));
+  }
+
+  function makeBunCacheEntry(bunDir: string, name: string) {
+    const dir = join(bunDir, name, "node_modules");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "marker.txt"), "ok", "utf8");
+  }
+
+  it("returns 0 when no .bun dir exists", () => {
+    const tmp = makeTmp();
+    try {
+      mkdirSync(join(tmp, "node_modules"), { recursive: true });
+      const logs: string[] = [];
+      const removed = bustStaleBunCache(tmp, (msg: string) => logs.push(msg));
+      expect(removed).toBe(0);
+      expect(logs).toHaveLength(0);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("does nothing when only one entry per prefix", () => {
+    const tmp = makeTmp();
+    try {
+      const bunDir = join(tmp, "node_modules/.bun");
+      makeBunCacheEntry(bunDir, "@elizaos+core@2.0.0-alpha.81+abc123");
+      makeBunCacheEntry(bunDir, "@elizaos+autonomous@2.0.0-alpha.81+def456");
+
+      const logs: string[] = [];
+      const removed = bustStaleBunCache(tmp, (msg: string) => logs.push(msg));
+      expect(removed).toBe(0);
+      // Entries still exist
+      expect(existsSync(join(bunDir, "@elizaos+core@2.0.0-alpha.81+abc123"))).toBe(true);
+      expect(existsSync(join(bunDir, "@elizaos+autonomous@2.0.0-alpha.81+def456"))).toBe(true);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("removes entries when two versions share the same hash", () => {
+    const tmp = makeTmp();
+    try {
+      const bunDir = join(tmp, "node_modules/.bun");
+      makeBunCacheEntry(bunDir, "@elizaos+core@2.0.0-alpha.77+samehash");
+      makeBunCacheEntry(bunDir, "@elizaos+core@2.0.0-alpha.81+samehash");
+
+      const logs: string[] = [];
+      const removed = bustStaleBunCache(tmp, (msg: string) => logs.push(msg));
+      expect(removed).toBe(2);
+      expect(existsSync(join(bunDir, "@elizaos+core@2.0.0-alpha.77+samehash"))).toBe(false);
+      expect(existsSync(join(bunDir, "@elizaos+core@2.0.0-alpha.81+samehash"))).toBe(false);
+      expect(logs.some((l) => l.includes("stale Bun cache entries"))).toBe(true);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("preserves entries when two versions have different hashes", () => {
+    const tmp = makeTmp();
+    try {
+      const bunDir = join(tmp, "node_modules/.bun");
+      makeBunCacheEntry(bunDir, "@elizaos+autonomous@2.0.0-alpha.77+oldhash");
+      makeBunCacheEntry(bunDir, "@elizaos+autonomous@2.0.0-alpha.81+newhash");
+
+      const logs: string[] = [];
+      const removed = bustStaleBunCache(tmp, (msg: string) => logs.push(msg));
+      expect(removed).toBe(0);
+      expect(existsSync(join(bunDir, "@elizaos+autonomous@2.0.0-alpha.77+oldhash"))).toBe(true);
+      expect(existsSync(join(bunDir, "@elizaos+autonomous@2.0.0-alpha.81+newhash"))).toBe(true);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("only removes matching prefix groups, not unrelated packages", () => {
+    const tmp = makeTmp();
+    try {
+      const bunDir = join(tmp, "node_modules/.bun");
+      // Stale core entries (same hash)
+      makeBunCacheEntry(bunDir, "@elizaos+core@2.0.0-alpha.77+stale");
+      makeBunCacheEntry(bunDir, "@elizaos+core@2.0.0-alpha.81+stale");
+      // Unrelated package with same pattern — should not be touched
+      makeBunCacheEntry(bunDir, "@elizaos+plugin-sql@2.0.0-alpha.77+stale");
+      makeBunCacheEntry(bunDir, "@elizaos+plugin-sql@2.0.0-alpha.81+stale");
+
+      const logs: string[] = [];
+      const removed = bustStaleBunCache(tmp, (msg: string) => logs.push(msg));
+      expect(removed).toBe(2); // Only the core entries
+      expect(existsSync(join(bunDir, "@elizaos+plugin-sql@2.0.0-alpha.77+stale"))).toBe(true);
+      expect(existsSync(join(bunDir, "@elizaos+plugin-sql@2.0.0-alpha.81+stale"))).toBe(true);
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }

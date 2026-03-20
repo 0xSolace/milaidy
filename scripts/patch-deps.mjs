@@ -23,6 +23,7 @@ import {
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  bustStaleBunCache,
   patchAgentSkillsCatalogFetch,
   patchAppCoreMiladyAssets,
   patchAutonomousMiladyOnboardingPresets,
@@ -41,63 +42,9 @@ const root = resolve(__dirname, "..");
 
 // ---------------------------------------------------------------------------
 // Bust stale Bun cache entries for @elizaos packages.
-//
-// Bun's content-addressable cache deduplicates packages by tarball hash. When
-// upstream publishes multiple versions with identical (stale) build artifacts,
-// they share a hash. Later, when a fixed version publishes with different
-// content, Bun may still serve the old cached extraction because the hash
-// didn't change from the user's previously-installed version. We detect this
-// by checking whether the latest cached version's content hash matches an
-// older cached version — if so, the latest is stale and we remove it so the
-// next `bun install` re-extracts from the registry.
+// See bustStaleBunCache() in lib/patch-bun-exports.mjs for details.
 // ---------------------------------------------------------------------------
-function bustStaleBunCache() {
-  const bunCacheDir = resolve(root, "node_modules/.bun");
-  if (!existsSync(bunCacheDir)) return;
-
-  const prefixes = ["@elizaos+core@", "@elizaos+autonomous@", "@elizaos+app-core@"];
-  let removed = 0;
-
-  for (const prefix of prefixes) {
-    let entries;
-    try {
-      entries = readdirSync(bunCacheDir).filter((e) => e.startsWith(prefix));
-    } catch {
-      continue;
-    }
-    if (entries.length < 2) continue;
-
-    // Group by content hash (the part after the last '+')
-    const byHash = new Map();
-    for (const entry of entries) {
-      const hash = entry.slice(entry.lastIndexOf("+") + 1);
-      if (!byHash.has(hash)) byHash.set(hash, []);
-      byHash.get(hash).push(entry);
-    }
-
-    // If multiple versions share a hash, the content is identical (stale).
-    // Remove all entries in that group so Bun re-extracts fresh tarballs.
-    for (const [hash, group] of byHash) {
-      if (group.length < 2) continue;
-      for (const entry of group) {
-        const entryPath = resolve(bunCacheDir, entry);
-        try {
-          rmSync(entryPath, { recursive: true, force: true });
-          removed++;
-        } catch {}
-      }
-      console.log(
-        `[patch-deps] Removed ${group.length} stale Bun cache entries for ${prefix}* (hash ${hash})`,
-      );
-    }
-  }
-  if (removed > 0) {
-    console.log(
-      `[patch-deps] Cleared ${removed} stale Bun cache entries. Run \`bun install\` again if needed.`,
-    );
-  }
-}
-bustStaleBunCache();
+bustStaleBunCache(root);
 
 // ---------------------------------------------------------------------------
 // Patch @elizaos packages whose exports["."].bun points to ./src/index.ts.
