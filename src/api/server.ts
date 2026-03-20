@@ -917,6 +917,7 @@ function titleCasePluginId(id: string): string {
 
 function buildPluginParamDefs(
   parameters: Record<string, ManifestPluginParameter> | undefined,
+  savedValues?: Record<string, string>,
 ): Array<{
   key: string;
   type: string;
@@ -933,8 +934,10 @@ function buildPluginParamDefs(
   }
 
   return Object.entries(parameters).map(([key, definition]) => {
-    const rawValue = process.env[key];
-    const isSet = Boolean(rawValue?.trim());
+    const envValue = process.env[key]?.trim() || undefined;
+    const savedValue = savedValues?.[key];
+    const effectiveValue = envValue ?? (savedValue ? savedValue.trim() || undefined : undefined);
+    const isSet = Boolean(effectiveValue);
     const sensitive = Boolean(definition.sensitive);
 
     return {
@@ -952,8 +955,8 @@ function buildPluginParamDefs(
         : undefined,
       currentValue: isSet
         ? sensitive
-          ? maskValue(rawValue ?? "")
-          : (rawValue ?? "")
+          ? maskValue(effectiveValue!)
+          : effectiveValue!
         : null,
       isSet,
     };
@@ -1307,9 +1310,16 @@ function persistCompatPluginMutation(
 
     config.env ??= {};
     for (const [key, value] of Object.entries(values)) {
-      process.env[key] = value;
-      config.env[key] = value;
-      nextConfig[key] = value;
+      if (value.trim()) {
+        process.env[key] = value;
+        config.env[key] = value;
+        nextConfig[key] = value;
+      } else {
+        // Empty string = clear the saved value
+        delete process.env[key];
+        delete config.env[key];
+        delete nextConfig[key];
+      }
     }
 
     pluginEntry.config = nextConfig;
@@ -1579,6 +1589,56 @@ async function handleMiladyCompatRoute(
 
     const result = persistCompatPluginMutation(pluginId, body, plugin);
     sendJsonResponse(res, result.status, result.payload);
+    return true;
+  }
+
+  // ── POST /api/plugins/:id/test — Test connector connectivity
+  const testMatch = method === "POST" && url.pathname.match(/^\/api\/plugins\/([^/]+)\/test$/);
+  if (testMatch) {
+    if (!ensureCompatApiAuthorized(req, res)) return true;
+    const testPluginId = normalizePluginId(decodeURIComponent(testMatch[1]));
+    const startMs = Date.now();
+
+    if (testPluginId === "telegram") {
+      const token = process.env.TELEGRAM_BOT_TOKEN;
+      if (!token) {
+        sendJsonResponse(res, 200, { success: false, pluginId: testPluginId, error: "No bot token configured", durationMs: Date.now() - startMs });
+        return true;
+      }
+      try {
+        const apiRoot = process.env.TELEGRAM_API_ROOT || "https://api.telegram.org";
+        const tgResp = await fetch(`${apiRoot}/bot${token}/getMe`);
+        const tgData = (await tgResp.json()) as { ok: boolean; result?: { username?: string }; description?: string };
+        sendJsonResponse(res, 200, {
+          success: tgData.ok,
+          pluginId: testPluginId,
+          message: tgData.ok ? `Connected as @${tgData.result?.username}` : `Telegram API error: ${tgData.description}`,
+          durationMs: Date.now() - startMs,
+        });
+      } catch (err) {
+        sendJsonResponse(res, 200, { success: false, pluginId: testPluginId, error: err instanceof Error ? err.message : String(err), durationMs: Date.now() - startMs });
+      }
+      return true;
+    }
+
+    sendJsonResponse(res, 200, { success: true, pluginId: testPluginId, message: "Plugin is loaded (no custom test available)", durationMs: Date.now() - startMs });
+    return true;
+  }
+
+  // ── POST /api/plugins/:id/reveal — Return unmasked secret value
+  const revealMatch = method === "POST" && url.pathname.match(/^\/api\/plugins\/([^/]+)\/reveal$/);
+  if (revealMatch) {
+    if (!ensureCompatApiAuthorized(req, res)) return true;
+    const revealBody = await readCompatJsonBody(req, res);
+    if (revealBody == null) return true;
+    const key = (revealBody.key as string)?.trim();
+    if (!key) {
+      sendJsonErrorResponse(res, 400, "Missing key parameter");
+      return true;
+    }
+    const config = loadElizaConfig();
+    const value = process.env[key] ?? (config.env as Record<string, string> | undefined)?.[key] ?? null;
+    sendJsonResponse(res, 200, { ok: true, value });
     return true;
   }
 
