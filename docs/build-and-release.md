@@ -86,7 +86,7 @@ The official Electrobun docs expect the CLI to come from the project dependency 
 We still keep two Windows-specific guards around that documented flow:
 
 - **Pre-extract the Electrobun CLI tarball:** `electrobun@1.16.0` still shells out to plain `tar -xzf ...` on Windows. On GitHub runners that can resolve to GNU tar and fail on `C:` paths, so the workflow downloads the official `electrobun-cli-win-x64.tar.gz`, verifies its SHA256 from the GitHub release metadata, and extracts it with `C:\\Windows\\System32\\tar.exe` before the build runs.
-- **Seed `rcedit` when needed:** the CLI still imports `rcedit` dynamically during Windows packaging, so the workflow ensures a known-good `rcedit-x64.exe` is present under the installed Electrobun package before invoking `bun run build`.
+- **Seed `rcedit` when needed:** the CLI still imports `rcedit` dynamically during Windows packaging, so the workflow copies a known-good `rcedit-x64.exe` from the already-installed workspace Bun packages into the Electrobun package before invoking `bun run build`. This avoids relying on a separate global registry fetch during release time.
 
 ## Desktop WebGPU: browser + native
 

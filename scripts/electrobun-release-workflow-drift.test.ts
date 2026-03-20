@@ -177,6 +177,30 @@ describe("Electrobun release workflow drift", () => {
     expect(workflow).toContain(
       '$resolvedRceditDir = Join-Path $resolvedElectrobunDir "node_modules\\rcedit"',
     );
+    expect(workflow).toContain(
+      '(Join-Path (Split-Path -Parent $resolvedElectrobunDir) "rcedit")',
+    );
+    expect(workflow).toContain(
+      'Get-ChildItem -Path (Join-Path $PWD "node_modules\\.bun") -Directory -Filter "rcedit@*"',
+    );
+    expect(workflow).toContain("Seeding rcedit from $seedRceditDir");
+    expect(workflow).not.toContain('bun install -g "rcedit@4.0.1"');
+  });
+
+  it("treats auth-protected health probes as valid smoke-test success on every desktop platform", () => {
+    const windowsScript = fs.readFileSync(WINDOWS_SMOKE_PATH, "utf8");
+    const macScript = fs.readFileSync(MACOS_SMOKE_SCRIPT_PATH, "utf8");
+
+    expect(windowsScript).toContain("function Test-BackendProbeStatus");
+    expect(windowsScript).toContain(
+      "return $StatusCode -eq 200 -or $StatusCode -eq 401",
+    );
+    expect(windowsScript).toContain("-SkipHttpErrorCheck");
+
+    expect(macScript).toContain("backend_health_probe_satisfied()");
+    expect(macScript).toContain(
+      '[[ "$status" == "200" || "$status" == "401" ]]',
+    );
   });
 
   it("stages the desktop bundle before restoring local electrobun caches", () => {

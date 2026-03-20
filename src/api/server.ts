@@ -4,7 +4,7 @@ import http from "node:http";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { type AgentRuntime, stringToUuid } from "@elizaos/core";
+import { type AgentRuntime, logger, stringToUuid } from "@elizaos/core";
 
 // Re-export the full upstream server API.
 export * from "@elizaos/autonomous/api/server";
@@ -227,8 +227,10 @@ function extractHeaderValue(
 }
 
 function getCompatApiToken(): string | null {
+  // Milady-first priority matches BRAND_ENV_ALIASES ordering in brand-env.ts
+  // where MILADY_API_TOKEN is the primary (index 0) key.
   const token =
-    process.env.ELIZA_API_TOKEN?.trim() ?? process.env.MILADY_API_TOKEN?.trim();
+    process.env.MILADY_API_TOKEN?.trim() ?? process.env.ELIZA_API_TOKEN?.trim();
   return token ? token : null;
 }
 
@@ -345,6 +347,22 @@ function ensureCompatApiAuthorized(
   return false;
 }
 
+function ensureCompatSensitiveRouteAuthorized(
+  req: Pick<http.IncomingMessage, "headers">,
+  res: http.ServerResponse,
+): boolean {
+  if (!getCompatApiToken()) {
+    sendJsonErrorResponse(
+      res,
+      403,
+      "Sensitive endpoint requires API token authentication",
+    );
+    return false;
+  }
+
+  return ensureCompatApiAuthorized(req, res);
+}
+
 const MAX_BODY_BYTES = 1_048_576; // 1 MB
 async function readCompatJsonBody(
   req: http.IncomingMessage,
@@ -433,6 +451,49 @@ function syncCompatConfigFiles(): void {
 function maskValue(value: string): string {
   if (value.length <= 8) return "****";
   return `${value.slice(0, 4)}...${value.slice(-4)}`;
+}
+
+/**
+ * Env keys that must never be returned in GET /api/config responses.
+ * Covers private keys, auth tokens, and database credentials.
+ * Keys are stored and matched case-insensitively (uppercased).
+ */
+export const SENSITIVE_ENV_RESPONSE_KEYS = new Set([
+  // Wallet private keys
+  "EVM_PRIVATE_KEY",
+  "SOLANA_PRIVATE_KEY",
+  // Auth / step-up tokens
+  "ELIZA_API_TOKEN",
+  "MILADY_API_TOKEN",
+  "ELIZA_WALLET_EXPORT_TOKEN",
+  "ELIZA_TERMINAL_RUN_TOKEN",
+  "HYPERSCAPE_AUTH_TOKEN",
+  // Cloud API keys
+  "ELIZAOS_CLOUD_API_KEY",
+  // Third-party auth tokens
+  "GITHUB_TOKEN",
+  // Database connection strings (may contain credentials)
+  "DATABASE_URL",
+  "POSTGRES_URL",
+]);
+
+/**
+ * Strip sensitive env vars from a config object before it is sent in a GET
+ * /api/config response. Returns a shallow-cloned config with a filtered env
+ * block — the original object is never mutated.
+ */
+export function filterConfigEnvForResponse(
+  config: Record<string, unknown>,
+): Record<string, unknown> {
+  const env = config.env;
+  if (!env || typeof env !== "object" || Array.isArray(env)) return config;
+
+  const filteredEnv: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(env as Record<string, unknown>)) {
+    if (SENSITIVE_ENV_RESPONSE_KEYS.has(key.toUpperCase())) continue;
+    filteredEnv[key] = value;
+  }
+  return { ...config, env: filteredEnv };
 }
 
 function sendJsonResponse(
@@ -1287,10 +1348,15 @@ function buildPluginListResponse(runtime: AgentRuntime | null): {
   for (const entry of manifest?.plugins ?? []) {
     const pluginId = normalizePluginId(entry.id);
     const parameters = buildPluginParamDefs(entry.pluginParameters);
+    const active = isPluginLoaded(pluginId, entry.npmName, loadedNames);
+    // If the plugin is actively loaded at runtime it must be reported as
+    // enabled regardless of what the static config says — otherwise the
+    // frontend can show a plugin as "disabled" while it is actually running.
     const enabled =
-      typeof configEntries[pluginId]?.enabled === "boolean"
+      active ||
+      (typeof configEntries[pluginId]?.enabled === "boolean"
         ? Boolean(configEntries[pluginId]?.enabled)
-        : isPluginLoaded(pluginId, entry.npmName, loadedNames);
+        : false);
     const validationErrors = parameters
       .filter((parameter) => parameter.required && !parameter.isSet)
       .map((parameter) => ({
@@ -1317,7 +1383,7 @@ function buildPluginListResponse(runtime: AgentRuntime | null): {
         entry.version ??
         undefined,
       pluginDeps: entry.pluginDeps,
-      isActive: isPluginLoaded(pluginId, entry.npmName, loadedNames),
+      isActive: active,
       configUiHints: entry.configUiHints,
       icon: entry.logoUrl ?? entry.icon ?? null,
       homepage: entry.homepage,
@@ -1567,6 +1633,10 @@ async function handleDatabaseRowsCompatRoute(
     return false;
   }
 
+  if (!ensureCompatApiAuthorized(req, res)) {
+    return true;
+  }
+
   if (!runtime) {
     sendJsonErrorResponse(res, 503, DATABASE_UNAVAILABLE_MESSAGE);
     return true;
@@ -1778,8 +1848,14 @@ async function handleMiladyCompatRoute(
     return true;
   }
 
+  // The task-backed compat handler is only used as a fallback when the
+  // runtime has no native todo database.  When runtime.db is present the
+  // upstream handler serves /api/workbench/todos instead.  Both handlers
+  // MUST return the same response shape — callers cannot distinguish which
+  // path served the response.
   if (
     !runtimeHasTodoDatabase(state.current) &&
+    url.pathname.startsWith("/api/workbench/todos") &&
     (await handleTaskBackedWorkbenchTodoRoute(
       req,
       res,
@@ -1829,7 +1905,7 @@ async function handleMiladyCompatRoute(
 
   // ── POST /api/agent/reset — Wipe config and restart onboarding ──────
   if (method === "POST" && url.pathname === "/api/agent/reset") {
-    if (!ensureCompatApiAuthorized(req, res)) {
+    if (!ensureCompatSensitiveRouteAuthorized(req, res)) {
       return true;
     }
 
@@ -1859,10 +1935,16 @@ async function handleMiladyCompatRoute(
   }
 
   // ── GET /api/wallet/keys (onboarding only) ──────────────────────────
-  // Returns generated wallet private keys + addresses so the Save Keys
-  // onboarding screen can display them. Gated by onboarding not yet complete.
+  // Security note: this compat route exists only for the embedded desktop
+  // onboarding flow, where the renderer needs to display the keys already
+  // generated inside the local runtime. Electrobun injects a loopback
+  // `http://127.0.0.1:<port>` API base plus a generated API token before the
+  // renderer mounts, and ensureCompatSensitiveRouteAuthorized fails closed if
+  // that token is missing. The route is also permanently disabled once
+  // onboardingComplete flips true so the backup screen cannot be reopened as a
+  // general-purpose key export endpoint.
   if (method === "GET" && url.pathname === "/api/wallet/keys") {
-    if (!ensureCompatApiAuthorized(req, res)) {
+    if (!ensureCompatSensitiveRouteAuthorized(req, res)) {
       return true;
     }
 
@@ -1889,6 +1971,10 @@ async function handleMiladyCompatRoute(
         solanaAddress: addresses.solanaAddress ?? "",
       });
     } catch {
+      // Intentionally still return the raw keys with blank addresses. Address
+      // derivation can fail independently of key generation, and the backup
+      // step must still let the user save the generated secrets before
+      // onboarding completes.
       sendJsonResponse(res, 200, {
         evmPrivateKey: evmKey,
         evmAddress: "",
@@ -1968,7 +2054,8 @@ async function handleMiladyCompatRoute(
           // Ensure the cloud API key survives — it was set by
           // persistCloudLoginStatus, then scrubbed from process.env into
           // the sealed cloud secrets store. Read it back from there.
-          const existingApiKey = (config.cloud as Record<string, unknown>).apiKey;
+          const existingApiKey = (config.cloud as Record<string, unknown>)
+            .apiKey;
           if (!existingApiKey) {
             const { getCloudSecret } = await import("./cloud-secrets");
             const sealedKey = getCloudSecret("ELIZAOS_CLOUD_API_KEY");
@@ -1981,13 +2068,17 @@ async function handleMiladyCompatRoute(
             if (!config.models) {
               (config as Record<string, unknown>).models = {};
             }
-            (config.models as Record<string, string>).small = body.smallModel as string;
-            (config.models as Record<string, string>).large = (body.largeModel as string) || "";
+            (config.models as Record<string, string>).small =
+              body.smallModel as string;
+            (config.models as Record<string, string>).large =
+              (body.largeModel as string) || "";
           }
         }
         saveElizaConfig(config);
-      } catch {
-        // Non-fatal — upstream may still handle it
+      } catch (err) {
+        logger.warn(
+          `[milady-api] Failed to persist onboarding state: ${err instanceof Error ? err.message : String(err)}`,
+        );
       }
     } catch {
       // JSON parse failed — let upstream handle the error
@@ -2001,7 +2092,7 @@ async function handleMiladyCompatRoute(
     // sendJsonResponse prevents double-write).
     sendJsonResponse(res, 200, { ok: true });
 
-    // Push the raw bytes back into the request stream so upstream
+    // Push the raw bytes back into the request stream so the upstream
     // can still consume the body for processing.
     req.push(rawBody);
     req.push(null);
@@ -2013,7 +2104,11 @@ async function handleMiladyCompatRoute(
       return true;
     }
 
-    sendJsonResponse(res, 200, loadElizaConfig());
+    sendJsonResponse(
+      res,
+      200,
+      filterConfigEnvForResponse(loadElizaConfig() as Record<string, unknown>),
+    );
     return true;
   }
 
@@ -2056,7 +2151,7 @@ async function handleMiladyCompatRoute(
     if (testPluginId === "telegram") {
       const token = process.env.TELEGRAM_BOT_TOKEN;
       if (!token) {
-        sendJsonResponse(res, 502, {
+        sendJsonResponse(res, 422, {
           success: false,
           pluginId: testPluginId,
           error: "No bot token configured",
@@ -2073,7 +2168,7 @@ async function handleMiladyCompatRoute(
           result?: { username?: string };
           description?: string;
         };
-        sendJsonResponse(res, tgData.ok ? 200 : 502, {
+        sendJsonResponse(res, tgData.ok ? 200 : 422, {
           success: tgData.ok,
           pluginId: testPluginId,
           message: tgData.ok
@@ -2082,7 +2177,7 @@ async function handleMiladyCompatRoute(
           durationMs: Date.now() - startMs,
         });
       } catch (err) {
-        sendJsonResponse(res, 502, {
+        sendJsonResponse(res, 422, {
           success: false,
           pluginId: testPluginId,
           error: err instanceof Error ? err.message : String(err),

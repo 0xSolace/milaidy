@@ -92,6 +92,9 @@ const requiredWorkflowSnippets = [
   'Write-Host "Resolved electrobun package dir: $resolvedElectrobunDir"',
   '$cacheDir     = Join-Path $resolvedElectrobunDir ".cache"',
   '$resolvedRceditDir = Join-Path $resolvedElectrobunDir "node_modules\\rcedit"',
+  '(Join-Path (Split-Path -Parent $resolvedElectrobunDir) "rcedit")',
+  'Get-ChildItem -Path (Join-Path $PWD "node_modules\\.bun") -Directory -Filter "rcedit@*"',
+  "Seeding rcedit from $seedRceditDir",
   "node scripts/desktop-build.mjs package --env=$" +
     "{{ needs.prepare.outputs.env }}",
   "MILADY_ELECTROBUN_NOTARIZE: 0",
@@ -103,7 +106,10 @@ const requiredWorkflowSnippets = [
   "if ($null -eq $resolvedRceditPackageJson)",
   '$resolvedRceditPackageJson = "$resolvedRceditPackageJson".Trim()',
 ];
-const forbiddenWorkflowSnippets = [' -name "*.exe" -o \\'];
+const forbiddenWorkflowSnippets = [
+  ' -name "*.exe" -o \\',
+  'bun install -g "rcedit@4.0.1"',
+];
 const requiredElectrobunConfigSnippets = [
   'postBuild: "scripts/postwrap-sign-runtime-macos.ts"',
   'postWrap: "scripts/postwrap-diagnostics.ts"',
@@ -551,6 +557,8 @@ function assertWindowsSmokeScriptHasLeadingParamBlock() {
     "Waiting for health endpoint at http://(?:localhost|127\\.0\\.0\\.1):",
     "$handler.UseProxy = $false",
     '--noproxy "127.0.0.1"',
+    "function Test-BackendProbeStatus",
+    "-SkipHttpErrorCheck",
     "Dump-PortDiagnostics",
     "Dump-ProcessDiagnostics",
     "Dump-FailureDiagnostics",
@@ -611,6 +619,8 @@ function assertMacSmokeScriptLaunchesPackagedLauncherDirectly() {
     'echo "Packaged renderer asset check PASSED (wrapper archive)."',
     'echo "Launcher: $' + "{LAUNCHER_PATH:-<unset>}" + '"',
     'local launcher_stdout="$' + "{LAUNCHER_STDOUT:-}" + '"',
+    "backend_health_probe_satisfied()",
+    '[[ "$status" == "200" || "$status" == "401" ]]',
     "Launcher exited before the first health probe; continuing to wait for packaged app handoff...",
     'dump_failure_diagnostics "backend startup log reported a failure"',
     'dump_failure_diagnostics "backend never reported a started port"',

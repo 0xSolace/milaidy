@@ -13,11 +13,6 @@ const INDEX_PATH = path.resolve(__dirname, "index.ts");
 describe("deferred agent startup (desktop)", () => {
   const source = fs.readFileSync(INDEX_PATH, "utf8");
 
-  it("still injects external API base immediately when configured", () => {
-    expect(source).toContain('rt.mode === "external"');
-    expect(source).toContain("pushApiBaseToRenderer");
-  });
-
   it("starts the embedded agent automatically in local mode", () => {
     expect(source).toContain('else if (rt.mode === "local")');
     expect(source).toContain(
@@ -28,7 +23,10 @@ describe("deferred agent startup (desktop)", () => {
       'console.error("[Main] Agent auto-start failed:", err);',
     );
   });
-
+  it("still injects external API base immediately when configured", () => {
+    expect(source).toContain('rt.mode === "external"');
+    expect(source).toContain("pushApiBaseToRenderer");
+  });
   it("preserves the agentStart RPC handler for renderer-triggered startup", () => {
     const handlersPath = path.resolve(__dirname, "rpc-handlers.ts");
     const handlers = fs.readFileSync(handlersPath, "utf8");
@@ -39,5 +37,11 @@ describe("deferred agent startup (desktop)", () => {
   it("preserves onStatusChange callback for dynamic API base injection", () => {
     expect(source).toContain("onStatusChange");
     expect(source).toContain("injectApiBase");
+  });
+
+  it("initializes the embedded API token before renderer injection", () => {
+    expect(source).toContain("const apiToken = ensureDesktopApiToken();");
+    expect(source).toContain("pushApiBaseToRenderer(win, `http://127.0.0.1:");
+    expect(source).toContain("apiToken);");
   });
 });
