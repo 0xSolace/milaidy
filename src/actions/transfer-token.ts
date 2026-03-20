@@ -16,7 +16,6 @@
 import type { Action, HandlerOptions, IAgentRuntime } from "@elizaos/core";
 import {
   buildAuthHeaders,
-  hasWalletExecutionAccess,
   WALLET_ACTION_API_PORT,
 } from "./wallet-action-shared.js";
 
@@ -36,7 +35,10 @@ export const transferTokenAction: Action = {
     "asks to send, transfer, or pay tokens to a recipient address on BSC.",
 
   validate: async (runtime: IAgentRuntime): Promise<boolean> => {
-    return hasWalletExecutionAccess(runtime);
+    return Boolean(
+      runtime.getSetting("EVM_PRIVATE_KEY") ||
+        runtime.getSetting("PRIVY_APP_ID"),
+    );
   },
 
   handler: async (_runtime, _message, _state, options) => {

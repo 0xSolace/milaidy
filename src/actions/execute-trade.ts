@@ -17,7 +17,6 @@ import type { Action, HandlerOptions, IAgentRuntime } from "@elizaos/core";
 import { logger } from "@elizaos/core";
 import {
   buildAuthHeaders,
-  hasWalletExecutionAccess,
   WALLET_ACTION_API_PORT,
 } from "./wallet-action-shared.js";
 
@@ -51,7 +50,10 @@ export const executeTradeAction: Action = {
     "PancakeSwap and respects the current trade permission mode.",
 
   validate: async (runtime: IAgentRuntime) => {
-    return hasWalletExecutionAccess(runtime);
+    const hasWallet =
+      runtime.getSetting("EVM_PRIVATE_KEY") ||
+      runtime.getSetting("PRIVY_APP_ID");
+    return Boolean(hasWallet);
   },
 
   handler: async (_runtime, _message, _state, options) => {
