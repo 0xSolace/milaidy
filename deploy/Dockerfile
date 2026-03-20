@@ -9,8 +9,9 @@ ENV PATH="/root/.bun/bin:${PATH}"
 
 WORKDIR /app
 
-# Copy dependency manifests first for better layer caching
-COPY package.json bun.lock* .npmrc ./
+# Copy dependency manifests first for better layer caching.
+# Do not require a checked-in .npmrc; CI and open-source builds run without one.
+COPY package.json bun.lock* ./
 COPY apps/app/package.json ./apps/app/package.json
 COPY scripts ./scripts
 
