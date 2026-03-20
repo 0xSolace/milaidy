@@ -4,7 +4,7 @@ import http from "node:http";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { type AgentRuntime, stringToUuid } from "@elizaos/core";
+import { type AgentRuntime, logger, stringToUuid } from "@elizaos/core";
 
 // Re-export the full upstream server API.
 export * from "@elizaos/autonomous/api/server";
@@ -345,6 +345,22 @@ function ensureCompatApiAuthorized(
 
   sendJsonErrorResponse(res, 401, "Unauthorized");
   return false;
+}
+
+function ensureCompatSensitiveRouteAuthorized(
+  req: Pick<http.IncomingMessage, "headers">,
+  res: http.ServerResponse,
+): boolean {
+  if (!getCompatApiToken()) {
+    sendJsonErrorResponse(
+      res,
+      403,
+      "Sensitive endpoint requires API token authentication",
+    );
+    return false;
+  }
+
+  return ensureCompatApiAuthorized(req, res);
 }
 
 const MAX_BODY_BYTES = 1_048_576; // 1 MB
@@ -1887,6 +1903,88 @@ async function handleMiladyCompatRoute(
     });
   }
 
+  // ── POST /api/agent/reset — Wipe config and restart onboarding ──────
+  if (method === "POST" && url.pathname === "/api/agent/reset") {
+    if (!ensureCompatSensitiveRouteAuthorized(req, res)) {
+      return true;
+    }
+
+    try {
+      const config = loadElizaConfig();
+      // Clear onboarding state so the welcome screen shows again
+      if (config.meta) {
+        delete (config.meta as Record<string, unknown>).onboardingComplete;
+      }
+      // Clear agent list
+      if (config.agents) {
+        (config.agents as Record<string, unknown>).list = [];
+      }
+      // Clear cloud connection
+      if (config.cloud) {
+        delete (config.cloud as Record<string, unknown>).enabled;
+        delete (config.cloud as Record<string, unknown>).apiKey;
+      }
+      saveElizaConfig(config);
+      sendJsonResponse(res, 200, { ok: true });
+    } catch (err) {
+      sendJsonResponse(res, 500, {
+        error: err instanceof Error ? err.message : "Reset failed",
+      });
+    }
+    return true;
+  }
+
+  // ── GET /api/wallet/keys (onboarding only) ──────────────────────────
+  // Security note: this compat route exists only for the embedded desktop
+  // onboarding flow, where the renderer needs to display the keys already
+  // generated inside the local runtime. Electrobun injects a loopback
+  // `http://127.0.0.1:<port>` API base plus a generated API token before the
+  // renderer mounts, and ensureCompatSensitiveRouteAuthorized fails closed if
+  // that token is missing. The route is also permanently disabled once
+  // onboardingComplete flips true so the backup screen cannot be reopened as a
+  // general-purpose key export endpoint.
+  if (method === "GET" && url.pathname === "/api/wallet/keys") {
+    if (!ensureCompatSensitiveRouteAuthorized(req, res)) {
+      return true;
+    }
+
+    const config = loadElizaConfig();
+    if (config.meta?.onboardingComplete === true) {
+      sendJsonResponse(res, 403, {
+        error: "Wallet keys are only available during onboarding",
+      });
+      return true;
+    }
+
+    const evmKey = process.env.EVM_PRIVATE_KEY ?? "";
+    const solKey = process.env.SOLANA_PRIVATE_KEY ?? "";
+
+    try {
+      const { getWalletAddresses } = await import(
+        "@elizaos/autonomous/api/wallet"
+      );
+      const addresses = getWalletAddresses();
+      sendJsonResponse(res, 200, {
+        evmPrivateKey: evmKey,
+        evmAddress: addresses.evmAddress ?? "",
+        solanaPrivateKey: solKey,
+        solanaAddress: addresses.solanaAddress ?? "",
+      });
+    } catch {
+      // Intentionally still return the raw keys with blank addresses. Address
+      // derivation can fail independently of key generation, and the backup
+      // step must still let the user save the generated secrets before
+      // onboarding completes.
+      sendJsonResponse(res, 200, {
+        evmPrivateKey: evmKey,
+        evmAddress: "",
+        solanaPrivateKey: solKey,
+        solanaAddress: "",
+      });
+    }
+    return true;
+  }
+
   if (method === "GET" && url.pathname === "/api/plugins") {
     if (!ensureCompatApiAuthorized(req, res)) {
       return true;
@@ -1934,6 +2032,53 @@ async function handleMiladyCompatRoute(
       persistCompatOnboardingDefaults(body);
       if (typeof body.name === "string" && body.name.trim()) {
         state.pendingAgentName = body.name.trim();
+      }
+
+      // Mark onboarding complete in config — upstream also does this but
+      // the req.push body replay may not work reliably in Bun, so we
+      // ensure the flag is set here as well.
+      try {
+        const config = loadElizaConfig();
+        if (!config.meta) {
+          (config as Record<string, unknown>).meta = {};
+        }
+        (config.meta as Record<string, unknown>).onboardingComplete = true;
+
+        // Also persist cloud mode if specified
+        if (body.runMode === "cloud") {
+          if (!config.cloud) {
+            (config as Record<string, unknown>).cloud = {};
+          }
+          (config.cloud as Record<string, unknown>).enabled = true;
+
+          // Ensure the cloud API key survives — it was set by
+          // persistCloudLoginStatus, then scrubbed from process.env into
+          // the sealed cloud secrets store. Read it back from there.
+          const existingApiKey = (config.cloud as Record<string, unknown>)
+            .apiKey;
+          if (!existingApiKey) {
+            const { getCloudSecret } = await import("./cloud-secrets");
+            const sealedKey = getCloudSecret("ELIZAOS_CLOUD_API_KEY");
+            if (sealedKey) {
+              (config.cloud as Record<string, unknown>).apiKey = sealedKey;
+            }
+          }
+
+          if (body.smallModel) {
+            if (!config.models) {
+              (config as Record<string, unknown>).models = {};
+            }
+            (config.models as Record<string, string>).small =
+              body.smallModel as string;
+            (config.models as Record<string, string>).large =
+              (body.largeModel as string) || "";
+          }
+        }
+        saveElizaConfig(config);
+      } catch (err) {
+        logger.warn(
+          `[milady-api] Failed to persist onboarding state: ${err instanceof Error ? err.message : String(err)}`,
+        );
       }
     } catch {
       // JSON parse failed — let upstream handle the error
