@@ -34,7 +34,9 @@ export function findPackageJsonPaths(root, pkgName) {
  * cache). Exported so tests and other patch helpers share the same lookup.
  */
 export function findPackageFilePaths(root, pkgName, relativePath) {
-  const candidates = [resolve(root, "node_modules", pkgName, relativePath)];
+  const candidates = [];
+  const mainPath = resolve(root, "node_modules", pkgName, relativePath);
+  if (existsSync(mainPath)) candidates.push(mainPath);
   const bunCache = resolve(root, "node_modules/.bun");
   if (existsSync(bunCache)) {
     const safeNames = new Set([
@@ -65,6 +67,7 @@ function hasRequiredFiles(dirPath, relativePaths) {
 export function repairElizaCoreRuntimeDist(targetPkgDir, sourcePkgDir) {
   if (!targetPkgDir || !sourcePkgDir) return false;
   if (targetPkgDir === sourcePkgDir) return false;
+  if (!existsSync(targetPkgDir)) return false;
   if (!hasRequiredFiles(sourcePkgDir, ELIZA_CORE_RUNTIME_FILES)) return false;
   if (hasRequiredFiles(targetPkgDir, ELIZA_CORE_RUNTIME_FILES)) return false;
 
@@ -104,6 +107,89 @@ export function patchBrokenElizaCoreRuntimeDists(root, log = console.log) {
     }
   }
   return patched;
+}
+
+/**
+ * Detect stale Bun module cache and warn the user.
+ *
+ * Bun's content-addressable cache deduplicates packages by tarball hash. When
+ * upstream publishes multiple versions with identical (stale) build artifacts,
+ * they share a hash and Bun serves stale content. We can't safely remove
+ * entries during postinstall (symlinks break), so we detect the condition
+ * and tell the user to run `bun run repair` which does:
+ *   rm -rf node_modules/.bun && bun install
+ *
+ * Runs once per package.json version (stamp-guarded).
+ *
+ * Bun cache entry format: @scope+pkg@version+contenthash
+ * e.g. @elizaos+core@2.0.0-alpha.77+f9c270f5561f2899
+ */
+export function warnStaleBunCache(root, log = console.log) {
+  const bunCacheDir = resolve(root, "node_modules/.bun");
+  if (!existsSync(bunCacheDir)) return 0;
+
+  // Only check once per package.json version.
+  const pkgJsonPath = resolve(root, "package.json");
+  const stampPath = resolve(bunCacheDir, ".bust-cache-stamp");
+  if (existsSync(pkgJsonPath) && existsSync(stampPath)) {
+    try {
+      const pkgVersion = JSON.parse(readFileSync(pkgJsonPath, "utf8")).version || "";
+      const stamp = readFileSync(stampPath, "utf8").trim();
+      if (stamp === pkgVersion) return 0;
+    } catch {}
+  }
+
+  const prefixes = [
+    "@elizaos+core@",
+    "@elizaos+autonomous@",
+    "@elizaos+app-core@",
+    "@elizaos+prompts@",
+    "@elizaos+skills@",
+    "@elizaos+tui@",
+  ];
+  let staleCount = 0;
+
+  let allEntries;
+  try {
+    allEntries = readdirSync(bunCacheDir);
+  } catch (err) {
+    log(`[patch-deps] Warning: failed to read Bun cache: ${err.message}`);
+    return 0;
+  }
+
+  for (const prefix of prefixes) {
+    const entries = allEntries.filter((e) => e.startsWith(prefix));
+    if (entries.length < 2) continue;
+
+    // Group by content hash (the part after the last '+')
+    const byHash = new Map();
+    for (const entry of entries) {
+      const plusIdx = entry.lastIndexOf("+");
+      if (plusIdx === -1 || plusIdx === entry.length - 1) continue;
+      const hash = entry.slice(plusIdx + 1);
+      if (!byHash.has(hash)) byHash.set(hash, []);
+      byHash.get(hash).push(entry);
+    }
+
+    for (const [, group] of byHash) {
+      if (group.length >= 2) staleCount += group.length - 1;
+    }
+  }
+
+  // Write stamp regardless so we don't re-check every install.
+  try {
+    const pkgVersion = existsSync(pkgJsonPath)
+      ? JSON.parse(readFileSync(pkgJsonPath, "utf8")).version || ""
+      : "";
+    writeFileSync(stampPath, pkgVersion, "utf8");
+  } catch {}
+
+  if (staleCount > 0) {
+    log(
+      `[patch-deps] ⚠️  Detected ${staleCount} stale Bun cache entries. Run: rm -rf node_modules/.bun && bun install`,
+    );
+  }
+  return staleCount;
 }
 
 /**

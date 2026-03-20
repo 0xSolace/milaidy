@@ -1,4 +1,5 @@
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -22,6 +23,7 @@ import {
   applyPatchToPackageJson,
   applyPluginVisionPermissionPatch,
   applyProperLockfileSignalExitCompat,
+  warnStaleBunCache,
   findPackageFilePaths,
   findPackageJsonPaths,
   patchAgentSkillsCatalogFetch,
@@ -1294,6 +1296,119 @@ const avatarIndex = meta?.avatarIndex ?? (index % 4) + 1;
       );
       expect(patched).toBe(true);
       expect(logs.some((l) => l.includes("proper-lockfile"))).toBe(true);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("warnStaleBunCache", () => {
+  function makeTmp() {
+    return mkdtempSync(join(tmpdir(), "bust-cache-"));
+  }
+
+  function makeBunCacheEntry(bunDir: string, name: string) {
+    const dir = join(bunDir, name, "node_modules");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "marker.txt"), "ok", "utf8");
+  }
+
+  it("returns 0 when no .bun dir exists", () => {
+    const tmp = makeTmp();
+    try {
+      mkdirSync(join(tmp, "node_modules"), { recursive: true });
+      const logs: string[] = [];
+      const count = warnStaleBunCache(tmp, (msg: string) => logs.push(msg));
+      expect(count).toBe(0);
+      expect(logs).toHaveLength(0);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("detects stale entries when two versions share the same hash", () => {
+    const tmp = makeTmp();
+    try {
+      const bunDir = join(tmp, "node_modules/.bun");
+      makeBunCacheEntry(bunDir, "@elizaos+core@2.0.0-alpha.77+samehash");
+      makeBunCacheEntry(bunDir, "@elizaos+core@2.0.0-alpha.81+samehash");
+
+      const logs: string[] = [];
+      const count = warnStaleBunCache(tmp, (msg: string) => logs.push(msg));
+      expect(count).toBe(1);
+      expect(logs.some((l) => l.includes("stale Bun cache entries"))).toBe(true);
+      // Entries are NOT removed (detect-only), just warned about
+      expect(existsSync(join(bunDir, "@elizaos+core@2.0.0-alpha.77+samehash"))).toBe(true);
+      expect(existsSync(join(bunDir, "@elizaos+core@2.0.0-alpha.81+samehash"))).toBe(true);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("returns 0 when versions have different hashes", () => {
+    const tmp = makeTmp();
+    try {
+      const bunDir = join(tmp, "node_modules/.bun");
+      makeBunCacheEntry(bunDir, "@elizaos+autonomous@2.0.0-alpha.77+oldhash");
+      makeBunCacheEntry(bunDir, "@elizaos+autonomous@2.0.0-alpha.81+newhash");
+
+      const logs: string[] = [];
+      const count = warnStaleBunCache(tmp, (msg: string) => logs.push(msg));
+      expect(count).toBe(0);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("skips when stamp matches package.json version", () => {
+    const tmp = makeTmp();
+    try {
+      const bunDir = join(tmp, "node_modules/.bun");
+      mkdirSync(bunDir, { recursive: true });
+      makeBunCacheEntry(bunDir, "@elizaos+core@2.0.0-alpha.77+samehash");
+      makeBunCacheEntry(bunDir, "@elizaos+core@2.0.0-alpha.81+samehash");
+      writeFileSync(join(tmp, "package.json"), JSON.stringify({ version: "1.0.0" }), "utf8");
+      writeFileSync(join(bunDir, ".bust-cache-stamp"), "1.0.0", "utf8");
+
+      const logs: string[] = [];
+      const count = warnStaleBunCache(tmp, (msg: string) => logs.push(msg));
+      expect(count).toBe(0); // Stamp matches, skip check
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("re-checks when package.json version changes", () => {
+    const tmp = makeTmp();
+    try {
+      const bunDir = join(tmp, "node_modules/.bun");
+      mkdirSync(bunDir, { recursive: true });
+      makeBunCacheEntry(bunDir, "@elizaos+core@2.0.0-alpha.77+samehash");
+      makeBunCacheEntry(bunDir, "@elizaos+core@2.0.0-alpha.81+samehash");
+      writeFileSync(join(tmp, "package.json"), JSON.stringify({ version: "2.0.0" }), "utf8");
+      writeFileSync(join(bunDir, ".bust-cache-stamp"), "1.0.0", "utf8");
+
+      const logs: string[] = [];
+      const count = warnStaleBunCache(tmp, (msg: string) => logs.push(msg));
+      expect(count).toBe(1);
+      // Stamp updated to new version
+      const stamp = readFileSync(join(bunDir, ".bust-cache-stamp"), "utf8").trim();
+      expect(stamp).toBe("2.0.0");
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("ignores non-tracked package prefixes", () => {
+    const tmp = makeTmp();
+    try {
+      const bunDir = join(tmp, "node_modules/.bun");
+      makeBunCacheEntry(bunDir, "@elizaos+plugin-sql@2.0.0-alpha.77+samehash");
+      makeBunCacheEntry(bunDir, "@elizaos+plugin-sql@2.0.0-alpha.81+samehash");
+
+      const logs: string[] = [];
+      const count = warnStaleBunCache(tmp, (msg: string) => logs.push(msg));
+      expect(count).toBe(0);
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }
