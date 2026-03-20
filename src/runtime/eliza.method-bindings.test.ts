@@ -48,10 +48,13 @@ describe("installRuntimeMethodBindings", () => {
     );
   });
 
-  it("does not retry createComponent when room has no world (DM/client_chat)", async () => {
-    const createComponent = vi.fn().mockRejectedValueOnce({
-      cause: { constraint: "components_world_id_worlds_id_fk" },
-    });
+  it("retries createComponent with null worldId when room has no world (DM/client_chat)", async () => {
+    const createComponent = vi
+      .fn()
+      .mockRejectedValueOnce({
+        cause: { constraint: "components_world_id_worlds_id_fk" },
+      })
+      .mockResolvedValueOnce(true);
 
     const runtime = {
       getSetting: vi.fn(() => null),
@@ -71,14 +74,13 @@ describe("installRuntimeMethodBindings", () => {
       data: {},
     };
 
-    await expect(runtime.createComponent(input)).rejects.toEqual(
-      expect.objectContaining({
-        cause: expect.objectContaining({
-          constraint: "components_world_id_worlds_id_fk",
-        }),
-      }),
+    await expect(runtime.createComponent(input)).resolves.toBe(true);
+    expect(createComponent).toHaveBeenCalledTimes(2);
+    expect(createComponent).toHaveBeenNthCalledWith(1, input);
+    expect(createComponent).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ worldId: null }),
     );
-    expect(createComponent).toHaveBeenCalledTimes(1);
   });
 
   it("dedupes createEntities input and recovers via ensureEntityExists fallback", async () => {

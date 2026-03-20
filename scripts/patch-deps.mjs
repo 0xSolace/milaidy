@@ -23,7 +23,6 @@ import {
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  warnStaleBunCache,
   patchAgentSkillsCatalogFetch,
   patchAppCoreMiladyAssets,
   patchAutonomousMiladyOnboardingPresets,
@@ -35,6 +34,7 @@ import {
   patchNobleHashesCompat,
   patchPluginVisionPermissionHandling,
   patchProperLockfileSignalExitCompat,
+  warnStaleBunCache,
 } from "./lib/patch-bun-exports.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

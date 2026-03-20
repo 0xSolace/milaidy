@@ -488,4 +488,3 @@ describe("restart mechanism parity", () => {
     });
   });
 });
-

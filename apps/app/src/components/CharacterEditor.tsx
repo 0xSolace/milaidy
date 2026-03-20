@@ -256,6 +256,8 @@ export function CharacterEditor({
   const [fieldsEdited, setFieldsEdited] = useState(false);
   /** Ref to suppress dirty-tracking during programmatic field updates. */
   const suppressDirtyRef = useRef(false);
+  /** Queued catchphrase to speak after VRM teleport-in dissolve finishes. */
+  const pendingWaveCatchphraseRef = useRef<string | null>(null);
   const onboardingPresetStyles = useMemo(
     () => getOnboardingPresetStyles(onboardingOptions),
     [onboardingOptions],
@@ -455,20 +457,9 @@ export function CharacterEditor({
       if (applyDefaults) {
         applyCharacterDefaults(entry);
       }
-      // Play emote and speak catchphrase on character switch
+      // Queue wave + catchphrase to play after the VRM teleport-in dissolve finishes
       if (isNewCharacter && entry.catchphrase) {
-        // Dispatch a wave emote after the VRM swaps in
-        setTimeout(() => {
-          dispatchWindowEvent(APP_EMOTE_EVENT, {
-            emoteId: "wave",
-            path: "/animations/emotes/waving-both-hands.glb",
-            duration: 2.5,
-            loop: false,
-            showOverlay: false,
-          });
-        }, 800);
-        // Speak the catchphrase via TTS
-        void client.streamVoiceSpeak(entry.catchphrase).catch(() => {});
+        pendingWaveCatchphraseRef.current = entry.catchphrase;
       }
     },
     [
@@ -513,6 +504,26 @@ export function CharacterEditor({
     selectedCharacterId,
     activeCharacterRosterEntry,
   ]);
+
+  /* ── Play wave + catchphrase when VRM teleport-in dissolve finishes ── */
+  useEffect(() => {
+    const handler = () => {
+      const catchphrase = pendingWaveCatchphraseRef.current;
+      if (!catchphrase) return;
+      pendingWaveCatchphraseRef.current = null;
+      dispatchWindowEvent(APP_EMOTE_EVENT, {
+        emoteId: "wave",
+        path: "/animations/emotes/waving-both-hands.glb",
+        duration: 2.5,
+        loop: false,
+        showOverlay: false,
+      });
+      void client.streamVoiceSpeak(catchphrase).catch(() => {});
+    };
+    const eventName = "eliza:vrm-teleport-complete";
+    window.addEventListener(eventName, handler);
+    return () => window.removeEventListener(eventName, handler);
+  }, []);
 
   /* ── Sync customizing state with tab ─────────────────────────────── */
   useEffect(() => {

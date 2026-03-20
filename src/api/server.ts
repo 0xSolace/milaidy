@@ -24,6 +24,7 @@ import {
   startApiServer as upstreamStartApiServer,
 } from "@elizaos/autonomous/api/server";
 import { loadElizaConfig, saveElizaConfig } from "../config/config";
+import { sanitizeSpeechText } from "../utils/spoken-text";
 import {
   ensureRuntimeSqlCompatibility,
   executeRawSql,
@@ -31,7 +32,6 @@ import {
   sanitizeIdentifier,
   sqlLiteral,
 } from "../utils/sql-compat";
-import { sanitizeSpeechText } from "../utils/spoken-text";
 import { handleCloudRoute } from "./cloud-routes";
 import { handleCloudStatusRoutes } from "./cloud-status-routes";
 import {
@@ -158,9 +158,7 @@ const CAPABILITY_FEATURE_IDS = new Set([
   "coding-agent",
 ]);
 
-function normalizeSecretEnvValue(
-  value: string | undefined,
-): string | null {
+function normalizeSecretEnvValue(value: string | undefined): string | null {
   const trimmed = value?.trim();
   if (!trimmed) {
     return null;
@@ -271,7 +269,9 @@ function resolveCloudVoiceName(
   env: NodeJS.ProcessEnv = process.env,
 ): string {
   const requested =
-    typeof requestedVoice === "string" ? requestedVoice.trim().toLowerCase() : "";
+    typeof requestedVoice === "string"
+      ? requestedVoice.trim().toLowerCase()
+      : "";
   if (requested && SUPPORTED_CLOUD_TTS_VOICES.has(requested)) {
     return requested;
   }
@@ -293,7 +293,9 @@ function resolveCloudApiKey(
   try {
     const config = loadElizaConfig();
     const configKey = normalizeSecretEnvValue(
-      typeof config.cloud?.apiKey === "string" ? config.cloud.apiKey : undefined,
+      typeof config.cloud?.apiKey === "string"
+        ? config.cloud.apiKey
+        : undefined,
     );
     if (configKey) {
       return configKey;
@@ -302,7 +304,9 @@ function resolveCloudApiKey(
     // ignore config load errors and continue with secret store fallback
   }
 
-  const sealedKey = normalizeSecretEnvValue(getCloudSecret("ELIZAOS_CLOUD_API_KEY"));
+  const sealedKey = normalizeSecretEnvValue(
+    getCloudSecret("ELIZAOS_CLOUD_API_KEY"),
+  );
   if (sealedKey) {
     return sealedKey;
   }
@@ -341,7 +345,9 @@ async function handleCloudTtsPreviewRoute(
     return true;
   }
 
-  const text = sanitizeSpeechText(typeof body.text === "string" ? body.text : "");
+  const text = sanitizeSpeechText(
+    typeof body.text === "string" ? body.text : "",
+  );
   if (!text) {
     sendJsonErrorResponse(res, 400, "Missing text");
     return true;

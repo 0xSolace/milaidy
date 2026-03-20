@@ -28,6 +28,7 @@ vi.mock("@elizaos/app-core/api", () => ({
 vi.mock("@elizaos/app-core/events", () => ({
   APP_EMOTE_EVENT: "app:emote",
   VOICE_CONFIG_UPDATED_EVENT: "voice-config-updated",
+  VRM_TELEPORT_COMPLETE_EVENT: "vrm:teleport-complete",
   dispatchWindowEvent: dispatchWindowEventMock,
 }));
 

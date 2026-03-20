@@ -1,13 +1,13 @@
-import { Button, Input } from "@elizaos/ui";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { client } from "@elizaos/app-core/api";
+import { ConfigSaveFooter } from "@elizaos/app-core/components/ConfigSaveFooter";
 import {
   dispatchWindowEvent,
   VOICE_CONFIG_UPDATED_EVENT,
 } from "@elizaos/app-core/events";
 import { useApp } from "@elizaos/app-core/state";
 import { PREMADE_VOICES, sanitizeApiKey } from "@elizaos/app-core/voice";
-import { ConfigSaveFooter } from "@elizaos/app-core/components/ConfigSaveFooter";
+import { Button, Input } from "@elizaos/ui";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type ProviderId = "cloud" | "elevenlabs" | "edge";
 
@@ -156,7 +156,11 @@ function normalizeLoadedVoiceConfig(input?: VoiceConfig): VoiceConfig {
     };
   }
 
-  if (provider === "cloud" || provider === "elevenlabs" || provider === "edge") {
+  if (
+    provider === "cloud" ||
+    provider === "elevenlabs" ||
+    provider === "edge"
+  ) {
     return {
       ...input,
       provider,
@@ -182,7 +186,9 @@ export function VoiceConfigView() {
   const [testError, setTestError] = useState<string | null>(null);
   const [voiceLanguageFilter, setVoiceLanguageFilter] = useState("all");
   const [customVoiceIdInput, setCustomVoiceIdInput] = useState("");
-  const [voiceConfig, setVoiceConfig] = useState<VoiceConfig>({ provider: "cloud" });
+  const [voiceConfig, setVoiceConfig] = useState<VoiceConfig>({
+    provider: "cloud",
+  });
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -249,7 +255,9 @@ export function VoiceConfigView() {
     }
     return PREMADE_VOICES.filter((v) => {
       const lang = languageFromElevenHint(v.hint);
-      return voiceLanguageFilter === "all" ? true : lang === voiceLanguageFilter;
+      return voiceLanguageFilter === "all"
+        ? true
+        : lang === voiceLanguageFilter;
     }).sort((a, b) => a.name.localeCompare(b.name));
   }, [currentProvider, voiceLanguageFilter]);
 
@@ -261,7 +269,11 @@ export function VoiceConfigView() {
       return voiceConfig.elevenlabs?.voiceId;
     }
     return undefined;
-  }, [currentProvider, voiceConfig.cloud?.voiceId, voiceConfig.elevenlabs?.voiceId]);
+  }, [
+    currentProvider,
+    voiceConfig.cloud?.voiceId,
+    voiceConfig.elevenlabs?.voiceId,
+  ]);
 
   const handleProviderChange = useCallback((provider: ProviderId) => {
     setVoiceConfig((prev) => ({ ...prev, provider }));
@@ -314,7 +326,9 @@ export function VoiceConfigView() {
 
     try {
       if (currentProvider === "edge") {
-        throw new Error("Voice test is not supported for Microsoft Edge provider.");
+        throw new Error(
+          "Voice test is not supported for Microsoft Edge provider.",
+        );
       }
 
       const text = "Hello from your selected voice.";
@@ -363,7 +377,9 @@ export function VoiceConfigView() {
 
       if (!response.ok) {
         const upstreamBody = await response.text().catch(() => "");
-        throw new Error(upstreamBody || `Voice test failed (${response.status})`);
+        throw new Error(
+          upstreamBody || `Voice test failed (${response.status})`,
+        );
       }
 
       const blob = await response.blob();
@@ -440,7 +456,9 @@ export function VoiceConfigView() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <div className="text-xs font-semibold text-[var(--muted)]">TTS Provider</div>
+        <div className="text-xs font-semibold text-[var(--muted)]">
+          TTS Provider
+        </div>
         <div className="flex gap-2">
           {PROVIDER_CARDS.map((p) => (
             <Button
@@ -525,7 +543,9 @@ export function VoiceConfigView() {
                     }`}
                     onClick={() => handleCloudVoiceSelect(preset.voiceId)}
                   >
-                    <div className="font-semibold truncate w-full">{preset.name}</div>
+                    <div className="font-semibold truncate w-full">
+                      {preset.name}
+                    </div>
                     <div className="text-[10px] opacity-70 truncate w-full">
                       {preset.hint}
                     </div>
@@ -543,7 +563,9 @@ export function VoiceConfigView() {
                   disabled={testing}
                   onClick={() => void handleTestVoice()}
                 >
-                  {testing ? t("voiceconfigview.Playing") : "Test Selected Voice"}
+                  {testing
+                    ? t("voiceconfigview.Playing")
+                    : "Test Selected Voice"}
                 </Button>
               </div>
             )}
@@ -624,7 +646,9 @@ export function VoiceConfigView() {
                     }`}
                     onClick={() => handleElevenVoiceSelect(preset.voiceId)}
                   >
-                    <div className="font-semibold truncate w-full">{preset.name}</div>
+                    <div className="font-semibold truncate w-full">
+                      {preset.name}
+                    </div>
                     <div className="text-[10px] opacity-70 truncate w-full">
                       {preset.hint}
                     </div>
@@ -642,7 +666,9 @@ export function VoiceConfigView() {
                   disabled={testing}
                   onClick={() => void handleTestVoice()}
                 >
-                  {testing ? t("voiceconfigview.Playing") : "Test Selected Voice"}
+                  {testing
+                    ? t("voiceconfigview.Playing")
+                    : "Test Selected Voice"}
                 </Button>
               </div>
             )}
@@ -656,7 +682,9 @@ export function VoiceConfigView() {
         </div>
       )}
 
-      {testError && <div className="text-[10px] text-[var(--warn)]">{testError}</div>}
+      {testError && (
+        <div className="text-[10px] text-[var(--warn)]">{testError}</div>
+      )}
 
       <ConfigSaveFooter
         dirty={dirty}

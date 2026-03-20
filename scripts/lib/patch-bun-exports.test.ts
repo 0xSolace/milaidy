@@ -23,7 +23,6 @@ import {
   applyPatchToPackageJson,
   applyPluginVisionPermissionPatch,
   applyProperLockfileSignalExitCompat,
-  warnStaleBunCache,
   findPackageFilePaths,
   findPackageJsonPaths,
   patchAgentSkillsCatalogFetch,
@@ -37,6 +36,7 @@ import {
   patchPluginVisionPermissionHandling,
   patchProperLockfileSignalExitCompat,
   repairElizaCoreRuntimeDist,
+  warnStaleBunCache,
 } from "./patch-bun-exports.mjs";
 
 const MOCK_MILADY_CATALOG = {
@@ -1336,10 +1336,16 @@ describe("warnStaleBunCache", () => {
       const logs: string[] = [];
       const count = warnStaleBunCache(tmp, (msg: string) => logs.push(msg));
       expect(count).toBe(1);
-      expect(logs.some((l) => l.includes("stale Bun cache entries"))).toBe(true);
+      expect(logs.some((l) => l.includes("stale Bun cache entries"))).toBe(
+        true,
+      );
       // Entries are NOT removed (detect-only), just warned about
-      expect(existsSync(join(bunDir, "@elizaos+core@2.0.0-alpha.77+samehash"))).toBe(true);
-      expect(existsSync(join(bunDir, "@elizaos+core@2.0.0-alpha.81+samehash"))).toBe(true);
+      expect(
+        existsSync(join(bunDir, "@elizaos+core@2.0.0-alpha.77+samehash")),
+      ).toBe(true);
+      expect(
+        existsSync(join(bunDir, "@elizaos+core@2.0.0-alpha.81+samehash")),
+      ).toBe(true);
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }
@@ -1367,7 +1373,11 @@ describe("warnStaleBunCache", () => {
       mkdirSync(bunDir, { recursive: true });
       makeBunCacheEntry(bunDir, "@elizaos+core@2.0.0-alpha.77+samehash");
       makeBunCacheEntry(bunDir, "@elizaos+core@2.0.0-alpha.81+samehash");
-      writeFileSync(join(tmp, "package.json"), JSON.stringify({ version: "1.0.0" }), "utf8");
+      writeFileSync(
+        join(tmp, "package.json"),
+        JSON.stringify({ version: "1.0.0" }),
+        "utf8",
+      );
       writeFileSync(join(bunDir, ".bust-cache-stamp"), "1.0.0", "utf8");
 
       const logs: string[] = [];
@@ -1385,14 +1395,21 @@ describe("warnStaleBunCache", () => {
       mkdirSync(bunDir, { recursive: true });
       makeBunCacheEntry(bunDir, "@elizaos+core@2.0.0-alpha.77+samehash");
       makeBunCacheEntry(bunDir, "@elizaos+core@2.0.0-alpha.81+samehash");
-      writeFileSync(join(tmp, "package.json"), JSON.stringify({ version: "2.0.0" }), "utf8");
+      writeFileSync(
+        join(tmp, "package.json"),
+        JSON.stringify({ version: "2.0.0" }),
+        "utf8",
+      );
       writeFileSync(join(bunDir, ".bust-cache-stamp"), "1.0.0", "utf8");
 
       const logs: string[] = [];
       const count = warnStaleBunCache(tmp, (msg: string) => logs.push(msg));
       expect(count).toBe(1);
       // Stamp updated to new version
-      const stamp = readFileSync(join(bunDir, ".bust-cache-stamp"), "utf8").trim();
+      const stamp = readFileSync(
+        join(bunDir, ".bust-cache-stamp"),
+        "utf8",
+      ).trim();
       expect(stamp).toBe("2.0.0");
     } finally {
       rmSync(tmp, { recursive: true, force: true });

@@ -61,6 +61,8 @@ describe("cloud-backed ElevenLabs API key alias", () => {
       ELIZAOS_CLOUD_BASE_URL: "https://www.elizacloud.ai",
     } as NodeJS.ProcessEnv;
 
-    expect(resolveCloudTtsBaseUrl(env)).toBe("https://www.elizacloud.ai/api/v1");
+    expect(resolveCloudTtsBaseUrl(env)).toBe(
+      "https://www.elizacloud.ai/api/v1",
+    );
   });
 });

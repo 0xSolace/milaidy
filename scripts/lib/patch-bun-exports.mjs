@@ -133,7 +133,8 @@ export function warnStaleBunCache(root, log = console.log) {
   const stampPath = resolve(bunCacheDir, ".bust-cache-stamp");
   if (existsSync(pkgJsonPath) && existsSync(stampPath)) {
     try {
-      const pkgVersion = JSON.parse(readFileSync(pkgJsonPath, "utf8")).version || "";
+      const pkgVersion =
+        JSON.parse(readFileSync(pkgJsonPath, "utf8")).version || "";
       const stamp = readFileSync(stampPath, "utf8").trim();
       if (stamp === pkgVersion) return 0;
     } catch {}
