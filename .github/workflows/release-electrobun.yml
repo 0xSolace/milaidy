@@ -347,14 +347,6 @@ jobs:
             $resolvedElectrobunDir = $electrobunDir
           }
           Write-Host "Resolved electrobun package dir: $resolvedElectrobunDir"
-          $globalNodeModules = Join-Path $env:USERPROFILE ".bun\install\global\node_modules"
-          $globalRceditDir = Join-Path $globalNodeModules "rcedit"
-          $globalRceditExe = Join-Path $globalRceditDir "bin\rcedit-x64.exe"
-
-          if (-not (Test-Path $globalRceditExe)) {
-            Write-Host "Installing global rcedit helper..."
-            bun install -g "rcedit@4.0.1"
-          }
 
           $resolvedRceditPackageJson = node -e @'
             const { createRequire } = require("node:module");
@@ -384,13 +376,44 @@ jobs:
           $resolvedRceditExe = Join-Path $resolvedRceditDir "bin\rcedit-x64.exe"
 
           if (-not (Test-Path $resolvedRceditExe)) {
-            Write-Warning "Electrobun resolved rcedit without a bundled binary at $resolvedRceditExe; copying known-good package into place."
+            Write-Warning "Electrobun resolved rcedit without a bundled binary at $resolvedRceditExe; copying the workspace-installed package into place."
+            $seedRceditCandidates = @(
+              (Join-Path (Split-Path -Parent $resolvedElectrobunDir) "rcedit")
+            )
+            $seedRceditCandidates += Get-ChildItem -Path (Join-Path $PWD "node_modules\.bun") -Directory -Filter "rcedit@*" -ErrorAction SilentlyContinue |
+              Sort-Object Name -Descending |
+              ForEach-Object { Join-Path $_.FullName "node_modules\rcedit" }
+
+            $seedRceditDir = ""
+            foreach ($candidate in $seedRceditCandidates) {
+              if ($null -eq $candidate) {
+                continue
+              }
+
+              $candidatePath = "$candidate".Trim()
+              if ([string]::IsNullOrWhiteSpace($candidatePath)) {
+                continue
+              }
+
+              $candidateExe = Join-Path $candidatePath "bin\rcedit-x64.exe"
+              if (Test-Path $candidateExe) {
+                $seedRceditDir = $candidatePath
+                break
+              }
+            }
+
+            if ([string]::IsNullOrWhiteSpace($seedRceditDir)) {
+              Write-Error "Could not find a workspace-installed rcedit package with rcedit-x64.exe"
+              exit 1
+            }
+
+            Write-Host "Seeding rcedit from $seedRceditDir"
             $resolvedNodeModulesDir = Split-Path -Parent $resolvedRceditDir
             New-Item -ItemType Directory -Force -Path $resolvedNodeModulesDir | Out-Null
             if (Test-Path $resolvedRceditDir) {
               Remove-Item -Recurse -Force $resolvedRceditDir
             }
-            Copy-Item -Recurse -Force $globalRceditDir $resolvedNodeModulesDir
+            Copy-Item -Recurse -Force $seedRceditDir $resolvedNodeModulesDir
           }
 
           if (-not (Test-Path $resolvedRceditExe)) {

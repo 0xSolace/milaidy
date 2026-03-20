@@ -92,6 +92,9 @@ const requiredWorkflowSnippets = [
   'Write-Host "Resolved electrobun package dir: $resolvedElectrobunDir"',
   '$cacheDir     = Join-Path $resolvedElectrobunDir ".cache"',
   '$resolvedRceditDir = Join-Path $resolvedElectrobunDir "node_modules\\rcedit"',
+  '(Join-Path (Split-Path -Parent $resolvedElectrobunDir) "rcedit")',
+  'Get-ChildItem -Path (Join-Path $PWD "node_modules\\.bun") -Directory -Filter "rcedit@*"',
+  "Seeding rcedit from $seedRceditDir",
   "node scripts/desktop-build.mjs package --env=$" +
     "{{ needs.prepare.outputs.env }}",
   "MILADY_ELECTROBUN_NOTARIZE: 0",
@@ -103,7 +106,10 @@ const requiredWorkflowSnippets = [
   "if ($null -eq $resolvedRceditPackageJson)",
   '$resolvedRceditPackageJson = "$resolvedRceditPackageJson".Trim()',
 ];
-const forbiddenWorkflowSnippets = [' -name "*.exe" -o \\'];
+const forbiddenWorkflowSnippets = [
+  ' -name "*.exe" -o \\',
+  'bun install -g "rcedit@4.0.1"',
+];
 const requiredElectrobunConfigSnippets = [
   'postBuild: "scripts/postwrap-sign-runtime-macos.ts"',
   'postWrap: "scripts/postwrap-diagnostics.ts"',

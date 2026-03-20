@@ -177,6 +177,14 @@ describe("Electrobun release workflow drift", () => {
     expect(workflow).toContain(
       '$resolvedRceditDir = Join-Path $resolvedElectrobunDir "node_modules\\rcedit"',
     );
+    expect(workflow).toContain(
+      '(Join-Path (Split-Path -Parent $resolvedElectrobunDir) "rcedit")',
+    );
+    expect(workflow).toContain(
+      'Get-ChildItem -Path (Join-Path $PWD "node_modules\\.bun") -Directory -Filter "rcedit@*"',
+    );
+    expect(workflow).toContain("Seeding rcedit from $seedRceditDir");
+    expect(workflow).not.toContain('bun install -g "rcedit@4.0.1"');
   });
 
   it("stages the desktop bundle before restoring local electrobun caches", () => {
