@@ -124,7 +124,7 @@ export function patchBrokenElizaCoreRuntimeDists(root, log = console.log) {
  * Bun cache entry format: @scope+pkg@version+contenthash
  * e.g. @elizaos+core@2.0.0-alpha.77+f9c270f5561f2899
  */
-export function bustStaleBunCache(root, log = console.log) {
+export function warnStaleBunCache(root, log = console.log) {
   const bunCacheDir = resolve(root, "node_modules/.bun");
   if (!existsSync(bunCacheDir)) return 0;
 

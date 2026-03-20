@@ -23,7 +23,7 @@ import {
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  bustStaleBunCache,
+  warnStaleBunCache,
   patchAgentSkillsCatalogFetch,
   patchAppCoreMiladyAssets,
   patchAutonomousMiladyOnboardingPresets,
@@ -42,9 +42,9 @@ const root = resolve(__dirname, "..");
 
 // ---------------------------------------------------------------------------
 // Bust stale Bun cache entries for @elizaos packages.
-// See bustStaleBunCache() in lib/patch-bun-exports.mjs for details.
+// See warnStaleBunCache() in lib/patch-bun-exports.mjs for details.
 // ---------------------------------------------------------------------------
-bustStaleBunCache(root);
+warnStaleBunCache(root);
 
 // ---------------------------------------------------------------------------
 // Patch @elizaos packages whose exports["."].bun points to ./src/index.ts.

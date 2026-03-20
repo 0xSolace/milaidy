@@ -23,7 +23,7 @@ import {
   applyPatchToPackageJson,
   applyPluginVisionPermissionPatch,
   applyProperLockfileSignalExitCompat,
-  bustStaleBunCache,
+  warnStaleBunCache,
   findPackageFilePaths,
   findPackageJsonPaths,
   patchAgentSkillsCatalogFetch,
@@ -1302,7 +1302,7 @@ const avatarIndex = meta?.avatarIndex ?? (index % 4) + 1;
   });
 });
 
-describe("bustStaleBunCache", () => {
+describe("warnStaleBunCache", () => {
   function makeTmp() {
     return mkdtempSync(join(tmpdir(), "bust-cache-"));
   }
@@ -1318,7 +1318,7 @@ describe("bustStaleBunCache", () => {
     try {
       mkdirSync(join(tmp, "node_modules"), { recursive: true });
       const logs: string[] = [];
-      const count = bustStaleBunCache(tmp, (msg: string) => logs.push(msg));
+      const count = warnStaleBunCache(tmp, (msg: string) => logs.push(msg));
       expect(count).toBe(0);
       expect(logs).toHaveLength(0);
     } finally {
@@ -1334,7 +1334,7 @@ describe("bustStaleBunCache", () => {
       makeBunCacheEntry(bunDir, "@elizaos+core@2.0.0-alpha.81+samehash");
 
       const logs: string[] = [];
-      const count = bustStaleBunCache(tmp, (msg: string) => logs.push(msg));
+      const count = warnStaleBunCache(tmp, (msg: string) => logs.push(msg));
       expect(count).toBe(1);
       expect(logs.some((l) => l.includes("stale Bun cache entries"))).toBe(true);
       // Entries are NOT removed (detect-only), just warned about
@@ -1353,7 +1353,7 @@ describe("bustStaleBunCache", () => {
       makeBunCacheEntry(bunDir, "@elizaos+autonomous@2.0.0-alpha.81+newhash");
 
       const logs: string[] = [];
-      const count = bustStaleBunCache(tmp, (msg: string) => logs.push(msg));
+      const count = warnStaleBunCache(tmp, (msg: string) => logs.push(msg));
       expect(count).toBe(0);
     } finally {
       rmSync(tmp, { recursive: true, force: true });
@@ -1371,7 +1371,7 @@ describe("bustStaleBunCache", () => {
       writeFileSync(join(bunDir, ".bust-cache-stamp"), "1.0.0", "utf8");
 
       const logs: string[] = [];
-      const count = bustStaleBunCache(tmp, (msg: string) => logs.push(msg));
+      const count = warnStaleBunCache(tmp, (msg: string) => logs.push(msg));
       expect(count).toBe(0); // Stamp matches, skip check
     } finally {
       rmSync(tmp, { recursive: true, force: true });
@@ -1389,7 +1389,7 @@ describe("bustStaleBunCache", () => {
       writeFileSync(join(bunDir, ".bust-cache-stamp"), "1.0.0", "utf8");
 
       const logs: string[] = [];
-      const count = bustStaleBunCache(tmp, (msg: string) => logs.push(msg));
+      const count = warnStaleBunCache(tmp, (msg: string) => logs.push(msg));
       expect(count).toBe(1);
       // Stamp updated to new version
       const stamp = readFileSync(join(bunDir, ".bust-cache-stamp"), "utf8").trim();
@@ -1407,7 +1407,7 @@ describe("bustStaleBunCache", () => {
       makeBunCacheEntry(bunDir, "@elizaos+plugin-sql@2.0.0-alpha.81+samehash");
 
       const logs: string[] = [];
-      const count = bustStaleBunCache(tmp, (msg: string) => logs.push(msg));
+      const count = warnStaleBunCache(tmp, (msg: string) => logs.push(msg));
       expect(count).toBe(0);
     } finally {
       rmSync(tmp, { recursive: true, force: true });
