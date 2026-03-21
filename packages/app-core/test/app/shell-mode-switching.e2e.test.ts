@@ -72,6 +72,8 @@ vi.mock("@miladyai/app-core/components", async () => {
     AppsPageView: () =>
       React.createElement("section", null, "AppsPageView Ready"),
     BugReportModal: () => React.createElement("div", null, "BugReportModal"),
+    CharacterEditor: () =>
+      React.createElement("section", null, "CharacterView Ready"),
     CharacterView: () =>
       React.createElement("section", null, "CharacterView Ready"),
     ChatView: () => React.createElement("section", null, "ChatView Ready"),
@@ -794,7 +796,9 @@ describe("shell mode switching (e2e)", () => {
     text = textOf(requireTree(tree).root);
     expectShellForTab(text, "character");
     expect(sceneHostState.activeHistory.at(-1)).toBe(true);
-    expect(sceneHostState.interactiveHistory.at(-1)).toBe(false);
+    // Character tabs use native shell with the scene overlay visible,
+    // so interactive is true (characterSceneVisible is true).
+    expect(sceneHostState.interactiveHistory.at(-1)).toBe(true);
   });
 
   it("disables iOS native scrolling only while the companion shell is visible", async () => {

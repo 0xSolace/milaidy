@@ -61,6 +61,7 @@ const RUNTIME_STUB = {
 } as unknown as AgentRuntime;
 
 const ENV_KEYS_TO_SAVE = [
+  "NODE_ENV",
   "ELIZA_STATE_DIR",
   "MILADY_STATE_DIR",
   "MILADY_CONFIG_PATH",
@@ -80,6 +81,7 @@ describe("GET /api/wallet/keys", () => {
       delete process.env[key];
     }
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "eliza-wallet-keys-"));
+    process.env.NODE_ENV = "production";
     process.env.ELIZA_STATE_DIR = tempDir;
     process.env.MILADY_STATE_DIR = tempDir;
   });
@@ -139,7 +141,7 @@ describe("GET /api/wallet/keys", () => {
     }
   });
 
-  it("returns 403 when no API token is configured during active onboarding", async () => {
+  it("allows loopback requests without a token during active onboarding", async () => {
     await fs.writeFile(
       path.join(tempDir, "eliza.json"),
       JSON.stringify({
@@ -150,15 +152,14 @@ describe("GET /api/wallet/keys", () => {
 
     const server = await startApiServer({ port: 0, runtime: RUNTIME_STUB });
     try {
-      const { status, data } = await req(
+      // Loopback (127.0.0.1) requests are allowed without a token for local
+      // desktop onboarding flows.
+      const { status } = await req(
         server.port,
         "GET",
         "/api/wallet/keys",
       );
-      expect(status).toBe(403);
-      expect(data.error).toBe(
-        "Sensitive endpoint requires API token authentication",
-      );
+      expect(status).toBe(200);
     } finally {
       await server.close();
     }
@@ -201,6 +202,7 @@ describe("POST /api/agent/reset", () => {
       delete process.env[key];
     }
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "eliza-agent-reset-"));
+    process.env.NODE_ENV = "production";
     process.env.ELIZA_STATE_DIR = tempDir;
     process.env.MILADY_STATE_DIR = tempDir;
   });

@@ -16,11 +16,11 @@ describe("shell routing helpers", () => {
 
   it("maps shell view toggles onto a single canonical tab target", () => {
     expect(getTabForShellView("companion", "chat")).toBe("companion");
-    expect(getTabForShellView("character", "chat")).toBe("character-select");
+    expect(getTabForShellView("character", "chat")).toBe("character");
     expect(getTabForShellView("desktop", "settings")).toBe("settings");
   });
 
-  it("starts completed launches on character select for chat-like entry routes", () => {
+  it("never auto-redirects to character-select on launch", () => {
     const entryRoutes: Array<{ navPath: string; urlTab: Tab | null }> = [
       { navPath: "/", urlTab: "chat" },
       { navPath: "/chat", urlTab: "chat" },
@@ -31,10 +31,11 @@ describe("shell routing helpers", () => {
       expect(
         shouldStartAtCharacterSelectOnLaunch({
           onboardingNeedsOptions: false,
+          onboardingMode: "basic",
           navPath: entryRoute.navPath,
           urlTab: entryRoute.urlTab,
         }),
-      ).toBe(true);
+      ).toBe(false);
     }
   });
 
@@ -42,6 +43,7 @@ describe("shell routing helpers", () => {
     expect(
       shouldStartAtCharacterSelectOnLaunch({
         onboardingNeedsOptions: false,
+        onboardingMode: "basic",
         navPath: "/settings",
         urlTab: "settings",
       }),
@@ -50,6 +52,7 @@ describe("shell routing helpers", () => {
     expect(
       shouldStartAtCharacterSelectOnLaunch({
         onboardingNeedsOptions: true,
+        onboardingMode: "basic",
         navPath: "/chat",
         urlTab: "chat",
       }),

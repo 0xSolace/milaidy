@@ -5,14 +5,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("ElizaClient Electron API fallback", () => {
   const originalFetch = globalThis.fetch;
-  const originalBase = (window as { __ELIZA_API_BASE__?: string })
-    .__ELIZA_API_BASE__;
+  const originalBase = (window as { __MILADY_API_BASE__?: string })
+    .__MILADY_API_BASE__;
   const originalProtocol = window.location.protocol;
 
   beforeEach(() => {
     // Aggressively clear global state that might leak from other tests
-    delete (window as { __ELIZA_API_BASE__?: string }).__ELIZA_API_BASE__;
-    delete (window as { __ELIZA_API_TOKEN__?: string }).__ELIZA_API_TOKEN__;
+    delete (window as { __MILADY_API_BASE__?: string }).__MILADY_API_BASE__;
+    delete (window as { __MILADY_API_TOKEN__?: string }).__MILADY_API_TOKEN__;
     window.sessionStorage.clear();
   });
 
@@ -23,10 +23,10 @@ describe("ElizaClient Electron API fallback", () => {
       configurable: true,
     });
     if (originalBase !== undefined) {
-      (window as { __ELIZA_API_BASE__?: string }).__ELIZA_API_BASE__ =
+      (window as { __MILADY_API_BASE__?: string }).__MILADY_API_BASE__ =
         originalBase;
     } else {
-      delete (window as { __ELIZA_API_BASE__?: string }).__ELIZA_API_BASE__;
+      delete (window as { __MILADY_API_BASE__?: string }).__MILADY_API_BASE__;
     }
     Object.defineProperty(window, "location", {
       value: { ...window.location, protocol: originalProtocol },
@@ -42,8 +42,8 @@ describe("ElizaClient Electron API fallback", () => {
   }
 
   it("does not probe localhost on capacitor-electron protocol before API base is injected", async () => {
-    (window as { __ELIZA_API_BASE__?: string }).__ELIZA_API_BASE__ = undefined;
-    setProtocol("capacitor-electron:");
+    (window as { __MILADY_API_BASE__?: string }).__MILADY_API_BASE__ = undefined;
+    setProtocol("electrobun:");
 
     const fetchMock = vi.fn(async () => ({
       ok: true,
@@ -71,9 +71,9 @@ describe("ElizaClient Electron API fallback", () => {
   });
 
   it("prefers injected API base over fallback", async () => {
-    (window as { __ELIZA_API_BASE__?: string }).__ELIZA_API_BASE__ =
+    (window as { __MILADY_API_BASE__?: string }).__MILADY_API_BASE__ =
       "http://localhost:9999";
-    setProtocol("capacitor-electron:");
+    setProtocol("electrobun:");
 
     const fetchMock = vi.fn(async () => ({
       ok: true,
@@ -101,8 +101,8 @@ describe("ElizaClient Electron API fallback", () => {
   });
 
   it("starts unavailable on capacitor-electron and switches to injected API base when injected later", async () => {
-    (window as { __ELIZA_API_BASE__?: string }).__ELIZA_API_BASE__ = undefined;
-    setProtocol("capacitor-electron:");
+    (window as { __MILADY_API_BASE__?: string }).__MILADY_API_BASE__ = undefined;
+    setProtocol("electrobun:");
 
     const fetchMock = vi.fn(async () => ({
       ok: true,
@@ -126,7 +126,7 @@ describe("ElizaClient Electron API fallback", () => {
     );
     expect(fetchMock).not.toHaveBeenCalled();
 
-    (window as { __ELIZA_API_BASE__?: string }).__ELIZA_API_BASE__ =
+    (window as { __MILADY_API_BASE__?: string }).__MILADY_API_BASE__ =
       "http://127.0.0.1:4444";
     await client.getStatus();
     expect(fetchMock).toHaveBeenLastCalledWith(

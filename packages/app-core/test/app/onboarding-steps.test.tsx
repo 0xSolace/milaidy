@@ -190,8 +190,8 @@ describe("IdentityStep", () => {
     });
 
     const text = collectText(tree?.root as TestRenderer.ReactTestInstance);
-    expect(text).toContain("onboarding.importAgent");
-    expect(text).toContain("onboarding.cancel");
+    expect(text).toContain("settings.importAgent");
+    expect(text).toContain("common.cancel");
     expect(text).toContain("onboarding.restore");
   });
 });
@@ -214,7 +214,7 @@ describe("ConnectionStep", () => {
     expect(text).toContain("onboarding.hostingTitle");
     expect(text).toContain("onboarding.hostingQuestion");
     expect(text).toContain("onboarding.hostingLocal");
-    expect(text).toContain("onboarding.hostingCloud");
+    expect(text).toContain("header.Cloud");
     expect(text).toContain("onboarding.back");
   });
 
@@ -268,7 +268,7 @@ describe("ConnectionStep", () => {
     const text = collectText(tree?.root as TestRenderer.ReactTestInstance);
     // Should show provider name and change button
     expect(text).toContain("OpenAI");
-    expect(text).toContain("onboarding.change");
+    expect(text).toContain("settings.change");
   });
 
   it("renders remote backend fields for self-hosted cloud connections", async () => {
@@ -317,7 +317,7 @@ describe("ConnectionStep", () => {
     });
 
     const text = collectText(tree?.root as TestRenderer.ReactTestInstance);
-    expect(text).toContain("onboarding.hostingCloud");
+    expect(text).toContain("header.Cloud");
     expect(text).not.toContain("onboarding.hostingLocal");
     mockIsNativeFn.value = false;
   });

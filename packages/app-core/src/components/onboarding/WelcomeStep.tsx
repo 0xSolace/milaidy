@@ -5,6 +5,15 @@ export function WelcomeStep() {
   const branding = useBranding();
   const { setState, t } = useApp();
 
+  const handleGetStarted = () => {
+    // Default to Chen (blue-haired anime character) — character selection
+    // happens after onboarding completes.
+    setState("onboardingStyle", "I'm here to help you.");
+    setState("onboardingName", "Chen");
+    setState("selectedVrmIndex", 1);
+    setState("onboardingStep", "connection");
+  };
+
   return (
     <>
       <div className="onboarding-section-title">
@@ -18,7 +27,7 @@ export function WelcomeStep() {
         <span />
         <button
           className="onboarding-confirm-btn"
-          onClick={() => void setState("onboardingStep", "identity")}
+          onClick={handleGetStarted}
           type="button"
         >
           {t("onboarding.getStarted")}

@@ -53,12 +53,14 @@ describe("CompanionSceneHost", () => {
       value: {
         innerWidth: 1440,
         innerHeight: 900,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
       },
       configurable: true,
     });
   });
 
-  it("binds drag capture handlers to the drag surface instead of the root shell", () => {
+  it("binds drag capture handlers to the root companion shell", () => {
     let tree: TestRenderer.ReactTestRenderer | undefined;
     act(() => {
       tree = TestRenderer.create(
@@ -69,17 +71,10 @@ describe("CompanionSceneHost", () => {
     });
 
     const root = tree?.root.findByProps({ "data-testid": "companion-root" });
-    const dragSurface = tree?.root.findByProps({
-      "data-testid": "companion-camera-drag-surface",
-    });
 
-    expect(root.props.onPointerDownCapture).toBeUndefined();
-    expect(root.props.onPointerMoveCapture).toBeUndefined();
-    expect(root.props.onWheelCapture).toBeUndefined();
-
-    expect(typeof dragSurface.props.onPointerDownCapture).toBe("function");
-    expect(typeof dragSurface.props.onPointerMoveCapture).toBe("function");
-    expect(typeof dragSurface.props.onPointerUpCapture).toBe("function");
-    expect(typeof dragSurface.props.onWheelCapture).toBe("function");
+    expect(typeof root.props.onPointerDownCapture).toBe("function");
+    expect(typeof root.props.onPointerMoveCapture).toBe("function");
+    expect(typeof root.props.onPointerUpCapture).toBe("function");
+    expect(typeof root.props.onWheelCapture).toBe("function");
   });
 });

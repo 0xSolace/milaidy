@@ -63,13 +63,15 @@ describe("VrmStage", () => {
     });
 
     expect(tree).not.toBeNull();
-    const stageLayer = tree?.root.find(
+    // VrmStage no longer wraps children in a programmatic opacity gate —
+    // verify no div carries an explicit opacity style.
+    const opacityNodes = tree?.root.findAll(
       (node) =>
         node.type === "div" &&
         node.props.style &&
         Object.hasOwn(node.props.style, "opacity"),
     );
-    expect(stageLayer?.props.style.opacity).toBe(1);
+    expect(opacityNodes).toHaveLength(0);
   });
 
   it("passes the shared chat voice state through to the companion avatar", async () => {
@@ -133,11 +135,9 @@ describe("VrmStage", () => {
 
   it("disables canvas parallax and forwards the ready engine callback", async () => {
     const handleEngineReady = vi.fn();
-    const setPaused = vi.fn();
     const setCameraAnimation = vi.fn();
     const setPointerParallaxEnabled = vi.fn();
     const engine = {
-      setPaused,
       setCameraAnimation,
       setPointerParallaxEnabled,
     };
@@ -163,7 +163,6 @@ describe("VrmStage", () => {
       ready?.(engine);
     });
 
-    expect(setPaused).toHaveBeenCalledWith(false);
     expect(setCameraAnimation).toHaveBeenCalledTimes(1);
     expect(setPointerParallaxEnabled).toHaveBeenCalledWith(false);
     expect(handleEngineReady).toHaveBeenCalledWith(engine);
@@ -219,12 +218,11 @@ describe("VrmStage", () => {
     );
   });
 
-  it("waves after the initial avatar reveal starts when enabled", async () => {
+  it("waves after the VRM loads when enabled", async () => {
     vi.useFakeTimers();
     const playEmote = vi.fn();
     const engine = {
       playEmote,
-      setPaused: vi.fn(),
       setCameraAnimation: vi.fn(),
       setPointerParallaxEnabled: vi.fn(),
     };
@@ -251,10 +249,10 @@ describe("VrmStage", () => {
       });
 
       await act(async () => {
-        const onRevealStart = viewerPropsRef.current?.onRevealStart as
-          | (() => void)
+        const onEngineState = viewerPropsRef.current?.onEngineState as
+          | ((value: unknown) => void)
           | undefined;
-        onRevealStart?.();
+        onEngineState?.({ vrmLoaded: true });
       });
 
       expect(playEmote).not.toHaveBeenCalled();
@@ -265,7 +263,7 @@ describe("VrmStage", () => {
 
       expect(playEmote).toHaveBeenCalledTimes(1);
       expect(playEmote).toHaveBeenCalledWith(
-        "/animations/emotes/waving-both-hands.glb",
+        "/animations/emotes/greeting.fbx",
         2.5,
         false,
       );
@@ -276,12 +274,11 @@ describe("VrmStage", () => {
     }
   });
 
-  it("waves after the avatar reveal starts when the stage switches characters", async () => {
+  it("waves after the VRM loads when the stage switches characters", async () => {
     vi.useFakeTimers();
     const playEmote = vi.fn();
     const engine = {
       playEmote,
-      setPaused: vi.fn(),
       setCameraAnimation: vi.fn(),
       setPointerParallaxEnabled: vi.fn(),
     };
@@ -307,6 +304,21 @@ describe("VrmStage", () => {
         ready?.(engine);
       });
 
+      // First VRM load — hasMountedRef becomes true after vrmPath effect
+      await act(async () => {
+        const onEngineState = viewerPropsRef.current?.onEngineState as
+          | ((value: unknown) => void)
+          | undefined;
+        onEngineState?.({ vrmLoaded: true });
+      });
+
+      // Advance past the initial wave timer
+      await act(async () => {
+        vi.advanceTimersByTime(650);
+      });
+      playEmote.mockClear();
+
+      // Switch to a new character
       await act(async () => {
         tree?.update(
           React.createElement(VrmStage, {
@@ -318,11 +330,12 @@ describe("VrmStage", () => {
         );
       });
 
+      // Simulate new VRM loaded
       await act(async () => {
-        const onRevealStart = viewerPropsRef.current?.onRevealStart as
-          | (() => void)
+        const onEngineState = viewerPropsRef.current?.onEngineState as
+          | ((value: unknown) => void)
           | undefined;
-        onRevealStart?.();
+        onEngineState?.({ vrmLoaded: true });
       });
 
       expect(playEmote).not.toHaveBeenCalled();
@@ -339,7 +352,7 @@ describe("VrmStage", () => {
 
       expect(playEmote).toHaveBeenCalledTimes(1);
       expect(playEmote).toHaveBeenCalledWith(
-        "/animations/emotes/waving-both-hands.glb",
+        "/animations/emotes/greeting.fbx",
         2.5,
         false,
       );

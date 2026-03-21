@@ -129,7 +129,7 @@ vi.mock("@miladyai/app-core/components", async () => {
     AdvancedPageView: () =>
       React.createElement("div", null, "AdvancedPageView"),
     AppsPageView: () => React.createElement("div", null, "AppsPageView"),
-    CharacterView: () => React.createElement("div", null, "CharacterView"),
+    CharacterEditor: () => React.createElement("div", null, "CharacterEditor"),
     ChatView: () => React.createElement("div", null, "ChatView"),
     ConnectorsPageView: () =>
       React.createElement("div", null, "ConnectorsPageView"),
@@ -306,8 +306,8 @@ vi.mock("@miladyai/app-core/src/components/AdvancedPageView", () => ({
   AdvancedPageView: () =>
     React.createElement("div", null, "AdvancedPageView"),
 }));
-vi.mock("@miladyai/app-core/src/components/CharacterView", () => ({
-  CharacterView: () => React.createElement("div", null, "CharacterView"),
+vi.mock("@miladyai/app-core/src/components/CharacterEditor", () => ({
+  CharacterEditor: () => React.createElement("div", null, "CharacterEditor"),
 }));
 vi.mock("@miladyai/app-core/src/components/TriggersView", () => ({
   TriggersView: () => React.createElement("div", null, "TriggersView"),
@@ -678,7 +678,7 @@ describe("onboarding journey to avatar creator (e2e)", () => {
 
     // Verify we start in onboarding
     expect(state.onboardingComplete).toBe(false);
-    expect(textOf(tree.root)).not.toContain("CharacterView");
+    expect(textOf(tree.root)).not.toContain("CharacterEditor");
 
     await driveOnboardingToCompletion(tree, state);
 
@@ -690,7 +690,7 @@ describe("onboarding journey to avatar creator (e2e)", () => {
     expect(state.tab).toBe("character-select");
 
     const renderedText = textOf(tree.root);
-    expect(renderedText).toContain("CharacterView");
+    expect(renderedText).toContain("CharacterEditor");
     expect(renderedText).not.toContain("OnboardingWizard");
   });
 
@@ -789,7 +789,7 @@ describe("onboarding journey to avatar creator (e2e)", () => {
     if (!tree) throw new Error("failed to render App");
 
     const renderedText = textOf(tree.root);
-    expect(renderedText).toContain("CharacterView");
+    expect(renderedText).toContain("CharacterEditor");
     expect(renderedText).not.toContain("OnboardingWizard");
     expect(renderedText).not.toContain("CompanionView");
   });
@@ -840,7 +840,7 @@ describe("agent reset and re-onboarding (e2e)", () => {
 
     // UI should show onboarding again
     const renderedText = textOf(tree.root);
-    expect(renderedText).not.toContain("CharacterView");
+    expect(renderedText).not.toContain("CharacterEditor");
     expect(renderedText).not.toContain("ChatView");
   });
 
@@ -871,7 +871,7 @@ describe("agent reset and re-onboarding (e2e)", () => {
     expect(state.tab).toBe("character-select");
 
     const renderedText = textOf(tree.root);
-    expect(renderedText).toContain("CharacterView");
+    expect(renderedText).toContain("CharacterEditor");
   });
 
   it("reset preserves the ability to select a different avatar on re-onboarding", async () => {
@@ -953,6 +953,6 @@ describe("agent reset and re-onboarding (e2e)", () => {
     // One final completion to prove it still works
     await driveOnboardingToCompletion(tree, state);
     expect(state.onboardingComplete).toBe(true);
-    expect(textOf(tree.root)).toContain("CharacterView");
+    expect(textOf(tree.root)).toContain("CharacterEditor");
   });
 });

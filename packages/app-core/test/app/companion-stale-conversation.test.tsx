@@ -188,6 +188,11 @@ describe("companion stale conversation rollover", () => {
     vi.useFakeTimers();
     localStorage.clear();
     sessionStorage.clear();
+    // Persist a connection mode so the init flow proceeds past onboarding gate
+    localStorage.setItem(
+      "eliza:connection-mode",
+      JSON.stringify({ runMode: "local" }),
+    );
     window.history.replaceState({}, "", "/chat");
     Object.assign(window, {
       setTimeout: globalThis.setTimeout,
@@ -329,9 +334,7 @@ describe("companion stale conversation rollover", () => {
         },
       ],
     });
-    localStorage.setItem(UI_SHELL_MODE_STORAGE_KEY, "native");
 
-    let api: ProbeApi | null = null;
     let snapshot: Snapshot | null = null;
     const events: AppEmoteEventDetail[] = [];
     const handler = (event: Event) => {
@@ -345,9 +348,7 @@ describe("companion stale conversation rollover", () => {
           AppProvider,
           null,
           React.createElement(Probe, {
-            onReady: (nextApi) => {
-              api = nextApi;
-            },
+            onReady: () => {},
             onChange: (nextSnapshot) => {
               snapshot = nextSnapshot;
             },
@@ -356,18 +357,8 @@ describe("companion stale conversation rollover", () => {
       );
     });
 
-    await waitFor(() => {
-      expect(snapshot).toMatchObject({
-        activeConversationId: "conv-stale",
-        onboardingLoading: false,
-      });
-    });
-    expect(mockClient.createConversation).not.toHaveBeenCalled();
-
-    await act(async () => {
-      api?.switchShellView("companion");
-    });
-
+    // The app starts in companion mode, so the stale conversation effect
+    // fires automatically and creates a fresh conversation.
     await waitFor(() => {
       expect(mockClient.createConversation).toHaveBeenCalledTimes(1);
       expect(mockClient.createConversation).toHaveBeenCalledWith(undefined, {

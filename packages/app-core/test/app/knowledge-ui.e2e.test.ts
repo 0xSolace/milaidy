@@ -601,11 +601,11 @@ describe("KnowledgeView UI", () => {
     expect(searchForm?.props.className).toContain("max-w-[500px]");
     expect(chooseFilesButton?.props.className).toContain("h-10");
     expect(chooseFilesButton?.props.className).toContain(
-      "text-[var(--primary-foreground,#1a1f26)]",
+      "text-txt",
     );
     expect(searchButton?.props.className).toContain("h-10");
     expect(searchButton?.props.className).toContain(
-      "text-[var(--primary-foreground,#1a1f26)]",
+      "text-txt",
     );
   });
 

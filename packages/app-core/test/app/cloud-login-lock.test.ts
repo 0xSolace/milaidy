@@ -193,6 +193,7 @@ describe("cloud login locking", () => {
       triggers: [],
       todos: [],
     });
+    mockClient.getBaseUrl.mockReturnValue("http://localhost:2138");
     mockClient.cloudLogin.mockResolvedValue({
       ok: false,
       browserUrl: "",
@@ -205,6 +206,7 @@ describe("cloud login locking", () => {
       critical: false,
     });
     mockClient.getCodingAgentStatus.mockResolvedValue(null);
+    mockClient.saveStreamSettings.mockResolvedValue({ ok: true });
   });
 
   it("allows only one same-tick cloud login start", async () => {

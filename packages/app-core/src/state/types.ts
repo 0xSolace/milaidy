@@ -95,11 +95,6 @@ export const CLOUD_ONBOARDING_STEPS: OnboardingStepMeta[] = [
 /** Steps shown for the custom/local setup flow. */
 export const CUSTOM_ONBOARDING_STEPS: OnboardingStepMeta[] = [
   {
-    id: "identity",
-    name: "onboarding.stepName.identity",
-    subtitle: "onboarding.stepSub.identity",
-  },
-  {
     id: "connection",
     name: "onboarding.connect",
     subtitle: "onboarding.stepSub.connection",

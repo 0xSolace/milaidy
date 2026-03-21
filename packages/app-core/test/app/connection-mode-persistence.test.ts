@@ -333,20 +333,17 @@ describe("MiladyClient direct cloud auth", () => {
 
     globalThis.fetch = vi.fn().mockResolvedValueOnce({
       ok: true,
-      json: async () => ({
-        ok: true,
-        browserUrl: "https://eliza.ai/login?session=abc",
-        sessionId: "abc",
-      }),
+      json: async () => ({}),
     });
 
     const result = await client.cloudLoginDirect("https://api.eliza.ai");
     expect(result.ok).toBe(true);
-    expect(result.sessionId).toBe("abc");
-    expect(result.browserUrl).toContain("login");
+    // sessionId is generated client-side via crypto.randomUUID()
+    expect(result.sessionId).toBeTruthy();
+    expect(result.browserUrl).toContain("cli-login");
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      "https://api.eliza.ai/api/v1/auth/login",
+      "https://api.eliza.ai/api/auth/cli-session",
       expect.objectContaining({ method: "POST" }),
     );
   });
@@ -359,7 +356,7 @@ describe("MiladyClient direct cloud auth", () => {
       ok: true,
       json: async () => ({
         status: "authenticated",
-        token: "auth-token-xyz",
+        apiKey: "auth-token-xyz",
         userId: "user-1",
       }),
     });
@@ -372,7 +369,7 @@ describe("MiladyClient direct cloud auth", () => {
     expect(result.token).toBe("auth-token-xyz");
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      "https://api.eliza.ai/api/v1/auth/login/status?sessionId=session-123",
+      "https://api.eliza.ai/api/auth/cli-session/session-123",
     );
   });
 

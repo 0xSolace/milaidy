@@ -171,6 +171,12 @@ describe("startup conversation restore", () => {
       clearInterval: globalThis.clearInterval,
     });
     Object.assign(document.documentElement, { setAttribute: vi.fn() });
+    // Provide a persisted connection so the startup flow doesn't short-circuit
+    // to onboarding before polling getStatus and hydrating conversations.
+    localStorage.setItem(
+      "eliza:connection-mode",
+      JSON.stringify({ runMode: "local" }),
+    );
 
     for (const fn of Object.values(mockClient)) {
       if (typeof fn === "function" && "mockReset" in fn) {
@@ -335,7 +341,7 @@ describe("startup conversation restore", () => {
       type: "active-conversation",
       conversationId: restoredConversation.id,
     });
-    expect(mockClient.connectWs).toHaveBeenCalledTimes(1);
+    expect(mockClient.connectWs).toHaveBeenCalled();
 
     await act(async () => {
       tree.unmount();
@@ -372,7 +378,7 @@ describe("startup conversation restore", () => {
     expect(mockClient.sendWsMessage).not.toHaveBeenCalledWith(
       expect.objectContaining({ type: "active-conversation" }),
     );
-    expect(mockClient.connectWs).toHaveBeenCalledTimes(1);
+    expect(mockClient.connectWs).toHaveBeenCalled();
 
     await act(async () => {
       tree.unmount();

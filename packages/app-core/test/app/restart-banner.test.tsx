@@ -63,7 +63,7 @@ describe("RestartBanner", () => {
     expect(markup).toBe("");
   });
 
-  it("renders compact reminder when banner is dismissed", () => {
+  it("renders nothing when banner is dismissed", () => {
     mockUseApp.mockReturnValue(
       makeContext({
         pendingRestart: true,
@@ -73,12 +73,8 @@ describe("RestartBanner", () => {
     );
 
     const markup = renderToStaticMarkup(React.createElement(RestartBanner));
-    const text = readAllText(markup);
-    expect(text).toContain("Configuration updated");
-    expect(text).toContain(
-      "Electrobun still has restart-required changes queued",
-    );
-    expect(markup).toContain("Review");
+    // When dismissed, the component returns null — no compact reminder.
+    expect(markup).toBe("");
   });
 
   it("renders banner with single reason text", () => {
@@ -169,8 +165,8 @@ describe("RestartBanner", () => {
     expect(text).toContain("Restart required to apply changes");
   });
 
-  it("dismiss-then-re-show: compact when dismissed, expands with new reasons", () => {
-    // Step 1: Banner is compact after user clicks "Later"
+  it("dismiss-then-re-show: hidden when dismissed, expands with new reasons", () => {
+    // Step 1: Banner is hidden after user clicks "Later"
     mockUseApp.mockReturnValue(
       makeContext({
         pendingRestart: true,
@@ -182,8 +178,7 @@ describe("RestartBanner", () => {
     const dismissedMarkup = renderToStaticMarkup(
       React.createElement(RestartBanner),
     );
-    expect(dismissedMarkup).not.toBe("");
-    expect(readAllText(dismissedMarkup)).toContain("Review");
+    expect(dismissedMarkup).toBe("");
 
     // Step 2: A new config change arrives — restartBannerDismissed is reset
     // to false by the WS handler (simulating AppContext behavior)

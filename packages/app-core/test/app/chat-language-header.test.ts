@@ -32,7 +32,7 @@ describe("ElizaClient language header propagation", () => {
     globalThis.fetch = originalFetch;
   });
 
-  it("adds X-Eliza-UI-Language to normal chat requests", async () => {
+  it("adds X-Milady-UI-Language to normal chat requests", async () => {
     fetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify({ text: "ok", agentName: "Eliza" }), {
         status: 200,
@@ -46,10 +46,10 @@ describe("ElizaClient language header propagation", () => {
 
     const init = fetchMock.mock.calls[0][1] as RequestInit;
     const headers = new Headers(init.headers as HeadersInit);
-    expect(headers.get("X-Eliza-UI-Language")).toBe("zh-CN");
+    expect(headers.get("X-Milady-UI-Language")).toBe("zh-CN");
   });
 
-  it("adds X-Eliza-UI-Language to streaming chat requests", async () => {
+  it("adds X-Milady-UI-Language to streaming chat requests", async () => {
     fetchMock.mockResolvedValueOnce(buildSseDoneResponse());
 
     const client = new ElizaClient("http://localhost:2138");
@@ -58,7 +58,7 @@ describe("ElizaClient language header propagation", () => {
 
     const init = fetchMock.mock.calls[0][1] as RequestInit;
     const headers = new Headers(init.headers as HeadersInit);
-    expect(headers.get("X-Eliza-UI-Language")).toBe("zh-CN");
+    expect(headers.get("X-Milady-UI-Language")).toBe("zh-CN");
     expect(headers.get("Accept")).toBe("text/event-stream");
   });
 });

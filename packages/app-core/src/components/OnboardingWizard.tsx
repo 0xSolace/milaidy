@@ -15,7 +15,6 @@ import { VrmStage } from "./companion/VrmStage";
 import { ActivateStep } from "./onboarding/ActivateStep";
 import { CloudLoginStep } from "./onboarding/CloudLoginStep";
 import { ConnectionStep } from "./onboarding/ConnectionStep";
-import { IdentityStep } from "./onboarding/IdentityStep";
 import { OnboardingPanel } from "./onboarding/OnboardingPanel";
 import { OnboardingStepNav } from "./onboarding/OnboardingStepNav";
 import { PermissionsStep } from "./onboarding/PermissionsStep";
@@ -79,8 +78,6 @@ export function OnboardingWizard() {
       case "cloudLogin":
         return <CloudLoginStep />;
       // Custom flow steps
-      case "identity":
-        return null; // Rendered separately in JSX (full-width overlay)
       case "connection":
         return <ConnectionStep />;
       case "rpc":
@@ -222,15 +219,9 @@ export function OnboardingWizard() {
         {/* ── Standard overlaid UI — step nav + content panel ── */}
         <div className="onboarding-ui-overlay">
           <OnboardingStepNav />
-          {onboardingStep === "identity" ? (
-            <div className="ob-identity-overlay">
-              <IdentityStep />
-            </div>
-          ) : (
-            <OnboardingPanel step={onboardingStep}>
-              {renderStep()}
-            </OnboardingPanel>
-          )}
+          <OnboardingPanel step={onboardingStep}>
+            {renderStep()}
+          </OnboardingPanel>
         </div>
       </div>
     </div>

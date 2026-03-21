@@ -145,7 +145,7 @@ describe("ElizaClient streaming chat endpoints", () => {
     expect(fullTexts).toEqual(["A", "AB"]);
     expect(result).toEqual({
       text: "AB",
-      agentName: "Eliza",
+      agentName: "Milady",
       completed: false,
     });
   });
@@ -167,7 +167,7 @@ describe("ElizaClient streaming chat endpoints", () => {
     expect(tokens).toEqual(["world", "Hello world"]);
     expect(result).toEqual({
       text: "Hello world",
-      agentName: "Eliza",
+      agentName: "Milady",
       completed: false,
     });
   });
@@ -192,7 +192,7 @@ describe("ElizaClient streaming chat endpoints", () => {
     expect(fullTexts).toEqual(["world", "Hello world"]);
     expect(result).toEqual({
       text: "Hello world",
-      agentName: "Eliza",
+      agentName: "Milady",
       completed: false,
     });
   });
@@ -215,7 +215,7 @@ describe("ElizaClient streaming chat endpoints", () => {
     expect(tokens).toEqual(["Hello wrld", "Hello world", "!"]);
     expect(result).toEqual({
       text: "Hello world!",
-      agentName: "Eliza",
+      agentName: "Milady",
       completed: false,
     });
   });
@@ -241,7 +241,7 @@ describe("ElizaClient streaming chat endpoints", () => {
     expect(fullTexts).toEqual(["Hello wrld", "Hello world", "Hello world!"]);
     expect(result).toEqual({
       text: "Hello world!",
-      agentName: "Eliza",
+      agentName: "Milady",
       completed: false,
     });
   });

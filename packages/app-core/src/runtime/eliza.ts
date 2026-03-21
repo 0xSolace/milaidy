@@ -291,7 +291,7 @@ async function repairRuntimeAfterBoot(
   await ensureRuntimeSqlCompatibility(runtime);
   await ensureAutonomyBootstrapContext(runtime);
 
-  installDatabaseTrajectoryLogger(runtime);
+  await installDatabaseTrajectoryLogger(runtime);
 
   if (!runtime.getService("AUTONOMY")) {
     try {

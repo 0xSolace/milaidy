@@ -425,7 +425,7 @@ describe("VectorBrowserView Component", () => {
     const errorText = root.findAll(
       (node) =>
         typeof node.children[0] === "string" &&
-        node.children[0].includes("vectorbrowserview.DatabaseNotAvailab"),
+        node.children[0].includes("databaseview.DatabaseNotAvailab"),
     );
     expect(errorText.length).toBeGreaterThan(0);
 
@@ -460,8 +460,8 @@ describe("VectorBrowserView Component", () => {
 
     // Should have List, 2D, and 3D buttons
     const listButton = findButtonByText(root, "vectorbrowserview.List");
-    const graph2DButton = findButtonByText(root, "2D");
-    const graph3DButton = findButtonByText(root, "3D");
+    const graph2DButton = findButtonByText(root, "vectorbrowserview.2D");
+    const graph3DButton = findButtonByText(root, "vectorbrowserview.3D");
 
     expect(listButton).not.toBeNull();
     expect(graph2DButton).not.toBeNull();
@@ -492,7 +492,7 @@ describe("VectorBrowserView Component", () => {
     await flush();
 
     const root = tree?.root;
-    const graph3DButton = findButtonByText(root, "3D");
+    const graph3DButton = findButtonByText(root, "vectorbrowserview.3D");
     expect(graph3DButton).not.toBeNull();
 
     // Click the 3D button
@@ -501,9 +501,9 @@ describe("VectorBrowserView Component", () => {
     });
     await flush();
 
-    // 3D button should now be active (has default variant styling, bg-primary)
-    const updatedButton = findButtonByText(root, "3D");
-    expect(updatedButton?.props.className).toContain("bg-primary");
+    // 3D button should now be active (has default variant styling, bg-accent)
+    const updatedButton = findButtonByText(root, "vectorbrowserview.3D");
+    expect(updatedButton?.props.className).toContain("bg-accent");
   });
 
   it("displays empty state when no memories found", async () => {

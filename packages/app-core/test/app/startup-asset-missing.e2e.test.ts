@@ -63,6 +63,12 @@ function Probe(props: { onChange: (snapshot: StartupSnapshot) => void }) {
 describe("startup failure: bundled assets missing", () => {
   beforeEach(() => {
     Object.assign(document.documentElement, { setAttribute: vi.fn() });
+    // Provide a persisted connection so the startup flow doesn't short-circuit
+    // to onboarding before polling getStatus.
+    localStorage.setItem(
+      "eliza:connection-mode",
+      JSON.stringify({ runMode: "local" }),
+    );
     mockClient.hasToken.mockReturnValue(false);
     mockClient.disconnectWs.mockImplementation(() => {});
     mockClient.getAuthStatus.mockResolvedValue({

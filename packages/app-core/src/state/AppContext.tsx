@@ -4451,7 +4451,7 @@ export function AppProvider({
         }),
       );
       setOnboardingComplete(true);
-      setTab("chat");
+      setTab("character-select");
     } catch (err) {
       const startOver = await confirmDesktopAction({
         title: "Setup Failed",
@@ -4521,7 +4521,6 @@ export function AppProvider({
     async (options?: OnboardingNextOptions) => {
       const CLOUD_STEPS: OnboardingStep[] = ["welcome", "cloudLogin"];
       const CUSTOM_STEPS: OnboardingStep[] = [
-        "identity",
         "connection",
         "rpc",
         "senses",
@@ -4544,20 +4543,6 @@ export function AppProvider({
       if (onboardingStep === "cloudLogin") {
         await handleOnboardingFinish();
         return;
-      }
-
-      // ── Custom flow ─────────────────────────────────────────────────
-      // Auto-select first style if none chosen
-      if (
-        onboardingStep === "identity" &&
-        !onboardingStyle &&
-        onboardingOptions?.styles?.length
-      ) {
-        setState("onboardingStyle", onboardingOptions.styles[0].catchphrase);
-      }
-
-      if (onboardingStep === "identity" && !onboardingName) {
-        setState("onboardingName", "Rin");
       }
 
       if (
@@ -4599,10 +4584,7 @@ export function AppProvider({
       // Advance to next step
       const currentIndex = STEP_ORDER.indexOf(onboardingStep);
       if (currentIndex < STEP_ORDER.length - 1) {
-        let nextStep = STEP_ORDER[currentIndex + 1];
-        if (nextStep === "identity" && !COMPANION_ENABLED) {
-          nextStep = STEP_ORDER[currentIndex + 2];
-        }
+        const nextStep = STEP_ORDER[currentIndex + 1];
         setOnboardingStep(nextStep);
         setOnboardingActiveGuide(
           onboardingMode === "advanced"
@@ -4617,7 +4599,6 @@ export function AppProvider({
   const handleOnboardingBack = useCallback(() => {
     const CLOUD_STEPS: OnboardingStep[] = ["welcome", "cloudLogin"];
     const CUSTOM_STEPS: OnboardingStep[] = [
-      "identity",
       "connection",
       "rpc",
       "senses",
@@ -4628,10 +4609,7 @@ export function AppProvider({
 
     const currentIndex = STEP_ORDER.indexOf(onboardingStep);
     if (currentIndex > 0) {
-      let previousStep = STEP_ORDER[currentIndex - 1];
-      if (previousStep === "identity" && !COMPANION_ENABLED) {
-        previousStep = STEP_ORDER[currentIndex - 2];
-      }
+      const previousStep = STEP_ORDER[currentIndex - 1];
       setOnboardingStep(previousStep);
       setOnboardingActiveGuide(
         onboardingMode === "advanced"
@@ -6062,9 +6040,9 @@ export function AppProvider({
       const urlTab = tabFromPath(navPath);
 
       // If the user navigates directly to /character while onboarding is incomplete,
-      // override the persisted step to show them the character select page.
+      // override the persisted step to show them the connection step.
       if (onboardingNeedsOptions && navPath === "/character") {
-        setOnboardingStepRaw("identity");
+        setOnboardingStepRaw("connection");
       }
 
       const shouldStartAtCharacterSelect = shouldStartAtCharacterSelectOnLaunch(

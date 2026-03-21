@@ -131,6 +131,7 @@ import { AppProvider, useApp } from "@miladyai/app-core/state";
 
 type ProbeApi = {
   handleNewConversation: () => Promise<void>;
+  switchShellView: ReturnType<typeof useApp>["switchShellView"];
 };
 
 type Snapshot = {
@@ -147,8 +148,9 @@ function Probe(props: {
   useEffect(() => {
     props.onReady({
       handleNewConversation: () => app.handleNewConversation(),
+      switchShellView: app.switchShellView,
     });
-  }, [app.handleNewConversation, props]);
+  }, [app.handleNewConversation, app.switchShellView, props]);
 
   useEffect(() => {
     props.onChange({
@@ -183,6 +185,11 @@ describe("companion greeting wave", () => {
     vi.useFakeTimers();
     localStorage.clear();
     sessionStorage.clear();
+    // Persist a connection mode so the init flow proceeds past onboarding gate
+    localStorage.setItem(
+      "eliza:connection-mode",
+      JSON.stringify({ runMode: "local" }),
+    );
     window.history.replaceState({}, "", "/chat");
     Object.assign(window, {
       setTimeout: globalThis.setTimeout,
@@ -356,8 +363,8 @@ describe("companion greeting wave", () => {
       if (options?.bootstrapConversation) {
         expect(mockClient.createConversation).not.toHaveBeenCalled();
         expect(snapshot).toMatchObject({
-          tab: "character-select",
-          uiShellMode: "native",
+          tab: "companion",
+          uiShellMode: "companion",
         });
         return;
       }
@@ -365,8 +372,8 @@ describe("companion greeting wave", () => {
         "conv-existing",
       );
       expect(snapshot).toMatchObject({
-        tab: "character-select",
-        uiShellMode: "native",
+        tab: "companion",
+        uiShellMode: "companion",
       });
     });
 
@@ -411,7 +418,25 @@ describe("companion greeting wave", () => {
     });
   });
 
-  it("does not wave after creating a new chat outside companion mode", async () => {
+  it("does not wave when creating a new chat with a non-persisted greeting", async () => {
+    // Override createConversation to return a non-persisted greeting —
+    // the wave should only fire for persisted greetings.
+    mockClient.createConversation.mockResolvedValue({
+      conversation: {
+        id: "conv-created",
+        title: "New Chat",
+        roomId: "room-created",
+        createdAt: "2026-02-03T00:00:00.000Z",
+        updatedAt: "2026-02-03T00:00:00.000Z",
+      },
+      greeting: {
+        text: "hello there",
+        agentName: "Milady",
+        generated: true,
+        persisted: false,
+      },
+    });
+
     const { api, tree, events } = await renderApp();
 
     await act(async () => {

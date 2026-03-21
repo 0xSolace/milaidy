@@ -152,6 +152,10 @@ vi.mock("@miladyai/app-core/api", () => ({
   },
 }));
 
+vi.mock("@miladyai/app-core/state", () => ({
+  useApp: () => ({ uiLanguage: "en", t: (k: string) => k }),
+}));
+
 import { client } from "@miladyai/app-core/api";
 import { VectorBrowserView } from "@miladyai/app-core/components/VectorBrowserView";
 
@@ -347,7 +351,7 @@ describe("VectorBrowserView async cleanup", () => {
     await flush();
 
     const threeDButton = Array.from(host.querySelectorAll("button")).find(
-      (button) => button.textContent?.trim() === "3D",
+      (button) => button.textContent?.trim() === "vectorbrowserview.3D",
     );
     expect(threeDButton).toBeTruthy();
 

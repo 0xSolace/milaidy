@@ -225,6 +225,7 @@ describe("AppContext autonomy replay", () => {
   const originalFetch = globalThis.fetch;
 
   beforeEach(() => {
+    localStorage.setItem("eliza:connection-mode", JSON.stringify({ runMode: "local" }));
     window.history.replaceState({}, "", "/chat");
     Object.assign(window, {
       setTimeout: globalThis.setTimeout,

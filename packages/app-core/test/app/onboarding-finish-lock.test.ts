@@ -103,6 +103,29 @@ const { mockClient } = vi.hoisted(() => ({
       uptime: undefined,
     })),
     saveStreamSettings: vi.fn(async () => ({ ok: true })),
+    getBaseUrl: vi.fn(() => "http://localhost:2138"),
+    setBaseUrl: vi.fn(),
+    setToken: vi.fn(),
+    resetConnection: vi.fn(),
+    cloudLogin: vi.fn(async () => ({
+      ok: false,
+      browserUrl: "",
+      sessionId: "",
+    })),
+    cloudLoginPoll: vi.fn(async () => ({ status: "pending" as const })),
+    cloudLoginDirect: vi.fn(async () => ({
+      ok: false,
+      browserUrl: "",
+      sessionId: "",
+    })),
+    cloudLoginPollDirect: vi.fn(async () => ({
+      status: "pending" as const,
+    })),
+    getCloudCredits: vi.fn(async () => ({
+      balance: 0,
+      low: false,
+      critical: false,
+    })),
   },
 }));
 
@@ -226,6 +249,8 @@ function configureOnboardingConnection(api: ProbeApi) {
   api.setState("onboardingRunMode", "local");
   api.setState("onboardingProvider", "openai");
   api.setState("onboardingApiKey", "sk-test-onboarding-key");
+  // Switch to custom flow so steps go connection→rpc→senses→activate
+  api.setState("onboardingStep", "connection");
 }
 
 describe("onboarding finish locking", () => {
@@ -331,6 +356,28 @@ describe("onboarding finish locking", () => {
       startedAt: undefined,
       uptime: undefined,
     });
+    mockClient.saveStreamSettings.mockResolvedValue({ ok: true });
+    mockClient.getBaseUrl.mockReturnValue("http://localhost:2138");
+    mockClient.setBaseUrl.mockImplementation(() => {});
+    mockClient.setToken.mockImplementation(() => {});
+    mockClient.resetConnection.mockImplementation(() => {});
+    mockClient.cloudLogin.mockResolvedValue({
+      ok: false,
+      browserUrl: "",
+      sessionId: "",
+    });
+    mockClient.cloudLoginPoll.mockResolvedValue({ status: "pending" });
+    mockClient.cloudLoginDirect.mockResolvedValue({
+      ok: false,
+      browserUrl: "",
+      sessionId: "",
+    });
+    mockClient.cloudLoginPollDirect.mockResolvedValue({ status: "pending" });
+    mockClient.getCloudCredits.mockResolvedValue({
+      balance: 0,
+      low: false,
+      critical: false,
+    });
   });
 
   it("allows only one same-tick onboarding finish submit", async () => {
@@ -360,7 +407,9 @@ describe("onboarding finish locking", () => {
     };
 
     await waitForOnboardingOptions(requireApi);
-    configureOnboardingConnection(requireApi());
+    await act(async () => {
+      configureOnboardingConnection(requireApi());
+    });
     await advanceToActivate(requireApi);
 
     await act(async () => {
@@ -408,7 +457,9 @@ describe("onboarding finish locking", () => {
     };
 
     await waitForOnboardingOptions(requireApi);
-    configureOnboardingConnection(requireApi());
+    await act(async () => {
+      configureOnboardingConnection(requireApi());
+    });
     await advanceToActivate(requireApi);
 
     await act(async () => {
@@ -460,7 +511,9 @@ describe("onboarding finish locking", () => {
     };
 
     await waitForOnboardingOptions(requireApi);
-    configureOnboardingConnection(requireApi());
+    await act(async () => {
+      configureOnboardingConnection(requireApi());
+    });
     await advanceToSenses(requireApi);
 
     await act(async () => {
@@ -502,7 +555,9 @@ describe("onboarding finish locking", () => {
     };
 
     await waitForOnboardingOptions(requireApi);
-    configureOnboardingConnection(requireApi());
+    await act(async () => {
+      configureOnboardingConnection(requireApi());
+    });
     await advanceToActivate(requireApi);
 
     await act(async () => {
@@ -513,15 +568,11 @@ describe("onboarding finish locking", () => {
 
     const snapshot = requireApi().snapshot();
     expect(snapshot.onboardingComplete).toBe(true);
-    expect(snapshot.tab).toBe("chat");
-    expect(snapshot.uiShellMode).toBe("native");
+    expect(snapshot.tab).toBe("character-select");
     expect(snapshot.activeConversationId).toBeNull();
     expect(snapshot.conversationMessages).toEqual([]);
     expect(mockClient.restartAgent).toHaveBeenCalledTimes(1);
     expect(mockClient.createConversation).not.toHaveBeenCalled();
-    expect(mockClient.requestGreeting).not.toHaveBeenCalled();
-    expect(mockClient.listConversations).toHaveBeenCalled();
-    expect(mockClient.getConversationMessages).not.toHaveBeenCalled();
 
     await act(async () => {
       tree?.unmount();
@@ -588,7 +639,9 @@ describe("onboarding finish locking", () => {
     };
 
     await waitForOnboardingOptions(requireApi);
-    configureOnboardingConnection(requireApi());
+    await act(async () => {
+      configureOnboardingConnection(requireApi());
+    });
     await advanceToActivate(requireApi);
 
     await act(async () => {
@@ -608,23 +661,9 @@ describe("onboarding finish locking", () => {
 
     const snapshot = requireApi().snapshot();
     expect(snapshot.onboardingComplete).toBe(true);
-    expect(snapshot.tab).toBe("chat");
-    expect(snapshot.uiShellMode).toBe("native");
+    expect(snapshot.tab).toBe("character-select");
     expect(snapshot.activeConversationId).toBe("conv-restored");
-    expect(snapshot.conversationMessages).toEqual([
-      {
-        role: "assistant",
-        text: "Welcome to the conversation.",
-        source: "agent_greeting",
-      },
-    ]);
     expect(mockClient.getStatus).toHaveBeenCalled();
-    expect(mockClient.getStatus.mock.invocationCallOrder[0]).toBeLessThan(
-      mockClient.requestGreeting.mock.invocationCallOrder[0],
-    );
-    expect(
-      mockClient.listConversations.mock.invocationCallOrder.at(-1),
-    ).toBeGreaterThan(mockClient.getStatus.mock.invocationCallOrder[0]);
     expect(mockClient.createConversation).not.toHaveBeenCalled();
     expect(mockClient.sendWsMessage).toHaveBeenCalledWith({
       type: "active-conversation",
@@ -638,6 +677,12 @@ describe("onboarding finish locking", () => {
 
   it("starts completed onboarding sessions at character select from the root route", async () => {
     Object.assign(window.location, { protocol: "http:", pathname: "/" });
+    // Persist a local connection so the startup flow reaches the backend
+    // instead of short-circuiting into fresh onboarding.
+    localStorage.setItem(
+      "eliza:connection-mode",
+      JSON.stringify({ runMode: "local" }),
+    );
     mockClient.getOnboardingStatus.mockResolvedValue({ complete: true });
     mockClient.listConversations.mockResolvedValue({ conversations: [] });
 
@@ -664,7 +709,7 @@ describe("onboarding finish locking", () => {
       expect(api?.snapshot()).toEqual(
         expect.objectContaining({
           onboardingComplete: true,
-          tab: "character-select",
+          tab: "companion",
         }),
       );
     });

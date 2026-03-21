@@ -133,9 +133,9 @@ describe("ChatComposer mic controls", () => {
     const { micButton } = renderComposer();
     const icon = micButton.findByType("svg" as React.ElementType);
 
-    expect(String(micButton.props.className)).not.toContain("border");
-    expect(String(micButton.props.className)).toContain("text-muted");
-    expect(String(micButton.props.className)).toContain("hover:bg-black/5");
+    expect(String(micButton.props.className)).toContain("border-border/50");
+    expect(String(micButton.props.className)).toContain("text-txt");
+    expect(String(micButton.props.className)).toContain("bg-bg/50");
     expect(String(icon.props.className)).toContain("w-4 h-4");
   });
 
@@ -146,9 +146,9 @@ describe("ChatComposer mic controls", () => {
       },
     });
 
-    expect(String(micButton.props.className)).toContain("bg-[#ff6b70]");
+    expect(String(micButton.props.className)).toContain("bg-accent");
     expect(String(micButton.props.className)).toContain("text-white");
-    expect(String(micButton.props.className)).not.toContain("shadow-[0_0_");
+    expect(String(micButton.props.className)).toContain("shadow-[0_0_15px_rgba(var(--accent)");
   });
 
   it("keeps the default chat input neutral while listening", () => {

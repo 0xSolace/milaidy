@@ -289,7 +289,7 @@ describe("AppsView", () => {
     });
     await flush();
 
-    const launchButton = findButtonByText(tree?.root, "Launch");
+    const launchButton = findButtonByText(tree?.root, "appsview.Launch");
     await act(async () => {
       await launchButton.props.onClick();
     });
@@ -345,7 +345,7 @@ describe("AppsView", () => {
     await flush();
 
     await act(async () => {
-      await findButtonByText(tree?.root, "Launch").props.onClick();
+      await findButtonByText(tree?.root, "appsview.Launch").props.onClick();
     });
 
     expect(setActionNotice).toHaveBeenCalledWith(
@@ -385,7 +385,7 @@ describe("AppsView", () => {
     await flush();
 
     await act(async () => {
-      await findButtonByText(tree?.root, "Launch").props.onClick();
+      await findButtonByText(tree?.root, "appsview.Launch").props.onClick();
     });
 
     expect(popupSpy).toHaveBeenCalledWith(
@@ -432,7 +432,7 @@ describe("AppsView", () => {
     await flush();
 
     await act(async () => {
-      await findButtonByText(tree?.root, "Launch").props.onClick();
+      await findButtonByText(tree?.root, "appsview.Launch").props.onClick();
     });
     expect(setActionNotice).toHaveBeenCalledWith(
       "Popup blocked while opening Babylon. Allow popups and try again.",
@@ -441,7 +441,7 @@ describe("AppsView", () => {
     );
 
     await act(async () => {
-      await findButtonByText(tree?.root, "Launch").props.onClick();
+      await findButtonByText(tree?.root, "appsview.Launch").props.onClick();
     });
     expect(setActionNotice).toHaveBeenCalledWith(
       "Failed to launch Babylon: network down",
@@ -487,7 +487,7 @@ describe("AppsView", () => {
     await flush();
 
     await act(async () => {
-      await findButtonByText(tree?.root, "Launch").props.onClick();
+      await findButtonByText(tree?.root, "appsview.Launch").props.onClick();
     });
 
     expect(request).toHaveBeenCalledWith({
@@ -563,7 +563,7 @@ describe("AppsView", () => {
     ).toBe(0);
 
     await act(async () => {
-      await findButtonByText(root, "appsview.Refresh").props.onClick();
+      await findButtonByText(root, "common.refresh").props.onClick();
     });
     expect(mockClientFns.listApps).toHaveBeenCalledTimes(2);
 
@@ -586,7 +586,7 @@ describe("AppsView", () => {
     ).toBe(0);
   });
 
-  it("wires Hyperscape controls for message + command + telemetry routes", async () => {
+  it("opens detail pane for app with unregistered uiExtension without crashing", async () => {
     const setState = vi.fn<AppsContextStub["setState"]>();
     const setActionNotice = vi.fn<AppsContextStub["setActionNotice"]>();
     mockUseApp.mockReturnValue({
@@ -599,51 +599,6 @@ describe("AppsView", () => {
       uiExtension: { detailPanelId: "hyperscape-embedded-agents" },
     });
     mockClientFns.listApps.mockResolvedValue([app]);
-    mockClientFns.listHyperscapeEmbeddedAgents.mockResolvedValue({
-      success: true,
-      agents: [
-        {
-          agentId: "agent-1",
-          characterId: "char-1",
-          accountId: "acct-1",
-          name: "ArenaBot",
-          scriptedRole: "balanced",
-          state: "running",
-          entityId: "entity-1",
-          position: [1, 2, 3],
-          health: 10,
-          maxHealth: 20,
-          startedAt: 1,
-          lastActivity: 2,
-          error: null,
-        },
-      ],
-      count: 1,
-    });
-    mockClientFns.getHyperscapeAgentGoal.mockResolvedValue({
-      success: true,
-      goal: {
-        description: "Chop trees",
-        progressPercent: 50,
-      },
-      availableGoals: [],
-    });
-    mockClientFns.getHyperscapeAgentQuickActions.mockResolvedValue({
-      success: true,
-      nearbyLocations: [],
-      availableGoals: [],
-      quickCommands: [
-        {
-          id: "cmd-1",
-          label: "Woodcutting",
-          command: "chop nearest tree",
-          icon: "TreePine",
-          available: true,
-        },
-      ],
-      inventory: [],
-      playerPosition: null,
-    });
 
     let tree: TestRenderer.ReactTestRenderer;
     await act(async () => {
@@ -655,65 +610,20 @@ describe("AppsView", () => {
       findButtonByTitle(tree?.root, "Open Hyperscape").props.onClick();
     });
     await flush();
-    await waitFor(
-      () =>
-        tree?.root.findAll(
-          (node) =>
-            node.type === "button" &&
-            text(node).includes("Hyperscape Controls"),
-        ).length === 1,
-      "Hyperscape controls toggle did not render",
-    );
 
-    await act(async () => {
-      tree?.root
-        .findAll(
-          (node) =>
-            node.type === "button" &&
-            text(node).includes("Hyperscape Controls"),
-        )[0]
-        ?.props.onClick();
-    });
-    await flush();
-
-    expect(mockClientFns.listHyperscapeEmbeddedAgents).toHaveBeenCalled();
-    expect(mockClientFns.getHyperscapeAgentGoal).toHaveBeenCalledWith(
-      "agent-1",
-    );
-    expect(mockClientFns.getHyperscapeAgentQuickActions).toHaveBeenCalledWith(
-      "agent-1",
-    );
-
-    const messageInput = findTextareaByPlaceholder(
-      tree?.root,
-      "appsview.SaySomethingToSel",
-    );
-    await act(async () => {
-      messageInput.props.onChange({ target: { value: "hello there" } });
-    });
-    await act(async () => {
-      await findButtonByText(tree?.root, "Send Message").props.onClick();
-    });
-    expect(mockClientFns.sendHyperscapeAgentMessage).toHaveBeenCalledWith(
-      "agent-1",
-      "hello there",
-    );
-
-    const commandDataInput = findTextareaByPlaceholder(
-      tree?.root,
-      "appsview.Target000",
-    );
-    await act(async () => {
-      commandDataInput.props.onChange({
-        target: { value: '{"message":"hi"}' },
-      });
-    });
-    await act(async () => {
-      await findButtonByText(tree?.root, "Send Command").props.onClick();
-    });
+    // The detail pane should render with a Back button and app name
     expect(
-      mockClientFns.sendHyperscapeEmbeddedAgentCommand,
-    ).toHaveBeenCalledWith("char-1", "chat", { message: "hi" });
+      tree?.root.findAll((node) => text(node) === "appsview.Back").length,
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      tree?.root.findAll((node) => text(node) === "Hyperscape").length,
+    ).toBeGreaterThan(0);
+
+    // The extension panel ID is not registered, so no extension UI should render.
+    // Hyperscape API calls should NOT be made when the extension is absent.
+    expect(
+      mockClientFns.listHyperscapeEmbeddedAgents,
+    ).not.toHaveBeenCalled();
   });
 
   it("opens app details and can return to the app list", async () => {

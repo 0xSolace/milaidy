@@ -42,16 +42,20 @@ vi.mock("@miladyai/ui", () => ({
 }));
 
 vi.mock("lucide-react", () => ({
-  AlertTriangle: () => React.createElement("span", null, "⚠"),
-  CircleUserRound: () => React.createElement("span", null, "👤"),
-  Bug: () => React.createElement("span", null, "🐛"),
-  CircleDollarSign: () => React.createElement("span", null, "💰"),
-  Menu: () => React.createElement("span", null, "☰"),
-  Monitor: () => React.createElement("span", null, "🖥"),
-  Smartphone: () => React.createElement("span", null, "📱"),
-  UserRound: () => React.createElement("span", null, "👤"),
-  Users: () => React.createElement("span", null, "👥"),
-  X: () => React.createElement("span", null, "✕"),
+  AlertTriangle: () => React.createElement("span", null, "alert"),
+  CircleUserRound: () => React.createElement("span", null, "user"),
+  Bug: () => React.createElement("span", null, "bug"),
+  CircleDollarSign: () => React.createElement("span", null, "dollar"),
+  Menu: () => React.createElement("span", null, "menu"),
+  MessageCirclePlus: () => React.createElement("span", null, "msg"),
+  Monitor: () => React.createElement("span", null, "monitor"),
+  PencilLine: () => React.createElement("span", null, "pencil"),
+  Smartphone: () => React.createElement("span", null, "phone"),
+  UserRound: () => React.createElement("span", null, "user"),
+  Users: () => React.createElement("span", null, "users"),
+  Volume2: () => React.createElement("span", null, "vol"),
+  VolumeX: () => React.createElement("span", null, "mute"),
+  X: () => React.createElement("span", null, "x"),
 }));
 
 import { Header } from "@miladyai/app-core/components/Header";

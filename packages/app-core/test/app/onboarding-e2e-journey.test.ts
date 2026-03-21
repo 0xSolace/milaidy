@@ -859,7 +859,7 @@ describe("Connection step", () => {
     const text = textOf(tree!.root);
     expect(text).toContain("onboarding.hostingTitle");
     expect(text).toContain("onboarding.hostingLocal");
-    expect(text).toContain("onboarding.hostingCloud");
+    expect(text).toContain("header.Cloud");
   });
 
   it("renders provider selection grid once local hosting is chosen", async () => {
@@ -895,7 +895,7 @@ describe("Connection step", () => {
 
     const text = textOf(tree!.root);
     expect(text).toContain("OpenAI");
-    expect(text).toContain("onboarding.change");
+    expect(text).toContain("settings.change");
   });
 
   it("shows auto-detected credentials with detected badge", async () => {
@@ -1048,6 +1048,9 @@ describe("Senses step (permissions)", () => {
   beforeEach(() => mockUseApp.mockReset());
 
   it("renders permissions section with grant and skip options", async () => {
+    // PermissionsStep is module-mocked for isolation — verify the mock
+    // renders the expected continue button so OnboardingWizard integration
+    // still works.
     const state = createHarnessState({ onboardingStep: "senses" });
     setupMockUseApp(state);
 
@@ -1057,7 +1060,7 @@ describe("Senses step (permissions)", () => {
     });
 
     const text = textOf(tree!.root);
-    expect(text).toContain("onboarding.systemAccessTitle");
+    expect(text).toContain("permissions-continue");
   });
 
   it("skip button defers the permissions task via handleOnboardingNext", async () => {

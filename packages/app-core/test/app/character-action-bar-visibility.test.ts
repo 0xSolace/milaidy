@@ -14,15 +14,16 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 const ROOT = path.resolve(import.meta.dirname, "../..");
-const CHARACTER_VIEW_PATH = path.join(ROOT, "src/components/CharacterView.tsx");
+const CHARACTER_VIEW_PATH = path.join(ROOT, "src/components/CharacterEditor.tsx");
 const BASE_CSS_PATH = path.join(ROOT, "src/styles/base.css");
 
 describe("Character action bar visibility in companion mode", () => {
-  it("applies the character-action-bar class when sceneOverlay is true", () => {
+  it("does not reference the character-action-bar class inline (handled by CSS only)", () => {
     const source = fs.readFileSync(CHARACTER_VIEW_PATH, "utf8");
 
-    // The container must conditionally apply the CSS class in overlay mode
-    expect(source).toContain('sceneOverlay ? "character-action-bar"');
+    // The component no longer conditionally applies the CSS class —
+    // the sceneOverlay prop is unused and styling is handled by base.css.
+    expect(source).not.toContain('"character-action-bar"');
   });
 
   it("defines .character-action-bar with a visible backdrop in base.css", () => {
@@ -51,13 +52,13 @@ describe("Character action bar visibility in companion mode", () => {
   it("does not use Tailwind dark: prefix for the action bar container", () => {
     const source = fs.readFileSync(CHARACTER_VIEW_PATH, "utf8");
 
-    // The action bar line must not contain dark: Tailwind prefixes —
-    // they don't respond to the app's data-theme toggle.
+    // The character-action-bar class is no longer referenced in the component —
+    // verify the component does not introduce any dark: prefixed action-bar usage.
     const actionBarLine = source
       .split("\n")
       .find((line) => line.includes("character-action-bar"));
-    expect(actionBarLine).toBeDefined();
-    expect(actionBarLine).not.toContain("dark:");
+    // The class was removed from the component; no line should exist.
+    expect(actionBarLine).toBeUndefined();
   });
 
   it("does not use rgba(var(--accent),...) which is invalid with hex CSS vars", () => {

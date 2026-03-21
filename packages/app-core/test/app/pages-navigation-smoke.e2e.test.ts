@@ -57,6 +57,8 @@ vi.mock("@miladyai/app-core/components", async () => {
     AppsPageView: () =>
       React.createElement("section", null, "AppsPageView Ready"),
     BugReportModal: () => React.createElement("div", null, "BugReportModal"),
+    CharacterEditor: () =>
+      React.createElement("section", null, "CharacterView Ready"),
     CharacterView: () =>
       React.createElement("section", null, "CharacterView Ready"),
     ChatView: () => React.createElement("section", null, "ChatView Ready"),
@@ -505,9 +507,14 @@ describe("pages navigation smoke (e2e)", () => {
         renderedTree.update(React.createElement(App));
       });
       const content = mainContent(renderedTree);
-      expect(content).toContain(
-        `CompanionShell Ready: ${expectedShellTab(tab)}`,
-      );
+      // Character tabs force native shell mode, so they render outside CompanionShell
+      if (tab === "character" || tab === "character-select") {
+        expect(content).toContain("CharacterView Ready");
+      } else {
+        expect(content).toContain(
+          `CompanionShell Ready: ${expectedShellTab(tab)}`,
+        );
+      }
       expectValidContent(content);
     }
 

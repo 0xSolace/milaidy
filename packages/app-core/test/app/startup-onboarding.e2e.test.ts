@@ -155,6 +155,7 @@ vi.mock("@miladyai/app-core/components", async () => {
     AdvancedPageView: () =>
       React.createElement("div", null, "AdvancedPageView"),
     AppsPageView: () => React.createElement("div", null, "AppsPageView"),
+    CharacterEditor: () => React.createElement("div", null, "CharacterView"),
     CharacterView: () => React.createElement("div", null, "CharacterView"),
     ChatView: () => React.createElement("div", null, "ChatView"),
     ConnectorsPageView: () =>
