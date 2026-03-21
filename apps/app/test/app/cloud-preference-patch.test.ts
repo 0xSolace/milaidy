@@ -3,7 +3,7 @@ import {
   normalizeConfigForLocalProviderPreference,
   shouldMaskInactiveCloudStatus,
   shouldPreferLocalProviderConfig,
-} from "@miladyai/app-core/src/cloud-preference-patch";
+} from "@miladyai/app-core/platform";
 import { describe, expect, it, vi } from "vitest";
 
 describe("cloud preference patch", () => {

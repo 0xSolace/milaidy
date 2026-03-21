@@ -93,7 +93,7 @@ vi.mock("@miladyai/ui", () => {
   };
 });
 
-vi.mock("@miladyai/app-core/src/components/CharacterRoster", () => {
+vi.mock("@miladyai/app-core/components", () => {
   const React = require("react") as typeof import("react");
 
   return {

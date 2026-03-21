@@ -3,7 +3,7 @@ import { useBranding } from "../../config/branding";
 
 export function ActivateStep() {
   const branding = useBranding();
-  const { onboardingName, handleOnboardingNext, t } = useApp();
+  const { onboardingName, handleOnboardingNext, t, onboardingRestarting } = useApp();
 
   return (
     <>
@@ -25,8 +25,13 @@ export function ActivateStep() {
           className="onboarding-confirm-btn"
           onClick={() => handleOnboardingNext()}
           type="button"
+          disabled={onboardingRestarting}
         >
-          {t("onboarding.enter")}
+          {onboardingRestarting ? (
+            <div className="onboarding-spinner" style={{ margin: "auto" }} />
+          ) : (
+            t("onboarding.enter")
+          )}
         </button>
       </div>
     </>

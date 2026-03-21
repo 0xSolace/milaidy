@@ -4,7 +4,7 @@ import {
   clearForceFreshOnboarding,
   enableForceFreshOnboarding,
   installForceFreshOnboardingClientPatch,
-} from "@miladyai/app-core/src/onboarding-reset";
+} from "@miladyai/app-core/platform";
 import React, { useEffect } from "react";
 import TestRenderer, { act } from "react-test-renderer";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -110,7 +110,7 @@ vi.mock("@miladyai/app-core/api/client", async (importOriginal) => {
   };
 });
 
-import { installLocalProviderCloudPreferencePatch } from "@miladyai/app-core/src/cloud-preference-patch";
+import { installLocalProviderCloudPreferencePatch } from "@miladyai/app-core/platform";
 import type { OnboardingStep } from "@miladyai/app-core/state";
 import { AppProvider, useApp } from "@miladyai/app-core/state";
 import {

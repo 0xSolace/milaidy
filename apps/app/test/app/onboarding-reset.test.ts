@@ -6,7 +6,7 @@ import {
   enableForceFreshOnboarding,
   installForceFreshOnboardingClientPatch,
   isForceFreshOnboardingEnabled,
-} from "@miladyai/app-core/src/onboarding-reset";
+} from "@miladyai/app-core/platform";
 import { describe, expect, it, vi } from "vitest";
 
 describe("force fresh onboarding reset", () => {

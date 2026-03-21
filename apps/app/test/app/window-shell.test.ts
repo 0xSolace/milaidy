@@ -4,7 +4,7 @@ import {
   resolveDetachedShellTarget,
   shouldInstallMainWindowOnboardingPatches,
   syncDetachedShellLocation,
-} from "@miladyai/app-core/src/window-shell";
+} from "@miladyai/app-core/platform";
 import { describe, expect, it, vi } from "vitest";
 
 describe("window shell routing", () => {

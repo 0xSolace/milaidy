@@ -44,7 +44,7 @@ vi.mock("@miladyai/app-core/components", () => ({
   VoiceConfigView: () => <div data-testid="voice-config-view" />,
 }));
 
-import { DetachedShellRoot } from "@miladyai/app-core/src/DetachedShellRoot";
+import { DetachedShellRoot } from "@miladyai/app-core/shell";
 
 describe("DetachedShellRoot", () => {
   const retryStartup = vi.fn();

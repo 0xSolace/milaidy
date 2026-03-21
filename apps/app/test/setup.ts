@@ -56,7 +56,7 @@ function isInjectedElectrobunRuntime(): boolean {
   );
 }
 
-vi.mock("@miladyai/app-core/bridge/electrobun-rpc", () => {
+vi.mock("@miladyai/app-core/bridge/electrobun-rpc.js", () => {
   function getElectrobunRendererRpc() {
     if (typeof window === "undefined") return null;
     const w = window as unknown as Record<string, unknown>;

@@ -17,7 +17,7 @@ vi.mock("@miladyai/app-core/state", () => ({
   useApp: useAppMock,
 }));
 
-import { DesktopSurfaceNavigationRuntime } from "@miladyai/app-core/src/DesktopSurfaceNavigationRuntime";
+import { DesktopSurfaceNavigationRuntime } from "@miladyai/app-core/shell";
 
 describe("DesktopSurfaceNavigationRuntime", () => {
   const setTab = vi.fn();

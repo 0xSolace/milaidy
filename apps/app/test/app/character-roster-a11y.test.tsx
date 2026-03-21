@@ -35,7 +35,7 @@ vi.mock("@miladyai/app-core/onboarding-presets", () => ({
 import {
   CharacterRoster,
   type CharacterRosterEntry,
-} from "@miladyai/app-core/src/components/CharacterRoster";
+} from "@miladyai/app-core/components";
 
 const ENTRIES: CharacterRosterEntry[] = [
   {

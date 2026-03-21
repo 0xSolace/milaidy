@@ -213,7 +213,16 @@ export default defineConfig({
           },
           {
             find: /^@miladyai\/app-core\/(.*)$/,
-            replacement: `${localSource}/$1`,
+            replacement: "RUNTIME_RESOLVE_APP_CORE",
+            customResolver(source, importer, options) {
+              const subpath = source.replace(/^@miladyai\/app-core\//, "");
+              const fullPath = path.join(localSource, subpath);
+              if (fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory()) {
+                return path.join(fullPath, "index.ts");
+              }
+              // Allow Vite to add .ts/.tsx/.css etc
+              return fullPath;
+            },
           },
           {
             find: /^@miladyai\/ui$/,
@@ -221,7 +230,15 @@ export default defineConfig({
           },
           {
             find: /^@miladyai\/ui\/(.*)$/,
-            replacement: `${uiSource}/$1`,
+            replacement: "RUNTIME_RESOLVE_UI",
+            customResolver(source) {
+              const subpath = source.replace(/^@miladyai\/ui\//, "");
+              const fullPath = path.join(uiSource, subpath);
+              if (fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory()) {
+                return path.join(fullPath, "index.ts");
+              }
+              return fullPath;
+            },
           },
           {
             find: /^@elizaos\/agent$/,
@@ -229,7 +246,15 @@ export default defineConfig({
           },
           {
             find: /^@elizaos\/agent\/(.*)$/,
-            replacement: `${autonomousSource}/$1`,
+            replacement: "RUNTIME_RESOLVE_AGENT",
+            customResolver(source) {
+              const subpath = source.replace(/^@elizaos\/agent\//, "");
+              const fullPath = path.join(autonomousSource, subpath);
+              if (fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory()) {
+                return path.join(fullPath, "index.ts");
+              }
+              return fullPath;
+            }
           },
         ];
       })(),

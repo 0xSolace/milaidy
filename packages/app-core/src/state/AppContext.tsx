@@ -4421,6 +4421,12 @@ export function AppProvider({
         connection,
         walletConfig: nextWalletConfig,
       });
+
+      // Give the backend a moment to finish persisting the config updates
+      // (both from our compat interception and upstream ElizaOS core)
+      // before we abruptly restart the agent process.
+      await new Promise((r) => setTimeout(r, 1000));
+
       try {
         setAgentStatus(await client.restartAgent());
       } catch {
@@ -5275,7 +5281,7 @@ export function AppProvider({
     };
 
     const initApp = async () => {
-      if (import.meta.env.DEV && startupRunId > 0) {
+      if (process.env.NODE_ENV !== "production" && startupRunId > 0) {
         console.debug(`[milady] Retrying startup run #${startupRunId}`);
       }
       const BASE_DELAY_MS = 250;
