@@ -454,9 +454,7 @@ export function ReleaseCenterView() {
           setWgpuPassthrough(next);
           runWgpuAction(
             () => wgpuRef.current?.togglePassthrough?.(next),
-            next
-              ? "WGPU passthrough enabled."
-              : "WGPU passthrough disabled.",
+            next ? "WGPU passthrough enabled." : "WGPU passthrough disabled.",
           );
         }}
         onToggleTransparent={() => {
@@ -464,9 +462,7 @@ export function ReleaseCenterView() {
           setWgpuTransparent(next);
           runWgpuAction(
             () => wgpuRef.current?.toggleTransparent?.(next),
-            next
-              ? "WGPU transparency enabled."
-              : "WGPU transparency disabled.",
+            next ? "WGPU transparency enabled." : "WGPU transparency disabled.",
           );
         }}
       />

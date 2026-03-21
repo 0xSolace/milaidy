@@ -1,6 +1,11 @@
 import { Button, Input } from "@miladyai/ui";
 import { createElement } from "react";
-import { DefinitionRow, StatusPill, formatTimestamp, partitionDescription } from "./shared";
+import {
+  DefinitionRow,
+  StatusPill,
+  formatTimestamp,
+  partitionDescription,
+} from "./shared";
 import type {
   AppReleaseStatus,
   DesktopBuildInfo,
@@ -54,7 +59,10 @@ export function ReleaseStatusSection({
           tone={nativeReleaseTone}
         />
         {nativeUpdater?.channel ? (
-          <StatusPill label={`Channel: ${nativeUpdater.channel}`} tone="neutral" />
+          <StatusPill
+            label={`Channel: ${nativeUpdater.channel}`}
+            tone="neutral"
+          />
         ) : null}
       </div>
 
@@ -87,7 +95,9 @@ export function ReleaseStatusSection({
 
       <div className="grid gap-3 md:grid-cols-2">
         <div className="rounded-xl border border-border bg-bg p-3">
-          <div className="text-xs font-semibold text-txt">App Release Service</div>
+          <div className="text-xs font-semibold text-txt">
+            App Release Service
+          </div>
           <DefinitionRow
             label="Current version"
             value={updateStatus?.currentVersion}
@@ -138,7 +148,9 @@ export function ReleaseStatusSection({
             <Button
               size="sm"
               variant="outline"
-              disabled={busyAction === "apply-update" || !nativeUpdater?.updateReady}
+              disabled={
+                busyAction === "apply-update" || !nativeUpdater?.updateReady
+              }
               onClick={onApplyUpdate}
             >
               Apply Downloaded Update
@@ -170,7 +182,9 @@ export function ReleaseNotesSection({
   return (
     <section className="rounded-2xl border border-border bg-bg-accent p-4">
       <div className="mb-4">
-        <h3 className="text-sm font-semibold text-txt">Release Notes BrowserView</h3>
+        <h3 className="text-sm font-semibold text-txt">
+          Release Notes BrowserView
+        </h3>
         <p className="mt-1 text-xs text-muted">
           Opens release notes in a dedicated sandboxed BrowserView on its own
           persistent session.
@@ -204,7 +218,10 @@ export function ReleaseNotesSection({
 
         {releaseNotesWindow ? (
           <div className="rounded-xl border border-border bg-bg p-3 text-xs text-txt">
-            <DefinitionRow label="Window ID" value={releaseNotesWindow.windowId} />
+            <DefinitionRow
+              label="Window ID"
+              value={releaseNotesWindow.windowId}
+            />
             <DefinitionRow
               label="BrowserView ID"
               value={releaseNotesWindow.webviewId}
@@ -213,7 +230,8 @@ export function ReleaseNotesSection({
           </div>
         ) : (
           <div className="rounded-xl border border-border bg-bg p-3 text-xs text-muted">
-            Using updater URL: {nativeUpdater?.baseUrl ?? DEFAULT_RELEASE_NOTES_URL}
+            Using updater URL:{" "}
+            {nativeUpdater?.baseUrl ?? DEFAULT_RELEASE_NOTES_URL}
           </div>
         )}
       </div>
@@ -266,14 +284,18 @@ export function BuildRuntimeSection({
         <DefinitionRow
           label="Dock icon visible"
           value={
-            buildInfo?.platform === "darwin" ? String(dockVisible) : "macOS only"
+            buildInfo?.platform === "darwin"
+              ? String(dockVisible)
+              : "macOS only"
           }
         />
         <div className="mt-3 flex flex-wrap gap-2">
           <Button
             size="sm"
             variant="outline"
-            disabled={busyAction === "toggle-dock" || buildInfo?.platform !== "darwin"}
+            disabled={
+              busyAction === "toggle-dock" || buildInfo?.platform !== "darwin"
+            }
             onClick={onToggleDock}
           >
             {dockVisible ? "Hide Dock Icon" : "Show Dock Icon"}
@@ -410,8 +432,8 @@ export function WgpuSurfaceSection({
       <div className="mb-4">
         <h3 className="text-sm font-semibold text-txt">Browser WGPU Surface</h3>
         <p className="mt-1 text-xs text-muted">
-          Inline <code>&lt;electrobun-wgpu&gt;</code> preview plus browser WebGPU
-          compatibility status from the active desktop renderer.
+          Inline <code>&lt;electrobun-wgpu&gt;</code> preview plus browser
+          WebGPU compatibility status from the active desktop renderer.
         </p>
       </div>
 
@@ -467,7 +489,10 @@ export function WgpuSurfaceSection({
           <div className="mb-3 text-xs font-semibold text-txt">
             Browser WebGPU Status
           </div>
-          <DefinitionRow label="Inline surface ready" value={String(wgpuReady)} />
+          <DefinitionRow
+            label="Inline surface ready"
+            value={String(wgpuReady)}
+          />
           <DefinitionRow
             label="Renderer support"
             value={webGpuStatus?.available ? "Available" : "Not available"}
