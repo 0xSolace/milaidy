@@ -12,6 +12,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@miladyai/app-core/state", () => ({
   getVrmPreviewUrl: (index: number) => `/avatars/preview-${index}.png`,
+  CUSTOM_ONBOARDING_STEPS: [],
 }));
 
 // Stub out the onboarding-presets to avoid pulling in the full preset data

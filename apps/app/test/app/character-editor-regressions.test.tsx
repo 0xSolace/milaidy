@@ -34,6 +34,8 @@ vi.mock("@miladyai/app-core/events", () => ({
 
 vi.mock("@miladyai/app-core/state", () => ({
   useApp: useAppMock,
+  CUSTOM_ONBOARDING_STEPS: [],
+  getVrmPreviewUrl: (index: number) => `/avatars/preview-${index}.png`,
 }));
 
 vi.mock("@miladyai/app-core/voice", () => ({
@@ -96,12 +98,12 @@ vi.mock("@miladyai/ui", () => {
 
 vi.mock("@miladyai/app-core/components", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@miladyai/app-core/components")>();
-  const React = require("react") as typeof import("react");
+  const ReactMock = await import("react");
 
   return {
     ...actual,
     CharacterRoster: () =>
-      React.createElement("div", { "data-testid": "character-roster" }),
+      ReactMock.createElement("div", { "data-testid": "character-roster" }),
     resolveRosterEntries: () => [
       {
         id: "chen",
@@ -186,6 +188,20 @@ async function flushEffects() {
 
 describe("CharacterEditor regressions", () => {
   beforeEach(() => {
+    Object.defineProperty(window, "matchMedia", {
+      writable: true,
+      value: vi.fn().mockImplementation((query) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+
     clientMock.generateCharacterField.mockReset();
     clientMock.getConfig.mockReset();
     clientMock.streamVoiceSpeak.mockReset();
@@ -229,8 +245,23 @@ describe("CharacterEditor regressions", () => {
       throw new Error("expected CharacterEditor to render");
     }
 
+    const customizeBtn = tree.root.find(
+      (node) =>
+        node.type === "button" &&
+        Array.isArray(node.children) &&
+        node.children.includes("Customize")
+    );
+    await act(async () => {
+      customizeBtn.props.onClick();
+    });
+    await flushEffects();
+
     const regenerateButtons = tree.root.findAll(
-      (node) => node.type === "button" && node.children.includes("regenerate"),
+      (node) =>
+        node.type === "button" &&
+        node.props.className &&
+        typeof node.props.className === "string" &&
+        node.props.className.includes("ce-regen-btn")
     );
     const regenerateButton = regenerateButtons[0];
     expect(regenerateButton).toBeDefined();
@@ -282,6 +313,17 @@ describe("CharacterEditor regressions", () => {
     if (!tree) {
       throw new Error("expected CharacterEditor to render");
     }
+
+    const customizeBtn = tree.root.find(
+      (node) =>
+        node.type === "button" &&
+        Array.isArray(node.children) &&
+        node.children.includes("Customize")
+    );
+    await act(async () => {
+      customizeBtn.props.onClick();
+    });
+    await flushEffects();
 
     // Character auto-selection speaks the catchphrase on mount; this test only
     // verifies the dedicated preview button path.

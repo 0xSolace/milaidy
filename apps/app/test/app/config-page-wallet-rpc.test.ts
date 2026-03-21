@@ -1,7 +1,7 @@
 import {
   buildWalletRpcUpdateRequest,
   resolveInitialWalletRpcSelections,
-} from "@miladyai/app-core/api";
+} from "../../../../packages/app-core/src/wallet-rpc";
 import { describe, expect, it } from "vitest";
 
 describe("ConfigPageView wallet RPC helpers", () => {

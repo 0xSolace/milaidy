@@ -78,11 +78,9 @@ describe("brand gold theme overrides", () => {
 
     expect(editorCss).toContain("--ce-gold: var(--classic-gold, #cfaf5a);");
     expect(editorCss).toContain(".ce-right-toggle {");
+    expect(editorCss).toContain("background: var(--bg-elevated);");
     expect(editorCss).toContain(
-      "background: linear-gradient(\n    180deg,\n    rgba(18, 18, 20, 0.96) 0%,\n    rgba(11, 11, 12, 0.92) 100%\n  );",
-    );
-    expect(editorCss).toContain(
-      ".ce-right-toggle-btn {\n  padding: 0.375rem 1rem;\n  border-radius: 0.375rem;\n  border: 1px solid transparent;\n  background: rgba(30, 31, 35, 0.9);",
+      ".ce-right-toggle-btn {\n  padding: 0.375rem 1rem;\n  border-radius: 0.375rem;\n  border: 1px solid transparent;\n  background: transparent;",
     );
     expect(editorCss).toContain(".ce-page-tab--active {");
     expect(editorCss).toContain(

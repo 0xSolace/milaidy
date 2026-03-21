@@ -2,7 +2,7 @@ import {
   DEFAULT_BROWSER_HOME,
   normalizeBrowserAddressInput,
   readBrowserNavigationUrl,
-} from "@miladyai/app-core/platform";
+} from "../../../../packages/app-core/src/components/browser-surface";
 import { describe, expect, it } from "vitest";
 
 describe("browser surface helpers", () => {

@@ -17,7 +17,7 @@ import {
 } from "@miladyai/app-core/components";
 import { useApp } from "@miladyai/app-core/state";
 import type { JSX } from "react";
-import { BrowserSurfaceWindow } from "../components/BrowserSurfaceWindow";
+import { BrowserSurfaceWindow } from "../components";
 import {
   resolveDetachedShellTarget,
   type WindowShellRoute,
