@@ -50,16 +50,16 @@ interface SettingsSectionDef {
 
 const SETTINGS_SECTIONS: SettingsSectionDef[] = [
   {
-    id: "ai-model",
-    label: "settings.sections.aimodel.label",
-    icon: Bot,
-    description: "settings.sections.aimodel.desc",
-  },
-  {
     id: "cloud",
     label: "providerswitcher.elizaCloud",
     icon: Cloud,
     description: "settings.sections.cloud.desc",
+  },
+  {
+    id: "ai-model",
+    label: "settings.sections.aimodel.label",
+    icon: Bot,
+    description: "settings.sections.aimodel.desc",
   },
   {
     id: "coding-agents",
@@ -134,21 +134,18 @@ function SettingsSidebar({
   const { t } = useApp();
 
   return (
-    <aside className="hidden w-[16rem] shrink-0 self-stretch border-r border-border/50 bg-bg/35 backdrop-blur-xl xl:sticky xl:top-0 xl:flex xl:h-screen">
-      <div className="flex flex-1 flex-col overflow-y-auto">
-
-        {/* Search */}
-        <div className="px-3 py-3 border-b border-border">
-          <div className="flex items-center gap-2 px-2.5 py-1.5 border border-border bg-bg">
-            <Search className="h-3 w-3 shrink-0 text-muted" aria-hidden />
-            <Input
-              type="text"
-              placeholder={t("settings.searchPlaceholder") || "Search..."}
-              value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
-              className="h-6 min-w-0 flex-1 border-0 bg-transparent py-0 pr-0 pl-0 text-[11px] font-mono shadow-none placeholder:text-muted/60 focus-visible:ring-0 focus-visible:ring-offset-0"
-            />
-          </div>
+    <aside className="hidden w-[16rem] shrink-0 self-stretch lg:sticky lg:top-0 lg:flex lg:h-screen">
+      {/* Search */}
+      <div className="px-3 py-3 border-b border-border">
+        <div className="flex items-center gap-2 px-2.5 py-1.5 border border-border bg-bg">
+          <Search className="h-3 w-3 shrink-0 text-muted" aria-hidden />
+          <Input
+            type="text"
+            placeholder={t("settings.searchPlaceholder") || "Search..."}
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            className="h-6 min-w-0 flex-1 border-0 bg-transparent py-0 pr-0 pl-0 text-[11px] font-mono shadow-none placeholder:text-muted/60 focus-visible:ring-0 focus-visible:ring-offset-0"
+          />
         </div>
 
         {/* Navigation */}
@@ -627,6 +624,15 @@ export function SettingsView({
 
   const sectionsContent = (
     <>
+      {visibleSectionIds.has("cloud") && (
+        <section
+          id="cloud"
+          className="bg-bg rounded-2xl border border-border/50 overflow-hidden relative"
+        >
+          <CloudDashboard />
+        </section>
+      )}
+
       {visibleSectionIds.has("ai-model") && (
         <SectionCard
           id="ai-model"
@@ -647,15 +653,6 @@ export function SettingsView({
         >
           <CodingAgentSettingsSection />
         </SectionCard>
-      )}
-
-      {visibleSectionIds.has("cloud") && (
-        <section
-          id="cloud"
-          className="bg-bg rounded-2xl border border-border/50 overflow-hidden relative"
-        >
-          <CloudDashboard />
-        </section>
       )}
 
       {visibleSectionIds.has("wallet-rpc") && (
@@ -760,11 +757,9 @@ export function SettingsView({
       />
 
       <div
-        className={`settings-page-content flex-1 min-w-0 scroll-smooth ${inModal ? "px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6" : "px-5 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-10"}`}
+        className={`settings-page-content flex-1 min-w-0 scroll-smoothpx-4 py-4`}
       >
-        <div className="mx-auto max-w-4xl">
-          <div className="space-y-6 pb-20 sm:space-y-8">{sectionsContent}</div>
-        </div>
+        <div className="space-y-6 pb-20 sm:space-y-8">{sectionsContent}</div>
       </div>
     </div>
   );

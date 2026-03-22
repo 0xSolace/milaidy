@@ -1847,7 +1847,7 @@ export function ConfigField({
         {/* Label row */}
         <div className="flex items-center gap-2 mb-1.5">
           <span
-            className="font-semibold leading-tight truncate"
+            className="font-semibold leading-tight"
             style={{
               fontSize: "var(--plugin-label-size)",
               color: "var(--plugin-label)",
@@ -1866,12 +1866,6 @@ export function ConfigField({
 
               {t("config-field.Configured")}
             </span>
-          )}
-          {/* Env key — right-aligned, subtle, only when label differs */}
-          {labelDiffersFromKey && (
-            <code className="text-[10px] font-mono text-[var(--muted)] opacity-0 group-hover/field:opacity-50 transition-opacity truncate ml-auto">
-              {envKey}
-            </code>
           )}
         </div>
 

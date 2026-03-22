@@ -1208,6 +1208,7 @@ describe("VrmEngine", () => {
             progressUniform: { value: number };
             mesh: {
               opacity: number;
+              visible: boolean;
               objectModifier: unknown;
               dispose: ReturnType<typeof vi.fn>;
             };
@@ -1253,7 +1254,10 @@ describe("VrmEngine", () => {
         engineAny.updateWorldReveal(0.4);
       }
       expect(engineAny.worldReveal).toBeNull();
-      expect(firstWorld?.dispose).toHaveBeenCalled();
+      // The old world mesh is hidden (not disposed) — the engine caches splat meshes
+      // for reuse on subsequent world switches. True dispose only happens on engine teardown.
+      expect(firstWorld?.visible).toBe(false);
+      expect(firstWorld?.dispose).not.toHaveBeenCalled();
       expect(secondWorld?.opacity).toBe(1);
     });
   });

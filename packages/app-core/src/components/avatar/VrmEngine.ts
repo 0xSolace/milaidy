@@ -633,7 +633,11 @@ export class VrmEngine {
 
   private splatCache = new Map<
     string,
-    { mesh: SparkSplatMesh; worldAnchor: THREE.Vector3; worldRevealRadius: number }
+    {
+      mesh: SparkSplatMesh;
+      worldAnchor: THREE.Vector3;
+      worldRevealRadius: number;
+    }
   >();
   private readonly cameraManager = new VrmCameraManager();
   private emoteAction: THREE.AnimationAction | null = null;
@@ -1198,8 +1202,13 @@ export class VrmEngine {
     reveal.incoming.mesh.objectModifier = undefined;
     this.refreshSplatMesh(reveal.incoming.mesh);
     if (reveal.outgoing) {
+      // Clear the modifier and refresh before hiding so the cached mesh is in a
+      // clean baseline state when it is next reused as the incoming world.
+      // Without this, stale dyno graph references on the modifier cause the
+      // second toggle to render as invisible.
       reveal.outgoing.mesh.objectModifier = undefined;
-      this.disposeSplatMesh(reveal.outgoing.mesh);
+      this.refreshSplatMesh(reveal.outgoing.mesh);
+      reveal.outgoing.mesh.visible = false;
     }
     if (this.worldReveal === reveal) {
       this.worldReveal = null;
@@ -1803,6 +1812,11 @@ export class VrmEngine {
     this.loadingAborted = true;
     this.initialized = false;
     this.settleReady();
+    // Flush the world splat cache — dispose all meshes so GPU memory is freed.
+    for (const cached of this.splatCache.values()) {
+      this.disposeSplatMesh(cached.mesh);
+    }
+    this.splatCache.clear();
     this.releaseKnownWebGpuWarningFilter?.();
     this.releaseKnownWebGpuWarningFilter = null;
     if (this.animationFrameId !== null) {
@@ -3130,7 +3144,13 @@ ${isOutgoing ? "if (teleportNoise >= teleportRatio) discard;" : "if (teleportNoi
       this.sparkRenderer.apertureAngle = 0;
     }
     this.cancelWorldReveal();
-    this.disposeSplatMesh(this.worldMesh);
+    // Don't permanently dispose the worldMesh here — it may be held in
+    // splatCache and reused on the next world switch. Just hide it so it
+    // doesn't render. The cache is flushed (and meshes truly disposed) only
+    // when the engine itself is torn down via dispose().
+    if (this.worldMesh) {
+      this.worldMesh.visible = false;
+    }
     this.worldMesh = null;
   }
   private async loadAndPlayIdle(vrm: VRM): Promise<void> {
