@@ -113,7 +113,7 @@
   "settings.lastChecked": "Última comprobación:",
   "settings.import": "Importar",
   "settings.resetAgent": "Restablecer agente",
-  "settings.resetAgentHint": "Borre toda la configuración, la memoria y los datos. Regresa al asistente de incorporación.",
+  "settings.resetAgentHint": "Borra la configuración, la base del agente y las claves en la nube. Los modelos GGUF descargados se conservan. Vuelve al onboarding.",
   "settings.resetEverything": "Restablecer todo",
   "settings.exportAgent": "Exportar agente",
   "settings.importAgent": "Importar agente",

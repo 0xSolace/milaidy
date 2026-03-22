@@ -124,8 +124,16 @@ function buildApiRequestHeaders(contentType?: string): Record<string, string> {
   if (contentType) {
     headers["Content-Type"] = contentType;
   }
-  const apiToken =
+  let apiToken =
     process.env.MILADY_API_TOKEN?.trim() ?? process.env.ELIZA_API_TOKEN?.trim();
+  if (!apiToken) {
+    const rt = resolveDesktopRuntimeMode(
+      process.env as Record<string, string | undefined>,
+    );
+    if (rt.mode === "local") {
+      apiToken = configureDesktopLocalApiAuth().trim();
+    }
+  }
   if (apiToken) {
     headers.Authorization = `Bearer ${apiToken}`;
   }
@@ -138,6 +146,192 @@ function resolveHeartbeatMenuApiBase(): string | null {
     return `http://127.0.0.1:${port}`;
   }
   return resolveInitialApiBase(process.env);
+}
+
+const MAIN_RESET_API_PROBE_TIMEOUT_MS = 4000;
+
+/**
+ * Picks a loopback API base the main process can actually reach.
+ *
+ * **WHY:** `resolveHeartbeatMenuApiBase()` falls back to `resolveInitialApiBase`,
+ * which in **external** mode is `MILADY_DESKTOP_API_BASE` (often :31337). If that
+ * dev server is down but the **embedded** agent is still running on a dynamic
+ * port, menu Reset must not blindly POST to the dead env URL.
+ */
+async function resolveReachableApiBaseForMainReset(): Promise<string | null> {
+  const candidates: string[] = [];
+  const embeddedPort = getAgentManager().getStatus().port;
+  if (typeof embeddedPort === "number" && embeddedPort > 0) {
+    candidates.push(`http://127.0.0.1:${embeddedPort}`);
+  }
+  const configured = resolveInitialApiBase(process.env);
+  if (configured && !candidates.includes(configured)) {
+    candidates.push(configured);
+  }
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  for (const base of candidates) {
+    try {
+      const res = await fetch(`${base}/api/status`, {
+        method: "GET",
+        headers: buildApiRequestHeaders(),
+        signal: AbortSignal.timeout(MAIN_RESET_API_PROBE_TIMEOUT_MS),
+      });
+      if (res.status > 0) {
+        console.info("[Main][reset] Using reachable API base", {
+          base,
+          statusHttp: res.status,
+          tried: candidates,
+        });
+        return base;
+      }
+    } catch {
+      /* try next candidate */
+    }
+  }
+
+  console.warn("[Main][reset] No reachable API base among candidates", {
+    tried: candidates,
+  });
+  return null;
+}
+
+const MENU_RESET_STATUS_POLL_MS = 1000;
+const MENU_RESET_STATUS_MAX_MS = 120_000;
+
+async function pollStatusJsonAfterMenuReset(
+  apiBase: string,
+): Promise<Record<string, unknown>> {
+  const deadline = Date.now() + MENU_RESET_STATUS_MAX_MS;
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(`${apiBase}/api/status`, {
+        headers: buildApiRequestHeaders(),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as Record<string, unknown>;
+        if (data.state === "running") {
+          return data;
+        }
+      }
+    } catch {
+      /* agent may still be binding */
+    }
+    await new Promise((r) => setTimeout(r, MENU_RESET_STATUS_POLL_MS));
+  }
+  try {
+    const res = await fetch(`${apiBase}/api/status`, {
+      headers: buildApiRequestHeaders(),
+    });
+    if (res.ok) {
+      return (await res.json()) as Record<string, unknown>;
+    }
+  } catch {
+    /* fall through */
+  }
+  return { state: "error", agentName: "Milady" };
+}
+
+/**
+ * App menu "Reset Milady…" — runs entirely in the main process so the webview
+ * cannot stall after the native confirm dialog (Electrobun/WKWebView quirk).
+ * Pushes `menu-reset-milady-applied` so the renderer only clears local UI state.
+ */
+async function resetMiladyFromApplicationMenu(): Promise<void> {
+  console.info(
+    "[Main][reset] App menu: Reset Milady — confirm + POST /api/agent/reset + restart (main process)",
+  );
+  await getDesktopManager().showWindow().catch((err: unknown) => {
+    console.warn(
+      "[Main][reset] showWindow failed (continuing):",
+      err instanceof Error ? err.message : err,
+    );
+  });
+
+  const box = await Utils.showMessageBox({
+    type: "warning",
+    title: "Reset Agent",
+    message:
+      "This will reset the agent: config, cloud keys, and local agent database (conversations / memory).",
+    detail:
+      "Downloaded GGUF embedding models are kept. You will return to the onboarding wizard.",
+    buttons: ["Reset", "Cancel"],
+    defaultId: 0,
+    cancelId: 1,
+  });
+  const response =
+    box && typeof box === "object" && "response" in box
+      ? (box as { response: number }).response
+      : typeof box === "number"
+        ? box
+        : 1;
+  if (response !== 0) {
+    console.info("[Main][reset] User cancelled native confirm");
+    return;
+  }
+
+  const apiBase = await resolveReachableApiBaseForMainReset();
+  if (!apiBase) {
+    Utils.showNotification({
+      title: "Reset Failed",
+      body: "Could not reach the Milady API (tried embedded port and MILADY_DESKTOP_API_BASE / defaults). Start the agent or dev server, or fix your API base env.",
+    });
+    return;
+  }
+
+  try {
+    const resetRes = await fetch(`${apiBase}/api/agent/reset`, {
+      method: "POST",
+      headers: buildApiRequestHeaders(),
+    });
+    if (!resetRes.ok) {
+      throw new Error(`Reset API failed (${resetRes.status})`);
+    }
+
+    const runtimeMode = resolveDesktopRuntimeMode(
+      process.env as Record<string, string | undefined>,
+    );
+
+    if (runtimeMode.mode === "local") {
+      const status = await getAgentManager().restartClearingLocalDb();
+      const apiToken = configureDesktopLocalApiAuth();
+      if (currentWindow && status.port) {
+        pushApiBaseToRenderer(
+          currentWindow,
+          `http://127.0.0.1:${status.port}`,
+          apiToken,
+        );
+      }
+    } else {
+      try {
+        await fetch(`${apiBase}/api/agent/restart`, {
+          method: "POST",
+          headers: buildApiRequestHeaders(),
+        });
+      } catch {
+        /* 409 / race while restarting — poll below */
+      }
+    }
+
+    const apiBaseAfter = resolveHeartbeatMenuApiBase() ?? apiBase;
+    const statusPayload = await pollStatusJsonAfterMenuReset(apiBaseAfter);
+
+    sendToActiveRenderer("desktopTrayMenuClick", {
+      itemId: "menu-reset-milady-applied",
+      agentStatus: statusPayload,
+    });
+    console.info(
+      "[Main][reset] Pushed menu-reset-milady-applied to renderer with /api/status snapshot",
+    );
+  } catch (err) {
+    console.error("[Main][reset] Main-process reset failed:", err);
+    Utils.showNotification({
+      title: "Reset Failed",
+      body: summarizeDesktopActionError(err, "Reset failed"),
+    });
+  }
 }
 
 async function fetchHeartbeatMenuSnapshot(
@@ -383,8 +577,11 @@ let lastFocusedWindow: ManagedWindowLike | null = null;
 
 function sendToActiveRenderer(message: string, payload?: unknown): void {
   currentSendToWebview?.(message, payload);
-  if (!currentSendToWebview)
-    console.debug("[Main] Dropped renderer message (no window):", message);
+  if (!currentSendToWebview) {
+    const level =
+      message === "desktopTrayMenuClick" ? console.warn : console.debug;
+    level.call(console, "[Main] Dropped renderer message (no window):", message);
+  }
 }
 
 // ============================================================================
@@ -1105,12 +1302,7 @@ async function setupUpdater(): Promise<void> {
         } else if (action === "relaunch") {
           void getDesktopManager().relaunch();
         } else if (action === "reset-milady") {
-          // Renderer runs handleReset() (confirm + POST /api/agent/reset + UI).
-          // WHY: main process has no MiladyClient; keeps parity with Settings reset.
-          void getDesktopManager().showWindow();
-          sendToActiveRenderer("desktopTrayMenuClick", {
-            itemId: "menu-reset-milady",
-          });
+          void resetMiladyFromApplicationMenu();
         } else if (
           action === "open-settings" ||
           action?.startsWith("open-settings-")
@@ -1204,6 +1396,30 @@ function setupShutdown(cleanupFns: Array<() => void>): void {
 // Bootstrap
 // ============================================================================
 
+/**
+ * Load repo-root and ~/.eliza/.env into `process.env` (non-destructive) so the
+ * main process can send the same `MILADY_API_TOKEN` as `dev-server.ts` when
+ * calling loopback APIs (app menu reset, export, etc.). The dev API child
+ * already loads dotenv; Electrobun did not until this ran.
+ */
+async function loadMiladyEnvFilesForMain(): Promise<void> {
+  try {
+    const { config } = await import("dotenv");
+    const here = import.meta.dir.replaceAll("\\", "/");
+    const repoRootGuess = path.resolve(here, "..", "..", "..", "..");
+    for (const envPath of [
+      path.join(repoRootGuess, ".env"),
+      path.join(os.homedir(), ".eliza", ".env"),
+    ]) {
+      if (fs.existsSync(envPath)) {
+        config({ path: envPath, override: false });
+      }
+    }
+  } catch {
+    /* dotenv may be unavailable in minimal installs */
+  }
+}
+
 function initializeBundledWebGPU(): void {
   if (!WGPU.native.available) {
     console.log(
@@ -1259,6 +1475,7 @@ function checkWebGpuBrowserSupport(): void {
 }
 
 async function main(): Promise<void> {
+  await loadMiladyEnvFilesForMain();
   console.log("[Main] Starting Milady (Electrobun)...");
   const normalizedModuleDir = import.meta.dir.replaceAll("\\", "/");
   const runtimeResolution = resolveDesktopRuntimeMode(

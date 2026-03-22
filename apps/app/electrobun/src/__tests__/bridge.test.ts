@@ -10,6 +10,9 @@ describe("CHANNEL_TO_RPC_METHOD mapping", () => {
     expect(CHANNEL_TO_RPC_METHOD["agent:start"]).toBe("agentStart");
     expect(CHANNEL_TO_RPC_METHOD["agent:stop"]).toBe("agentStop");
     expect(CHANNEL_TO_RPC_METHOD["agent:restart"]).toBe("agentRestart");
+    expect(CHANNEL_TO_RPC_METHOD["agent:restartClearLocalDb"]).toBe(
+      "agentRestartClearLocalDb",
+    );
     expect(CHANNEL_TO_RPC_METHOD["agent:status"]).toBe("agentStatus");
   });
 

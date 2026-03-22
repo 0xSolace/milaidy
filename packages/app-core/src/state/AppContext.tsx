@@ -125,7 +125,6 @@ import {
 } from "../utils";
 import {
   type ActionNotice,
-  AGENT_READY_TIMEOUT_MS,
   AGENT_TRANSFER_MIN_PASSWORD_LENGTH,
   AppContext,
   type AppContextValue,
@@ -187,6 +186,10 @@ import {
   type UiTheme,
 } from "./internal";
 import {
+  computeAgentDeadlineExtensions,
+  getAgentReadyTimeoutMs,
+} from "./agent-startup-timing";
+import {
   deriveUiShellModeForTab,
   getTabForShellView,
   shouldStartAtCharacterSelectOnLaunch,
@@ -199,9 +202,10 @@ import {
 const AGENT_STATUS_POLL_INTERVAL_MS = 500;
 const ONBOARDING_GREETING_READY_TIMEOUT_MS = 15_000;
 
+export { AGENT_READY_TIMEOUT_MS } from "./types";
+
 export {
   type ActionNotice,
-  AGENT_READY_TIMEOUT_MS,
   AGENT_STATES,
   AGENT_TRANSFER_MIN_PASSWORD_LENGTH,
   type AppActions,
@@ -424,6 +428,29 @@ function isRemoteApiBase(baseUrl: string): boolean {
   }
 }
 
+/** Verbose trace for Settings / menu “Reset agent” — filter DevTools by `[milady][reset]`. */
+const RESET_LOG_PREFIX = "[milady][reset]";
+
+function logResetDebug(message: string, detail?: Record<string, unknown>): void {
+  if (detail !== undefined && Object.keys(detail).length > 0) {
+    console.debug(`${RESET_LOG_PREFIX} ${message}`, detail);
+  } else {
+    console.debug(`${RESET_LOG_PREFIX} ${message}`);
+  }
+}
+
+function logResetInfo(message: string, detail?: Record<string, unknown>): void {
+  if (detail !== undefined && Object.keys(detail).length > 0) {
+    console.info(`${RESET_LOG_PREFIX} ${message}`, detail);
+  } else {
+    console.info(`${RESET_LOG_PREFIX} ${message}`);
+  }
+}
+
+function logResetWarn(message: string, detail?: unknown): void {
+  console.warn(`${RESET_LOG_PREFIX} ${message}`, detail);
+}
+
 // ── Provider ───────────────────────────────────────────────────────────
 
 export function AppProvider({
@@ -446,6 +473,7 @@ export function AppProvider({
   const [connected, setConnected] = useState(false);
   const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null);
   const [onboardingComplete, setOnboardingComplete] = useState(false);
+  const [onboardingUiRevealNonce, setOnboardingUiRevealNonce] = useState(0);
   const [onboardingLoading, setOnboardingLoading] = useState(true);
   const [startupPhase, setStartupPhase] =
     useState<StartupPhase>("starting-backend");
@@ -1079,10 +1107,11 @@ export function AppProvider({
       tone: "info" | "success" | "error" = "info",
       ttlMs = 2800,
       once = false,
+      busy = false,
     ) => {
       if (once && shownOnceNotices.current.has(text)) return;
       if (once) shownOnceNotices.current.add(text);
-      setActionNoticeState({ tone, text });
+      setActionNoticeState({ tone, text, ...(busy ? { busy: true } : {}) });
       if (actionNoticeTimer.current != null) {
         window.clearTimeout(actionNoticeTimer.current);
       }
@@ -2060,7 +2089,13 @@ export function AppProvider({
 
   const handleStart = useCallback(async () => {
     if (!beginLifecycleAction("start")) return;
-    setActionNotice(LIFECYCLE_MESSAGES.start.progress, "info", 3000);
+    setActionNotice(
+      LIFECYCLE_MESSAGES.start.progress,
+      "info",
+      300_000,
+      false,
+      true,
+    );
     try {
       const s = await client.startAgent();
       setAgentStatus(s);
@@ -2080,7 +2115,13 @@ export function AppProvider({
 
   const handleStop = useCallback(async () => {
     if (!beginLifecycleAction("stop")) return;
-    setActionNotice(LIFECYCLE_MESSAGES.stop.progress, "info", 3000);
+    setActionNotice(
+      LIFECYCLE_MESSAGES.stop.progress,
+      "info",
+      120_000,
+      false,
+      true,
+    );
     try {
       const s = await client.stopAgent();
       setAgentStatus(s);
@@ -2100,7 +2141,13 @@ export function AppProvider({
 
   const handleRestart = useCallback(async () => {
     if (!beginLifecycleAction("restart")) return;
-    setActionNotice(LIFECYCLE_MESSAGES.restart.progress, "info", 3200);
+    setActionNotice(
+      LIFECYCLE_MESSAGES.restart.progress,
+      "info",
+      300_000,
+      false,
+      true,
+    );
     try {
       setAgentStatus({
         ...(agentStatus ?? {
@@ -2328,6 +2375,15 @@ export function AppProvider({
   /**
    * Wipes server-side agent config (`POST /api/agent/reset`) and local UI state.
    *
+   * **WHY restart after reset:** the compat route only rewrites `eliza.json` on disk.
+   * The embedded desktop child keeps in-memory runtime + PGLite until we stop it,
+   * delete `~/.milady/workspace/.eliza/.elizadb`, and spawn a fresh process (RPC
+   * `agentRestartClearLocalDb` when `desktopRuntimeMode=local`).
+   * With `MILADY_DESKTOP_API_BASE` (external dev API on :31337), embedded restart is a
+   * no-op — we must call `restartAndWait()` so the **real** API process reloads.
+   * Wallet keys from env are not touched. Local **GGUF** model files
+   * (`MODELS_DIR`, typically ~/.eliza/models) are not deleted — only the agent DB dir `.elizadb` is removed when embedded restart runs.
+   *
    * **WHY clear `clearPersistedConnectionMode` + `setBaseUrl(null)` / `setToken(null)`**
    * after the API call: the server no longer matches cloud/remote session data; leaving
    * persisted mode or client base pointed at Eliza Cloud made the next screen look
@@ -2335,39 +2391,12 @@ export function AppProvider({
    *
    * **WHY Eliza Cloud state cleared:** avoid showing “connected” after config wipe.
    */
-  const handleReset = useCallback(async () => {
-    if (lifecycleBusyRef.current) {
-      const activeAction =
-        lifecycleActionRef.current ?? lifecycleAction ?? "reset";
-      setActionNotice(
-        `Agent action already in progress (${LIFECYCLE_MESSAGES[activeAction].inProgress}). Please wait.`,
-        "info",
-        2800,
-      );
-      return;
-    }
-    const confirmed = await confirmDesktopAction({
-      title: "Reset Agent",
-      message:
-        "This will completely reset the agent, wiping all config, memory, and data.",
-      detail: "You will be taken back to the onboarding wizard.",
-      confirmLabel: "Reset",
-      cancelLabel: "Cancel",
-      type: "warning",
-    });
-    if (!confirmed) return;
-    if (!beginLifecycleAction("reset")) {
-      setActionNotice(
-        "Another agent operation is still running. Wait for it to finish, then try Reset again.",
-        "info",
-        4200,
-      );
-      return;
-    }
-    setActionNotice(LIFECYCLE_MESSAGES.reset.progress, "info", 3200);
-    try {
-      await client.resetAgent();
-      // Local persistence + client must match wiped server (see JSDoc on handleReset).
+  const completeResetLocalStateAfterServerWipe = useCallback(
+    async (postResetAgentStatus: AgentStatus | null): Promise<void> => {
+      setAgentStatus(postResetAgentStatus);
+      logResetDebug("resetLocalState: client.resetConnection()");
+      client.resetConnection();
+
       clearPersistedConnectionMode();
       client.setBaseUrl(null);
       client.setToken(null);
@@ -2379,8 +2408,9 @@ export function AppProvider({
       setElizaCloudTopUpUrl("/cloud/billing");
       setElizaCloudUserId(null);
       setElizaCloudLoginError(null);
-      setAgentStatus(null);
       onboardingCompletionCommittedRef.current = false;
+      setOnboardingUiRevealNonce((n) => n + 1);
+      setOnboardingLoading(false);
       setOnboardingComplete(false);
       onboardingResumeConnectionRef.current = null;
       setOnboardingStep("welcome");
@@ -2392,13 +2422,283 @@ export function AppProvider({
       setSkills([]);
       setLogs([]);
       try {
+        logResetDebug("resetLocalState: fetching onboarding options after reset");
         const options = await client.getOnboardingOptions();
         setOnboardingOptions(options);
-      } catch {
-        /* ignore */
+        logResetDebug("resetLocalState: onboarding options loaded", {
+          styleCount: options.styles?.length ?? 0,
+        });
+      } catch (optErr) {
+        logResetWarn(
+          "resetLocalState: getOnboardingOptions failed after reset",
+          optErr,
+        );
       }
+    },
+    [
+      setAgentStatus,
+      setElizaCloudCredits,
+      setElizaCloudCreditsCritical,
+      setElizaCloudCreditsLow,
+      setElizaCloudConnected,
+      setElizaCloudEnabled,
+      setElizaCloudLoginError,
+      setElizaCloudTopUpUrl,
+      setElizaCloudUserId,
+      setOnboardingComplete,
+      setOnboardingLoading,
+      setOnboardingOptions,
+      setOnboardingStep,
+      setOnboardingUiRevealNonce,
+      setConversationMessages,
+      setActiveConversationId,
+      setConversations,
+      setPlugins,
+      setSkills,
+      setLogs,
+    ],
+  );
+
+  const handleResetAppliedFromMain = useCallback(
+    async (payload: unknown) => {
+      logResetInfo(
+        "handleResetAppliedFromMain: main process finished reset — syncing renderer state",
+      );
+      if (lifecycleBusyRef.current) {
+        const activeAction =
+          lifecycleActionRef.current ?? lifecycleAction ?? "reset";
+        logResetInfo("handleResetAppliedFromMain: skipped — lifecycle busy", {
+          activeAction,
+        });
+        setActionNotice(
+          `Agent action already in progress (${LIFECYCLE_MESSAGES[activeAction].inProgress}). Please wait.`,
+          "info",
+          2800,
+        );
+        return;
+      }
+      if (!beginLifecycleAction("reset")) {
+        setActionNotice(
+          "Another agent operation is still running. Wait for it to finish, then try Reset again.",
+          "info",
+          4200,
+        );
+        return;
+      }
+      setActionNotice(
+        LIFECYCLE_MESSAGES.reset.progress,
+        "info",
+        120_000,
+        false,
+        true,
+      );
+      const resetStartedAt = performance.now();
+      try {
+        let parsedStatus: AgentStatus | null = null;
+        if (
+          payload &&
+          typeof payload === "object" &&
+          !Array.isArray(payload) &&
+          "agentStatus" in payload
+        ) {
+          const as = (payload as { agentStatus?: unknown }).agentStatus;
+          if (as && typeof as === "object" && !Array.isArray(as)) {
+            parsedStatus = parseAgentStatusEvent(as as Record<string, unknown>);
+          }
+        }
+        await completeResetLocalStateAfterServerWipe(parsedStatus);
+        setActionNotice(LIFECYCLE_MESSAGES.reset.success, "success", 3200);
+      } catch (err) {
+        logResetWarn(
+          "handleResetAppliedFromMain: failed while syncing local UI",
+          err,
+        );
+        setActionNotice(
+          `Failed to ${LIFECYCLE_MESSAGES.reset.verb} agent: ${
+            err instanceof Error ? err.message : "unknown error"
+          }`,
+          "error",
+          4200,
+        );
+        await alertDesktopMessage({
+          title: "Reset Failed",
+          message: "Reset ran in the desktop shell but the UI could not refresh.",
+          type: "error",
+        });
+      } finally {
+        finishLifecycleAction();
+      }
+    },
+    [
+      lifecycleAction,
+      beginLifecycleAction,
+      finishLifecycleAction,
+      setActionNotice,
+      completeResetLocalStateAfterServerWipe,
+    ],
+  );
+
+  const handleReset = useCallback(async () => {
+    logResetInfo("handleReset: invoked");
+    if (lifecycleBusyRef.current) {
+      const activeAction =
+        lifecycleActionRef.current ?? lifecycleAction ?? "reset";
+      logResetInfo("handleReset: skipped — lifecycle busy", {
+        activeAction,
+      });
+      setActionNotice(
+        `Agent action already in progress (${LIFECYCLE_MESSAGES[activeAction].inProgress}). Please wait.`,
+        "info",
+        2800,
+      );
+      return;
+    }
+    logResetInfo("handleReset: showing confirm dialog");
+    const confirmed = await confirmDesktopAction({
+      title: "Reset Agent",
+      message:
+        "This will reset the agent: config, cloud keys, and local agent database (conversations / memory).",
+      detail:
+        "Downloaded GGUF embedding models are kept. You will return to the onboarding wizard.",
+      confirmLabel: "Reset",
+      cancelLabel: "Cancel",
+      type: "warning",
+    });
+    if (!confirmed) {
+      logResetInfo("handleReset: cancelled by user");
+      return;
+    }
+    // Native message boxes (Electrobun/macOS) can return without letting the webview
+    // process network/RPC on the same turn — `fetch` and bridge requests then appear
+    // to "never run" until something else wakes the loop. Yield once before reset work.
+    logResetInfo(
+      "handleReset: confirmed — scheduling reset on next event-loop turn (native dialog)",
+    );
+    await new Promise<void>((resolve) => {
+      window.setTimeout(() => resolve(), 0);
+    });
+
+    if (!beginLifecycleAction("reset")) {
+      logResetInfo(
+        "handleReset: aborted — could not begin lifecycle (race with another action)",
+      );
+      setActionNotice(
+        "Another agent operation is still running. Wait for it to finish, then try Reset again.",
+        "info",
+        4200,
+      );
+      return;
+    }
+    setActionNotice(
+      LIFECYCLE_MESSAGES.reset.progress,
+      "info",
+      120_000,
+      false,
+      true,
+    );
+    const resetStartedAt = performance.now();
+    logResetInfo("handleReset: starting (POST /api/agent/reset + restart path)", {
+      electrobun: isElectrobunRuntime(),
+      apiBase: client.getBaseUrl() || "(empty — will resolve after reconnect)",
+    });
+    logResetInfo(
+      "handleReset: tip — reset logs also appear in this window (filter [milady][reset]); API terminal only shows server-side routes",
+    );
+    try {
+      logResetDebug("handleReset: calling client.resetAgent()");
+      await client.resetAgent();
+      logResetDebug("handleReset: client.resetAgent() completed");
+
+      let postResetAgentStatus: AgentStatus | null = null;
+      logResetDebug(
+        "handleReset: invoking desktop bridge agentRestartClearLocalDb",
+      );
+      const BRIDGE_RESTART_MS = 150_000;
+      try {
+        postResetAgentStatus = await Promise.race([
+          invokeDesktopBridgeRequest<AgentStatus>({
+            rpcMethod: "agentRestartClearLocalDb",
+            ipcChannel: "agent:restartClearLocalDb",
+          }),
+          new Promise<AgentStatus | null>((_, reject) => {
+            window.setTimeout(() => {
+              reject(
+                Object.assign(
+                  new Error(
+                    `agentRestartClearLocalDb exceeded ${BRIDGE_RESTART_MS / 1000}s`,
+                  ),
+                  { name: "ResetBridgeTimeout" },
+                ),
+              );
+            }, BRIDGE_RESTART_MS);
+          }),
+        ]);
+        logResetDebug("handleReset: bridge agentRestartClearLocalDb settled", {
+          hasResult: postResetAgentStatus != null,
+          state: postResetAgentStatus?.state ?? null,
+          port: postResetAgentStatus?.port ?? null,
+        });
+        if (postResetAgentStatus == null && isElectrobunRuntime()) {
+          logResetWarn(
+            "handleReset: agentRestartClearLocalDb RPC returned null — bridge request missing; will rely on HTTP restart path",
+          );
+        }
+      } catch (bridgeErr) {
+        postResetAgentStatus = null;
+        if (
+          bridgeErr instanceof Error &&
+          bridgeErr.name === "ResetBridgeTimeout"
+        ) {
+          logResetWarn(
+            "handleReset: agentRestartClearLocalDb timed out — falling back to HTTP restart",
+            bridgeErr,
+          );
+        } else {
+          logResetWarn(
+            "handleReset: bridge agentRestartClearLocalDb threw (will try HTTP restart)",
+            bridgeErr,
+          );
+        }
+      }
+
+      const embeddedRestartedOk =
+        postResetAgentStatus != null &&
+        (postResetAgentStatus.state === "running" ||
+          postResetAgentStatus.state === "starting");
+
+      logResetDebug("handleReset: embedded restart decision", {
+        embeddedRestartedOk,
+        bridgeState: postResetAgentStatus?.state ?? null,
+      });
+
+      if (!embeddedRestartedOk) {
+        logResetInfo(
+          "handleReset: calling client.restartAndWait(120s) — external API or bridge no-op",
+        );
+        try {
+          postResetAgentStatus = await client.restartAndWait(120_000);
+          logResetDebug("handleReset: restartAndWait completed", {
+            state: postResetAgentStatus.state,
+            port: postResetAgentStatus.port,
+          });
+        } catch (httpErr) {
+          postResetAgentStatus = null;
+          logResetWarn(
+            "handleReset: client.restartAndWait failed — UI may be stale until manual restart",
+            httpErr,
+          );
+        }
+      }
+
+      await completeResetLocalStateAfterServerWipe(postResetAgentStatus);
+      const elapsedMs = Math.round(performance.now() - resetStartedAt);
+      logResetInfo("handleReset: success — local UI reset; see server logs for API", {
+        elapsedMs,
+        finalAgentState: postResetAgentStatus?.state ?? null,
+      });
       setActionNotice(LIFECYCLE_MESSAGES.reset.success, "success", 3200);
     } catch (err) {
+      logResetWarn("handleReset: failed before local UI could reset", err);
       setActionNotice(
         `Failed to ${LIFECYCLE_MESSAGES.reset.verb} agent: ${
           err instanceof Error ? err.message : "unknown error"
@@ -2420,6 +2720,7 @@ export function AppProvider({
     finishLifecycleAction,
     setActionNotice,
     setOnboardingStep,
+    completeResetLocalStateAfterServerWipe,
   ]);
 
   const handleNewConversation = useCallback(
@@ -5312,13 +5613,23 @@ export function AppProvider({
         };
       }
       if (timedOut) {
+        const hint =
+          "First-time startup often downloads a local embedding model (GGUF, hundreds of MB). That can take many minutes on a slow network.\n\n" +
+          'If logs still show a download in progress, wait for it to finish, then tap Retry. On desktop, the app keeps extending the wait while the agent stays in "starting" (up to 15 minutes total).';
+        const emb =
+          diagnostics?.embeddingDetail ??
+          (diagnostics?.embeddingPhase === "downloading"
+            ? "Embedding model download in progress."
+            : undefined);
+        const detailBlocks = [detail, emb, hint].filter(
+          (b): b is string => typeof b === "string" && b.trim().length > 0,
+        );
         return {
           reason: "agent-timeout",
           phase: "initializing-agent",
-          message: `Agent did not reach running or paused within ${Math.round(
-            AGENT_READY_TIMEOUT_MS / 1000,
-          )}s.`,
-          detail,
+          message:
+            "The agent did not become ready in time. This is common while a large embedding model (GGUF) is still downloading on first run.",
+          detail: detailBlocks.join("\n\n"),
         };
       }
       return {
@@ -5631,7 +5942,8 @@ export function AppProvider({
 
       // Existing installs: keep loading until the runtime reports ready.
       let agentReady = false;
-      const agentDeadlineAt = Date.now() + AGENT_READY_TIMEOUT_MS;
+      const agentWaitStartedAt = Date.now();
+      let agentDeadlineAt = agentWaitStartedAt + getAgentReadyTimeoutMs();
       let lastAgentError: unknown = null;
       let lastAgentDiagnostics: AgentStartupDiagnostics | undefined;
       while (!cancelled) {
@@ -5647,6 +5959,12 @@ export function AppProvider({
           setAgentStatus(status);
           setConnected(true);
           lastAgentDiagnostics = status.startup;
+
+          agentDeadlineAt = computeAgentDeadlineExtensions({
+            agentWaitStartedAt,
+            agentDeadlineAt,
+            state: status.state,
+          });
 
           // Hydrate deferred restart state
           if (status.pendingRestart) {
@@ -6294,6 +6612,7 @@ export function AppProvider({
     connected,
     agentStatus,
     onboardingComplete,
+    onboardingUiRevealNonce,
     onboardingLoading,
     startupPhase,
     startupStatus,
@@ -6537,6 +6856,7 @@ export function AppProvider({
 
     handleRestart,
     handleReset,
+    handleResetAppliedFromMain,
     retryStartup,
     dismissRestartBanner,
     showRestartBanner,

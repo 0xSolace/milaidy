@@ -36,8 +36,6 @@ export function OnboardingWizard() {
   const isEliza = branding.appName === "Eliza";
   const disableVrm =
     !FORCE_VRM && (DISABLE_ONBOARDING_VRM || isEliza || !COMPANION_ENABLED);
-  const [revealStarted, setRevealStarted] = useState(disableVrm);
-
   const {
     onboardingStep,
     selectedVrmIndex,
@@ -46,7 +44,13 @@ export function OnboardingWizard() {
     uiTheme,
     setState,
     t,
+    onboardingUiRevealNonce,
   } = useApp();
+  // After Reset Agent from chat/companion, nonce bumps: show welcome UI immediately instead
+  // of waiting for VrmStage reveal (often missing when remounting after an active session).
+  const [revealStarted, setRevealStarted] = useState(
+    () => disableVrm || onboardingUiRevealNonce > 0,
+  );
 
   const setUiLanguage = (lang: UiLanguage) =>
     setState("uiLanguage", normalizeLanguage(lang));
@@ -70,6 +74,16 @@ export function OnboardingWizard() {
       applyUiTheme(uiTheme);
     };
   }, [uiTheme]);
+
+  // Overlay stays opacity 0 until VrmStage calls onRevealStart. After Reset Milady (or
+  // any remount), the engine sometimes never emits reveal — user sees only the avatar.
+  useEffect(() => {
+    if (disableVrm) return;
+    const id = window.setTimeout(() => {
+      setRevealStarted((prev) => (prev ? prev : true));
+    }, 3500);
+    return () => window.clearTimeout(id);
+  }, [disableVrm]);
 
   function renderStep() {
     switch (onboardingStep) {
@@ -110,7 +124,7 @@ export function OnboardingWizard() {
           fallbackPreviewUrl={fallbackPreview}
           cameraProfile="companion"
           initialCompanionZoomNormalized={1}
-          onRevealStart={() => setRevealStarted(true)}
+          onRevealStart={() => setRevealStarted((prev) => (prev ? prev : true))}
           t={t}
         />
       )}

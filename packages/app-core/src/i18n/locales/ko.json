@@ -113,7 +113,7 @@
   "settings.lastChecked": "마지막 확인:",
   "settings.import": "가져오기",
   "settings.resetAgent": "에이전트 재설정",
-  "settings.resetAgentHint": "모든 구성, 메모리 및 데이터를 지웁니다. 온보딩 마법사로 돌아갑니다.",
+  "settings.resetAgentHint": "설정, 에이전트 DB, 클라우드 키를 지웁니다. 다운로드한 GGUF 모델은 유지됩니다. 온보딩으로 돌아갑니다.",
   "settings.resetEverything": "모든 것을 재설정",
   "settings.exportAgent": "에이전트 내보내기",
   "settings.importAgent": "에이전트 가져오기",

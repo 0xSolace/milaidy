@@ -240,6 +240,11 @@ export interface AgentStartupDiagnostics {
   lastError?: string;
   lastErrorAt?: number;
   nextRetryAt?: number;
+  /** Local embedding (GGUF) warmup — from Milady status overlay */
+  embeddingPhase?: "checking" | "downloading" | "loading" | "ready";
+  embeddingDetail?: string;
+  /** 0–100 when parseable from embedding detail */
+  embeddingProgressPct?: number;
 }
 
 export interface AgentStatus {
@@ -2519,30 +2524,73 @@ export class MiladyClient {
    * Polls status until the agent state is "running".
    */
   async restartAndWait(maxWaitMs = 30000): Promise<AgentStatus> {
+    const t0 = Date.now();
+    console.info("[milady][reset][client] restartAndWait: begin", {
+      baseUrl: this.getBaseUrl(),
+      maxWaitMs,
+    });
     // Try triggering a restart; 409 means one is already in progress
     try {
       await this.restartAgent();
-    } catch {
-      // Already restarting — that's fine, we'll poll
+      console.info(
+        "[milady][reset][client] restartAndWait: POST /api/agent/restart accepted",
+      );
+    } catch (e) {
+      console.info(
+        "[milady][reset][client] restartAndWait: initial restart call failed (often 409 while restarting)",
+        e,
+      );
     }
     // Poll until running
     const start = Date.now();
     const interval = 1000;
+    let pollN = 0;
     while (Date.now() - start < maxWaitMs) {
       await new Promise((r) => setTimeout(r, interval));
+      pollN += 1;
       try {
         const status = await this.getStatus();
-        if (status.state === "running") return status;
-      } catch {
-        // Server may be briefly unavailable during restart
+        if (status.state === "running") {
+          console.info("[milady][reset][client] restartAndWait: running", {
+            pollN,
+            waitedMs: Date.now() - t0,
+            port: status.port,
+          });
+          return status;
+        }
+        if (pollN === 1 || pollN % 5 === 0) {
+          console.debug("[milady][reset][client] restartAndWait: poll", {
+            pollN,
+            state: status.state,
+            waitedMs: Date.now() - t0,
+          });
+        }
+      } catch (pollErr) {
+        if (pollN === 1 || pollN % 5 === 0) {
+          console.debug(
+            "[milady][reset][client] restartAndWait: getStatus error while polling",
+            { pollN, waitedMs: Date.now() - t0 },
+            pollErr,
+          );
+        }
       }
     }
     // Return whatever we get after timeout
-    return this.getStatus();
+    const final = await this.getStatus();
+    console.warn("[milady][reset][client] restartAndWait: timed out — returning last status", {
+      state: final.state,
+      waitedMs: Date.now() - t0,
+      maxWaitMs,
+    });
+    return final;
   }
 
   async resetAgent(): Promise<void> {
+    console.info("[milady][reset][client] POST /api/agent/reset", {
+      baseUrl: this.getBaseUrl(),
+    });
     await this.fetch("/api/agent/reset", { method: "POST" });
+    console.info("[milady][reset][client] POST /api/agent/reset OK");
   }
 
   async getConfig(): Promise<Record<string, unknown>> {

@@ -39,7 +39,7 @@ export const LIFECYCLE_MESSAGES: Record<LifecycleAction, LifecycleMessages> = {
   },
   reset: {
     progress: "Resetting agent...",
-    success: "Agent reset successfully.",
+    success: "Agent reset successfully. GGUF models were not removed.",
     verb: "reset",
     inProgress: "resetting",
   },

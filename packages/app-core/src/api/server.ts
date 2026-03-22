@@ -51,6 +51,8 @@ import {
   syncElizaEnvToMilady,
   syncMiladyEnvToEliza,
 } from "../config/brand-env.js";
+import { ensureMiladyTextToSpeechHandler } from "../runtime/eliza.js";
+import { getMiladyStartupEmbeddingAugmentation } from "../runtime/milady-startup-overlay.js";
 import { getCloudSecret } from "./cloud-secrets";
 
 const HEADER_ALIASES = [
@@ -816,14 +818,26 @@ function resolveCompatStatusAgentName(
   return getConfiguredCompatAgentName();
 }
 
+function mergeMiladyEmbeddingIntoStatusPayload(
+  payload: Record<string, unknown>,
+): void {
+  const aug = getMiladyStartupEmbeddingAugmentation();
+  if (!aug) return;
+
+  const existing = payload.startup;
+  const base =
+    existing && typeof existing === "object" && !Array.isArray(existing)
+      ? { ...(existing as Record<string, unknown>) }
+      : { phase: "embedding-warmup", attempt: 0 };
+
+  payload.startup = { ...base, ...aug };
+}
+
 function rewriteCompatStatusBody(
   bodyText: string,
   state: CompatRuntimeState,
 ): string {
   const agentName = resolveCompatStatusAgentName(state);
-  if (!agentName) {
-    return bodyText;
-  }
 
   try {
     const parsed = JSON.parse(bodyText) as unknown;
@@ -832,8 +846,14 @@ function rewriteCompatStatusBody(
     }
 
     const payload = parsed as Record<string, unknown>;
+    mergeMiladyEmbeddingIntoStatusPayload(payload);
+
+    if (!agentName) {
+      return JSON.stringify(payload);
+    }
+
     if (payload.agentName === agentName) {
-      return bodyText;
+      return JSON.stringify(payload);
     }
 
     return JSON.stringify({
@@ -2271,10 +2291,16 @@ async function handleMiladyCompatRoute(
   // ── POST /api/agent/reset — Wipe config and restart onboarding ──────
   if (method === "POST" && url.pathname === "/api/agent/reset") {
     if (!ensureCompatSensitiveRouteAuthorized(req, res)) {
+      logger.warn(
+        "[milady][reset] POST /api/agent/reset rejected (sensitive route not authorized)",
+      );
       return true;
     }
 
     try {
+      logger.info(
+        "[milady][reset] POST /api/agent/reset: loading config, will clear onboarding flag, agents list, cloud apiKey (GGUF / MODELS_DIR untouched)",
+      );
       const config = loadElizaConfig();
       // Clear onboarding state so the welcome screen shows again
       if (config.meta) {
@@ -2290,8 +2316,14 @@ async function handleMiladyCompatRoute(
         delete (config.cloud as Record<string, unknown>).apiKey;
       }
       saveElizaConfig(config);
+      logger.info(
+        "[milady][reset] POST /api/agent/reset: eliza.json saved — renderer should restart API process if embedded/external dev",
+      );
       sendJsonResponse(res, 200, { ok: true });
     } catch (err) {
+      logger.warn(
+        `[milady][reset] POST /api/agent/reset failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
       sendJsonResponse(res, 500, {
         error: err instanceof Error ? err.message : "Reset failed",
       });
@@ -2976,6 +3008,7 @@ export async function startApiServer(
   try {
     if (compatState.current) {
       await ensureRuntimeSqlCompatibility(compatState.current);
+      await ensureMiladyTextToSpeechHandler(compatState.current);
     }
 
     const server = await upstreamStartApiServer(...args);
@@ -2986,6 +3019,7 @@ export async function startApiServer(
     server.updateRuntime = (runtime: AgentRuntime) => {
       compatState.current = runtime;
       void ensureRuntimeSqlCompatibility(runtime);
+      void ensureMiladyTextToSpeechHandler(runtime);
       originalUpdateRuntime(runtime);
     };
 

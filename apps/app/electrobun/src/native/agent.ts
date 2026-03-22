@@ -631,12 +631,24 @@ function resolvePgliteDataDir(): string {
   );
 }
 
+/**
+ * Removes only the PGLite database folder (agent memory / conversations).
+ * GGUF embedding weights live under `MODELS_DIR` / `~/.eliza/models` by default — never deleted here.
+ */
 function deletePgliteDataDir(): void {
   const dir = resolvePgliteDataDir();
+  if (path.basename(dir) !== ".elizadb") {
+    diagnosticLog(
+      `[Agent] deletePgliteDataDir: refused — basename must be .elizadb, got: ${dir}`,
+    );
+    return;
+  }
   try {
     if (fs.existsSync(dir)) {
       fs.rmSync(dir, { recursive: true, force: true });
-      diagnosticLog(`[Agent] Deleted corrupt PGLite data dir: ${dir}`);
+      diagnosticLog(
+        `[Agent] Deleted PGLite data dir (GGUF model cache elsewhere): ${dir}`,
+      );
     }
   } catch (err) {
     diagnosticLog(
@@ -1036,6 +1048,42 @@ export class AgentManager {
     await this.stop();
     diagnosticLog("[Agent] Restarting...");
     return this.start();
+  }
+
+  /**
+   * Used after `POST /api/agent/reset`: stop the child, delete local PGLite
+   * (conversations / agent memory under ~/.milady/workspace/.eliza/.elizadb),
+   * then start fresh. Does not remove downloaded **GGUF** models (`MODELS_DIR`,
+   * default ~/.eliza/models), env-backed wallet keys, or eliza.json (the API
+   * reset already rewrote config on disk).
+   *
+   * When `MILADY_DESKTOP_API_BASE` points at an external dev API (e.g. :31337),
+   * the embedded child is never used — this is a no-op so the renderer can
+   * bounce the real API via `POST /api/agent/restart` instead.
+   */
+  async restartClearingLocalDb(): Promise<AgentStatus> {
+    const runtimeMode = resolveDesktopRuntimeMode(
+      process.env as Record<string, string | undefined>,
+    );
+    if (runtimeMode.mode !== "local") {
+      diagnosticLog(
+        `[Agent] restartClearingLocalDb skipped — mode=${runtimeMode.mode} externalBase=${runtimeMode.externalApi.base ?? "n/a"} source=${runtimeMode.externalApi.source ?? "n/a"} (renderer uses POST /api/agent/restart)`,
+      );
+      return this.getStatus();
+    }
+
+    diagnosticLog(
+      `[Agent] restartClearingLocalDb: local mode — stop → rm PGLite (${resolvePgliteDataDir()}) → start`,
+    );
+    await this.stop();
+    this.hasPgliteError = false;
+    this.pgliteRecoveryDone = false;
+    deletePgliteDataDir();
+    const next = await this.start();
+    diagnosticLog(
+      `[Agent] restartClearingLocalDb: start() finished state=${next.state} port=${next.port ?? "null"}`,
+    );
+    return next;
   }
 
   getStatus(): AgentStatus {

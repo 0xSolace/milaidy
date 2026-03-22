@@ -149,6 +149,8 @@ describe("collectPluginNames", () => {
     "ELIZA_CLOUD_MEDIA_DISABLED",
     "ELIZA_CLOUD_EMBEDDINGS_DISABLED",
     "ELIZA_CLOUD_RPC_DISABLED",
+    "MILADY_DISABLE_EDGE_TTS",
+    "ELIZA_DISABLE_EDGE_TTS",
   ];
   const snap = envSnapshot(envKeys);
   beforeEach(() => {
@@ -258,6 +260,39 @@ describe("collectPluginNames", () => {
     for (const plugin of expectedCorePlugins) {
       expect(names.has(plugin)).toBe(true);
     }
+  });
+
+  it("adds @elizaos/plugin-edge-tts when agent orchestrator is loaded (swarm voice / TEXT_TO_SPEECH)", () => {
+    const names = collectPluginNames({} as ElizaConfig);
+    expect(names.has("@elizaos/plugin-agent-orchestrator")).toBe(true);
+    expect(names.has("@elizaos/plugin-edge-tts")).toBe(true);
+  });
+
+  it("omits @elizaos/plugin-edge-tts when plugins.entries.edge-tts.enabled is false", () => {
+    const config = {
+      plugins: {
+        entries: { "edge-tts": { enabled: false } },
+      },
+    } as Partial<ElizaConfig> as ElizaConfig;
+    const names = collectPluginNames(config);
+    expect(names.has("@elizaos/plugin-edge-tts")).toBe(false);
+  });
+
+  it("omits @elizaos/plugin-edge-tts when MILADY_DISABLE_EDGE_TTS is set", () => {
+    process.env.MILADY_DISABLE_EDGE_TTS = "1";
+    const names = collectPluginNames({} as ElizaConfig);
+    expect(names.has("@elizaos/plugin-edge-tts")).toBe(false);
+  });
+
+  it("omits @elizaos/plugin-edge-tts when agent orchestrator is disabled", () => {
+    const config = {
+      plugins: {
+        entries: { "agent-orchestrator": { enabled: false } },
+      },
+    } as Partial<ElizaConfig> as ElizaConfig;
+    const names = collectPluginNames(config);
+    expect(names.has("@elizaos/plugin-agent-orchestrator")).toBe(false);
+    expect(names.has("@elizaos/plugin-edge-tts")).toBe(false);
   });
 
   it("does not load @elizaos/plugin-shell when features.shellEnabled is false", () => {

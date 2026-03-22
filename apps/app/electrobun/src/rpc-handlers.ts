@@ -107,6 +107,21 @@ export function registerRpcHandlers(
       setAgentReady(status.state === "running");
       return status;
     },
+    agentRestartClearLocalDb: async () => {
+      console.log("[RPC][reset] agentRestartClearLocalDb invoked");
+      try {
+        const status = await agent.restartClearingLocalDb();
+        console.log("[RPC][reset] agentRestartClearLocalDb done", {
+          state: status.state,
+          port: status.port,
+        });
+        setAgentReady(status.state === "running");
+        return status;
+      } catch (err) {
+        console.error("[RPC][reset] agentRestartClearLocalDb failed", err);
+        throw err;
+      }
+    },
     agentStatus: async () => agent.getStatus(),
     agentInspectExistingInstall: async () => agent.inspectExistingInstall(),
 

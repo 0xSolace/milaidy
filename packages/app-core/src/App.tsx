@@ -15,6 +15,7 @@ import {
   useRef,
   useState,
 } from "react";
+import type { AgentStartupDiagnostics } from "./api/client";
 import {
   AdvancedPageView,
   AppsPageView,
@@ -56,6 +57,48 @@ import { APPS_ENABLED, COMPANION_ENABLED } from "./navigation";
 import { useApp } from "./state";
 
 const CHAT_MOBILE_BREAKPOINT_PX = 1024;
+
+function formatStartupElapsed(sec: number): string {
+  if (sec <= 0) return "";
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+function resolveAgentLoaderCopy(
+  agentStarting: boolean,
+  onboardingLoading: boolean,
+  elapsedSec: number,
+  startup: AgentStartupDiagnostics | undefined,
+): { label: string; progress?: number } {
+  const elapsed =
+    elapsedSec > 0 ? ` · ${formatStartupElapsed(elapsedSec)} elapsed` : "";
+  if (startup?.embeddingPhase === "downloading") {
+    const detail = startup.embeddingDetail?.trim();
+    const base = `Downloading embedding model (GGUF)${elapsed}`;
+    return {
+      label: detail
+        ? `${base} · ${detail}`
+        : `${base} · first run can take several minutes`,
+      progress: startup.embeddingProgressPct,
+    };
+  }
+  if (startup?.embeddingPhase === "loading") {
+    return {
+      label: `Loading embedding model${elapsed}`,
+      progress: startup.embeddingProgressPct,
+    };
+  }
+  if (startup?.embeddingPhase === "checking") {
+    return { label: `Checking embedding model${elapsed}` };
+  }
+  if (agentStarting || onboardingLoading) {
+    return {
+      label: `Starting agent${elapsed} · plugins and local models may take a while`,
+    };
+  }
+  return { label: `Starting systems${elapsed}` };
+}
 
 /** Check if we're in pop-out mode (StreamView only, no chrome).
  *  Legacy LIFO popout values are ignored so the normal app shell still loads. */
@@ -362,6 +405,23 @@ export function App() {
   const bugReport = useBugReportState();
   const agentStarting = agentStatus?.state === "starting";
 
+  const showFullScreenLoader =
+    onboardingComplete && (onboardingLoading || agentStarting);
+
+  const [startupElapsedSec, setStartupElapsedSec] = useState(0);
+  useEffect(() => {
+    if (!showFullScreenLoader) {
+      setStartupElapsedSec(0);
+      return;
+    }
+    const t0 = Date.now();
+    setStartupElapsedSec(0);
+    const id = window.setInterval(() => {
+      setStartupElapsedSec(Math.floor((Date.now() - t0) / 1000));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [showFullScreenLoader]);
+
   useEffect(() => {
     const STARTUP_TIMEOUT_MS = 300_000;
     if ((startupPhase as string) !== "ready" && !startupError) {
@@ -372,21 +432,9 @@ export function App() {
     }
   }, [startupPhase, startupError, retryStartup]);
 
-  // Pop-out mode — render only StreamView, skip startup gates.
-  // Platform init is skipped in main.tsx; AppProvider hydrates WS in background.
-  if (isPopout) {
-    return (
-      <div className="flex flex-col h-screen w-screen font-body text-txt bg-bg overflow-hidden">
-        <StreamView />
-      </div>
-    );
-  }
-
   // Agent startup must not hide onboarding: after reset the runtime often goes
   // to "starting" while we need to show the wizard immediately.
   const blockOnboardingForShell = onboardingLoading;
-  const showFullScreenLoader =
-    onboardingComplete && (onboardingLoading || agentStarting);
 
   const [loaderFadingOut, setLoaderFadingOut] = useState(false);
   const showLoaderRef = useRef(true);
@@ -407,6 +455,16 @@ export function App() {
       return () => clearTimeout(timer);
     }
   }, [showFullScreenLoader]);
+
+  // Pop-out mode — render only StreamView, skip startup gates.
+  // Platform init is skipped in main.tsx; AppProvider hydrates WS in background.
+  if (isPopout) {
+    return (
+      <div className="flex flex-col h-screen w-screen font-body text-txt bg-bg overflow-hidden">
+        <StreamView />
+      </div>
+    );
+  }
 
   // After loader hooks (stable hook order); do not return startupError before useState above.
   if (startupError) {
@@ -527,7 +585,15 @@ export function App() {
       <SystemWarningBanner />
       {showLoader && (
         <AvatarLoader
-          label={agentStarting ? "Initializing agent" : "Starting systems"}
+          {...(() => {
+            const { label, progress } = resolveAgentLoaderCopy(
+              agentStarting,
+              onboardingLoading,
+              startupElapsedSec,
+              agentStatus?.startup,
+            );
+            return { label, progress };
+          })()}
           fullScreen
           fadingOut={loaderFadingOut}
         />

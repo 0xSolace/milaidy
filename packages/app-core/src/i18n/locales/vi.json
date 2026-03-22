@@ -122,7 +122,7 @@
   "settings.lastChecked": "Kiểm tra lần cuối:",
   "settings.import": "Nhập",
   "settings.resetAgent": "Reset Agent",
-  "settings.resetAgentHint": "Xoá toàn bộ config, bộ nhớ, dữ liệu. Quay về hướng dẫn ban đầu.",
+  "settings.resetAgentHint": "Xoá cấu hình, DB agent và khoá cloud. Giữ model GGUF đã tải. Quay về onboarding.",
   "settings.resetEverything": "Reset tất cả",
   "settings.exportAgent": "Xuất Agent",
   "settings.importAgent": "Nhập Agent",

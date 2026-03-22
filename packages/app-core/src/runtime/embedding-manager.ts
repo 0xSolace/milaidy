@@ -379,11 +379,15 @@ export type {
   EmbeddingManagerConfig,
   EmbeddingManagerStats,
   EmbeddingProgressCallback,
+  WarmupReuseEmbeddingCandidate,
 } from "./embedding-manager-support.js";
 export {
   checkDimensionMigration,
   DEFAULT_MODELS_DIR,
   EMBEDDING_META_PATH,
+  embeddingGgufFilePresent,
   ensureModel,
+  findExistingEmbeddingModelForWarmupReuse,
+  isMiladyEmbeddingWarmupReuseDisabled,
   readEmbeddingMeta,
 } from "./embedding-manager-support.js";

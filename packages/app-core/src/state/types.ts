@@ -143,6 +143,8 @@ export const ONBOARDING_PERMISSION_LABELS: Record<SystemPermissionId, string> =
 export interface ActionNotice {
   tone: string;
   text: string;
+  /** When true, ShellOverlays shows an indeterminate spinner (long-running work). */
+  busy?: boolean;
 }
 
 export type LifecycleAction = "start" | "stop" | "restart" | "reset";
@@ -177,7 +179,8 @@ export const LIFECYCLE_MESSAGES: Record<
   },
   reset: {
     inProgress: "resetting",
-    progress: "Resetting agent...",
+    progress:
+      "Resetting agent (server wipe + restart). This can take 1–2 minutes — keep the app open.",
     success: "Agent reset. Returning to onboarding.",
     verb: "reset",
   },
@@ -239,6 +242,8 @@ export interface AppState {
   connected: boolean;
   agentStatus: AgentStatus | null;
   onboardingComplete: boolean;
+  /** Incremented on agent reset so onboarding UI shows immediately (not stuck behind VRM reveal). */
+  onboardingUiRevealNonce: number;
   onboardingLoading: boolean;
   startupPhase: StartupPhase;
   startupError: StartupErrorState | null;
@@ -555,7 +560,7 @@ export type LoadConversationMessagesResult =
   | { ok: false; status?: number; message: string };
 
 export const AGENT_TRANSFER_MIN_PASSWORD_LENGTH = 4;
-export const AGENT_READY_TIMEOUT_MS = 90_000;
+export const AGENT_READY_TIMEOUT_MS = 120_000;
 
 export interface AppActions {
   // Navigation
@@ -572,6 +577,8 @@ export interface AppActions {
 
   handleRestart: () => Promise<void>;
   handleReset: () => Promise<void>;
+  /** After main-process app-menu reset (Electrobun): sync local React state + client. */
+  handleResetAppliedFromMain: (payload: unknown) => Promise<void>;
   retryStartup: () => void;
   dismissRestartBanner: () => void;
   showRestartBanner: () => void;
@@ -726,6 +733,8 @@ export interface AppActions {
     text: string,
     tone?: "info" | "success" | "error",
     ttlMs?: number,
+    once?: boolean,
+    busy?: boolean,
   ) => void;
 
   // Generic state setter

@@ -197,6 +197,7 @@ async function launch() {
       ["--watch", "packages/app-core/src/runtime/dev-server.ts"],
       repoRoot,
       {
+        NODE_ENV: "development",
         ELIZA_PORT: apiPort,
         ELIZA_HEADLESS: "1",
       },
@@ -210,6 +211,7 @@ async function launch() {
   }
 
   pushChild("electrobun", "bun", ["run", "dev"], electrobunDir, {
+    NODE_ENV: "development",
     ELECTROBUN_SKIP_CODESIGN: "1",
     ...(rendererUrlForShell
       ? { MILADY_RENDERER_URL: rendererUrlForShell }

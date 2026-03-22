@@ -139,6 +139,7 @@
     "@elizaos/plugin-agent-skills": "alpha",
     "@elizaos/plugin-anthropic": "alpha",
     "@elizaos/plugin-cron": "alpha",
+    "@elizaos/plugin-edge-tts": "alpha",
     "@elizaos/plugin-elizacloud": "alpha",
     "@elizaos/plugin-evm": "alpha",
     "@elizaos/plugin-experience": "alpha",

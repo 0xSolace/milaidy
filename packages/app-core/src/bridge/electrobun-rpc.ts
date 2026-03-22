@@ -16,11 +16,14 @@ interface DesktopBridgeWindow extends Window {
 }
 
 function getDesktopBridgeWindow(): DesktopBridgeWindow | null {
-  if (typeof window === "undefined") {
-    return null;
+  const g = globalThis as typeof globalThis & { window?: DesktopBridgeWindow };
+  if (typeof g.window !== "undefined") {
+    return g.window;
   }
-
-  return window as DesktopBridgeWindow;
+  if (typeof window !== "undefined") {
+    return window as DesktopBridgeWindow;
+  }
+  return null;
 }
 
 export function getElectrobunRendererRpc(): ElectrobunRendererRpc | undefined {

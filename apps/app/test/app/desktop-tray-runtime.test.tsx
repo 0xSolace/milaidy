@@ -14,10 +14,14 @@ const { openDesktopSettingsWindowMock } = vi.hoisted(() => ({
   openDesktopSettingsWindowMock: vi.fn(),
 }));
 
-vi.mock("@miladyai/app-core/bridge", () => ({
-  invokeDesktopBridgeRequest: invokeDesktopBridgeRequestMock,
-  isElectrobunRuntime: isElectrobunRuntimeMock,
-}));
+vi.mock("@miladyai/app-core/bridge", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@miladyai/app-core/bridge")>();
+  return {
+    ...actual,
+    invokeDesktopBridgeRequest: invokeDesktopBridgeRequestMock,
+    isElectrobunRuntime: isElectrobunRuntimeMock,
+  };
+});
 
 vi.mock("@miladyai/app-core/state", () => ({
   useApp: useAppMock,
@@ -38,6 +42,8 @@ describe("DesktopTrayRuntime", () => {
   const handleStart = vi.fn();
   const handleStop = vi.fn();
   const handleRestart = vi.fn();
+  const handleReset = vi.fn();
+  const handleResetAppliedFromMain = vi.fn();
   const setTab = vi.fn();
   const switchShellView = vi.fn();
 
@@ -49,6 +55,8 @@ describe("DesktopTrayRuntime", () => {
     handleStart.mockReset();
     handleStop.mockReset();
     handleRestart.mockReset();
+    handleReset.mockReset();
+    handleResetAppliedFromMain.mockReset();
     setTab.mockReset();
     switchShellView.mockReset();
 
@@ -58,6 +66,8 @@ describe("DesktopTrayRuntime", () => {
       handleStart,
       handleStop,
       handleRestart,
+      handleReset,
+      handleResetAppliedFromMain,
       setTab,
       switchShellView,
     });

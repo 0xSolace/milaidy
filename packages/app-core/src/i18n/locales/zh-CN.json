@@ -113,7 +113,7 @@
   "settings.lastChecked": "上次检查：",
   "settings.import": "导入",
   "settings.resetAgent": "重置 Agent",
-  "settings.resetAgentHint": "清空所有配置、记忆和数据，并返回引导页。",
+  "settings.resetAgentHint": "清除配置、代理数据库和云端密钥。已下载的 GGUF 模型会保留。返回引导流程。",
   "settings.resetEverything": "全部重置",
   "settings.exportAgent": "导出 Agent",
   "settings.importAgent": "导入 Agent",

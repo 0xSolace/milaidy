@@ -7,6 +7,7 @@
 
 import { useRenderGuard } from "@miladyai/app-core/hooks";
 import type { Tab } from "@miladyai/app-core/navigation";
+import type { ActionNotice } from "@miladyai/app-core/state";
 import { memo } from "react";
 import { CompanionView } from "./CompanionView";
 
@@ -16,7 +17,7 @@ export { COMPANION_OVERLAY_TABS } from "./companion-shell-styles";
 
 export interface CompanionShellProps {
   tab: Tab;
-  actionNotice: { text: string; tone: string } | null;
+  actionNotice: ActionNotice | null;
 }
 
 export const CompanionShell = memo(function CompanionShell(

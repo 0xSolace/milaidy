@@ -61,6 +61,22 @@ export function parseAgentStartupDiagnostics(
     startup.lastErrorAt = value.lastErrorAt;
   if (typeof value.nextRetryAt === "number")
     startup.nextRetryAt = value.nextRetryAt;
+  const embPhase = value.embeddingPhase;
+  if (
+    embPhase === "checking" ||
+    embPhase === "downloading" ||
+    embPhase === "loading" ||
+    embPhase === "ready"
+  ) {
+    startup.embeddingPhase = embPhase;
+  }
+  if (typeof value.embeddingDetail === "string") {
+    startup.embeddingDetail = value.embeddingDetail;
+  }
+  const embPct = value.embeddingProgressPct;
+  if (typeof embPct === "number" && Number.isFinite(embPct)) {
+    startup.embeddingProgressPct = Math.max(0, Math.min(100, embPct));
+  }
   return startup;
 }
 

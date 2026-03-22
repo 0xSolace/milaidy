@@ -217,6 +217,15 @@ vi.mock("../native/agent", () => ({
         error: null,
       }),
     ),
+    restartClearingLocalDb: vi.fn(() =>
+      Promise.resolve({
+        state: "running",
+        agentName: "Milady",
+        port: 2138,
+        startedAt: Date.now(),
+        error: null,
+      }),
+    ),
     getStatus: vi.fn(() => ({
       state: "not_started",
       agentName: null,
@@ -233,6 +242,7 @@ vi.mock("../native/agent", () => ({
     start = vi.fn();
     stop = vi.fn();
     restart = vi.fn();
+    restartClearingLocalDb = vi.fn();
     getStatus = vi.fn();
     getPort = vi.fn(() => null);
     setSendToWebview = vi.fn();
@@ -679,6 +689,9 @@ describe("Channel mapping — requests", () => {
     expect(CHANNEL_TO_RPC_METHOD["agent:start"]).toBe("agentStart");
     expect(CHANNEL_TO_RPC_METHOD["agent:stop"]).toBe("agentStop");
     expect(CHANNEL_TO_RPC_METHOD["agent:restart"]).toBe("agentRestart");
+    expect(CHANNEL_TO_RPC_METHOD["agent:restartClearLocalDb"]).toBe(
+      "agentRestartClearLocalDb",
+    );
     expect(CHANNEL_TO_RPC_METHOD["agent:status"]).toBe("agentStatus");
   });
 
@@ -4539,7 +4552,7 @@ describe("Application menu (automated)", () => {
     expect(indexSource).toContain('"check-for-updates"');
   });
 
-  it("reset-milady menu action forwards to renderer for reset + confirmation", async () => {
+  it("reset-milady menu action runs main-process reset then pushes applied payload", async () => {
     const fs = await vi.importActual<typeof import("node:fs")>("node:fs");
     const path = await vi.importActual<typeof import("node:path")>("node:path");
     const indexSource = fs.readFileSync(
@@ -4547,7 +4560,8 @@ describe("Application menu (automated)", () => {
       "utf8",
     );
     expect(indexSource).toContain('"reset-milady"');
-    expect(indexSource).toContain("menu-reset-milady");
+    expect(indexSource).toContain("resetMiladyFromApplicationMenu");
+    expect(indexSource).toContain("menu-reset-milady-applied");
   });
 
   it.todo("Keyboard shortcut Cmd+Q triggers quit (e2e)");
@@ -4704,6 +4718,14 @@ describe("Agent lifecycle (automated)", () => {
   it("agentRestart returns running status", async () => {
     const { handlers } = await captureHandlers();
     const status = (await handlers.agentRestart()) as { state: string };
+    expect(status.state).toBe("running");
+  });
+
+  it("agentRestartClearLocalDb returns running status", async () => {
+    const { handlers } = await captureHandlers();
+    const status = (await handlers.agentRestartClearLocalDb()) as {
+      state: string;
+    };
     expect(status.state).toBe("running");
   });
 

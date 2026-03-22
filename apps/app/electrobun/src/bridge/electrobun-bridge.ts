@@ -28,6 +28,7 @@ const CHANNEL_TO_RPC: Record<string, string> = {
   "agent:start": "agentStart",
   "agent:stop": "agentStop",
   "agent:restart": "agentRestart",
+  "agent:restartClearLocalDb": "agentRestartClearLocalDb",
   "agent:status": "agentStatus",
 
   // Desktop: Tray

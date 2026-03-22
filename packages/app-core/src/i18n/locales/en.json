@@ -113,7 +113,7 @@
   "settings.lastChecked": "Last checked:",
   "settings.import": "Import",
   "settings.resetAgent": "Reset Agent",
-  "settings.resetAgentHint": "Wipe all config, memory, and data. Returns to the onboarding wizard.",
+  "settings.resetAgentHint": "Clears config, agent database, and cloud keys. Downloaded GGUF models stay on disk. Returns to onboarding.",
   "settings.resetEverything": "Reset Everything",
   "settings.exportAgent": "Export Agent",
   "settings.importAgent": "Import Agent",

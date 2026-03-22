@@ -1,3 +1,5 @@
+import { Loader2 } from "lucide-react";
+
 interface AvatarLoaderProps {
   /** Sub-label text below the progress bar */
   label?: string;
@@ -39,9 +41,12 @@ export function AvatarLoader({
           width: 280,
         }}
       >
-        {/* LOADING label */}
+        {/* LOADING label + spinner (long startup / embedding download) */}
         <div
           style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
             fontFamily: "var(--mono, monospace)",
             fontSize: 12,
             fontWeight: 400,
@@ -51,8 +56,14 @@ export function AvatarLoader({
             userSelect: "none",
           }}
         >
-          LOADING
-          <span className="loading-screen__dots" />
+          <Loader2
+            className="h-4 w-4 shrink-0 animate-spin text-[var(--text)] opacity-90"
+            aria-hidden
+          />
+          <span>
+            LOADING
+            <span className="loading-screen__dots" />
+          </span>
         </div>
 
         {/* Progress bar */}

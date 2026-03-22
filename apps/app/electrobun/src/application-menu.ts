@@ -5,9 +5,10 @@ import type { ManagedWindowSnapshot } from "./surface-windows";
  * `application-menu-clicked` and handled in `index.ts`. **Why a pure builder:**
  * tests and reviewers can diff menu shape without reading IPC wiring.
  *
- * **`reset-milady`** is forwarded to the webview (see `menu-reset-milady`) so
- * **`handleReset`** in `AppProvider` owns confirm + API + React state. **Why not
- * reset from the main process:** duplicate HTTP/auth and drift from Settings.
+ * **`reset-milady`** is handled in `index.ts` (`resetMiladyFromApplicationMenu`):
+ * native confirm + `POST /api/agent/reset` + embedded or HTTP restart, then
+ * `desktopTrayMenuClick` with `menu-reset-milady-applied` so the renderer runs
+ * **`handleResetAppliedFromMain`** (same local UI sync as Settings **`handleReset`**).
  */
 
 type ApplicationMenuRole =

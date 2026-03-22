@@ -1,5 +1,6 @@
 import {
   type AgentRuntime,
+  type Plugin,
   AutonomyService,
   ChannelType,
   logger,
@@ -17,6 +18,7 @@ import {
   buildCharacterFromConfig as upstreamBuildCharacterFromConfig,
   CHANNEL_PLUGIN_MAP as upstreamChannelPluginMap,
   collectPluginNames as upstreamCollectPluginNames,
+  configureLocalEmbeddingPlugin as upstreamConfigureLocalEmbeddingPlugin,
   shutdownRuntime as upstreamShutdownRuntime,
   startEliza as upstreamStartEliza,
 } from "@elizaos/agent/runtime/eliza";
@@ -24,15 +26,21 @@ import {
   syncElizaEnvToMilady,
   syncMiladyEnvToEliza,
 } from "../config/brand-env.js";
+import { loadElizaConfig } from "../config/config.js";
 import { CHARACTER_PRESET_META, STYLE_PRESETS } from "../onboarding-presets.js";
 import { normalizeCharacterMessageExamples } from "../utils/character-message-examples";
 import { ensureRuntimeSqlCompatibility } from "../utils/sql-compat";
 import type { EmbeddingProgressCallback } from "./embedding-manager-support.js";
 import {
   DEFAULT_MODELS_DIR,
+  embeddingGgufFilePresent,
   ensureModel,
+  findExistingEmbeddingModelForWarmupReuse,
+  isMiladyEmbeddingWarmupReuseDisabled,
 } from "./embedding-manager-support.js";
 import { detectEmbeddingPreset } from "./embedding-presets.js";
+import { shouldWarmupLocalEmbeddingModel } from "./embedding-warmup-policy.js";
+import { updateMiladyStartupEmbeddingProgress } from "./milady-startup-overlay.js";
 import { installDatabaseTrajectoryLogger } from "./trajectory-persistence.js";
 
 const AUTONOMY_WORLD_ID = stringToUuid("00000000-0000-0000-0000-000000000001");
@@ -50,6 +58,26 @@ const LEGACY_INTERNAL_CHANNEL_PLUGIN_NAMES = new Map<string, string>(
     "@miladyai/plugin-whatsapp": INTERNAL_CHANNEL_PLUGIN_OVERRIDES.whatsapp,
   }),
 );
+
+/** Swarm / PTY paths call TEXT_TO_SPEECH; Edge TTS supplies that model with no API key. */
+const AGENT_ORCHESTRATOR_PLUGIN = "@elizaos/plugin-agent-orchestrator";
+const EDGE_TTS_PLUGIN = "@elizaos/plugin-edge-tts";
+
+export function isMiladyEdgeTtsDisabled(
+  config: Parameters<typeof upstreamCollectPluginNames>[0],
+): boolean {
+  if (config.plugins?.entries?.["edge-tts"]?.enabled === false) {
+    return true;
+  }
+  const raw =
+    typeof process !== "undefined" && process.env
+      ? (process.env.MILADY_DISABLE_EDGE_TTS ??
+        process.env.ELIZA_DISABLE_EDGE_TTS)
+      : undefined;
+  if (!raw || typeof raw !== "string") return false;
+  const n = raw.trim().toLowerCase();
+  return n === "1" || n === "true" || n === "yes";
+}
 
 export const CHANNEL_PLUGIN_MAP = {
   ...upstreamChannelPluginMap,
@@ -136,6 +164,7 @@ export function collectPluginNames(
   ...args: Parameters<typeof upstreamCollectPluginNames>
 ): ReturnType<typeof upstreamCollectPluginNames> {
   syncBrandEnvAliases();
+  const [config] = args;
   const result = upstreamCollectPluginNames(...args);
   for (const [
     legacyName,
@@ -146,8 +175,84 @@ export function collectPluginNames(
       result.add(normalizedName);
     }
   }
+  if (
+    result.has(AGENT_ORCHESTRATOR_PLUGIN) &&
+    !isMiladyEdgeTtsDisabled(config) &&
+    !result.has(EDGE_TTS_PLUGIN)
+  ) {
+    result.add(EDGE_TTS_PLUGIN);
+  }
   syncBrandEnvAliases();
   return result;
+}
+
+type TtsModelHandler = (
+  runtime: AgentRuntime,
+  input: unknown,
+) => Promise<unknown>;
+
+type RuntimeWithModelRegistration = AgentRuntime & {
+  getModel: (modelType: string | number) => TtsModelHandler | undefined;
+  registerModel: (
+    modelType: string | number,
+    handler: TtsModelHandler,
+    provider: string,
+    priority?: number,
+  ) => void;
+};
+
+/**
+ * `@elizaos/agent` boot calls its own `collectPluginNames` — Milady's wrapper
+ * (which adds Edge TTS) is not used. Register the Edge TTS model handler on
+ * the live runtime so core streaming voice (`useModel(TEXT_TO_SPEECH)`) works
+ * for swarm / #Chen and matches UI TTS expectations.
+ */
+export async function ensureMiladyTextToSpeechHandler(
+  runtime: AgentRuntime,
+): Promise<void> {
+  let config: Parameters<typeof upstreamCollectPluginNames>[0];
+  try {
+    const { loadElizaConfig } = await import("@elizaos/agent/config/config");
+    config = loadElizaConfig();
+  } catch {
+    config = {} as Parameters<typeof upstreamCollectPluginNames>[0];
+  }
+
+  if (isMiladyEdgeTtsDisabled(config)) {
+    return;
+  }
+
+  const r = runtime as RuntimeWithModelRegistration;
+  if (typeof r.getModel !== "function" || typeof r.registerModel !== "function") {
+    return;
+  }
+
+  const existing = r.getModel(ModelType.TEXT_TO_SPEECH);
+  if (existing) {
+    return;
+  }
+
+  try {
+    const mod = (await import("@elizaos/plugin-edge-tts")) as {
+      default?: { models?: Record<string, TtsModelHandler> };
+    };
+    const plugin = mod.default;
+    const handler = plugin?.models?.[ModelType.TEXT_TO_SPEECH];
+    if (typeof handler !== "function") {
+      logger.warn(
+        "[milady] @elizaos/plugin-edge-tts: no TEXT_TO_SPEECH handler on default export",
+      );
+      return;
+    }
+    r.registerModel(ModelType.TEXT_TO_SPEECH, handler, "edge-tts", 0);
+    logger.info(
+      "[milady] Registered Edge TTS for runtime TEXT_TO_SPEECH (streaming / swarm voice)",
+    );
+  } catch (err) {
+    logger.warn(
+      `[milady] Could not register Edge TTS for TEXT_TO_SPEECH: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
 }
 
 export function applyCloudConfigToEnv(
@@ -289,6 +394,7 @@ async function repairRuntimeAfterBoot(
   runtime: AgentRuntime,
 ): Promise<AgentRuntime> {
   await ensureRuntimeSqlCompatibility(runtime);
+  await ensureMiladyTextToSpeechHandler(runtime);
   await ensureAutonomyBootstrapContext(runtime);
 
   await installDatabaseTrajectoryLogger(runtime);
@@ -487,25 +593,68 @@ async function ensureTelegramBotPolling(runtime: AgentRuntime): Promise<void> {
  * Eagerly download the embedding model file if not already present.
  * This ensures the GGUF is on disk before the runtime's first
  * generateEmbedding() call, avoiding a silent stall on first use.
+ *
+ * Uses the same env resolution as `configureLocalEmbeddingPlugin` (eliza.json
+ * `embedding` + hardware tier). Warmup previously always used tier-only presets,
+ * so a custom `embedding.model` caused a first download here and a *second*
+ * download when the plugin looked for a different filename — nothing deleted
+ * the first file; it was simply the wrong path/name.
+ *
+ * If the configured GGUF is **not** on disk but another known embedding file
+ * already exists in `MODELS_DIR` (e.g. legacy bge-small after `eliza.json`
+ * switched to the 7B E5 preset), we align `LOCAL_EMBEDDING_*` with that file
+ * so we do not re-download multi‑GB models. Opt out:
+ * `MILADY_EMBEDDING_WARMUP_NO_REUSE=1`.
  */
 async function warmupEmbeddingModel(
   onProgress?: EmbeddingProgressCallback,
 ): Promise<void> {
-  // Skip if cloud embeddings are disabled (no local model needed)
-  if (
-    process.env.MILADY_CLOUD_EMBEDDINGS_DISABLED === "1" ||
-    process.env.ELIZA_CLOUD_EMBEDDINGS_DISABLED === "1"
-  ) {
+  if (!shouldWarmupLocalEmbeddingModel()) {
     logger.info(
-      "[milady] Cloud embeddings disabled — skipping embedding model warmup",
+      "[milady] Skipping local embedding (GGUF) warmup — not needed for this configuration (e.g. Eliza Cloud embeddings, or local embeddings disabled).",
     );
     return;
   }
 
+  const config = loadElizaConfig();
+  upstreamConfigureLocalEmbeddingPlugin({} as Plugin, config);
+
   const preset = detectEmbeddingPreset();
   const modelsDir = process.env.MODELS_DIR ?? DEFAULT_MODELS_DIR;
+  let model =
+    process.env.LOCAL_EMBEDDING_MODEL?.trim() || preset.model;
+  let modelRepo =
+    process.env.LOCAL_EMBEDDING_MODEL_REPO?.trim() || preset.modelRepo;
+
+  if (
+    !isMiladyEmbeddingWarmupReuseDisabled() &&
+    !embeddingGgufFilePresent(modelsDir, model)
+  ) {
+    const reuse = findExistingEmbeddingModelForWarmupReuse(modelsDir);
+    if (reuse) {
+      logger.info(
+        `[milady] Embedding warmup: configured file "${model}" not found in MODELS_DIR — reusing existing ${reuse.model} to avoid a large re-download. ` +
+          "Set LOCAL_EMBEDDING_MODEL or MILADY_EMBEDDING_WARMUP_NO_REUSE=1 to force the configured model.",
+      );
+      process.env.LOCAL_EMBEDDING_MODEL = reuse.model;
+      process.env.LOCAL_EMBEDDING_MODEL_REPO = reuse.modelRepo;
+      process.env.LOCAL_EMBEDDING_DIMENSIONS = String(reuse.dimensions);
+      process.env.LOCAL_EMBEDDING_CONTEXT_SIZE = String(reuse.contextSize);
+      process.env.LOCAL_EMBEDDING_GPU_LAYERS = reuse.gpuLayers;
+      process.env.LOCAL_EMBEDDING_USE_MMAP =
+        reuse.gpuLayers === "auto" ? "false" : "true";
+      model = reuse.model;
+      modelRepo = reuse.modelRepo;
+    }
+  }
+
+  logger.info(
+    `[milady] Local embedding warmup: ${model} (hardware tier preset: ${preset.label}). ` +
+      "This file is for TEXT_EMBEDDING / memory only (not your conversation model).",
+  );
 
   const progressCb: EmbeddingProgressCallback = (phase, detail) => {
+    updateMiladyStartupEmbeddingProgress(phase, detail);
     // Always log to stdout for server/container monitoring
     if (phase === "downloading") {
       logger.info(`[milady] Embedding model: ${detail ?? "downloading..."}`);
@@ -521,8 +670,8 @@ async function warmupEmbeddingModel(
   try {
     await ensureModel(
       modelsDir,
-      preset.modelRepo,
-      preset.model,
+      modelRepo,
+      model,
       false,
       progressCb,
     );

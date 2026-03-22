@@ -378,6 +378,10 @@ export type MiladyRPCSchema = {
       agentStart: { params: undefined; response: EmbeddedAgentStatus };
       agentStop: { params: undefined; response: { ok: true } };
       agentRestart: { params: undefined; response: EmbeddedAgentStatus };
+      agentRestartClearLocalDb: {
+        params: undefined;
+        response: EmbeddedAgentStatus;
+      };
       agentStatus: { params: undefined; response: EmbeddedAgentStatus };
       agentInspectExistingInstall: {
         params: undefined;
@@ -1001,7 +1005,12 @@ export type MiladyRPCSchema = {
       permissionsChanged: { id: string };
 
       // Desktop: Tray events
-      desktopTrayMenuClick: { itemId: string; checked?: boolean };
+      desktopTrayMenuClick: {
+        itemId: string;
+        checked?: boolean;
+        /** Present when `itemId === "menu-reset-milady-applied"` (main-process reset). */
+        agentStatus?: unknown;
+      };
       desktopTrayClick: TrayClickEvent;
 
       // Desktop: Shortcut events
@@ -1113,6 +1122,7 @@ export const CHANNEL_TO_RPC_METHOD: Record<string, string> = {
   "agent:start": "agentStart",
   "agent:stop": "agentStop",
   "agent:restart": "agentRestart",
+  "agent:restartClearLocalDb": "agentRestartClearLocalDb",
   "agent:status": "agentStatus",
   "agent:inspectExistingInstall": "agentInspectExistingInstall",
 

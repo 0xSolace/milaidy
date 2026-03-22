@@ -3,6 +3,7 @@ import https from "node:https";
 import os from "node:os";
 import path from "node:path";
 import { getLogPrefix } from "../utils/log-prefix.js";
+import { EMBEDDING_PRESETS } from "./embedding-presets.js";
 
 /**
  * Callback for reporting download/init progress.
@@ -235,6 +236,89 @@ function resolveModelPath(modelsDir: string, filename: string): string {
   return resolvedPath;
 }
 
+/** Known TEXT_EMBEDDING GGUFs Milady may warm up (same filenames as HuggingFace repos). */
+export interface WarmupReuseEmbeddingCandidate {
+  readonly model: string;
+  readonly modelRepo: string;
+  readonly dimensions: number;
+  readonly contextSize: number;
+  readonly gpuLayers: string;
+}
+
+function warmupReuseEmbeddingCandidates(): WarmupReuseEmbeddingCandidate[] {
+  const { fallback, standard, performance } = EMBEDDING_PRESETS;
+  return [
+    {
+      model: fallback.model,
+      modelRepo: fallback.modelRepo,
+      dimensions: fallback.dimensions,
+      contextSize: fallback.contextSize,
+      gpuLayers: String(fallback.gpuLayers),
+    },
+    {
+      model: standard.model,
+      modelRepo: standard.modelRepo,
+      dimensions: standard.dimensions,
+      contextSize: standard.contextSize,
+      gpuLayers: String(standard.gpuLayers),
+    },
+    {
+      model: "bge-small-en-v1.5.Q4_K_M.gguf",
+      modelRepo: "CompendiumLabs/bge-small-en-v1.5-GGUF",
+      dimensions: 384,
+      contextSize: 512,
+      gpuLayers: "0",
+    },
+    {
+      model: performance.model,
+      modelRepo: performance.modelRepo,
+      dimensions: performance.dimensions,
+      contextSize: performance.contextSize,
+      gpuLayers: String(performance.gpuLayers),
+    },
+  ];
+}
+
+/** True if a sanitized GGUF with this basename exists under `modelsDir`. */
+export function embeddingGgufFilePresent(
+  modelsDir: string,
+  filename: string,
+): boolean {
+  try {
+    const safe = sanitizeModelFilename(filename);
+    return fs.existsSync(resolveModelPath(modelsDir, safe));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * When the configured embedding file is missing, pick the first **known**
+ * embedding GGUF already on disk (smaller presets first, then Milady’s legacy
+ * bge-small default, then the 7B E5) so we do not re-download multi‑GB models
+ * after reset or when `eliza.json` points at a different tier than `MODELS_DIR`.
+ */
+export function findExistingEmbeddingModelForWarmupReuse(
+  modelsDir: string,
+): WarmupReuseEmbeddingCandidate | null {
+  const dir = path.resolve(modelsDir);
+  if (!fs.existsSync(dir)) {
+    return null;
+  }
+  for (const c of warmupReuseEmbeddingCandidates()) {
+    if (embeddingGgufFilePresent(dir, c.model)) {
+      return c;
+    }
+  }
+  return null;
+}
+
+export function isMiladyEmbeddingWarmupReuseDisabled(): boolean {
+  const raw =
+    process.env.MILADY_EMBEDDING_WARMUP_NO_REUSE?.trim().toLowerCase() ?? "";
+  return raw === "1" || raw === "true" || raw === "yes";
+}
+
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
@@ -390,10 +474,13 @@ export async function ensureModel(
 
   const url = `https://huggingface.co/${safeRepo}/resolve/main/${safeFilename}`;
   log.info(
-    `${getLogPrefix()} Downloading embedding model: ${safeFilename} from ${safeRepo}...`,
+    `${getLogPrefix()} Downloading TEXT_EMBEDDING / memory vector model (not chat LLM): ${safeFilename} from ${safeRepo}`,
   );
 
-  onProgress?.("downloading", `${safeFilename} from ${safeRepo}`);
+  onProgress?.(
+    "downloading",
+    `${safeFilename} — TEXT_EMBEDDING for memory, not chat · ${safeRepo}`,
+  );
 
   const downloadOnProgress: DownloadProgressCallback | undefined = onProgress
     ? (downloaded, total) => {

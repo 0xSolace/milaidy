@@ -725,6 +725,25 @@ describe("AgentManager", () => {
     });
   });
 
+  describe("restartClearingLocalDb()", () => {
+    it("is a no-op in external API mode (no spawn, no throw)", async () => {
+      const originalApiBase = process.env.MILADY_DESKTOP_API_BASE;
+      process.env.MILADY_DESKTOP_API_BASE = "http://127.0.0.1:31337";
+
+      try {
+        const status = await manager.restartClearingLocalDb();
+        expect(status.state).toBe("not_started");
+        expect(mockSpawn).not.toHaveBeenCalled();
+      } finally {
+        if (originalApiBase === undefined) {
+          delete process.env.MILADY_DESKTOP_API_BASE;
+        } else {
+          process.env.MILADY_DESKTOP_API_BASE = originalApiBase;
+        }
+      }
+    });
+  });
+
   describe("getStatus()", () => {
     it("returns a copy (not a reference)", () => {
       const status1 = manager.getStatus();

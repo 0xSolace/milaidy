@@ -1,4 +1,5 @@
 import {
+  getElectrobunRendererRpc,
   invokeDesktopBridgeRequest,
   isElectrobunRuntime,
   subscribeDesktopBridgeEvent,
@@ -146,6 +147,7 @@ export function DesktopTrayRuntime() {
     agentStatus,
     handleRestart,
     handleReset,
+    handleResetAppliedFromMain,
     handleStart,
     handleStop,
     setTab,
@@ -160,19 +162,74 @@ export function DesktopTrayRuntime() {
       return;
     }
 
-    return subscribeDesktopBridgeEvent({
-      rpcMessage: "desktopTrayMenuClick",
-      ipcChannel: "desktop:trayMenuClick",
-      listener: (payload) => {
-        const itemId =
-          (payload as { itemId?: string } | null | undefined)?.itemId ?? "";
-        if (itemId !== "menu-reset-milady") {
-          return;
+    let cancelled = false;
+    let unsubscribe: (() => void) | null = null;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
+    const attach = (): boolean => {
+      if (cancelled || !getElectrobunRendererRpc()) {
+        return false;
+      }
+      if (unsubscribe) {
+        unsubscribe();
+        unsubscribe = null;
+      }
+      unsubscribe = subscribeDesktopBridgeEvent({
+        rpcMessage: "desktopTrayMenuClick",
+        ipcChannel: "desktop:trayMenuClick",
+        listener: (payload) => {
+          const itemId =
+            (payload as { itemId?: string } | null | undefined)?.itemId ?? "";
+          if (itemId === "menu-reset-milady-applied") {
+            console.info(
+              "[milady][reset] menu: main-process reset finished — syncing renderer",
+              { itemId },
+            );
+            void handleResetAppliedFromMain(payload);
+            return;
+          }
+          if (itemId !== "menu-reset-milady") {
+            return;
+          }
+          console.info(
+            "[milady][reset] menu: Reset Milady clicked (legacy IPC — renderer confirm)",
+            { itemId },
+          );
+          void handleReset();
+        },
+      });
+      console.info(
+        "[milady][reset] tray: subscribed to desktopTrayMenuClick (menu Reset Milady path)",
+      );
+      return true;
+    };
+
+    if (!attach()) {
+      intervalId = setInterval(() => {
+        if (attach() && intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
         }
-        void handleReset();
-      },
-    });
-  }, [handleReset]);
+      }, 100);
+      setTimeout(() => {
+        if (intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+        if (!cancelled && !getElectrobunRendererRpc()) {
+          console.warn(
+            "[milady][reset] tray: Electrobun RPC not ready after 10s — menu Reset Milady may not work until reload",
+          );
+        }
+      }, 10_000);
+    }
+
+    return () => {
+      cancelled = true;
+      if (intervalId) clearInterval(intervalId);
+      unsubscribe?.();
+    };
+  }, [handleReset, handleResetAppliedFromMain]);
 
   useEffect(() => {
     if (!isElectrobunRuntime()) {

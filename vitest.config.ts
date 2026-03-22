@@ -139,6 +139,7 @@ export default defineConfig({
       "packages/agent/test/**/*.test.ts",
       "packages/agent/test/**/*.test.tsx",
       "packages/app-core/src/**/*.test.ts",
+      "packages/app-core/src/components/OnboardingWizard.test.tsx",
       "packages/plugin-retake/src/**/*.test.ts",
       "src/**/*.test.ts",
       "scripts/**/*.test.ts",
