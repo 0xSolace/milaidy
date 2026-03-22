@@ -17,9 +17,9 @@ vi.mock("@miladyai/app-core/state", () => ({
   getVrmUrl: () => "/vrms/eliza-1.vrm.gz",
   ONBOARDING_STEPS: [
     {
-      id: "identity",
-      name: "onboarding.identity.title",
-      subtitle: "onboarding.identity.subtitle",
+      id: "hosting",
+      name: "onboarding.stepName.hosting",
+      subtitle: "onboarding.stepSub.hosting",
     },
   ],
   useApp: () => mockUseApp(),
@@ -59,9 +59,7 @@ vi.mock("./onboarding/PermissionsStep", () => ({
   PermissionsStep: () => React.createElement("div", null, "PermissionsStep"),
 }));
 
-vi.mock("./onboarding/RpcStep", () => ({
-  RpcStep: () => React.createElement("div", null, "RpcStep"),
-}));
+
 
 import { OnboardingWizard } from "./OnboardingWizard";
 
@@ -74,7 +72,7 @@ describe("OnboardingWizard", () => {
 
   it("forces light chrome while keeping the onboarding world on the day scene", async () => {
     mockUseApp.mockReturnValue({
-      onboardingStep: "identity",
+      onboardingStep: "hosting",
       selectedVrmIndex: 1,
       customVrmUrl: "",
       uiLanguage: "en",

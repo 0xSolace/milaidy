@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  CHARACTER_PRESET_META,
   getPresetNameMap,
   getStylePresets,
   STYLE_PRESETS,
@@ -17,20 +16,17 @@ describe("getStylePresets", () => {
 });
 
 describe("getPresetNameMap", () => {
-  it("returns a name→catchphrase mapping for every CHARACTER_PRESET_META entry", () => {
+  it("returns a name→catchphrase mapping for every STYLE_PRESETS entry", () => {
     const map = getPresetNameMap();
-    const metaValues = Object.values(CHARACTER_PRESET_META);
-    expect(Object.keys(map).length).toBe(metaValues.length);
-    for (const entry of metaValues) {
+    expect(Object.keys(map).length).toBe(STYLE_PRESETS.length);
+    for (const entry of STYLE_PRESETS) {
       expect(map[entry.name]).toBe(entry.catchphrase);
     }
   });
 
-  it("keys match CHARACTER_PRESET_META names exactly", () => {
+  it("keys match STYLE_PRESETS names exactly", () => {
     const map = getPresetNameMap();
-    const expectedNames = Object.values(CHARACTER_PRESET_META).map(
-      (e) => e.name,
-    );
+    const expectedNames = STYLE_PRESETS.map((e) => e.name);
     expect(Object.keys(map).sort()).toEqual(expectedNames.sort());
   });
 });

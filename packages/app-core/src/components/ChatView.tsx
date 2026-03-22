@@ -713,7 +713,7 @@ export function ChatView({ variant = "default" }: ChatViewProps) {
   return (
     <section
       aria-label="Chat workspace"
-      className={`flex flex-col flex-1 min-h-0 relative${isGameModal ? " overflow-visible px-2 sm:px-3" : ""}${imageDragOver ? " ring-2 ring-accent ring-inset" : ""}`}
+      className={`flex flex-col flex-1 min-h-0 relative${isGameModal ? " overflow-visible px-2 sm:px-3 pointer-events-none" : ""}${imageDragOver ? " ring-2 ring-accent ring-inset" : ""}`}
       onDragOver={(e) => {
         e.preventDefault();
         setImageDragOver(true);
@@ -725,9 +725,9 @@ export function ChatView({ variant = "default" }: ChatViewProps) {
       <div
         ref={messagesRef}
         data-testid="chat-messages-scroll"
-        data-no-window-drag={isGameModal ? undefined : ""}
-        data-no-camera-drag={isGameModal || undefined}
-        data-no-camera-zoom={isGameModal || undefined}
+        data-no-window-drag={false}
+        data-no-camera-drag={false}
+        data-no-camera-zoom={false}
         className={
           isGameModal
             ? "chat-native-scrollbar absolute inset-x-0 overflow-x-hidden overflow-y-auto pointer-events-auto"
@@ -736,19 +736,19 @@ export function ChatView({ variant = "default" }: ChatViewProps) {
         style={
           isGameModal
             ? {
-                zIndex: 1,
-                top: COMPANION_MESSAGE_LAYER_TOP,
-                bottom: COMPANION_MESSAGE_LAYER_BOTTOM,
-                overscrollBehavior: "contain",
-                touchAction: "pan-y",
-                userSelect: "text",
-                WebkitUserSelect: "text",
-                maskImage: COMPANION_MESSAGE_LAYER_MASK,
-                WebkitMaskImage: COMPANION_MESSAGE_LAYER_MASK,
-              }
+              zIndex: 1,
+              top: COMPANION_MESSAGE_LAYER_TOP,
+              bottom: COMPANION_MESSAGE_LAYER_BOTTOM,
+              overscrollBehavior: "contain",
+              touchAction: "pan-y",
+              userSelect: "text",
+              WebkitUserSelect: "text",
+              maskImage: COMPANION_MESSAGE_LAYER_MASK,
+              WebkitMaskImage: COMPANION_MESSAGE_LAYER_MASK,
+            }
             : {
-                zIndex: 1,
-              }
+              zIndex: 1,
+            }
         }
       >
         {visibleMsgs.length === 0 && !chatSending ? (
@@ -770,11 +770,10 @@ export function ChatView({ variant = "default" }: ChatViewProps) {
                   style={{ opacity: gameModalCarryoverOpacity }}
                 >
                   <div
-                    className={`max-w-[85%] rounded-2xl px-4 py-3 text-[15px] leading-relaxed ${
-                      isUser
-                        ? "bg-accent/85 text-white rounded-br-sm"
-                        : "border border-white/10 bg-black/45 text-white/95 rounded-bl-sm backdrop-blur-md"
-                    }`}
+                    className={`max-w-[85%] rounded-2xl px-4 py-3 text-[15px] leading-relaxed ${isUser
+                      ? "bg-accent/85 text-white rounded-br-sm"
+                      : "border border-white/10 bg-black/45 text-white/95 rounded-bl-sm backdrop-blur-md"
+                      }`}
                   >
                     <div
                       className="break-words"
@@ -795,11 +794,10 @@ export function ChatView({ variant = "default" }: ChatViewProps) {
                   className={`flex w-full ${isUser ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[85%] rounded-2xl px-4 py-3 text-[15px] leading-relaxed ${
-                      isUser
-                        ? "bg-accent/85 text-white rounded-br-sm"
-                        : "border border-white/10 bg-black/45 text-white/95 rounded-bl-sm backdrop-blur-md"
-                    }`}
+                    className={`max-w-[85%] rounded-2xl px-4 py-3 text-[15px] leading-relaxed ${isUser
+                      ? "bg-accent/85 text-white rounded-br-sm"
+                      : "border border-white/10 bg-black/45 text-white/95 rounded-bl-sm backdrop-blur-md"
+                      }`}
                   >
                     <div
                       className="break-words"
@@ -860,11 +858,17 @@ export function ChatView({ variant = "default" }: ChatViewProps) {
       </div>
 
       {/* Agent activity box — sticky status per active coding-agent task */}
-      <AgentActivityBox sessions={ptySessions} />
+      {isGameModal ? (
+        <div className="pointer-events-auto">
+          <AgentActivityBox sessions={ptySessions} />
+        </div>
+      ) : (
+        <AgentActivityBox sessions={ptySessions} />
+      )}
 
       {/* Share ingest notice */}
       {shareIngestNotice && (
-        <div className="text-xs text-ok py-1 relative" style={{ zIndex: 1 }}>
+        <div className={`text-xs text-ok py-1 relative${isGameModal ? " pointer-events-auto" : ""}`} style={{ zIndex: 1 }}>
           {shareIngestNotice}
         </div>
       )}
@@ -872,7 +876,7 @@ export function ChatView({ variant = "default" }: ChatViewProps) {
       {/* Dropped files */}
       {droppedFiles.length > 0 && (
         <div
-          className="text-xs text-muted py-0.5 flex gap-2 relative"
+          className={`text-xs text-muted py-0.5 flex gap-2 relative${isGameModal ? " pointer-events-auto" : ""}`}
           style={{ zIndex: 1 }}
         >
           {droppedFiles.map((f) => (
@@ -884,7 +888,7 @@ export function ChatView({ variant = "default" }: ChatViewProps) {
       {/* Pending image thumbnails */}
       {chatPendingImages.length > 0 && (
         <div
-          className="flex gap-2 flex-wrap py-1 relative"
+          className={`flex gap-2 flex-wrap py-1 relative${isGameModal ? " pointer-events-auto" : ""}`}
           data-no-camera-drag={isGameModal || undefined}
           style={{ zIndex: 1 }}
         >
@@ -914,7 +918,7 @@ export function ChatView({ variant = "default" }: ChatViewProps) {
 
       {voiceLatency && (
         <div
-          className="pb-1 text-[10px] text-muted relative"
+          className={`pb-1 text-[10px] text-muted relative${isGameModal ? " pointer-events-auto" : ""}`}
           style={{ zIndex: 1 }}
         >
           {t("chatview.SilenceEndFirstTo")}{" "}
@@ -942,7 +946,7 @@ export function ChatView({ variant = "default" }: ChatViewProps) {
       {isGameModal ? (
         /* ── Game-modal composer ──────────────────────────────────────── */
         <div
-          className="mt-auto pt-2.5 relative"
+          className="mt-auto pt-2.5 relative pointer-events-auto"
           data-no-camera-drag="true"
           style={{ zIndex: 1 }}
         >

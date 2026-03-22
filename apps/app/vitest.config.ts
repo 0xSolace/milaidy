@@ -45,6 +45,11 @@ export default defineConfig({
   resolve: {
     alias: [
       {
+        // Stub the broken @lookingglass/webxr ESM chain for tests
+        find: /^@lookingglass\/.*/,
+        replacement: path.join(here, "..", "..", "test", "stubs", "lookingglass-webxr.ts"),
+      },
+      {
         find: "react",
         replacement: path.join(here, "node_modules/react"),
       },

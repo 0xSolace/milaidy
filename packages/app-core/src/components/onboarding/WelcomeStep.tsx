@@ -23,11 +23,11 @@ export function WelcomeStep() {
     setState("selectedVrmIndex", 1);
     // WHY goToOnboardingStep: syncs Flamina guide in advanced mode; persisted
     // step still goes through the same setter as the rest of onboarding.
-    goToOnboardingStep("connection");
+    goToOnboardingStep("hosting");
   };
 
   const handleUseExistingSetup = () => {
-    setState("onboardingStep", "connection");
+    setState("onboardingStep", "hosting");
   };
 
   return (

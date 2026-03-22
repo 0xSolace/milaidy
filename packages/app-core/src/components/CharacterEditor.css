@@ -41,6 +41,13 @@
   }
 }
 
+/* Let roster cards overflow on mobile so negative margins don't get clipped */
+@media (max-width: 600px) {
+  .ce-root {
+    overflow: visible;
+  }
+}
+
 /* Re-enable text selection on actual inputs */
 .ce-root input,
 .ce-root textarea {
@@ -290,11 +297,6 @@
   gap: 0.75rem;
 }
 
-@media (max-width: 480px) {
-  .ce-name-voice-row {
-    grid-template-columns: 1fr;
-  }
-}
 
 .ce-name-voice-col {
   display: flex;
@@ -562,8 +564,8 @@
     display: grid !important;
     grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
     gap: 1.5rem 0;
-    /* Add vertical padding between rows */
-    padding: 0 1.5rem 1.5rem 1.5rem;
+    /* Extra side padding absorbs the uniform negative card margins */
+    padding: 0 2.35rem 1.5rem 2.35rem;
     max-width: 100%;
     width: 100%;
   }

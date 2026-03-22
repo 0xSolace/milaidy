@@ -13,12 +13,10 @@ import { useBranding } from "../config/branding";
 import { COMPANION_ENABLED } from "../navigation";
 import { VrmStage } from "./companion/VrmStage";
 import { ActivateStep } from "./onboarding/ActivateStep";
-import { CloudLoginStep } from "./onboarding/CloudLoginStep";
 import { ConnectionStep } from "./onboarding/ConnectionStep";
 import { OnboardingPanel } from "./onboarding/OnboardingPanel";
 import { OnboardingStepNav } from "./onboarding/OnboardingStepNav";
 import { PermissionsStep } from "./onboarding/PermissionsStep";
-import { RpcStep } from "./onboarding/RpcStep";
 import { WelcomeStep } from "./onboarding/WelcomeStep";
 
 const FORCE_VRM =
@@ -75,16 +73,12 @@ export function OnboardingWizard() {
     switch (onboardingStep) {
       case "welcome":
         return <WelcomeStep />;
-      case "cloudLogin":
-        return <CloudLoginStep />;
-      // Custom flow steps
-      case "connection":
+      case "hosting":
+      case "providers":
         return <ConnectionStep />;
-      case "rpc":
-        return <RpcStep />;
-      case "senses":
+      case "permissions":
         return <PermissionsStep />;
-      case "activate":
+      case "launch":
         return <ActivateStep />;
       default:
         return null;

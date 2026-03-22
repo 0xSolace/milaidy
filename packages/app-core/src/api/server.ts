@@ -613,11 +613,20 @@ function ensureCompatApiAuthorized(
   return false;
 }
 
+function isDevEnvironment(): boolean {
+  const env = process.env.NODE_ENV?.trim().toLowerCase();
+  return env === "development" || env === "dev";
+}
+
 function ensureCompatSensitiveRouteAuthorized(
   req: Pick<http.IncomingMessage, "headers">,
   res: http.ServerResponse,
 ): boolean {
   if (!getCompatApiToken()) {
+    // In development mode, allow sensitive endpoints without a token.
+    if (isDevEnvironment()) {
+      return true;
+    }
     sendJsonErrorResponse(
       res,
       403,

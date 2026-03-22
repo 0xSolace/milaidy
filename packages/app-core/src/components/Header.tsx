@@ -1,7 +1,7 @@
 import { LanguageDropdown, ThemeToggle } from "@miladyai/app-core/components";
 import { getTabGroups, type TabGroup } from "@miladyai/app-core/navigation";
 import { useApp } from "@miladyai/app-core/state";
-import { AlertTriangle, CircleDollarSign, Menu } from "lucide-react";
+import { CircleDollarSign, Menu } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -221,11 +221,11 @@ export function Header({
   return (
     <>
       <header
-        className={`py-2 px-3 sm:py-3 sm:px-4 z-20 sticky top-0 w-full transition-all ${
-          useMinimalHeaderChrome
-            ? "border-b border-transparent bg-transparent backdrop-blur-0 shadow-none"
-            : "border-b border-border/50 bg-bg/80 backdrop-blur-xl"
-        }`}
+        className={`py-2 px-3 sm:py-3 sm:px-4 z-20 sticky top-0 w-full transition-all select-none ${useMinimalHeaderChrome
+          ? "border-b border-transparent bg-transparent backdrop-blur-0 shadow-none"
+          : "border-b border-border/50 bg-bg/80 backdrop-blur-xl"
+          }`}
+        style={{ WebkitUserSelect: "none", userSelect: "none" }}
       >
         <ShellHeaderControls
           activeShellView={activeShellView}
@@ -285,11 +285,10 @@ export function Header({
                     type="button"
                     key={group.label}
                     data-testid={`header-nav-button-${primaryTab}`}
-                    className={`relative z-10 inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-0 xl:gap-1.5 shrink-0 px-3 md:px-3.5 xl:px-4 py-2.5 text-[12px] bg-transparent border border-transparent cursor-pointer transition-all duration-300 rounded-full ${
-                      isActive
-                        ? "text-accent font-bold bg-accent/15 shadow-[0_0_15px_rgba(var(--accent),0.18)] border-accent/40 ring-1 ring-inset ring-accent/20"
-                        : "text-muted hover:text-txt hover:bg-bg-hover hover:border-border/50"
-                    }`}
+                    className={`relative z-10 inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-0 xl:gap-1.5 shrink-0 px-3 md:px-3.5 xl:px-4 py-2.5 text-[12px] bg-transparent border border-transparent cursor-pointer transition-all duration-300 rounded-full ${isActive
+                      ? "text-accent font-bold bg-accent/15 shadow-[0_0_15px_rgba(var(--accent),0.18)] border-accent/40 ring-1 ring-inset ring-accent/20"
+                      : "text-muted hover:text-txt hover:bg-bg-hover hover:border-border/50"
+                      }`}
                     onClick={() => setTab(primaryTab)}
                     title={group.description}
                     style={HEADER_BUTTON_STYLE}
@@ -344,11 +343,10 @@ export function Header({
                       <button
                         key={group.label}
                         type="button"
-                        className={`w-full flex items-center gap-3 px-3 py-3.5 border rounded-xl text-[14px] font-medium transition-all duration-300 cursor-pointer min-h-[48px] ${
-                          isActive
-                            ? "border-accent/40 bg-accent/15 text-accent shadow-[0_0_15px_rgba(var(--accent),0.18)] ring-1 ring-inset ring-accent/20"
-                            : "border-transparent bg-transparent text-txt hover:border-border/50 hover:bg-bg-hover"
-                        }`}
+                        className={`w-full flex items-center gap-3 px-3 py-3.5 border rounded-xl text-[14px] font-medium transition-all duration-300 cursor-pointer min-h-[48px] ${isActive
+                          ? "border-accent/40 bg-accent/15 text-accent shadow-[0_0_15px_rgba(var(--accent),0.18)] ring-1 ring-inset ring-accent/20"
+                          : "border-transparent bg-transparent text-txt hover:border-border/50 hover:bg-bg-hover"
+                          }`}
                         style={{
                           ...HEADER_BUTTON_STYLE,
                           animationDelay: `${index * 50}ms`,
@@ -359,9 +357,8 @@ export function Header({
                         }}
                       >
                         <span
-                          className={`pointer-events-none w-8 h-8 rounded-md flex items-center justify-center shrink-0 ${
-                            isActive ? "bg-accent/20" : "bg-bg-accent"
-                          }`}
+                          className={`pointer-events-none w-8 h-8 rounded-md flex items-center justify-center shrink-0 ${isActive ? "bg-accent/20" : "bg-bg-accent"
+                            }`}
                         >
                           <Icon
                             className={`w-4 h-4 ${isActive ? "text-txt" : "text-muted"}`}

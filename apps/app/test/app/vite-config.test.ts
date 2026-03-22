@@ -40,7 +40,6 @@ describe("app vite config", () => {
     expect(loaded).not.toBeNull();
 
     const pluginNames = getPluginNames(loaded?.config.plugins ?? []);
-    expect(pluginNames).toContain("public-src");
     expect(pluginNames).toContain("desktop-cors");
   });
 });

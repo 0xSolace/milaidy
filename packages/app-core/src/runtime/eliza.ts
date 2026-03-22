@@ -24,7 +24,7 @@ import {
   syncElizaEnvToMilady,
   syncMiladyEnvToEliza,
 } from "../config/brand-env.js";
-import { CHARACTER_PRESET_META, STYLE_PRESETS } from "../onboarding-presets.js";
+import { STYLE_PRESETS } from "../onboarding-presets.js";
 import { normalizeCharacterMessageExamples } from "../utils/character-message-examples";
 import { ensureRuntimeSqlCompatibility } from "../utils/sql-compat";
 import type { EmbeddingProgressCallback } from "./embedding-manager-support.js";
@@ -122,13 +122,8 @@ function syncBrandEnvAliases(): void {
 
 function resolveMiladyPresetByName(name: string | undefined) {
   if (!name) return undefined;
-  const presetMeta = Object.values(CHARACTER_PRESET_META).find(
-    (meta) => meta.name === name,
-  );
-  if (!presetMeta) return undefined;
-
   return STYLE_PRESETS.find(
-    (preset) => preset.catchphrase === presetMeta.catchphrase,
+    (preset) => preset.name.toLowerCase() === name.toLowerCase(),
   );
 }
 

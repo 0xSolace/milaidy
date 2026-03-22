@@ -5,11 +5,10 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react-swc";
 import type { Plugin } from "vite";
 import { defineConfig } from "vite";
+
 // Keep this as a workspace-relative import so Vite transpiles the TS module
 // while bundling the config instead of asking Node to load a package-exported
 // .ts file directly in CI.
-import { MILADY_CHARACTER_ASSETS } from "../../packages/app-core/src/character-catalog.ts";
-
 const here = path.dirname(fileURLToPath(import.meta.url));
 const miladyRoot = path.resolve(here, "../..");
 
@@ -49,71 +48,6 @@ function desktopCorsPlugin(): Plugin {
           return;
         }
 
-        next();
-      });
-    },
-  };
-}
-
-/**
- * Serves raw VRM and animation files from public_src for the screenshotter.
- * Public ships .vrm.gz and .glb.gz; the screenshotter needs uncompressed .vrm and .glb.
- */
-function publicSrcPlugin(): Plugin {
-  const publicSrc = path.resolve(here, "public_src");
-  const charactersVrm = path.resolve(here, "characters", "vrm");
-  const assetById = new Map(
-    MILADY_CHARACTER_ASSETS.map((asset) => [asset.id, asset]),
-  );
-  return {
-    name: "public-src",
-    configureServer(server) {
-      server.middlewares.use((req, res, next) => {
-        const url = req.url?.split("?")[0] ?? "";
-        const vrmMatch = url.match(/^\/vrms\/milady-(\d+)\.vrm$/);
-        if (vrmMatch) {
-          const index = Number(vrmMatch[1]);
-          const asset = assetById.get(index);
-          const charFile =
-            asset && path.join(charactersVrm, asset.sourceVrmFilename);
-          const publicSrcFile = path.join(
-            publicSrc,
-            "vrms",
-            `milady-${index}.vrm`,
-          );
-          const file =
-            charFile && fs.existsSync(charFile) ? charFile : publicSrcFile;
-          if (fs.existsSync(file)) {
-            res.setHeader("Content-Type", "model/gltf-binary");
-            fs.createReadStream(file).pipe(res);
-            return;
-          }
-        }
-        if (url.startsWith("/animations/") && url.endsWith(".glb")) {
-          const file = path.join(publicSrc, url.slice(1)); // url is /animations/..., slice(1) makes it animations/...
-          if (fs.existsSync(file)) {
-            res.setHeader("Content-Type", "model/gltf-binary");
-            fs.createReadStream(file).pipe(res);
-            return;
-          }
-        }
-        if (url.startsWith("/public_src/")) {
-          if (url === "/public_src/screenshotter.html") {
-            return next();
-          }
-          const file = path.join(publicSrc, url.slice("/public_src/".length));
-          if (fs.existsSync(file) && fs.statSync(file).isFile()) {
-            const ext = path.extname(file);
-            const types: Record<string, string> = {
-              ".html": "text/html",
-              ".png": "image/png",
-              ".jpg": "image/jpeg",
-            };
-            if (types[ext]) res.setHeader("Content-Type", types[ext]);
-            fs.createReadStream(file).pipe(res);
-            return;
-          }
-        }
         next();
       });
     },
@@ -163,7 +97,6 @@ export default defineConfig({
   base: "./",
   publicDir: path.resolve(here, "public"),
   plugins: [
-    publicSrcPlugin(),
     sparkWasmDataUrlPlugin(),
     watchWorkspacePackagesPlugin(),
     tailwindcss(),
