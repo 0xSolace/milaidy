@@ -1869,6 +1869,15 @@ export function AppProvider({
       setElizaCloudCreditsLow(false);
       setElizaCloudCreditsCritical(false);
     }
+    // Ensure the recurring poll interval is running whenever cloud is connected.
+    // This covers the case where cloud login happens after the initial mount poll
+    // (e.g. during onboarding) — without this the interval would never start.
+    if (isConnected && !elizaCloudPollInterval.current) {
+      elizaCloudPollInterval.current = window.setInterval(
+        () => pollCloudCredits(),
+        60_000,
+      );
+    }
     return isConnected;
   }, []);
 
@@ -6083,11 +6092,12 @@ export function AppProvider({
           const nextStatus = parseAgentStatusEvent(data);
           if (nextStatus) {
             setAgentStatusIfChanged(nextStatus);
-            // Auto-refresh plugins when agent reports a restart
+            // Auto-refresh plugins and cloud status when agent reports a restart
             if (data.restarted) {
               setPendingRestart(false);
               setPendingRestartReasons([]);
               void loadPlugins();
+              void pollCloudCredits();
               hydratePtySessions();
               ptyHydratedViaWs = true;
             }
@@ -6418,17 +6428,10 @@ export function AppProvider({
         }
       }
 
-      // Cloud polling — always run the initial poll unconditionally so we can
-      // discover a pre-existing API key / connection. If connected, start the
-      // recurring interval too.
-      pollCloudCredits().then(() => {
-        // Always start the recurring poll — the initial check may fire before
-        // the runtime is ready, so subsequent polls catch the connected state.
-        elizaCloudPollInterval.current = window.setInterval(
-          () => pollCloudCredits(),
-          60_000,
-        );
-      });
+      // Cloud polling — run the initial poll to discover a pre-existing
+      // connection. The recurring interval is started automatically by
+      // pollCloudCredits whenever it detects a connected state.
+      void pollCloudCredits();
 
       // Load tab from URL — use hash in file:// mode (packaged desktop builds)
       const navPath =
