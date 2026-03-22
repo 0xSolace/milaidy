@@ -553,6 +553,17 @@ export function ChatView({ variant = "default" }: ChatViewProps) {
     setState,
     uiLanguage,
   });
+  // Stop any in-flight voice playback when the user switches conversations.
+  // This prevents old audio from bleeding into the new conversation.
+  // Safe to call here: the new conversation's greeting speech won't be queued
+  // until after this effect runs (effects fire after state updates settle).
+  const prevConversationIdRef = useRef(activeConversationId);
+  useEffect(() => {
+    if (prevConversationIdRef.current === activeConversationId) return;
+    prevConversationIdRef.current = activeConversationId;
+    stopSpeaking();
+  }, [activeConversationId, stopSpeaking]);
+
   const handleChatAvatarSpeakingChange = useCallback(
     (isSpeaking: boolean) => {
       setState("chatAvatarSpeaking", isSpeaking);
