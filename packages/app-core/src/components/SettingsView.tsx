@@ -147,7 +147,7 @@ function SettingsSidebar({
   const { t } = useApp();
 
   return (
-    <aside className="hidden w-52 shrink-0 self-stretch border-r border-border bg-bg-accent xl:sticky xl:top-0 xl:flex xl:h-screen">
+    <aside className="hidden w-[16rem] shrink-0 self-stretch border-r border-border/50 bg-bg/35 backdrop-blur-xl xl:sticky xl:top-0 xl:flex xl:h-screen">
       <div className="flex flex-1 flex-col overflow-y-auto">
         {/* Brand header */}
         <div className="px-4 py-4 border-b border-border">
@@ -181,8 +181,8 @@ function SettingsSidebar({
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 py-3 px-2">
-          <div className="space-y-0.5">
+        <nav className="flex-1 py-4 px-3">
+          <div className="space-y-1.5">
             {sections.map((section) => {
               const Icon = section.icon;
               const isActive = activeSection === section.id;
@@ -192,20 +192,25 @@ function SettingsSidebar({
                   type="button"
                   onClick={() => onSectionChange(section.id)}
                   aria-current={isActive ? "page" : undefined}
-                  className={`group w-full flex items-center gap-2.5 text-left px-3 py-2 relative
-                    font-mono text-[11px] tracking-wide transition-all duration-150
+                  className={`group w-full flex items-center gap-2.5 text-left px-3 py-2.5 rounded-2xl border transition-all duration-150
+                    text-sm font-semibold
                     ${
                       isActive
-                        ? "text-txt bg-surface"
-                        : "text-muted hover:text-txt hover:bg-surface/50"
+                        ? "border-accent/40 bg-accent/10 text-txt shadow-[0_10px_30px_rgba(var(--accent),0.08)]"
+                        : "border-transparent bg-transparent text-muted hover:border-border/60 hover:bg-card/55 hover:text-txt"
                     }`}
                 >
-                  {isActive && (
-                    <span className="absolute left-0 top-0 bottom-0 w-0.5 bg-accent" />
-                  )}
-                  <Icon
-                    className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-accent" : ""}`}
-                  />
+                  <div
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border ${
+                      isActive
+                        ? "border-accent/30 bg-accent/18"
+                        : "border-border/50 bg-bg-accent/80"
+                    }`}
+                  >
+                    <Icon
+                      className={`w-3.5 h-3.5 ${isActive ? "text-accent" : ""}`}
+                    />
+                  </div>
                   <span className="truncate">{t(section.label)}</span>
                 </button>
               );
