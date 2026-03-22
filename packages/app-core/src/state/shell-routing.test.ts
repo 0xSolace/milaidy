@@ -73,32 +73,31 @@ describe("deriveUiShellModeForTab", () => {
     expect(deriveUiShellModeForTab("chat")).toBe("native");
   });
 
-  it("returns native for all non-companion tabs", () => {
+  it("returns native for non-companion tabs (runtime switching)", () => {
+    // Users can freely switch between native and companion mode at runtime.
+    // deriveUiShellModeForTab must correctly return "native" for all
+    // non-companion tabs so mode switching keeps working.
     for (const tab of ["chat", "plugins", "knowledge", "wallets", "stream"] as const) {
       expect(deriveUiShellModeForTab(tab)).toBe("native");
     }
   });
 });
 
-describe("initial tab default produces companion mode (regression)", () => {
+describe("startup tab default (regression: no base-UI flash)", () => {
   // Regression: tab previously defaulted to "chat", which rendered the
   // native/base UI on first paint. An async effect later switched to
   // "companion", causing a visible flash. The initial tab must be
-  // "companion" when COMPANION_ENABLED so deriveUiShellModeForTab returns
-  // "companion" on the very first render.
-  it("COMPANION_ENABLED initial tab yields companion shell mode", () => {
+  // "companion" when COMPANION_ENABLED so the very first render shows
+  // companion mode — but users can still switch to native mode afterwards.
+  it("initial tab defaults to companion when COMPANION_ENABLED", () => {
     const initialTab = COMPANION_ENABLED ? "companion" : "chat";
-    const mode = deriveUiShellModeForTab(initialTab);
     if (COMPANION_ENABLED) {
-      expect(mode).toBe("companion");
+      expect(initialTab).toBe("companion");
+      expect(deriveUiShellModeForTab(initialTab)).toBe("companion");
     } else {
-      expect(mode).toBe("native");
+      expect(initialTab).toBe("chat");
+      expect(deriveUiShellModeForTab(initialTab)).toBe("native");
     }
-  });
-
-  it("companion tab must map to companion mode, not native", () => {
-    // If this ever breaks, the app will flash the base chat UI on startup.
-    expect(deriveUiShellModeForTab("companion")).not.toBe("native");
   });
 });
 
