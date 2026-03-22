@@ -141,29 +141,29 @@ describe("GET /api/wallet/keys", () => {
     }
   });
 
-  it.each(["production", "development"])(
-    "rejects loopback requests without a token during active onboarding in %s",
-    async (nodeEnv) => {
-      process.env.NODE_ENV = nodeEnv;
-      await fs.writeFile(
-        path.join(tempDir, "eliza.json"),
-        JSON.stringify({
-          meta: { onboardingComplete: false },
-          logging: { level: "error" },
-        }),
-      );
+  it.each([
+    "production",
+    "development",
+  ])("rejects loopback requests without a token during active onboarding in %s", async (nodeEnv) => {
+    process.env.NODE_ENV = nodeEnv;
+    await fs.writeFile(
+      path.join(tempDir, "eliza.json"),
+      JSON.stringify({
+        meta: { onboardingComplete: false },
+        logging: { level: "error" },
+      }),
+    );
 
-      const server = await startApiServer({ port: 0, runtime: RUNTIME_STUB });
-      try {
-        // Sensitive routes require an API token even for loopback requests.
-        // Without ELIZA_API_TOKEN / MILADY_API_TOKEN the server returns 403.
-        const { status } = await req(server.port, "GET", "/api/wallet/keys");
-        expect(status).toBe(403);
-      } finally {
-        await server.close();
-      }
-    },
-  );
+    const server = await startApiServer({ port: 0, runtime: RUNTIME_STUB });
+    try {
+      // Sensitive routes require an API token even for loopback requests.
+      // Without ELIZA_API_TOKEN / MILADY_API_TOKEN the server returns 403.
+      const { status } = await req(server.port, "GET", "/api/wallet/keys");
+      expect(status).toBe(403);
+    } finally {
+      await server.close();
+    }
+  });
 
   it("returns 200 with a valid auth token during onboarding", async () => {
     await fs.writeFile(
