@@ -617,11 +617,6 @@ function ensureCompatSensitiveRouteAuthorized(
   req: Pick<http.IncomingMessage, "headers">,
   res: http.ServerResponse,
 ): boolean {
-  const env = process.env.NODE_ENV;
-  if (env === "development" || env === "dev") {
-    return true;
-  }
-
   if (!getCompatApiToken()) {
     sendJsonErrorResponse(
       res,
