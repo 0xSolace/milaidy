@@ -39,7 +39,6 @@ import { MediaSettingsSection } from "./MediaSettingsSection";
 import { PermissionsSection } from "./PermissionsSection";
 import { ProviderSwitcher } from "./ProviderSwitcher";
 import { ReleaseCenterView } from "./ReleaseCenterView";
-import { VoiceConfigView } from "./VoiceConfigView";
 
 interface SettingsSectionDef {
   id: string;
@@ -56,16 +55,16 @@ const SETTINGS_SECTIONS: SettingsSectionDef[] = [
     description: "settings.sections.aimodel.desc",
   },
   {
-    id: "cloud",
-    label: "providerswitcher.elizaCloud",
-    icon: Cloud,
-    description: "settings.sections.cloud.desc",
-  },
-  {
     id: "coding-agents",
     label: "settings.sections.codingagents.label",
     icon: Terminal,
     description: "settings.sections.codingagents.desc",
+  },
+  {
+    id: "cloud",
+    label: "providerswitcher.elizaCloud",
+    icon: Cloud,
+    description: "settings.sections.cloud.desc",
   },
   {
     id: "wallet-rpc",
@@ -74,10 +73,10 @@ const SETTINGS_SECTIONS: SettingsSectionDef[] = [
     description: "settings.sections.walletrpc.desc",
   },
   {
-    id: "media-voice",
-    label: "settings.sections.mediavoice.label",
+    id: "media",
+    label: "settings.sections.media.label",
     icon: Image,
-    description: "settings.sections.mediavoice.desc",
+    description: "settings.sections.media.desc",
   },
   {
     id: "permissions",
@@ -134,9 +133,8 @@ function SettingsSidebar({
   const { t } = useApp();
 
   return (
-    <aside className="hidden w-[16rem] shrink-0 self-stretch border-r border-border/50 bg-bg/35 backdrop-blur-xl xl:sticky xl:top-0 xl:flex xl:h-screen">
+    <aside className="flex w-full shrink-0 self-stretch flex-col">
       <div className="flex flex-1 flex-col overflow-y-auto">
-
         {/* Search */}
         <div className="px-3 py-3 border-b border-border">
           <div className="flex items-center gap-2 px-2.5 py-1.5 border border-border bg-bg">
@@ -163,25 +161,17 @@ function SettingsSidebar({
                   type="button"
                   onClick={() => onSectionChange(section.id)}
                   aria-current={isActive ? "page" : undefined}
-                  className={`group w-full flex items-center gap-2.5 text-left px-3 py-2.5 rounded-2xl border transition-all duration-150
-                    text-sm font-semibold
+                  className={`group w-full flex items-center gap-3 text-left px-3 py-2.5 rounded-lg transition-all duration-150
+                    text-sm
                     ${
                       isActive
-                        ? "border-accent/40 bg-accent/10 text-txt shadow-[0_10px_30px_rgba(var(--accent),0.08)]"
-                        : "border-transparent bg-transparent text-muted hover:border-border/60 hover:bg-card/55 hover:text-txt"
+                        ? "text-txt font-semibold bg-surface"
+                        : "text-muted hover:text-txt hover:bg-surface/50"
                     }`}
                 >
-                  <div
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border ${
-                      isActive
-                        ? "border-accent/30 bg-accent/18"
-                        : "border-border/50 bg-bg-accent/80"
-                    }`}
-                  >
-                    <Icon
-                      className={`w-3.5 h-3.5 ${isActive ? "text-accent" : ""}`}
-                    />
-                  </div>
+                  <Icon
+                    className={`w-4 h-4 shrink-0 ${isActive ? "text-accent" : ""}`}
+                  />
                   <span className="truncate">{t(section.label)}</span>
                 </button>
               );
@@ -325,7 +315,7 @@ function AdvancedSection() {
               <Button
                 variant="destructive"
                 size="sm"
-                className="rounded-xl shadow-sm whitespace-normal text-left"
+                className="rounded-xl shadow-sm whitespace-nowrap"
                 onClick={() => {
                   void handleReset();
                 }}
@@ -669,19 +659,14 @@ export function SettingsView({
         </SectionCard>
       )}
 
-      {visibleSectionIds.has("media-voice") && (
+      {visibleSectionIds.has("media") && (
         <SectionCard
-          id="media-voice"
-          title={t("settings.sections.mediavoice.label")}
-          description={t("settings.sections.mediavoice.desc")}
+          id="media"
+          title={t("settings.sections.media.label")}
+          description={t("settings.sections.media.desc")}
+          className="p-4 sm:p-5 lg:p-6"
         >
           <MediaSettingsSection />
-          <div className="mt-6 pt-6 border-t border-border/40">
-            <h3 className="text-sm font-semibold text-txt mb-4">
-              {t("settings.sections.voice.label")}
-            </h3>
-            <VoiceConfigView />
-          </div>
         </SectionCard>
       )}
 
@@ -748,20 +733,20 @@ export function SettingsView({
   return (
     <div
       ref={shellRef}
-      className={`settings-shell flex min-h-full min-w-0 w-full flex-row items-start ${inModal ? "h-full min-h-0 overflow-y-auto bg-transparent" : "bg-bg"}`}
+      className="settings-shell plugins-game-modal plugins-game-modal--inline"
     >
-      <SettingsSidebar
-        sections={visibleSections}
-        activeSection={activeSection}
-        onSectionChange={handleSectionChange}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        onClose={handleClose}
-      />
+      <div className="plugins-game-list-panel">
+        <SettingsSidebar
+          sections={visibleSections}
+          activeSection={activeSection}
+          onSectionChange={handleSectionChange}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onClose={handleClose}
+        />
+      </div>
 
-      <div
-        className={`settings-page-content flex-1 min-w-0 scroll-smooth ${inModal ? "px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6" : "px-5 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-10"}`}
-      >
+      <div className="plugins-game-detail-panel settings-page-content scroll-smooth">
         <div className="mx-auto max-w-4xl">
           <div className="space-y-6 pb-20 sm:space-y-8">{sectionsContent}</div>
         </div>
