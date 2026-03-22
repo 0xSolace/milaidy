@@ -3,8 +3,22 @@
  * (missing in published tarball). Exported for use by patch-deps.mjs and tests.
  * See docs/plugin-resolution-and-node-path.md "Bun and published package exports".
  */
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, resolve } from "node:path";
+import ts from "typescript";
+
+const ELIZA_CORE_RUNTIME_FILES = [
+  "dist/index.js",
+  "dist/browser/index.browser.js",
+  "dist/node/index.node.js",
+];
 
 /**
  * Find all package.json paths for pkgName under root (main node_modules and
@@ -20,7 +34,9 @@ export function findPackageJsonPaths(root, pkgName) {
  * cache). Exported so tests and other patch helpers share the same lookup.
  */
 export function findPackageFilePaths(root, pkgName, relativePath) {
-  const candidates = [resolve(root, "node_modules", pkgName, relativePath)];
+  const candidates = [];
+  const mainPath = resolve(root, "node_modules", pkgName, relativePath);
+  if (existsSync(mainPath)) candidates.push(mainPath);
   const bunCache = resolve(root, "node_modules/.bun");
   if (existsSync(bunCache)) {
     const safeNames = new Set([
@@ -35,6 +51,146 @@ export function findPackageFilePaths(root, pkgName, relativePath) {
     }
   }
   return candidates;
+}
+
+function hasRequiredFiles(dirPath, relativePaths) {
+  return relativePaths.every((relativePath) =>
+    existsSync(resolve(dirPath, relativePath)),
+  );
+}
+
+/**
+ * Some published @elizaos/core builds in Bun's cache only contain dist/testing,
+ * but their package.json still exports dist/node and dist/browser. Copy the
+ * runtime dist from a healthy install when that happens so dependents can boot.
+ */
+export function repairElizaCoreRuntimeDist(targetPkgDir, sourcePkgDir) {
+  if (!targetPkgDir || !sourcePkgDir) return false;
+  if (targetPkgDir === sourcePkgDir) return false;
+  if (!existsSync(targetPkgDir)) return false;
+  if (!hasRequiredFiles(sourcePkgDir, ELIZA_CORE_RUNTIME_FILES)) return false;
+  if (hasRequiredFiles(targetPkgDir, ELIZA_CORE_RUNTIME_FILES)) return false;
+
+  const sourceDist = resolve(sourcePkgDir, "dist");
+  const targetDist = resolve(targetPkgDir, "dist");
+
+  rmSync(targetDist, { recursive: true, force: true });
+  cpSync(sourceDist, targetDist, { recursive: true });
+  return true;
+}
+
+/**
+ * Repair any cached @elizaos/core package copies whose runtime dist files are
+ * missing by cloning the dist tree from the healthy root install.
+ */
+export function patchBrokenElizaCoreRuntimeDists(root, log = console.log) {
+  const pkgPaths = findPackageJsonPaths(root, "@elizaos/core");
+  const pkgDirs = pkgPaths.map((pkgPath) => dirname(pkgPath));
+  const sourcePkgDir = pkgDirs.find((pkgDir) =>
+    hasRequiredFiles(pkgDir, ELIZA_CORE_RUNTIME_FILES),
+  );
+
+  if (!sourcePkgDir) {
+    log(
+      "[patch-deps] Skipping @elizaos/core runtime repair: no healthy source dist was found.",
+    );
+    return false;
+  }
+
+  let patched = false;
+  for (const pkgDir of pkgDirs) {
+    if (repairElizaCoreRuntimeDist(pkgDir, sourcePkgDir)) {
+      patched = true;
+      log(
+        `[patch-deps] Repaired @elizaos/core runtime dist in Bun cache: ${pkgDir}`,
+      );
+    }
+  }
+  return patched;
+}
+
+/**
+ * Detect stale Bun module cache and warn the user.
+ *
+ * Bun's content-addressable cache deduplicates packages by tarball hash. When
+ * upstream publishes multiple versions with identical (stale) build artifacts,
+ * they share a hash and Bun serves stale content. We can't safely remove
+ * entries during postinstall (symlinks break), so we detect the condition
+ * and tell the user to run `bun run repair` which does:
+ *   rm -rf node_modules/.bun && bun install
+ *
+ * Runs once per package.json version (stamp-guarded).
+ *
+ * Bun cache entry format: @scope+pkg@version+contenthash
+ * e.g. @elizaos+core@2.0.0-alpha.77+f9c270f5561f2899
+ */
+export function warnStaleBunCache(root, log = console.log) {
+  const bunCacheDir = resolve(root, "node_modules/.bun");
+  if (!existsSync(bunCacheDir)) return 0;
+
+  // Only check once per package.json version.
+  const pkgJsonPath = resolve(root, "package.json");
+  const stampPath = resolve(bunCacheDir, ".bust-cache-stamp");
+  if (existsSync(pkgJsonPath) && existsSync(stampPath)) {
+    try {
+      const pkgVersion =
+        JSON.parse(readFileSync(pkgJsonPath, "utf8")).version || "";
+      const stamp = readFileSync(stampPath, "utf8").trim();
+      if (stamp === pkgVersion) return 0;
+    } catch {}
+  }
+
+  const prefixes = [
+    "@elizaos+core@",
+    "@elizaos+autonomous@",
+    "@elizaos+app-core@",
+    "@elizaos+prompts@",
+    "@elizaos+skills@",
+    "@elizaos+tui@",
+  ];
+  let staleCount = 0;
+
+  let allEntries;
+  try {
+    allEntries = readdirSync(bunCacheDir);
+  } catch (err) {
+    log(`[patch-deps] Warning: failed to read Bun cache: ${err.message}`);
+    return 0;
+  }
+
+  for (const prefix of prefixes) {
+    const entries = allEntries.filter((e) => e.startsWith(prefix));
+    if (entries.length < 2) continue;
+
+    // Group by content hash (the part after the last '+')
+    const byHash = new Map();
+    for (const entry of entries) {
+      const plusIdx = entry.lastIndexOf("+");
+      if (plusIdx === -1 || plusIdx === entry.length - 1) continue;
+      const hash = entry.slice(plusIdx + 1);
+      if (!byHash.has(hash)) byHash.set(hash, []);
+      byHash.get(hash).push(entry);
+    }
+
+    for (const [, group] of byHash) {
+      if (group.length >= 2) staleCount += group.length - 1;
+    }
+  }
+
+  // Write stamp regardless so we don't re-check every install.
+  try {
+    const pkgVersion = existsSync(pkgJsonPath)
+      ? JSON.parse(readFileSync(pkgJsonPath, "utf8")).version || ""
+      : "";
+    writeFileSync(stampPath, pkgVersion, "utf8");
+  } catch {}
+
+  if (staleCount > 0) {
+    log(
+      `[patch-deps] ⚠️  Detected ${staleCount} stale Bun cache entries. Run: rm -rf node_modules/.bun && bun install`,
+    );
+  }
+  return staleCount;
 }
 
 /**
@@ -277,6 +433,111 @@ export function patchMissingLifecycleScript(
   return patched;
 }
 
+function loadMiladyOnboardingPresetsSource(root, targetPath) {
+  const sourcePath = resolve(
+    root,
+    "packages/app-core/src/onboarding-presets.ts",
+  );
+  const source = readFileSync(sourcePath, "utf8");
+  if (!targetPath?.endsWith(".js")) {
+    return source;
+  }
+
+  return ts.transpileModule(source, {
+    fileName: sourcePath,
+    compilerOptions: {
+      module: ts.ModuleKind.ESNext,
+      target: ts.ScriptTarget.ES2022,
+    },
+  }).outputText;
+}
+
+/**
+ * Milady owns the onboarding preset roster, but the published autonomous
+ * package still serves upstream style presets. Replace the installed module
+ * with Milady's local preset source so the onboarding API and runtime expose
+ * the same Milady-specific characters that app-core is patched to display.
+ */
+export function applyAutonomousMiladyOnboardingPresetsPatch(filePath, source) {
+  if (!existsSync(filePath)) return false;
+
+  // When writing to a .js file, strip TypeScript-only syntax so Bun can
+  // parse it as plain JavaScript. The source is always loaded from the
+  // local .ts file which may contain `as const`, type annotations, etc.
+  let output = source;
+  if (filePath.endsWith(".js")) {
+    output = stripTypeScriptSyntax(output);
+  }
+
+  const compatSource = readFileSync(filePath, "utf8");
+  if (compatSource === output) return false;
+
+  writeFileSync(filePath, output, "utf8");
+  return true;
+}
+
+/**
+ * Naively strip TypeScript-only syntax from a source string so it can be
+ * loaded as plain JavaScript by Bun. Handles the patterns used in
+ * onboarding-presets.ts:
+ *   - `] as const;`  →  `];`
+ *   - `export const FOO: Type<...> = {`  →  `export const FOO = {`
+ *   - Interface-style property lines inside a Record<> type block
+ */
+function stripTypeScriptSyntax(src) {
+  // Remove `as const` assertions
+  src = src.replace(/\]\s+as\s+const\s*;/g, "];");
+
+  // Remove inline type annotations on const declarations:
+  //   export const FOO: Record<\n  string,\n  {\n    ...\n  }\n> = {
+  // Matches `: <type>` between the variable name and ` = `.
+  src = src.replace(
+    /^(export\s+const\s+\w+)\s*:\s*Record<[\s\S]*?>\s*=/gm,
+    "$1 =",
+  );
+
+  return src;
+}
+
+export function patchAutonomousMiladyOnboardingPresets(
+  root,
+  log = console.log,
+  source,
+) {
+  const candidates = [
+    ...findPackageFilePaths(
+      root,
+      "@elizaos/agent",
+      "packages/agent/src/onboarding-presets.js",
+    ),
+    ...findPackageFilePaths(
+      root,
+      "@elizaos/agent",
+      "src/onboarding-presets.js",
+    ),
+    ...findPackageFilePaths(
+      root,
+      "@elizaos/agent",
+      "src/onboarding-presets.ts",
+    ),
+  ];
+
+  let patched = false;
+  for (const filePath of candidates) {
+    const nextSource =
+      source ?? loadMiladyOnboardingPresetsSource(root, filePath);
+    if (!applyAutonomousMiladyOnboardingPresetsPatch(filePath, nextSource)) {
+      continue;
+    }
+    patched = true;
+    log(
+      "[patch-deps] Patched @elizaos/agent packages/agent/src/onboarding-presets.js: onboarding presets now derive from Milady.",
+    );
+  }
+
+  return patched;
+}
+
 /**
  * @elizaos/plugin-agent-skills alpha.11 logs duplicate catalog warnings when
  * concurrent callers all hit the same upstream 429. Coalesce in-flight fetches
@@ -391,6 +652,123 @@ export function applyAgentSkillsCatalogFetchPatch(filePath) {
 }
 
 /**
+ * @elizaos/plugin-vision currently defaults to CAMERA mode and keeps retrying
+ * imagesnap/fswebcam/ffmpeg when OS camera permission is denied. In the
+ * desktop app this spams logs and can interfere with startup. Patch the
+ * published bundle so camera capture defaults to OFF and a permission denial
+ * disables the camera loop until the user explicitly re-enables it.
+ */
+export function applyPluginVisionPermissionPatch(filePath) {
+  if (!existsSync(filePath)) return false;
+
+  let source = readFileSync(filePath, "utf8");
+  if (
+    source.includes(
+      "Camera permission not granted; disabling camera capture until permission is granted.",
+    )
+  ) {
+    return false;
+  }
+
+  const replacements = [
+    [
+      '    visionMode: "CAMERA" /* CAMERA */,',
+      '    visionMode: "OFF" /* OFF */,',
+    ],
+    [
+      "  camera = null;\n  lastFrame = null;",
+      "  camera = null;\n  cameraPermissionDenied = false;\n  lastFrame = null;",
+    ],
+    [
+      "  async initializeCameraVision() {\n    const toolCheck = await this.checkCameraTools();",
+      "  async initializeCameraVision() {\n    this.cameraPermissionDenied = false;\n    const toolCheck = await this.checkCameraTools();",
+    ],
+    [
+      "  startFrameProcessing() {\n    if (this.frameProcessingInterval) {\n      return;\n    }",
+      "  startFrameProcessing() {\n    if (this.frameProcessingInterval || this.cameraPermissionDenied) {\n      return;\n    }",
+    ],
+    [
+      "      if (!this.isProcessing && this.camera) {",
+      "      if (!this.isProcessing && this.camera && !this.cameraPermissionDenied) {",
+    ],
+    [
+      "    if (!this.camera) {\n      return;\n    }",
+      "    if (!this.camera || this.cameraPermissionDenied) {\n      return;\n    }",
+    ],
+    [
+      `    } catch (error) {
+      logger14.error("[VisionService] Error capturing frame:", error);
+    }`,
+      `    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (/camera access not granted|permission denied|not authorized|not permitted|device access denied/i.test(errorMessage)) {
+        if (!this.cameraPermissionDenied) {
+          logger14.warn("[VisionService] Camera permission not granted; disabling camera capture until permission is granted.");
+        }
+        this.cameraPermissionDenied = true;
+        this.camera = null;
+        if (this.frameProcessingInterval) {
+          clearInterval(this.frameProcessingInterval);
+          this.frameProcessingInterval = null;
+        }
+        if (this.visionConfig.visionMode === "BOTH" /* BOTH */) {
+          this.visionConfig.visionMode = "SCREEN" /* SCREEN */;
+        } else if (this.visionConfig.visionMode === "CAMERA" /* CAMERA */) {
+          this.visionConfig.visionMode = "OFF" /* OFF */;
+        }
+        return;
+      }
+      logger14.error("[VisionService] Error capturing frame:", error);
+    }`,
+    ],
+    [
+      `    } catch (error) {
+      logger14.error("[VisionService] Failed to capture image:", error);
+      return null;
+    }`,
+      `    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (/camera access not granted|permission denied|not authorized|not permitted|device access denied/i.test(errorMessage)) {
+        logger14.warn("[VisionService] Camera permission not granted; skipping image capture.");
+        this.cameraPermissionDenied = true;
+        this.camera = null;
+        return null;
+      }
+      logger14.error("[VisionService] Failed to capture image:", error);
+      return null;
+    }`,
+    ],
+  ];
+
+  for (const [searchValue, replaceValue] of replacements) {
+    if (!source.includes(searchValue)) return false;
+    source = source.replace(searchValue, replaceValue);
+  }
+
+  writeFileSync(filePath, source, "utf8");
+  return true;
+}
+
+export function patchPluginVisionPermissionHandling(root, log = console.log) {
+  const candidates = findPackageFilePaths(
+    root,
+    "@elizaos/plugin-vision",
+    "dist/index.js",
+  );
+
+  let patched = false;
+  for (const filePath of candidates) {
+    if (!applyPluginVisionPermissionPatch(filePath)) continue;
+    patched = true;
+    log(
+      `[patch-deps] Patched @elizaos/plugin-vision camera permission handling: ${filePath}`,
+    );
+  }
+
+  return patched;
+}
+
+/**
  * Patch all copies of @elizaos/plugin-agent-skills so 429 responses back off
  * cleanly without duplicate warnings from concurrent catalog fetches.
  */
@@ -452,6 +830,31 @@ export function patchProperLockfileSignalExitCompat(root, log = console.log) {
       log(
         "[patch-deps] Patched proper-lockfile: signal-exit v3/v4 compatibility applied.",
       );
+    }
+  }
+  return patched;
+}
+
+export function patchAutonomousTypeError(root, log = console.log) {
+  const candidates = findPackageFilePaths(
+    root,
+    "@elizaos/agent",
+    "src/api/server.ts",
+  );
+  let patched = false;
+  for (const filePath of candidates) {
+    if (!existsSync(filePath)) continue;
+    let source = readFileSync(filePath, "utf8");
+    // Skip if already fixed (contains "as unknown as SubscriptionAuthApi")
+    if (source.includes("as unknown as SubscriptionAuthApi")) continue;
+    if (source.includes("as SubscriptionAuthApi")) {
+      source = source.replaceAll(
+        "as SubscriptionAuthApi",
+        "as unknown as SubscriptionAuthApi",
+      );
+      writeFileSync(filePath, source, "utf8");
+      patched = true;
+      log("[patch-deps] Patched @elizaos/agent type error in server.ts");
     }
   }
   return patched;

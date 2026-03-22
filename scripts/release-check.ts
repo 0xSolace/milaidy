@@ -13,6 +13,7 @@ const requiredPaths = [
   "dist/entry.js",
   "dist/build-info.json",
   "scripts/run-repo-setup.mjs",
+  "scripts/setup-eliza-workspace.mjs",
   "scripts/patch-deps.mjs",
   "scripts/ensure-vision-deps.mjs",
   "scripts/lib/patch-bun-exports.mjs",
@@ -20,14 +21,22 @@ const requiredPaths = [
 const forbiddenPrefixes = ["dist/Milady.app/"];
 const orchestratorPackageName = "@elizaos/plugin-agent-orchestrator";
 const orchestratorBrokenLifecycleTarget = "./scripts/ensure-node-pty.mjs";
+const autonomousServerPathCandidates = [
+  "node_modules/@elizaos/agent/packages/agent/src/api/server.js",
+  "packages/agent/src/api/server.ts",
+] as const;
+const autonomousElizaPathCandidates = [
+  "node_modules/@elizaos/agent/packages/agent/src/runtime/eliza.js",
+  "packages/agent/src/runtime/eliza.ts",
+] as const;
 const requiredWorkflowSnippets = [
   'BUN_VERSION: "1.3.9"',
   "name: Validate Release Inputs",
   "bun-version: $" + "{{ env.BUN_VERSION }}",
   "name: Release readiness checks",
   "run: bun run release:check",
-  "key: bun-electrobun-validate-$" + "{{ hashFiles('bun.lock') }}",
-  "restore-keys: bun-electrobun-validate-",
+  "for attempt in 1 2 3; do",
+  `bun install failed on attempt \${attempt}; retrying in 15 seconds`,
   "name: Ensure avatar assets",
   "node scripts/ensure-avatars.mjs",
   "Install quiet macOS packaging wrappers",
@@ -51,10 +60,22 @@ const requiredWorkflowSnippets = [
   "bash apps/app/electrobun/scripts/smoke-test.sh",
   "Upload macOS smoke diagnostics",
   "wrapper-diagnostics.json",
-  "Stage Windows setup executables",
+  "Install Inno Setup 6.7.1",
+  "Downloading Inno Setup 6.7.1...",
+  "https://github.com/jrsoftware/issrc/releases/download/is-6_7_1/innosetup-6.7.1.exe",
+  "Start-Process -FilePath $installer",
+  "Extract Windows app bundle for Inno Setup",
+  '$extractDir = "C:\\m"',
+  "milady-dist/entry.js found",
+  "Build Inno Setup installer",
+  "packaging/inno/build-inno.ps1",
+  '-BuildDir "C:\\m"',
+  "Verify Windows public installer looks complete",
+  'Get-ChildItem -Path "apps/app/electrobun/artifacts" -File -Filter "Milady-Setup-*.exe"',
+  "$minimumBytes = 50MB",
   "apps/app/electrobun/artifacts/*.exe",
   "name: Collect public release files",
-  '-name "*Setup*.zip" -o \\',
+  '-name "Milady-Setup-*.exe.zip" -o \\',
   '-name "*Setup*.tar.gz" -o \\',
   "name: Collect update channel files",
   '-name "*.tar.zst" -o \\',
@@ -69,19 +90,47 @@ const requiredWorkflowSnippets = [
   'Write-Host "Resolved electrobun package dir: $resolvedElectrobunDir"',
   '$cacheDir     = Join-Path $resolvedElectrobunDir ".cache"',
   '$resolvedRceditDir = Join-Path $resolvedElectrobunDir "node_modules\\rcedit"',
+  '(Join-Path (Split-Path -Parent $resolvedElectrobunDir) "rcedit")',
+  'Get-ChildItem -Path (Join-Path $PWD "node_modules\\.bun") -Directory -Filter "rcedit@*"',
+  "Seeding rcedit from $seedRceditDir",
   "node scripts/desktop-build.mjs package --env=$" +
     "{{ needs.prepare.outputs.env }}",
   "MILADY_ELECTROBUN_NOTARIZE: 0",
   'MILADY_DISABLE_LOCAL_EMBEDDINGS: "1"',
+  'MILADY_WINDOWS_SMOKE_REQUIRE_INSTALLER: "1"',
+  "MILADY_TEST_WINDOWS_INSTALL_DIR: C:\\mi",
+  "name: Run Windows clean installer proof",
+  "verify-windows-installer-proof.ps1",
+  "MILADY_TEST_WINDOWS_PROOF_INSTALL_DIR: C:\\mi-proof",
+  "name: Upload Windows installer proof artifact",
+  "path: apps/app/electrobun/artifacts/windows-installer-proof/**",
+  "if: always() && matrix.platform.os == 'windows'",
+  "ANTHROPIC_API_KEY: $" + "{{ secrets.ANTHROPIC_API_KEY }}",
   'Join-Path $PWD "apps/app/electrobun/node_modules/electrobun"',
   "if ($null -eq $resolvedRceditPackageJson)",
   '$resolvedRceditPackageJson = "$resolvedRceditPackageJson".Trim()',
 ];
-const forbiddenWorkflowSnippets = [' -name "*.exe" -o \\'];
+const forbiddenWorkflowSnippets = [
+  ' -name "*.exe" -o \\',
+  'bun install -g "rcedit@4.0.1"',
+  "name: Cache Bun install",
+  "path: ~/.bun/install/cache",
+  "restore-keys: bun-electrobun-validate-",
+  "restore-keys: bun-electrobun-$" +
+    "{{ matrix.platform.artifact-name }}" +
+    "-",
+  "key: bun-electrobun-validate-$" + "{{ hashFiles('bun.lock') }}",
+  "key: bun-electrobun-$" +
+    "{{ matrix.platform.artifact-name }}" +
+    "-$" +
+    "{{ hashFiles('bun.lock') }}",
+];
 const requiredElectrobunConfigSnippets = [
   'postBuild: "scripts/postwrap-sign-runtime-macos.ts"',
   'postWrap: "scripts/postwrap-diagnostics.ts"',
   'process.env.MILADY_ELECTROBUN_NOTARIZE !== "0"',
+  '"../../../plugins.json": "milady-dist/plugins.json"',
+  '"../../../package.json": "milady-dist/package.json"',
 ];
 const localPackHotspotPaths = [
   "dist/node_modules",
@@ -96,6 +145,11 @@ type RootPackageJson = {
   files?: string[];
   scripts?: Record<string, string>;
 };
+const cloudAgentTemplateReleaseDependencies = [
+  "@elizaos/core",
+  "@elizaos/plugin-elizacloud",
+  "@elizaos/plugin-sql",
+] as const;
 
 /**
  * Returns true if the version specifier is an exact pinned version
@@ -118,13 +172,49 @@ type DependencyPackageJson = {
   scripts?: Record<string, string>;
 };
 
+export function parseBunPackDryRunOutput(raw: string): PackResult[] {
+  const files = raw
+    .split("\n")
+    .map((line) => line.match(/^packed\s+\S+\s+(.+)$/)?.[1]?.trim())
+    .filter((path): path is string => Boolean(path))
+    .map((path) => ({ path }));
+
+  return [{ files }];
+}
+
+export function isNpmOverrideConflictError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const execError = error as Error & {
+    stdout?: string;
+    stderr?: string;
+  };
+  const combinedOutput = `${execError.stdout ?? ""}\n${execError.stderr ?? ""}`;
+  return combinedOutput.includes("EOVERRIDE");
+}
+
 function runPackDry(): PackResult[] {
-  const raw = execSync("npm pack --dry-run --json --ignore-scripts", {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-    maxBuffer: 1024 * 1024 * 100,
-  });
-  return JSON.parse(raw) as PackResult[];
+  try {
+    const raw = execSync("npm pack --dry-run --json --ignore-scripts", {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      maxBuffer: 1024 * 1024 * 100,
+    });
+    return JSON.parse(raw) as PackResult[];
+  } catch (error) {
+    if (!isNpmOverrideConflictError(error)) {
+      throw error;
+    }
+
+    const raw = execSync("bun pm pack --dry-run --ignore-scripts", {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      maxBuffer: 1024 * 1024 * 100,
+    });
+    return parseBunPackDryRunOutput(raw);
+  }
 }
 
 export function findLocalPackHotspots(
@@ -207,6 +297,40 @@ export function hasLifecycleScriptReferencingMissingFile(
 
   return !pathExists(resolve(packageDir, relativeTarget));
 }
+
+export function findFloatingDependencySpecs(
+  pkg: RootPackageJson,
+  dependencyNames: readonly string[],
+): Array<{ name: string; specifier: string }> {
+  const dependencies = pkg.dependencies ?? {};
+
+  return dependencyNames.flatMap((name) => {
+    const specifier = dependencies[name];
+    if (!isExactVersionSpecifier(specifier)) {
+      return [{ name, specifier: specifier ?? "<missing>" }];
+    }
+
+    return [];
+  });
+}
+
+function readExistingReleaseCheckFile(
+  label: string,
+  candidates: readonly string[],
+): string {
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      return readFileSync(candidate, "utf8");
+    }
+  }
+
+  console.error(`release-check: could not find ${label}. Checked:`);
+  for (const candidate of candidates) {
+    console.error(`  - ${candidate}`);
+  }
+  process.exit(1);
+}
+
 function runFastLocalPackCheck(hotspots: string[]) {
   console.warn(
     "release-check: skipping exact npm pack --dry-run because local desktop build artifacts are present and package.json whitelists broad build directories:",
@@ -326,6 +450,26 @@ function assertOrchestratorVersionPinned() {
   }
 }
 
+function assertCloudAgentTemplateDependenciesPinned() {
+  const cloudAgentPackage = JSON.parse(
+    readFileSync("deploy/cloud-agent-template/package.json", "utf8"),
+  ) as RootPackageJson;
+  const floating = findFloatingDependencySpecs(
+    cloudAgentPackage,
+    cloudAgentTemplateReleaseDependencies,
+  );
+
+  if (floating.length > 0) {
+    console.error(
+      "release-check: deploy/cloud-agent-template/package.json must pin release dependencies to exact versions.",
+    );
+    for (const dependency of floating) {
+      console.error(`  - ${dependency.name}: ${dependency.specifier}`);
+    }
+    process.exit(1);
+  }
+}
+
 function assertReleaseWorkflowHasNotaryWrapper() {
   const workflow = readFileSync(
     ".github/workflows/release-electrobun.yml",
@@ -397,7 +541,7 @@ function assertMacArtifactStagerLooksCorrect() {
     'codesign --verify --deep --strict --verbose=2 "$STAGED_APP_PATH"',
     "hdiutil create \\",
     "retry_command 3 20 xcrun notarytool submit \\",
-    'retry_command 5 15 xcrun stapler staple "$TEMP_DMG_PATH"',
+    'retry_command 8 20 xcrun stapler staple "$TEMP_DMG_PATH"',
     'mv "$TEMP_DMG_PATH" "$FINAL_DMG_PATH"',
   ];
   const missing = requiredSnippets.filter(
@@ -455,13 +599,31 @@ function assertWindowsSmokeScriptHasLeadingParamBlock() {
     "Find-Launcher $resolvedBuildDir",
     'Get-ChildItem -Path $resolvedArtifactsDir -File -Filter "*.tar.zst"',
     'Join-Path $env:APPDATA "Milady\\\\milady-startup.log"',
+    '$requireInstaller = $env:MILADY_WINDOWS_SMOKE_REQUIRE_INSTALLER -eq "1"',
+    "Installing via Inno Setup:",
+    "/VERYSILENT",
+    "installed Inno package",
     "$persistLauncherPathFile = $env:MILADY_TEST_WINDOWS_LAUNCHER_PATH_FILE",
+    "Installer-required runs skip build/tarball reuse and validate the installed package directly.",
     "Using $launcherSource launcher:",
     "Using packaged tarball:",
     "Find-Launcher $selfExtractionRoot",
     "Started extracted launcher:",
     "Runtime started -- agent: .* port:",
-    "Waiting for health endpoint at http://localhost:",
+    "Waiting for health endpoint at http://(?:localhost|127\\.0\\.0\\.1):",
+    "$handler.UseProxy = $false",
+    '--noproxy "127.0.0.1"',
+    "function Test-BackendProbeStatus",
+    "function Test-StartupLogFatalLine",
+    "Cleared stale startup log:",
+    "optional plugin",
+    "Fatal startup lines detected:",
+    "-SkipHttpErrorCheck",
+    "Dump-PortDiagnostics",
+    "Dump-ProcessDiagnostics",
+    "Dump-FailureDiagnostics",
+    "periodic diagnostics at",
+    "FAILURE DIAGNOSTICS",
   ];
   const missingSnippets = requiredSnippets.filter(
     (snippet) => !script.includes(snippet),
@@ -470,6 +632,61 @@ function assertWindowsSmokeScriptHasLeadingParamBlock() {
   if (missingSnippets.length > 0) {
     console.error(
       "release-check: smoke-test-windows.ps1 is missing the packaged-launcher/dynamic-port smoke logic.",
+    );
+    for (const snippet of missingSnippets) {
+      console.error(`  - ${snippet}`);
+    }
+    process.exit(1);
+  }
+}
+
+function assertWindowsInstallerProofScript() {
+  const script = readFileSync(
+    "apps/app/electrobun/scripts/verify-windows-installer-proof.ps1",
+    "utf8",
+  );
+
+  const requiredSnippets = [
+    "Milady-Setup-*.exe",
+    "smoke-test-windows.ps1",
+    "MILADY_WINDOWS_SMOKE_REQUIRE_INSTALLER",
+    "Start Menu",
+    "unins*.exe",
+    "proof-summary.json",
+  ];
+  const missingSnippets = requiredSnippets.filter(
+    (snippet) => !script.includes(snippet),
+  );
+
+  if (missingSnippets.length > 0) {
+    console.error(
+      "release-check: verify-windows-installer-proof.ps1 is missing required clean-install proof logic.",
+    );
+    for (const snippet of missingSnippets) {
+      console.error(`  - ${snippet}`);
+    }
+    process.exit(1);
+  }
+}
+
+function assertInnoBuildScriptHasTimeoutAndHeartbeat() {
+  const script = readFileSync("packaging/inno/build-inno.ps1", "utf8");
+  const requiredSnippets = [
+    "$isccTimeout = [TimeSpan]::FromMinutes(25)",
+    "$isccHeartbeatInterval = [TimeSpan]::FromSeconds(30)",
+    "Write-Host \"Starting ISCC.exe: $isccPath $($isccArgumentDisplay -join ' ')\"",
+    "Start-Process -FilePath $isccPath",
+    'Write-Host "ISCC.exe still running after $([math]::Round($elapsed.TotalMinutes, 1)) minutes..."',
+    "Stop-Process -Id $isccProcess.Id -Force",
+    'throw "ISCC.exe timed out after $([int]$isccTimeout.TotalMinutes) minutes while building the Windows installer."',
+  ];
+  const missingSnippets = requiredSnippets.filter(
+    (snippet) => !script.includes(snippet),
+  );
+
+  if (missingSnippets.length > 0) {
+    console.error(
+      "release-check: build-inno.ps1 must supervise ISCC.exe with heartbeat logging and a hard timeout.",
     );
     for (const snippet of missingSnippets) {
       console.error(`  - ${snippet}`);
@@ -517,6 +734,8 @@ function assertMacSmokeScriptLaunchesPackagedLauncherDirectly() {
     'echo "Packaged renderer asset check PASSED (wrapper archive)."',
     'echo "Launcher: $' + "{LAUNCHER_PATH:-<unset>}" + '"',
     'local launcher_stdout="$' + "{LAUNCHER_STDOUT:-}" + '"',
+    "backend_health_probe_satisfied()",
+    '[[ "$status" == "200" || "$status" == "401" ]]',
     "Launcher exited before the first health probe; continuing to wait for packaged app handoff...",
     'dump_failure_diagnostics "backend startup log reported a failure"',
     'dump_failure_diagnostics "backend never reported a started port"',
@@ -535,14 +754,89 @@ function assertMacSmokeScriptLaunchesPackagedLauncherDirectly() {
   }
 }
 
+function assertServerDynamicHyperscapeImport() {
+  const serverSource = readExistingReleaseCheckFile(
+    "autonomous API server source",
+    autonomousServerPathCandidates,
+  );
+
+  // @elizaos/app-hyperscape/routes must be a dynamic import (lazy) so the
+  // API server can start without it. A static top-level import would crash
+  // the server when the package is not installed (e.g. Windows smoke test).
+  const lines = serverSource.split("\n");
+  const staticImports = lines.filter(
+    (line) =>
+      /^\s*import\s/.test(line) && line.includes("@elizaos/app-hyperscape"),
+  );
+  if (staticImports.length > 0) {
+    console.error(
+      "release-check: server.ts must NOT have a static import of @elizaos/app-hyperscape/routes. Use a dynamic import inside a try-catch.",
+    );
+    for (const line of staticImports) {
+      console.error(`  - ${line.trim()}`);
+    }
+    process.exit(1);
+  }
+
+  if (!serverSource.includes("@elizaos/app-hyperscape/routes")) {
+    console.error(
+      "release-check: server.ts must dynamically import @elizaos/app-hyperscape/routes.",
+    );
+    process.exit(1);
+  }
+}
+
+function assertStartApiServerCatchBlockSafety() {
+  const elizaSource = readExistingReleaseCheckFile(
+    "autonomous runtime source",
+    autonomousElizaPathCandidates,
+  );
+
+  // The catch block around startApiServer must use console.error so errors
+  // are visible in packaged builds (Electrobun agent.ts reads stderr).
+  if (!elizaSource.includes("console.error(apiErrMsg)")) {
+    console.error(
+      "release-check: eliza.ts startApiServer catch block must use console.error(apiErrMsg) so errors are visible in packaged builds.",
+    );
+    process.exit(1);
+  }
+
+  // In server-only mode, a failed API server must be fatal.
+  const catchIndex = elizaSource.indexOf("catch (apiErr)");
+  if (catchIndex === -1) {
+    console.error(
+      "release-check: eliza.ts must have a catch (apiErr) block around startApiServer.",
+    );
+    process.exit(1);
+  }
+  const catchBlock = elizaSource.slice(
+    catchIndex,
+    elizaSource.indexOf("// ── Server-only mode", catchIndex),
+  );
+  if (
+    !catchBlock.includes("opts?.serverOnly") ||
+    !catchBlock.includes("process.exit(1)")
+  ) {
+    console.error(
+      "release-check: eliza.ts startApiServer catch block must call process.exit(1) when opts?.serverOnly is true.",
+    );
+    process.exit(1);
+  }
+}
+
 function main() {
   assertReleaseWorkflowHasNotaryWrapper();
   assertElectrobunConfigHasPostWrapSigner();
   assertMacArtifactStagerLooksCorrect();
   assertWindowsSmokeScriptHasLeadingParamBlock();
+  assertWindowsInstallerProofScript();
+  assertInnoBuildScriptHasTimeoutAndHeartbeat();
   assertMacSmokeScriptLaunchesPackagedLauncherDirectly();
+  assertServerDynamicHyperscapeImport();
+  assertStartApiServerCatchBlockSafety();
   assertBundledAgentOrchestratorInstallFix();
   assertOrchestratorVersionPinned();
+  assertCloudAgentTemplateDependenciesPinned();
   const localHotspots = findLocalPackHotspots();
   if (shouldSkipExactPackDryRun(localHotspots)) {
     runFastLocalPackCheck(localHotspots);

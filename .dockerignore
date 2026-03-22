@@ -9,6 +9,11 @@
 .vscode
 .idea
 
+# Local dependency trees / caches
+node_modules/
+**/node_modules/
+.bun/
+
 # Previous build artifacts
 dist/
 
@@ -42,3 +47,7 @@ apps/app/ios
 # Homepage static site
 apps/homepage/out
 apps/homepage/.next
+
+# Ignored caches
+.ruff_cache/
+cache/voice/

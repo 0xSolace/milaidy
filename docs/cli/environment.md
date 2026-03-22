@@ -39,7 +39,7 @@ These variables control the API server and network behavior.
 | `MILADY_ALLOW_WS_QUERY_TOKEN` | When set to `1`, allows the API token to be passed as a WebSocket query parameter (less secure; useful for some clients). | (unset) |
 | `MILADY_PAIRING_DISABLED` | When set to `1`, disables the pairing endpoint on the API server (requires `MILADY_API_TOKEN` to be set). | (unset) |
 | `MILADY_ALLOWED_ORIGINS` | Comma-separated list of additional CORS origins allowed by the API server. | (unset) |
-| `MILADY_ALLOW_NULL_ORIGIN` | When set to `1`, allows the `null` origin in CORS (useful for file:// or Electron clients). | (unset) |
+| `MILADY_ALLOW_NULL_ORIGIN` | When set to `1`, allows the `null` origin in CORS (useful for file:// or desktop clients). | (unset) |
 | `MILADY_WALLET_EXPORT_TOKEN` | Auth token for the wallet export API endpoint. When unset, wallet exports are disabled. | (unset) |
 | `API_PORT` / `SERVER_PORT` | Alternative port overrides used by some runtime actions. Prefer `MILADY_PORT`. | (unset) |
 
@@ -168,9 +168,10 @@ These variables control elizaOS runtime initialization behavior.
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `ELIZA_ALLOW_DESTRUCTIVE_MIGRATIONS` | Allow destructive database migrations on startup. Automatically set to `true` by Milady. | `true` (set by Milady) |
-| `IGNORE_BOOTSTRAP` | Skip the elizaOS bootstrap plugin. Automatically set to `true` by Milady (Milady provides its own bootstrap). | `true` (set by Milady) |
+| `ELIZA_CONFIG_PATH` | Override the path to `milady.json`. | `~/.milady/milady.json` |
 | `MILADY_DISABLE_WORKSPACE_PLUGIN_OVERRIDES` | When set to `1`, disables loading plugin overrides from workspace directories. | (unset) |
 | `MILADY_BUNDLED_VERSION` | Override the bundled version string returned by the version resolver. Used in special packaging scenarios. | (unset) |
+| `MILADY_DISABLE_EDGE_TTS` | When set to `1`, `true`, or `yes`, Milady does **not** auto-load `@elizaos/plugin-edge-tts` when `@elizaos/plugin-agent-orchestrator` is enabled (orchestrator-driven flows use `TEXT_TO_SPEECH`). Without this, the bundled `node-edge-tts` client **contacts Microsoft’s Edge TTS cloud service** even though no API key is required—there is still an outbound network call to Microsoft. To opt out while keeping other plugins: set this variable, or set `plugins.entries["edge-tts"].enabled` to `false` in `milady.json`. Alias: `ELIZA_DISABLE_EDGE_TTS`. | (unset — Edge TTS is auto-loaded with the agent orchestrator) |
 
 ---
 

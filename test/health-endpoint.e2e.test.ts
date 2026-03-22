@@ -6,9 +6,9 @@
 
 import http from "node:http";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { startApiServer } from "../src/api/server";
+import { startApiServer } from "@miladyai/app-core/src/api/server";
 
-vi.mock("../src/services/mcp-marketplace", () => ({
+vi.mock("@miladyai/app-core/src/services/mcp-marketplace", () => ({
   searchMcpMarketplace: vi.fn().mockResolvedValue({ results: [] }),
   getMcpServerDetails: vi.fn().mockResolvedValue(null),
 }));
@@ -91,5 +91,24 @@ describe("GET /api/health", () => {
     const plugins = data.plugins as Record<string, number>;
     expect(typeof plugins.loaded).toBe("number");
     expect(typeof plugins.failed).toBe("number");
+  });
+
+  it("reports agentState=starting while the agent is still starting", async () => {
+    const startingServer = await startApiServer({
+      port: 0,
+      initialAgentState: "starting",
+    });
+
+    try {
+      const { status, data } = await req(
+        startingServer.port,
+        "GET",
+        "/api/health",
+      );
+      expect(status).toBe(200);
+      expect(data.agentState).toBe("starting");
+    } finally {
+      await startingServer.close();
+    }
   });
 });

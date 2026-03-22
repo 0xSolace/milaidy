@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Development script that starts:
- * 1. The Milady dev server (runtime + API on port 31337) with restart support
+ * 1. The Milady dev server (\[(eliza|milady)(?:-api)?\]|runtime + API on port 31337) with restart support
  * 2. The vite app dev server (port 2138, proxies /api and /ws to 31337)
  *
  * Automatically kills zombie processes on both ports before starting.
@@ -17,6 +17,7 @@ import {
   existsSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -26,44 +27,89 @@ import path from "node:path";
 import process from "node:process";
 import { ethers } from "ethers";
 import JSON5 from "json5";
+import { CAPACITOR_PLUGIN_NAMES } from "../apps/app/scripts/capacitor-plugin-names.mjs";
+import { capacitorPluginsBuildNeeded } from "./lib/capacitor-plugin-build-needed.mjs";
 import {
   coerceBoolean,
   resolveOnchainPreference,
 } from "./lib/dev-ui-onchain.mjs";
 import { buildVisionDepsFailureMessage } from "./lib/dev-ui-vision.mjs";
+import { signalSpawnedProcessTree } from "./lib/kill-process-tree.mjs";
 
-const API_PORT = 31337;
+const API_PORT = Number(process.env.MILADY_API_PORT) || 31337;
 
 // --app=<name> selects which app to serve (default: "app" → apps/app)
 const appArgMatch = process.argv.find((a) => a.startsWith("--app="));
 const appName = appArgMatch ? appArgMatch.split("=")[1] : "app";
-const APP_UI_PORTS = { app: 2138, home: 2140 };
+const APP_UI_PORTS = {
+  app: 2138,
+  home: Number(process.env.MILADY_HOME_PORT) || 2142,
+};
 const UI_PORT = APP_UI_PORTS[appName] ?? 2138;
 const appDir = `apps/${appName}`;
+
+function getCliName() {
+  const nameArgMatch = process.argv.find((a) => a.startsWith("--name="));
+  if (nameArgMatch) return nameArgMatch.split("=")[1];
+
+  try {
+    const pkgPath = path.join(process.cwd(), "package.json");
+    if (existsSync(pkgPath)) {
+      const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
+      if (pkg.name) {
+        let name = pkg.name;
+        if (name.startsWith("@")) name = name.split("/")[1];
+        if (
+          name === "miladyai" ||
+          name === "milady-ai" ||
+          name.includes("milady")
+        )
+          return "milady";
+        if (name === "elizaos" || name.includes("eliza")) return "eliza";
+        return name;
+      }
+    }
+  } catch (_e) {
+    // Ignore parsing errors
+  }
+
+  // Fallbacks based on directory structure
+  if (
+    process.cwd().includes("eliza-workspace") ||
+    process.cwd().includes("milady")
+  ) {
+    return "milady";
+  }
+
+  return "eliza";
+}
+
+const cliName = getCliName();
+const logPrefix = `[${cliName}]`;
 
 const cwd = process.cwd();
 const uiOnly = process.argv.includes("--ui-only");
 const devLogLevel =
-  (process.env.MILADY_DEV_LOG_LEVEL ?? process.env.LOG_LEVEL ?? "info")
+  (process.env.ELIZA_DEV_LOG_LEVEL ?? process.env.LOG_LEVEL ?? "info")
     .trim()
     .toLowerCase() || "info";
-const quietApiLogs = process.env.MILADY_DEV_QUIET_LOGS === "1";
-const verboseApiLogs = process.env.MILADY_DEV_VERBOSE_LOGS === "1";
+const quietApiLogs = process.env.ELIZA_DEV_QUIET_LOGS === "1";
+const verboseApiLogs = process.env.ELIZA_DEV_VERBOSE_LOGS !== "0";
 // These are determined interactively at startup (or from env if already set).
 let onchainEnabled = false;
 let anchorRequested = false;
-const anchorRequired = process.env.MILADY_DEV_REQUIRE_ANCHOR === "1";
-const verboseChainLogs = process.env.MILADY_DEV_CHAIN_VERBOSE === "1";
-const ANVIL_PORT = Number(process.env.MILADY_DEV_ANVIL_PORT ?? 8545);
-const ANVIL_CHAIN_ID = Number(process.env.MILADY_DEV_CHAIN_ID ?? 31337);
+const anchorRequired = process.env.ELIZA_DEV_REQUIRE_ANCHOR === "1";
+const verboseChainLogs = process.env.ELIZA_DEV_CHAIN_VERBOSE === "1";
+const ANVIL_PORT = Number(process.env.ELIZA_DEV_ANVIL_PORT ?? 8545);
+const ANVIL_CHAIN_ID = Number(process.env.ELIZA_DEV_CHAIN_ID ?? 31337);
 const ANVIL_RPC_URL = `http://127.0.0.1:${ANVIL_PORT}`;
 const ANCHOR_RPC_URL =
-  process.env.MILADY_DEV_ANCHOR_RPC_URL ?? "http://127.0.0.1:8899";
+  process.env.ELIZA_DEV_ANCHOR_RPC_URL ?? "http://127.0.0.1:8899";
 const DEFAULT_EVM_DEV_PRIVATE_KEY =
-  process.env.MILADY_DEV_EVM_PRIVATE_KEY ??
+  process.env.ELIZA_DEV_EVM_PRIVATE_KEY ??
   "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d";
 const ANVIL_DEPLOYER_PRIVATE_KEY =
-  process.env.MILADY_DEV_ANVIL_DEPLOYER_PRIVATE_KEY ??
+  process.env.ELIZA_DEV_ANVIL_DEPLOYER_PRIVATE_KEY ??
   "0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6";
 
 // ---------------------------------------------------------------------------
@@ -111,12 +157,12 @@ async function promptYesNo(question, defaultYes = false) {
 async function installFoundry() {
   if (process.platform === "win32") {
     console.log(
-      `  ${green("[milady]")} ${dim("Windows: install Foundry manually → https://book.getfoundry.sh/getting-started/installation")}`,
+      `  ${green(logPrefix)} ${dim("Windows: install Foundry manually → https://book.getfoundry.sh/getting-started/installation")}`,
     );
     return false;
   }
 
-  console.log(`  ${green("[milady]")} Installing Foundry...`);
+  console.log(`  ${green(logPrefix)} Installing Foundry...`);
   const ok = await new Promise((resolve) => {
     const installer = spawn(
       "sh",
@@ -129,7 +175,7 @@ async function installFoundry() {
 
   if (!ok) {
     console.error(
-      `  ${green("[milady]")} Foundry installer failed. Install manually: https://book.getfoundry.sh`,
+      `  ${green(logPrefix)} Foundry installer failed. Install manually: https://book.getfoundry.sh`,
     );
     return false;
   }
@@ -187,8 +233,8 @@ function which(cmd) {
   return null;
 }
 
-const forceNodeRuntime = process.env.MILADY_FORCE_NODE === "1";
-const hasBun = !forceNodeRuntime && !!which("bun");
+const forceNodeRuntime = process.env.ELIZA_FORCE_NODE === "1";
+const hasBun = !forceNodeRuntime && !!which("bun") && !!which("bunx");
 
 if (!hasBun && !which("npx")) {
   console.error(
@@ -205,17 +251,17 @@ if (!hasBun && !which("npx")) {
 // coerceBoolean — imported from ./lib/dev-ui-onchain.mjs
 
 function resolveMiladyConfigPath() {
-  const explicitConfigPath = process.env.MILADY_CONFIG_PATH?.trim();
+  const explicitConfigPath = process.env.ELIZA_CONFIG_PATH?.trim();
   if (explicitConfigPath) {
     return path.resolve(explicitConfigPath);
   }
 
-  const explicitStateDir = process.env.MILADY_STATE_DIR?.trim();
+  const explicitStateDir = process.env.ELIZA_STATE_DIR?.trim();
   if (explicitStateDir) {
-    return path.join(path.resolve(explicitStateDir), "milady.json");
+    return path.join(path.resolve(explicitStateDir), "eliza.json");
   }
 
-  return path.join(os.homedir(), ".milady", "milady.json");
+  return path.join(os.homedir(), ".eliza", "eliza.json");
 }
 
 function loadMiladyConfigForDev() {
@@ -227,7 +273,7 @@ function loadMiladyConfigForDev() {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn(
-      `${green("[milady]")} Failed to parse config at ${configPath}: ${msg}`,
+      `${green(logPrefix)} Failed to parse config at ${configPath}: ${msg}`,
     );
     return null;
   }
@@ -255,10 +301,10 @@ function readPluginStealthFlag(entries, ids) {
 }
 
 function resolveStealthImportFlags() {
-  let openaiFlag = coerceBoolean(process.env.MILADY_ENABLE_OPENAI_STEALTH);
-  let claudeFlag = coerceBoolean(process.env.MILADY_ENABLE_CLAUDE_STEALTH);
+  let openaiFlag = coerceBoolean(process.env.ELIZA_ENABLE_OPENAI_STEALTH);
+  let claudeFlag = coerceBoolean(process.env.ELIZA_ENABLE_CLAUDE_STEALTH);
 
-  const globalFlag = coerceBoolean(process.env.MILADY_ENABLE_STEALTH_IMPORTS);
+  const globalFlag = coerceBoolean(process.env.ELIZA_ENABLE_STEALTH_IMPORTS);
   if (globalFlag !== null) {
     openaiFlag = globalFlag;
     claudeFlag = globalFlag;
@@ -314,7 +360,7 @@ function resolveStealthImportFlags() {
   // a subscription provider, enable the corresponding stealth interceptor
   // automatically (unless explicitly disabled above).
   const stateDir =
-    process.env.MILADY_STATE_DIR?.trim() || path.join(os.homedir(), ".milady");
+    process.env.ELIZA_STATE_DIR?.trim() || path.join(os.homedir(), ".eliza");
   if (openaiFlag === null) {
     const codexAuthPath = path.join(stateDir, "auth", "openai-codex.json");
     if (existsSync(codexAuthPath)) {
@@ -384,7 +430,7 @@ async function waitForJsonRpc(
 }
 
 function resolveAnchorWorkspace() {
-  const explicit = process.env.MILADY_ANCHOR_WORKSPACE?.trim();
+  const explicit = process.env.ELIZA_ANCHOR_WORKSPACE?.trim();
   if (explicit) {
     const resolved = path.resolve(explicit);
     return existsSync(path.join(resolved, "Anchor.toml")) ? resolved : null;
@@ -458,8 +504,8 @@ function createOnchainDevConfig({
   }
   config.env = nextEnv;
 
-  const tempDir = mkdtempSync(path.join(os.tmpdir(), "milady-dev-onchain-"));
-  const configPath = path.join(tempDir, "milady.json");
+  const tempDir = mkdtempSync(path.join(os.tmpdir(), "eliza-dev-onchain-"));
+  const configPath = path.join(tempDir, "eliza.json");
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, "utf-8");
   return { configPath, tempDir };
 }
@@ -505,7 +551,7 @@ async function bootstrapOnchainDev() {
 
   if (!which("anvil")) {
     throw new Error(
-      "Anvil binary not found. Install Foundry or set MILADY_DEV_ONCHAIN=0 to run without chain bootstrap.",
+      "Anvil binary not found. Install Foundry or set ELIZA_DEV_ONCHAIN=0 to run without chain bootstrap.",
     );
   }
 
@@ -552,7 +598,7 @@ async function bootstrapOnchainDev() {
       anvilExit,
     ]);
   } catch (err) {
-    anvil.kill("SIGTERM");
+    signalSpawnedProcessTree(anvil, "SIGTERM");
     const stderr = getBufferedStderr();
     const msg = err instanceof Error ? err.message : String(err);
     throw new Error(
@@ -563,7 +609,7 @@ async function bootstrapOnchainDev() {
   const provider = new ethers.JsonRpcProvider(ANVIL_RPC_URL);
   const network = await provider.getNetwork();
   if (Number(network.chainId) !== ANVIL_CHAIN_ID) {
-    anvil.kill("SIGTERM");
+    signalSpawnedProcessTree(anvil, "SIGTERM");
     throw new Error(
       `Anvil chain id mismatch: expected ${ANVIL_CHAIN_ID}, got ${network.chainId}`,
     );
@@ -596,7 +642,7 @@ async function bootstrapOnchainDev() {
     if (which("forge")) {
       try {
         console.log(
-          `  ${green("[milady]")} Building contract artifacts (forge build --skip Harness)...`,
+          `  ${green(logPrefix)} Building contract artifacts (forge build --skip Harness)...`,
         );
         execSync("forge build --skip Harness", {
           cwd: path.join(cwd, "test", "contracts"),
@@ -609,7 +655,7 @@ async function bootstrapOnchainDev() {
       }
     }
     if (!registryArtifactPath || !collectionArtifactPath) {
-      anvil.kill("SIGTERM");
+      signalSpawnedProcessTree(anvil, "SIGTERM");
       throw new Error(
         "Missing contract artifacts under test/contracts/out. Run `cd test/contracts && forge build --skip Harness`.",
       );
@@ -646,13 +692,13 @@ async function bootstrapOnchainDev() {
     collectionContract.getCollectionDetails(),
   ]);
   if (Number(totalAgents) !== 0) {
-    anvil.kill("SIGTERM");
+    signalSpawnedProcessTree(anvil, "SIGTERM");
     throw new Error(
       `Registry verification failed: expected totalAgents=0, got ${totalAgents}`,
     );
   }
   if (Number(collectionDetails[1]) !== 0) {
-    anvil.kill("SIGTERM");
+    signalSpawnedProcessTree(anvil, "SIGTERM");
     throw new Error(
       `Collection verification failed: expected currentSupply=0, got ${collectionDetails[1]}`,
     );
@@ -667,15 +713,15 @@ async function bootstrapOnchainDev() {
     .registerAgent.staticCall(
       "MiladyDevValidation",
       "http://localhost:31337/dev-validation",
-      ethers.id("milady-dev"),
-      "ipfs://milady-dev-validation",
+      ethers.id("eliza-dev"),
+      "ipfs://eliza-dev-validation",
     );
   await collectionContract
     .connect(validationWallet)
     .mint.staticCall(
       "MiladyDevValidation",
       "http://localhost:31337/dev-validation",
-      ethers.id("milady-dev"),
+      ethers.id("eliza-dev"),
     );
 
   let anchor = null;
@@ -686,18 +732,18 @@ async function bootstrapOnchainDev() {
       const msg =
         "Anchor workspace not found (no Anchor.toml). Skipping anchor localnet bootstrap.";
       if (anchorRequired) {
-        anvil.kill("SIGTERM");
+        signalSpawnedProcessTree(anvil, "SIGTERM");
         throw new Error(msg);
       }
-      console.log(`  ${green("[milady]")} ${dim(msg)}`);
+      console.log(`  ${green(logPrefix)} ${dim(msg)}`);
     } else if (!which("anchor")) {
       const msg =
         "Anchor CLI not found in PATH. Skipping anchor localnet bootstrap.";
       if (anchorRequired) {
-        anvil.kill("SIGTERM");
+        signalSpawnedProcessTree(anvil, "SIGTERM");
         throw new Error(msg);
       }
-      console.log(`  ${green("[milady]")} ${dim(msg)}`);
+      console.log(`  ${green(logPrefix)} ${dim(msg)}`);
     } else {
       const { proc: anchorProc, getBufferedStderr: getAnchorStderr } =
         spawnWithBufferedLogs("anchor", ["localnet", "--skip-build"], {
@@ -727,17 +773,17 @@ async function bootstrapOnchainDev() {
         anchor = anchorProc;
         anchorConfigured = true;
       } catch (err) {
-        anchorProc.kill("SIGTERM");
+        signalSpawnedProcessTree(anchorProc, "SIGTERM");
         const stderr = getAnchorStderr();
         const msg = err instanceof Error ? err.message : String(err);
         if (anchorRequired) {
-          anvil.kill("SIGTERM");
+          signalSpawnedProcessTree(anvil, "SIGTERM");
           throw new Error(
             `Failed to start anchor localnet: ${msg}${stderr ? `\n${stderr}` : ""}`,
           );
         }
         console.log(
-          `  ${green("[milady]")} ${dim(`Anchor localnet unavailable: ${msg}`)}`,
+          `  ${green(logPrefix)} ${dim(`Anchor localnet unavailable: ${msg}`)}`,
         );
       }
     }
@@ -753,12 +799,12 @@ async function bootstrapOnchainDev() {
 
   return {
     env: {
-      MILADY_CONFIG_PATH: configPath,
+      ELIZA_CONFIG_PATH: configPath,
       EVM_PRIVATE_KEY: DEFAULT_EVM_DEV_PRIVATE_KEY,
-      MILADY_DEV_CHAIN_ID: String(ANVIL_CHAIN_ID),
-      MILADY_DEV_CHAIN_RPC: ANVIL_RPC_URL,
-      MILADY_DEV_REGISTRY_ADDRESS: registryAddress,
-      MILADY_DEV_COLLECTION_ADDRESS: collectionAddress,
+      ELIZA_DEV_CHAIN_ID: String(ANVIL_CHAIN_ID),
+      ELIZA_DEV_CHAIN_RPC: ANVIL_RPC_URL,
+      ELIZA_DEV_REGISTRY_ADDRESS: registryAddress,
+      ELIZA_DEV_COLLECTION_ADDRESS: collectionAddress,
       ...(anchorConfigured ? { SOLANA_RPC_URL: ANCHOR_RPC_URL } : {}),
     },
     anvil,
@@ -777,7 +823,7 @@ async function bootstrapOnchainDev() {
 const SUPPRESS_RE = /^\s*(Info|Warn|Debug|Trace)\s/;
 const SUPPRESS_UNSTRUCTURED_RE = /^\[dotenv[@\d]/;
 const STARTUP_RE =
-  /\[milady(?:-api)?\]|runtime bootstrap|runtime ready|runtime created|api server ready|plugin.*load|startup.*complete|\d+ms|\[PTYService|\[SwarmCoordinator\]|Triage:/i;
+  /\[eliza(?:-api)?\]|\[(eliza|milady)(?:-api)?\]|runtime bootstrap|\[(eliza|milady)(?:-api)?\]|runtime ready|\[(eliza|milady)(?:-api)?\]|runtime created|api server ready|plugin.*load|startup.*complete|\d+ms|\[PTYService|\[SwarmCoordinator\]|Triage:/i;
 
 function createErrorFilter(dest) {
   let buf = "";
@@ -895,50 +941,69 @@ function waitForPort(port, { timeout = 120_000, interval = 500 } = {}) {
 }
 
 // ---------------------------------------------------------------------------
-// Orphan cleanup — kill leftover processes from a previous crash / SIGKILL
+// Orphan cleanup (startup only) — never kills arbitrary Bun; PID/name-wide pkill is avoided.
+// Only processes whose command line ties them to this repo or Milady workspace dirs.
 // ---------------------------------------------------------------------------
 
 function killOrphanedWorkspaceProcesses() {
   if (process.platform === "win32") return; // spawn-helper is Unix only
 
+  let repoRoot;
   try {
-    // Kill orphaned node-pty spawn-helpers and any processes running inside
-    // .milady/workspaces (or legacy .miladyai/workspaces) that survived a crash.
-    const out = execSync(
-      `ps axo pid,command 2>/dev/null | grep -E '\\.mil(aidy|ady)/workspaces' | grep -v grep`,
-      { encoding: "utf-8", stdio: ["pipe", "pipe", "ignore"] },
-    );
-    const pids = out
-      .split("\n")
-      .map((l) => l.trim().split(/\s+/)[0])
-      .filter(Boolean);
-    if (pids.length) {
-      console.log(
-        `[dev-ui] Killing ${pids.length} orphaned workspace process(es)…`,
-      );
-      execSync(`kill -9 ${pids.join(" ")} 2>/dev/null`, { stdio: "ignore" });
-    }
+    repoRoot = realpathSync(cwd);
   } catch {
-    // No orphans found — clean slate
+    repoRoot = cwd;
   }
 
+  let psOut;
   try {
-    // Kill orphaned pty-worker processes (Node workers from pty-manager)
-    const out = execSync(
-      `ps axo pid,command 2>/dev/null | grep 'pty-worker.js' | grep -v grep`,
-      { encoding: "utf-8", stdio: ["pipe", "pipe", "ignore"] },
-    );
-    const pids = out
-      .split("\n")
-      .map((l) => l.trim().split(/\s+/)[0])
-      .filter(Boolean);
-    if (pids.length) {
-      console.log(`[dev-ui] Killing ${pids.length} orphaned pty-worker(s)…`);
-      execSync(`kill -9 ${pids.join(" ")} 2>/dev/null`, { stdio: "ignore" });
-    }
+    psOut = execSync("ps axo pid=,command=", {
+      encoding: "utf8",
+      maxBuffer: 10 * 1024 * 1024,
+      stdio: ["pipe", "pipe", "ignore"],
+    });
   } catch {
-    // No orphans found
+    return;
   }
+
+  const workspaceDirRe =
+    /\.milady\/workspaces|\.miladyai\/workspaces|\.eliza\/workspaces|\.elizaai\/workspaces/i;
+  const ptyWorkerRe = /pty-worker\.js/i;
+
+  const workspacePids = [];
+  const ptyPids = [];
+
+  for (const line of psOut.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const sp = trimmed.indexOf(" ");
+    if (sp < 1) continue;
+    const pidStr = trimmed.slice(0, sp).trim();
+    const cmd = trimmed.slice(sp + 1);
+    const pid = Number.parseInt(pidStr, 10);
+    if (!Number.isFinite(pid) || pid <= 0) continue;
+
+    if (workspaceDirRe.test(cmd)) {
+      workspacePids.push(pid);
+      continue;
+    }
+    if (ptyWorkerRe.test(cmd) && cmd.includes(repoRoot)) {
+      ptyPids.push(pid);
+    }
+  }
+
+  const killPids = (label, pids) => {
+    if (!pids.length) return;
+    console.log(`[dev-ui] Killing ${pids.length} orphaned ${label}…`);
+    try {
+      execSync(`kill -9 ${pids.join(" ")} 2>/dev/null`, { stdio: "ignore" });
+    } catch {
+      /* ignore */
+    }
+  };
+
+  killPids("workspace process(es)", workspacePids);
+  killPids("repo-scoped pty-worker(s)", ptyPids);
 }
 
 // ---------------------------------------------------------------------------
@@ -950,11 +1015,16 @@ killPort(UI_PORT);
 
 // Ensure vision dependencies are installed
 try {
-  execSync("node scripts/ensure-vision-deps.mjs", { stdio: "inherit" });
+  execSync(`node scripts/ensure-vision-deps.mjs --name=${cliName}`, {
+    stdio: "inherit",
+  });
 } catch (error) {
-  process.env.MILADY_VISION_DEPS_STATUS = "degraded";
+  process.env.ELIZA_VISION_DEPS_STATUS = "degraded";
   console.warn(
-    buildVisionDepsFailureMessage(error, "node scripts/ensure-vision-deps.mjs"),
+    buildVisionDepsFailureMessage(
+      error,
+      `node scripts/ensure-vision-deps.mjs --name=${cliName}`,
+    ),
   );
 }
 
@@ -971,27 +1041,30 @@ let tempOnchainDir = null;
 let shuttingDown = false;
 
 function terminateChild(proc, signal = "SIGTERM") {
-  if (!proc || proc.killed) return;
-  try {
-    proc.kill(signal);
-  } catch {
-    // Best effort.
-  }
+  if (!proc) return;
+  const sig = signal === "SIGKILL" ? "SIGKILL" : "SIGTERM";
+  signalSpawnedProcessTree(proc, sig);
 }
 
 function cleanup(exitCode = 0) {
-  if (shuttingDown) return;
+  if (shuttingDown) {
+    console.log("\n[eliza] Force exit.");
+    process.exit(exitCode === 0 ? 1 : exitCode);
+    return;
+  }
   shuttingDown = true;
 
-  terminateChild(viteProcess);
-  terminateChild(apiProcess);
-  terminateChild(anchorProcess);
-  terminateChild(anvilProcess);
+  terminateChild(viteProcess, "SIGTERM");
+  terminateChild(apiProcess, "SIGTERM");
+  terminateChild(anchorProcess, "SIGTERM");
+  terminateChild(anvilProcess, "SIGTERM");
 
-  // Give children a moment to propagate SIGTERM, then sweep orphans
   setTimeout(() => {
-    killOrphanedWorkspaceProcesses();
-  }, 200);
+    terminateChild(viteProcess, "SIGKILL");
+    terminateChild(apiProcess, "SIGKILL");
+    terminateChild(anchorProcess, "SIGKILL");
+    terminateChild(anvilProcess, "SIGKILL");
+  }, 1500).unref();
 
   if (tempOnchainDir) {
     try {
@@ -1003,18 +1076,78 @@ function cleanup(exitCode = 0) {
 
   setTimeout(() => {
     process.exit(exitCode);
-  }, 600).unref();
+  }, 1800).unref();
 }
 
 process.on("SIGINT", () => cleanup(0));
 process.on("SIGTERM", () => cleanup(0));
+if (process.platform !== "win32") {
+  process.on("SIGHUP", () => cleanup(0));
+}
 
 function startVite() {
+  const pkgPath = path.join(cwd, appDir, "package.json");
+  if (existsSync(pkgPath)) {
+    try {
+      const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
+      if (pkg.scripts?.["plugin:build"]) {
+        const appAbs = path.join(cwd, appDir);
+        const pluginsDir = path.join(appAbs, "plugins");
+        const forcePlugins =
+          process.env.MILADY_DEV_PLUGIN_BUILD === "1" ||
+          process.env.MILADY_DEV_PLUGIN_BUILD === "always";
+        const skipPlugins =
+          process.env.MILADY_DEV_PLUGIN_BUILD === "0" ||
+          process.env.MILADY_SKIP_PLUGIN_BUILD === "1";
+        if (skipPlugins) {
+          console.log(
+            `  ${green(logPrefix)} ${dim("Skipping Capacitor plugin build (MILADY_SKIP_PLUGIN_BUILD=1).")}`,
+          );
+        } else if (
+          forcePlugins ||
+          capacitorPluginsBuildNeeded(pluginsDir, CAPACITOR_PLUGIN_NAMES)
+        ) {
+          console.log(
+            `  ${green(logPrefix)} Building plugins for ${appDir}...`,
+          );
+          execSync(hasBun ? "bun run plugin:build" : "npm run plugin:build", {
+            cwd: appAbs,
+            stdio: "inherit",
+            env: process.env,
+          });
+        } else {
+          console.log(
+            `  ${green(logPrefix)} ${dim("Capacitor plugins dist up to date (skip rimraf/tsc/rollup). Set MILADY_DEV_PLUGIN_BUILD=1 to force.")}`,
+          );
+        }
+      }
+    } catch (err) {
+      console.error(
+        `  ${green(logPrefix)} Failed to build plugins for ${appDir}:`,
+        err.message,
+      );
+    }
+  }
+
   const viteCmd = hasBun ? "bunx" : "npx";
-  viteProcess = spawn(viteCmd, ["vite", "--port", String(UI_PORT)], {
+  const viteForce =
+    process.env.MILADY_VITE_FORCE === "1" ||
+    process.env.ELIZA_VITE_FORCE === "1";
+  const viteArgs = viteForce
+    ? ["vite", "--force", "--port", String(UI_PORT)]
+    : ["vite", "--port", String(UI_PORT)];
+  if (viteForce) {
+    console.log(
+      `  ${green(logPrefix)} ${dim("Vite --force (MILADY_VITE_FORCE=1): re-optimizing deps.")}`,
+    );
+  }
+  viteProcess = spawn(viteCmd, viteArgs, {
     cwd: path.join(cwd, appDir),
     env: {
       ...process.env,
+      NODE_ENV: "development",
+      ELIZA_NAMESPACE: cliName,
+      ELIZA_API_PORT: String(API_PORT),
       MILADY_API_PORT: String(API_PORT),
       ELIZA_HOME_API_PORT: String(API_PORT),
     },
@@ -1025,7 +1158,7 @@ function startVite() {
     const text = data.toString();
     if (text.includes("ready")) {
       console.log(
-        `\n  ${green("[milady]")} ${orange(`http://localhost:${UI_PORT}/`)}\n`,
+        `\n  ${green(logPrefix)} ${orange(`http://localhost:${UI_PORT}/`)}\n`,
       );
     }
   });
@@ -1037,7 +1170,7 @@ function startVite() {
   viteProcess.on("exit", (code) => {
     if (shuttingDown) return;
     if (code !== 0) {
-      console.error(`${green("[milady]")} vite exited with code ${code}`);
+      console.error(`${green(logPrefix)} vite exited with code ${code}`);
       cleanup(code ?? 1);
     }
   });
@@ -1046,10 +1179,10 @@ function startVite() {
 if (uiOnly) {
   startVite();
 } else {
-  console.log(`${orange("\nmilady dev mode")}\n`);
-  console.log(`  ${green("[milady]")} ${green("Starting dev server...")}\n`);
+  console.log(`${orange(`\n${cliName} dev mode`)}\n`);
+  console.log(`  ${green(logPrefix)} ${green("Starting dev server...")}\n`);
   console.log(
-    `  ${green("[milady]")} ${dim(
+    `  ${green(logPrefix)} ${dim(
       `API log level=${devLogLevel}${
         quietApiLogs
           ? " (errors only)"
@@ -1080,7 +1213,7 @@ if (uiOnly) {
   let chainEnv = {};
   if (onchainEnabled) {
     console.log(
-      `  ${green("[milady]")} ${green("Bootstrapping local chain...")}`,
+      `  ${green(logPrefix)} ${green("Bootstrapping local chain...")}`,
     );
     try {
       const chain = await bootstrapOnchainDev();
@@ -1090,33 +1223,33 @@ if (uiOnly) {
       tempOnchainDir = chain.tempDir;
 
       console.log(
-        `  ${green("[milady]")} ${dim(`Anvil ready at ${ANVIL_RPC_URL} (chainId=${ANVIL_CHAIN_ID})`)}`,
+        `  ${green(logPrefix)} ${dim(`Anvil ready at ${ANVIL_RPC_URL} (chainId=${ANVIL_CHAIN_ID})`)}`,
       );
       console.log(
-        `  ${green("[milady]")} ${dim(`Registry deployed: ${chain.registryAddress}`)}`,
+        `  ${green(logPrefix)} ${dim(`Registry deployed: ${chain.registryAddress}`)}`,
       );
       console.log(
-        `  ${green("[milady]")} ${dim(`Collection deployed: ${chain.collectionAddress}`)}`,
+        `  ${green(logPrefix)} ${dim(`Collection deployed: ${chain.collectionAddress}`)}`,
       );
       if (chain.anchorConfigured) {
         console.log(
-          `  ${green("[milady]")} ${dim(`Anchor localnet ready at ${ANCHOR_RPC_URL}`)}`,
+          `  ${green(logPrefix)} ${dim(`Anchor localnet ready at ${ANCHOR_RPC_URL}`)}`,
         );
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(`  ${green("[milady]")} ${msg}`);
+      console.error(`  ${green(logPrefix)} ${msg}`);
       cleanup(1);
       process.exit(1);
     }
   } else {
     console.log(
-      `  ${green("[milady]")} ${dim("On-chain bootstrap disabled (MILADY_DEV_ONCHAIN=0)")}`,
+      `  ${green(logPrefix)} ${dim("On-chain bootstrap disabled (ELIZA_DEV_ONCHAIN=0)")}`,
     );
   }
 
   // Security default: stealth shims are disabled unless explicitly enabled
-  // via env vars or plugin config in milady.json.
+  // via env vars or plugin config in eliza.json.
   const stealth = resolveStealthImportFlags();
   const nodeStealthImports = [];
   if (stealth.openai) nodeStealthImports.push("./openai-codex-stealth.mjs");
@@ -1127,7 +1260,7 @@ if (uiOnly) {
   );
   if (resolvedStealthImports.length > 0) {
     console.log(
-      `  ${green("[milady]")} ${dim(`Stealth imports enabled: ${resolvedStealthImports.join(", ")}`)}`,
+      `  ${green(logPrefix)} ${dim(`Stealth imports enabled: ${resolvedStealthImports.join(", ")}`)}`,
     );
   }
 
@@ -1139,7 +1272,7 @@ if (uiOnly) {
           filePath,
         ]),
         "--watch",
-        "src/runtime/dev-server.ts",
+        "packages/app-core/src/runtime/dev-server.ts",
       ]
     : [
         "node",
@@ -1147,15 +1280,17 @@ if (uiOnly) {
         "--import",
         "tsx",
         "--watch",
-        "src/runtime/dev-server.ts",
+        "packages/app-core/src/runtime/dev-server.ts",
       ];
   apiProcess = spawn(apiCmd[0], apiCmd.slice(1), {
     cwd,
     env: {
       ...process.env,
+      NODE_ENV: "development",
       ...chainEnv,
-      MILADY_PORT: String(API_PORT),
-      MILADY_HEADLESS: "1",
+      ELIZA_NAMESPACE: cliName,
+      ELIZA_PORT: String(API_PORT),
+      ELIZA_HEADLESS: "1",
       LOG_LEVEL: devLogLevel,
     },
     stdio: ["inherit", "pipe", "pipe"],
@@ -1179,7 +1314,7 @@ if (uiOnly) {
   apiProcess.on("exit", (code) => {
     if (shuttingDown) return;
     if (code !== 0) {
-      console.error(`\n  ${green("[milady]")} Server exited with code ${code}`);
+      console.error(`\n  ${green(logPrefix)} Server exited with code ${code}`);
       cleanup(code ?? 1);
     }
   });
@@ -1188,7 +1323,7 @@ if (uiOnly) {
   const dots = setInterval(() => {
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(0);
     process.stdout.write(
-      `\r  ${green("[milady]")} ${green(`Waiting for API server... ${dim(`${elapsed}s`)}`)}`,
+      `\r  ${green(logPrefix)} ${green(`Waiting for API server... ${dim(`${elapsed}s`)}`)}`,
     );
   }, 1000);
 
@@ -1197,13 +1332,13 @@ if (uiOnly) {
       clearInterval(dots);
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
       console.log(
-        `\r  ${green("[milady]")} ${green(`API server ready`)} ${dim(`(${elapsed}s)`)}          `,
+        `\r  ${green(logPrefix)} ${green(`API server ready`)} ${dim(`(${elapsed}s)`)}          `,
       );
       startVite();
     })
     .catch((err) => {
       clearInterval(dots);
-      console.error(`\n  ${green("[milady]")} ${err.message}`);
+      console.error(`\n  ${green(logPrefix)} ${err.message}`);
       cleanup(1);
     });
 }

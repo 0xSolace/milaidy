@@ -9,12 +9,12 @@
     "conversation"
   ],
   "main": "./dist/plugin.cjs.js",
-  "module": "./dist/plugin.js",
+  "module": "./dist/esm/index.js",
   "types": "./dist/esm/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/esm/index.d.ts",
-      "import": "./dist/plugin.js",
+      "import": "./dist/esm/index.js",
       "require": "./dist/plugin.cjs.js"
     },
     "./package.json": "./package.json"
@@ -42,7 +42,8 @@
   },
   "capacitor": {
     "ios": {
-      "src": "ios"
+      "src": "ios",
+      "podName": "MiladyCapacitorTalkMode"
     },
     "android": {
       "src": "android"
@@ -70,7 +71,7 @@
     "runtime": "both",
     "platformDetails": {
       "browser": "Support via Web Speech API for STT/TTS. No ElevenLabs streaming (CORS). System TTS fallback.",
-      "node": "Full support via Electron with ElevenLabs streaming TTS, native STT, and system TTS fallback",
+      "node": "Full support via Electrobun with ElevenLabs streaming TTS, native STT, and system TTS fallback",
       "ios": true,
       "android": true
     }

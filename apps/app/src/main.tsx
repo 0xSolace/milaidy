@@ -5,37 +5,75 @@
  * features, and mounts the React application.
  */
 
-import "@elizaos/app-core/styles/styles.css";
+import { ErrorBoundary } from "@miladyai/app-core/components";
+import "@miladyai/app-core/styles/styles.css";
+import "@miladyai/app-core/styles/brand-gold.css";
+
 import "./native-plugin-entrypoints";
 
 import { App as CapacitorApp } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
 import { Keyboard } from "@capacitor/keyboard";
 import { StatusBar, Style } from "@capacitor/status-bar";
-import { App } from "@elizaos/app-core";
+import { App } from "@miladyai/app-core/App";
+import { client } from "@miladyai/app-core/api";
 // Import Capacitor bridge utilities
 import {
   initializeCapacitorBridge,
   initializeStorageBridge,
   isElectrobunRuntime,
-} from "@elizaos/app-core/bridge";
+} from "@miladyai/app-core/bridge";
+import { CharacterEditor } from "@miladyai/app-core/components";
+import type { BrandingConfig } from "@miladyai/app-core/config";
 import {
   AGENT_READY_EVENT,
   APP_PAUSE_EVENT,
   APP_RESUME_EVENT,
   COMMAND_PALETTE_EVENT,
   CONNECT_EVENT,
-  dispatchMiladyEvent,
+  dispatchElizaEvent as dispatchMiladyEvent,
   SHARE_TARGET_EVENT,
   TRAY_ACTION_EVENT,
-} from "@elizaos/app-core/events";
-import { applyLaunchConnectionFromUrl } from "@elizaos/app-core/platform";
-import { AppProvider } from "@elizaos/app-core/state";
+} from "@miladyai/app-core/events";
+import {
+  applyForceFreshOnboardingReset,
+  applyLaunchConnectionFromUrl,
+  installDesktopPermissionsClientPatch,
+  installForceFreshOnboardingClientPatch,
+  installLocalProviderCloudPreferencePatch,
+  isDetachedWindowShell,
+  resolveWindowShellRoute,
+  shouldInstallMainWindowOnboardingPatches,
+  syncDetachedShellLocation,
+} from "@miladyai/app-core/platform";
+import {
+  DESKTOP_TRAY_MENU_ITEMS,
+  DesktopOnboardingRuntime,
+  DesktopSurfaceNavigationRuntime,
+  DesktopTrayRuntime,
+  DetachedShellRoot,
+} from "@miladyai/app-core/shell";
+import { AppProvider } from "@miladyai/app-core/state";
 // Import the agent plugin
 import { Agent } from "@miladyai/capacitor-agent";
 import { Desktop } from "@miladyai/capacitor-desktop";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+
+const MILADY_BRANDING: Partial<BrandingConfig> = {
+  appName: "Milady",
+  orgName: "milady-ai",
+  repoName: "milady",
+  docsUrl: "https://docs.milady.ai",
+  appUrl: "https://app.milady.ai",
+  bugReportUrl:
+    "https://github.com/milady-ai/milady/issues/new?template=bug_report.yml",
+  hashtag: "#MiladyAgent",
+  fileExtension: ".milady-agent",
+  packageScope: "miladyai",
+  // Cloud-only in production; local dev mode allows running a local backend.
+  cloudOnly: !import.meta.env.DEV,
+};
 
 /**
  * Platform detection utilities
@@ -45,8 +83,8 @@ const isNative = Capacitor.isNativePlatform();
 const isIOS = platform === "ios";
 const isAndroid = platform === "android";
 
-function isElectronPlatform(): boolean {
-  return platform === "electron" || isElectrobunRuntime();
+function isDesktopPlatform(): boolean {
+  return isElectrobunRuntime();
 }
 
 function isWebPlatform(): boolean {
@@ -69,8 +107,65 @@ interface ShareTargetPayload {
 declare global {
   interface Window {
     __MILADY_SHARE_QUEUE__?: ShareTargetPayload[];
+    __MILADY_CHARACTER_EDITOR__?: typeof CharacterEditor;
+    __MILADY_API_BASE__?: string;
   }
 }
+
+const windowShellRoute = resolveWindowShellRoute();
+
+/**
+ * Adds `milady-electrobun-frameless` for CSS `-webkit-app-region` (Chromium/CEF).
+ * macOS WKWebView move/resize are still driven by native overlays in
+ * window-effects.mm; this class mainly marks the shell and helps non-WK engines.
+ */
+function shouldEnableElectrobunMacWindowDrag(): boolean {
+  if (!isElectrobunRuntime() || typeof document === "undefined") return false;
+  if (isDetachedWindowShell(windowShellRoute)) return false;
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  return /Mac/i.test(ua) && !/(iPhone|iPad|iPod)/i.test(ua);
+}
+
+if (shouldEnableElectrobunMacWindowDrag()) {
+  document.documentElement.classList.add("milady-electrobun-frameless");
+}
+
+// Dev escape hatch: ?reset forces a truly fresh onboarding session by clearing
+// persisted state and temporarily suppressing stale backend resume config.
+if (shouldInstallMainWindowOnboardingPatches(windowShellRoute)) {
+  applyForceFreshOnboardingReset();
+  installForceFreshOnboardingClientPatch(client as never);
+}
+installLocalProviderCloudPreferencePatch(client as never);
+installDesktopPermissionsClientPatch(client as never);
+
+// Register custom character editor for app-core's ViewRouter to pick up
+window.__MILADY_CHARACTER_EDITOR__ = CharacterEditor;
+
+// Point Eliza Cloud API to the correct base URL.
+(window as unknown as Record<string, unknown>).__ELIZA_CLOUD_API_BASE__ =
+  import.meta.env.VITE_CLOUD_BASE ?? "https://www.elizacloud.ai";
+
+// Inject onboarding style presets so the frontend-only onboarding flow
+// can populate character data without an API call.
+import { STYLE_PRESETS } from "@miladyai/app-core/onboarding-presets";
+
+(window as unknown as Record<string, unknown>).__APP_ONBOARDING_STYLES__ =
+  STYLE_PRESETS;
+
+// Override the VRM asset roster with Milady characters so avatar URLs
+// resolve to milady-*.vrm.gz instead of the upstream eliza-*.vrm.gz.
+(window as unknown as Record<string, unknown>).__APP_VRM_ASSETS__ = [
+  { title: "Chen", slug: "milady-1" },
+  { title: "Jin", slug: "milady-2" },
+  { title: "Kei", slug: "milady-3" },
+  { title: "Momo", slug: "milady-4" },
+  { title: "Rin", slug: "milady-5" },
+  { title: "Ryu", slug: "milady-6" },
+  { title: "Satoshi", slug: "milady-7" },
+  { title: "Yuki", slug: "milady-8" },
+];
 
 function dispatchShareTarget(payload: ShareTargetPayload): void {
   if (!window.__MILADY_SHARE_QUEUE__) {
@@ -114,7 +209,7 @@ async function initializePlatform(): Promise<void> {
   initializeCapacitorBridge();
 
   if (isIOS || isAndroid) {
-    // Configure status bar for mobile platforms (not available on Electron)
+    // Configure status bar for mobile platforms (not available on desktop)
     await initializeStatusBar();
 
     // Configure keyboard behavior
@@ -124,11 +219,11 @@ async function initializePlatform(): Promise<void> {
     initializeAppLifecycle();
   }
 
-  if (isElectronPlatform()) {
-    // Electron-specific initialization
-    await initializeElectron();
+  if (isDesktopPlatform()) {
+    // Electrobun-specific initialization
+    await initializeDesktopShell();
   } else {
-    // On Electron the main process owns runtime startup; avoid an extra early
+    // On desktop the main process owns runtime startup; avoid an extra early
     // plugin status probe that can race backend boot and spam fetch errors.
     await initializeAgent();
   }
@@ -290,17 +385,17 @@ function handleDeepLink(url: string): void {
 }
 
 /**
- * Initialize Electron-specific features
+ * Initialize desktop shell-specific features
  */
-async function initializeElectron(): Promise<void> {
-  document.body.classList.add("electron");
+async function initializeDesktopShell(): Promise<void> {
+  document.body.classList.add("desktop");
 
   try {
     const version = await Desktop.getVersion();
     const desktopNativeReady =
-      typeof version.electron === "string" &&
-      version.electron !== "N/A" &&
-      version.electron !== "unknown";
+      typeof version.runtime === "string" &&
+      version.runtime !== "N/A" &&
+      version.runtime !== "unknown";
     if (!desktopNativeReady) {
       return;
     }
@@ -319,16 +414,7 @@ async function initializeElectron(): Promise<void> {
 
     // Tray actions routed to the renderer as app-level events.
     await Desktop.setTrayMenu({
-      menu: [
-        { id: "tray-open-chat", label: "Open Chat" },
-        { id: "tray-open-workbench", label: "Open Workbench" },
-        { id: "tray-toggle-pause", label: "Pause/Resume Agent" },
-        { id: "tray-restart", label: "Restart Agent" },
-        { id: "tray-notify", label: "Send Test Notification" },
-        { id: "tray-sep-1", type: "separator" },
-        { id: "tray-show-window", label: "Show Window" },
-        { id: "tray-hide-window", label: "Hide Window" },
-      ],
+      menu: [...DESKTOP_TRAY_MENU_ITEMS],
     });
 
     await Desktop.addListener(
@@ -377,11 +463,22 @@ function mountReactApp(): void {
   if (!rootEl) throw new Error("Root element #root not found");
 
   createRoot(rootEl).render(
-    <StrictMode>
-      <AppProvider>
-        <App />
-      </AppProvider>
-    </StrictMode>,
+    <ErrorBoundary>
+      <StrictMode>
+        <AppProvider branding={MILADY_BRANDING}>
+          {isDetachedWindowShell(windowShellRoute) ? (
+            <DetachedShellRoot route={windowShellRoute} />
+          ) : (
+            <>
+              <DesktopOnboardingRuntime />
+              <DesktopSurfaceNavigationRuntime />
+              <DesktopTrayRuntime />
+              <App />
+            </>
+          )}
+        </AppProvider>
+      </StrictMode>
+    </ErrorBoundary>,
   );
 }
 
@@ -396,7 +493,7 @@ function isPopoutWindow(): boolean {
 
 /**
  * In popout mode, inject the API base from the URL query string so the
- * client can connect without the Electron main-process injection.
+ * client can connect without the desktop main-process injection.
  */
 function injectPopoutApiBase(): void {
   const params = new URLSearchParams(
@@ -441,6 +538,59 @@ function injectPopoutApiBase(): void {
   }
 }
 
+function injectDetachedShellApiBase(): void {
+  const apiBase = new URLSearchParams(window.location.search).get("apiBase");
+  if (apiBase) {
+    // Validate apiBase the same way as injectPopoutApiBase() to prevent
+    // open-redirect / SSRF via crafted detached-shell URLs.
+    try {
+      const parsed = new URL(apiBase);
+      const host = parsed.hostname;
+      const allowPrivateHttp =
+        /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host) ||
+        /^192\.168\.\d{1,3}\.\d{1,3}$/.test(host) ||
+        /^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(host) ||
+        /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d{1,3}\.\d{1,3}$/.test(
+          host,
+        ) ||
+        host.endsWith(".local") ||
+        host.endsWith(".internal") ||
+        host.endsWith(".ts.net");
+      if (
+        host === "localhost" ||
+        host === "127.0.0.1" ||
+        host === "::1" ||
+        host === window.location.hostname ||
+        parsed.protocol === "https:" ||
+        (parsed.protocol === "http:" && allowPrivateHttp)
+      ) {
+        window.__MILADY_API_BASE__ = apiBase;
+      } else {
+        console.warn("[Milady] Rejected non-local apiBase:", host);
+      }
+    } catch {
+      // Relative URL — only allow paths starting with "/" but not "//" (protocol-relative)
+      if (apiBase.startsWith("/") && !apiBase.startsWith("//")) {
+        window.__MILADY_API_BASE__ = apiBase;
+      } else {
+        console.warn("[Milady] Rejected invalid relative apiBase:", apiBase);
+      }
+    }
+  }
+}
+
+function applyStoredDetachedShellTheme(): void {
+  try {
+    const stored = localStorage.getItem("milady:ui-theme");
+    const theme = stored === "light" ? "light" : "dark";
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    document.documentElement.setAttribute("data-theme", theme);
+  } catch {
+    document.documentElement.classList.add("dark");
+    document.documentElement.setAttribute("data-theme", "dark");
+  }
+}
+
 /**
  * Main initialization
  */
@@ -465,6 +615,16 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (isDetachedWindowShell(windowShellRoute)) {
+    injectDetachedShellApiBase();
+    applyStoredDetachedShellTheme();
+    syncDetachedShellLocation(windowShellRoute);
+    await initializeStorageBridge();
+    initializeCapacitorBridge();
+    mountReactApp();
+    return;
+  }
+
   // Mount the React app
   mountReactApp();
 
@@ -482,7 +642,7 @@ if (document.readyState === "loading") {
 // Export platform utilities for use by other modules
 export {
   isAndroid,
-  isElectronPlatform as isElectron,
+  isDesktopPlatform as isDesktop,
   isIOS,
   isNative,
   isWebPlatform as isWeb,

@@ -23,6 +23,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { BrowserWindow } from "electrobun/bun";
+import { DEFAULT_PORT } from "../constants";
 
 /**
  * Allow-list for game-capture URLs.
@@ -366,7 +367,7 @@ $bmp.Dispose()`;
   /**
    * Start frame capture and POST JPEGs to the stream endpoint.
    *
-   * Two modes (mirrors Electron):
+   * Two modes (mirrors the earlier desktop runtime):
    *  - gameUrl provided: captures a dedicated BrowserWindow loading that URL
    *  - no gameUrl: captures the main webview via JS canvas screenshot
    */
@@ -381,7 +382,7 @@ $bmp.Dispose()`;
 
     const fps = options?.fps ?? 10;
     const quality = options?.quality ?? 70;
-    const apiBase = options?.apiBase ?? "http://127.0.0.1:2138";
+    const apiBase = options?.apiBase ?? `http://127.0.0.1:${DEFAULT_PORT}`;
     const endpointPath = options?.endpoint ?? "/api/stream/frame";
     const endpoint = `${apiBase}${endpointPath}`;
     const interval = Math.round(1000 / fps);
@@ -514,7 +515,7 @@ $bmp.Dispose()`;
 
   /**
    * Game URL capture: creates a BrowserWindow for the game URL and captures
-   * its canvas/video content via JS. Equivalent to Electron's offscreen
+   * its canvas/video content via JS. Equivalent to the earlier offscreen
    * paint-event approach (but polling, since Electrobun has no paint event).
    */
   private async startGameCapture(
@@ -572,7 +573,7 @@ $bmp.Dispose()`;
         skipping = true;
         try {
           const captureRpc = this.frameCaptureWindow.webview
-            .rpc as unknown as WebviewEvalRpc;
+            .rpc as WebviewEvalRpc;
           const dataUrl =
             await captureRpc?.requestProxy?.evaluateJavascriptWithResponse?.({
               script: captureGameScript,

@@ -14,7 +14,7 @@
  */
 import http from "node:http";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { startApiServer } from "../src/api/server";
+import { startApiServer } from "@miladyai/app-core/src/api/server";
 
 function saveEnv(...keys: string[]): { restore: () => void } {
   const prev = new Map<string, string | undefined>();
@@ -399,7 +399,7 @@ describe("Permissions API E2E", () => {
   // ─────────────────────────────────────────────────────────────────────────
 
   describe("PUT /api/permissions/state", () => {
-    it("updates permission states from Electron", async () => {
+    it("updates permission states from the desktop bridge", async () => {
       const mockPermissions = {
         microphone: {
           id: "microphone",
@@ -581,8 +581,9 @@ describe("Permissions API auth access", () => {
   let envBackup: { restore: () => void };
 
   beforeAll(async () => {
-    envBackup = saveEnv("MILADY_API_TOKEN");
+    envBackup = saveEnv("MILADY_API_TOKEN", "ELIZA_API_TOKEN");
     process.env.MILADY_API_TOKEN = TEST_TOKEN;
+    process.env.ELIZA_API_TOKEN = TEST_TOKEN;
     const result = await startApiServer({ port: 0 });
     port = result.port;
     close = result.close;

@@ -29,13 +29,13 @@ import {
 } from "@elizaos/core";
 import dotenv from "dotenv";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { startApiServer } from "../src/api/server";
-import { ensureAgentWorkspace } from "../src/providers/workspace";
-import { configureLocalEmbeddingPlugin } from "../src/runtime/eliza";
+import { startApiServer } from "@miladyai/app-core/src/api/server";
+import { ensureAgentWorkspace } from "@miladyai/app-core/src/providers/workspace";
+import { configureLocalEmbeddingPlugin } from "@miladyai/app-core/src/runtime/eliza";
 import {
   extractPlugin,
   type PluginModuleShape,
-} from "../src/test-support/test-helpers";
+} from "@miladyai/app-core/src/test-support/test-helpers";
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -391,7 +391,6 @@ describe("Agent Runtime E2E", () => {
     // NOTE: @elizaos/plugin-commands is excluded — commented out as "not yet ready" in core-plugins.ts
     "@elizaos/plugin-personality",
     "@elizaos/plugin-experience",
-    "@elizaos/plugin-todo",
     // NOTE: @elizaos/plugin-form is excluded because its package.json has
     // an incorrect main/module/exports entry that prevents resolution.
   ];
@@ -843,9 +842,13 @@ describe("Agent Runtime E2E", () => {
             channelType: ChannelType.DM,
           },
         });
-        const retryText = await handleMessageAndCollectText(runtime, retryPrompt, {
-          timeoutMs: 90_000,
-        });
+        const retryText = await handleMessageAndCollectText(
+          runtime,
+          retryPrompt,
+          {
+            timeoutMs: 90_000,
+          },
+        );
         logger.info(`[e2e] multi-turn retry: "${retryText}"`);
         expect(retryText.toLowerCase()).toContain("pineapple");
       },
@@ -1181,12 +1184,7 @@ describe("Agent Runtime E2E", () => {
           ),
           Promise.all(
             prompts.map((prompt) =>
-              postChatPromptWithRetries(
-                server?.port ?? 0,
-                prompt,
-                3,
-                90_000,
-              ),
+              postChatPromptWithRetries(server?.port ?? 0, prompt, 3, 90_000),
             ),
           ),
         ]);
@@ -1237,7 +1235,7 @@ describe("Agent Runtime E2E", () => {
       async () => {
         // Register the trigger worker on the real runtime (same as milady-plugin.ts does).
         const { registerTriggerTaskWorker } = await import(
-          "../src/triggers/runtime"
+          "@miladyai/app-core/src/triggers/runtime"
         );
         registerTriggerTaskWorker(runtime);
 
@@ -1507,9 +1505,6 @@ describe("Agent Runtime E2E", () => {
   // ===================================================================
 
   describe("startEliza subprocess", () => {
-    it.skip(
-      "startEliza() boots, prints chat prompt, and exits cleanly (interactive subprocess currently hangs under Vitest; headless startup is covered above)",
-      () => {},
-    );
+    it.skip("startEliza() boots, prints chat prompt, and exits cleanly (interactive subprocess currently hangs under Vitest; headless startup is covered above)", () => {});
   });
 });

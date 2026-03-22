@@ -10,6 +10,9 @@ describe("CHANNEL_TO_RPC_METHOD mapping", () => {
     expect(CHANNEL_TO_RPC_METHOD["agent:start"]).toBe("agentStart");
     expect(CHANNEL_TO_RPC_METHOD["agent:stop"]).toBe("agentStop");
     expect(CHANNEL_TO_RPC_METHOD["agent:restart"]).toBe("agentRestart");
+    expect(CHANNEL_TO_RPC_METHOD["agent:restartClearLocalDb"]).toBe(
+      "agentRestartClearLocalDb",
+    );
     expect(CHANNEL_TO_RPC_METHOD["agent:status"]).toBe("agentStatus");
   });
 
@@ -53,6 +56,30 @@ describe("CHANNEL_TO_RPC_METHOD mapping", () => {
     );
     expect(CHANNEL_TO_RPC_METHOD["permissions:openSettings"]).toBe(
       "permissionsOpenSettings",
+    );
+  });
+
+  it("maps the background notice channel correctly", () => {
+    expect(CHANNEL_TO_RPC_METHOD["desktop:showBackgroundNotice"]).toBe(
+      "desktopShowBackgroundNotice",
+    );
+  });
+
+  it("maps detached settings and surface window channels correctly", () => {
+    expect(CHANNEL_TO_RPC_METHOD["desktop:openSettingsWindow"]).toBe(
+      "desktopOpenSettingsWindow",
+    );
+    expect(CHANNEL_TO_RPC_METHOD["desktop:openSurfaceWindow"]).toBe(
+      "desktopOpenSurfaceWindow",
+    );
+    expect(CHANNEL_TO_RPC_METHOD["desktop:openReleaseNotesWindow"]).toBe(
+      "desktopOpenReleaseNotesWindow",
+    );
+    expect(CHANNEL_TO_RPC_METHOD["desktop:checkForUpdates"]).toBe(
+      "desktopCheckForUpdates",
+    );
+    expect(CHANNEL_TO_RPC_METHOD["desktop:getBuildInfo"]).toBe(
+      "desktopGetBuildInfo",
     );
   });
 
@@ -221,7 +248,7 @@ describe("RPC_MESSAGE_TO_PUSH_CHANNEL (reverse mapping)", () => {
 
 describe("params extraction logic (bridge invoke)", () => {
   // This tests the logic: args.length === 0 ? undefined : args.length === 1 ? args[0] : args
-  // The bridge translates Electron-style invoke args to RPC params.
+  // The bridge translates legacy desktop invoke args to RPC params.
 
   function extractParams(...args: unknown[]): unknown {
     return args.length === 0 ? undefined : args.length === 1 ? args[0] : args;

@@ -6,8 +6,8 @@
  */
 
 import http from "node:http";
+import { startApiServer } from "@miladyai/app-core/src/api/server";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { startApiServer } from "../src/api/server";
 
 // ---------------------------------------------------------------------------
 // HTTP helper (same pattern as api-server.e2e.test.ts)
@@ -243,9 +243,7 @@ describe("POST /api/provider/switch", () => {
         provider: "google",
         apiKey: "AIza-test-key",
       });
-      expect(process.env.GOOGLE_GENERATIVE_AI_API_KEY).toBe(
-        "AIza-test-key",
-      );
+      expect(process.env.GOOGLE_GENERATIVE_AI_API_KEY).toBe("AIza-test-key");
 
       // Switch to cloud
       await req(port, "POST", "/api/provider/switch", {
@@ -266,7 +264,9 @@ describe("POST /api/provider/switch", () => {
       });
 
       expect(process.env.OPENAI_API_KEY).toBeUndefined();
-      expect(process.env.MILADY_USE_PI_AI).toBe("1");
+      expect(process.env.ELIZA_USE_PI_AI ?? process.env.MILADY_USE_PI_AI).toBe(
+        "1",
+      );
     });
 
     it("trims whitespace from API keys before storing", async () => {

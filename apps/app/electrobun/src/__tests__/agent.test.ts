@@ -103,7 +103,11 @@ function createMockProcess(
           c.close();
         },
       }),
-    kill: overrides.kill ?? vi.fn(),
+    kill:
+      overrides.kill ??
+      vi.fn(() => {
+        exitDeferred.resolve(0);
+      }),
     _exitDeferred: exitDeferred,
   };
 }
@@ -116,6 +120,13 @@ function makeReadableStream(text: string) {
       c.close();
     },
   });
+}
+
+function makeHealthyResponse() {
+  return {
+    ok: true,
+    json: async () => ({ ready: true }),
+  };
 }
 
 /** Get the mocked fs.existsSync function to configure behavior per-test */
@@ -222,7 +233,7 @@ describe("AgentManager", () => {
     });
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     vi.useRealTimers();
     Object.defineProperty(process, "execPath", {
       configurable: true,
@@ -232,7 +243,7 @@ describe("AgentManager", () => {
       configurable: true,
       value: ORIGINAL_PLATFORM,
     });
-    manager.dispose();
+    await manager.dispose();
   });
 
   describe("initial state", () => {
@@ -326,7 +337,7 @@ describe("AgentManager", () => {
       mockSpawn.mockReturnValue(mockProc);
 
       // Health check to succeed
-      mockFetch.mockResolvedValueOnce({ ok: true });
+      mockFetch.mockResolvedValueOnce(makeHealthyResponse());
       // Agent name fetch
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -342,11 +353,65 @@ describe("AgentManager", () => {
       expect(mockSpawn).toHaveBeenCalledTimes(1);
     });
 
+    it("authenticates local health and agent probes with the desktop API token", async () => {
+      const originalMiladyToken = process.env.MILADY_API_TOKEN;
+      const originalElizaToken = process.env.ELIZA_API_TOKEN;
+      process.env.MILADY_API_TOKEN = "desktop-local-token";
+      delete process.env.ELIZA_API_TOKEN;
+
+      try {
+        const mockProc = createMockProcess();
+        mockSpawn.mockReturnValue(mockProc);
+
+        mockFetch.mockResolvedValueOnce(makeHealthyResponse());
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ agents: [{ name: "Milady" }] }),
+        });
+
+        await manager.start();
+
+        const expectedHeaders = {
+          Authorization: "Bearer desktop-local-token",
+          "X-Api-Key": "desktop-local-token",
+          "X-Api-Token": "desktop-local-token",
+        };
+
+        expect(mockFetch).toHaveBeenNthCalledWith(
+          1,
+          "http://127.0.0.1:2138/api/health",
+          expect.objectContaining({
+            headers: expectedHeaders,
+            signal: expect.anything(),
+          }),
+        );
+        expect(mockFetch).toHaveBeenNthCalledWith(
+          2,
+          "http://127.0.0.1:2138/api/agents",
+          expect.objectContaining({
+            headers: expectedHeaders,
+            signal: expect.anything(),
+          }),
+        );
+      } finally {
+        if (originalMiladyToken === undefined) {
+          delete process.env.MILADY_API_TOKEN;
+        } else {
+          process.env.MILADY_API_TOKEN = originalMiladyToken;
+        }
+        if (originalElizaToken === undefined) {
+          delete process.env.ELIZA_API_TOKEN;
+        } else {
+          process.env.ELIZA_API_TOKEN = originalElizaToken;
+        }
+      }
+    });
+
     it("spawns bun process with the canonical runtime entry when present", async () => {
       const mockProc = createMockProcess();
       mockSpawn.mockReturnValue(mockProc);
 
-      mockFetch.mockResolvedValueOnce({ ok: true });
+      mockFetch.mockResolvedValueOnce(makeHealthyResponse());
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ agents: [{ name: "Milady" }] }),
@@ -377,7 +442,7 @@ describe("AgentManager", () => {
       const mockProc = createMockProcess();
       mockSpawn.mockReturnValue(mockProc);
 
-      mockFetch.mockResolvedValueOnce({ ok: true });
+      mockFetch.mockResolvedValueOnce(makeHealthyResponse());
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ agents: [{ name: "Milady" }] }),
@@ -430,7 +495,7 @@ describe("AgentManager", () => {
         const mockProc = createMockProcess();
         mockSpawn.mockReturnValue(mockProc);
 
-        mockFetch.mockResolvedValueOnce({ ok: true });
+        mockFetch.mockResolvedValueOnce(makeHealthyResponse());
         mockFetch.mockResolvedValueOnce({
           ok: true,
           json: async () => ({ agents: [{ name: "Milady" }] }),
@@ -466,7 +531,7 @@ describe("AgentManager", () => {
         const mockProc = createMockProcess();
         mockSpawn.mockReturnValue(mockProc);
 
-        mockFetch.mockResolvedValueOnce({ ok: true });
+        mockFetch.mockResolvedValueOnce(makeHealthyResponse());
         mockFetch.mockResolvedValueOnce({
           ok: true,
           json: async () => ({ agents: [] }),
@@ -487,7 +552,7 @@ describe("AgentManager", () => {
       const mockProc = createMockProcess();
       mockSpawn.mockReturnValue(mockProc);
 
-      mockFetch.mockResolvedValueOnce({ ok: true });
+      mockFetch.mockResolvedValueOnce(makeHealthyResponse());
       // Agent name fetch fails
       mockFetch.mockRejectedValueOnce(new Error("fetch failed"));
 
@@ -505,12 +570,12 @@ describe("AgentManager", () => {
       const mockProc2 = createMockProcess({ pid: 222 });
       mockSpawn.mockReturnValueOnce(mockProc1).mockReturnValueOnce(mockProc2);
 
-      mockFetch.mockResolvedValueOnce({ ok: true });
+      mockFetch.mockResolvedValueOnce(makeHealthyResponse());
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ agents: [{ name: "Milady" }] }),
       });
-      mockFetch.mockResolvedValueOnce({ ok: true });
+      mockFetch.mockResolvedValueOnce(makeHealthyResponse());
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ agents: [{ name: "Milady" }] }),
@@ -542,7 +607,7 @@ describe("AgentManager", () => {
       });
       mockSpawn.mockReturnValueOnce(mockProc);
 
-      mockFetch.mockResolvedValueOnce({ ok: true });
+      mockFetch.mockResolvedValueOnce(makeHealthyResponse());
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ agents: [{ name: "Milady" }] }),
@@ -570,7 +635,7 @@ describe("AgentManager", () => {
     it("transitions from running to stopped", async () => {
       const mockProc = createMockProcess();
       mockSpawn.mockReturnValue(mockProc);
-      mockFetch.mockResolvedValueOnce({ ok: true });
+      mockFetch.mockResolvedValueOnce(makeHealthyResponse());
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ agents: [{ name: "TestAgent" }] }),
@@ -592,7 +657,7 @@ describe("AgentManager", () => {
     it("sends SIGTERM to the child process", async () => {
       const mockProc = createMockProcess();
       mockSpawn.mockReturnValue(mockProc);
-      mockFetch.mockResolvedValueOnce({ ok: true });
+      mockFetch.mockResolvedValueOnce(makeHealthyResponse());
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ agents: [] }),
@@ -610,7 +675,7 @@ describe("AgentManager", () => {
     it("is a no-op when already stopped", async () => {
       const mockProc = createMockProcess();
       mockSpawn.mockReturnValue(mockProc);
-      mockFetch.mockResolvedValueOnce({ ok: true });
+      mockFetch.mockResolvedValueOnce(makeHealthyResponse());
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ agents: [] }),
@@ -634,7 +699,7 @@ describe("AgentManager", () => {
       mockSpawn.mockReturnValueOnce(mockProc1).mockReturnValueOnce(mockProc2);
 
       // First start
-      mockFetch.mockResolvedValueOnce({ ok: true });
+      mockFetch.mockResolvedValueOnce(makeHealthyResponse());
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ agents: [{ name: "Agent1" }] }),
@@ -647,7 +712,7 @@ describe("AgentManager", () => {
       mockProc1._exitDeferred.resolve(0);
 
       // Restart: health check and agent name for new process
-      mockFetch.mockResolvedValueOnce({ ok: true });
+      mockFetch.mockResolvedValueOnce(makeHealthyResponse());
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ agents: [{ name: "Agent2" }] }),
@@ -657,6 +722,25 @@ describe("AgentManager", () => {
       expect(status.state).toBe("running");
       expect(status.agentName).toBe("Agent2");
       expect(mockSpawn).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("restartClearingLocalDb()", () => {
+    it("is a no-op in external API mode (no spawn, no throw)", async () => {
+      const originalApiBase = process.env.MILADY_DESKTOP_API_BASE;
+      process.env.MILADY_DESKTOP_API_BASE = "http://127.0.0.1:31337";
+
+      try {
+        const status = await manager.restartClearingLocalDb();
+        expect(status.state).toBe("not_started");
+        expect(mockSpawn).not.toHaveBeenCalled();
+      } finally {
+        if (originalApiBase === undefined) {
+          delete process.env.MILADY_DESKTOP_API_BASE;
+        } else {
+          process.env.MILADY_DESKTOP_API_BASE = originalApiBase;
+        }
+      }
     });
   });
 

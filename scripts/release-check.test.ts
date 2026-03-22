@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import {
   bundlesDependency,
+  findFloatingDependencySpecs,
   findLocalPackHotspots,
   hasLifecycleScriptReferencingMissingFile,
   isExactVersion,
   isExactVersionSpecifier,
+  isNpmOverrideConflictError,
   isPackPathCoveredByFilesList,
+  parseBunPackDryRunOutput,
   shouldSkipExactPackDryRun,
 } from "./release-check";
 
@@ -95,6 +98,24 @@ describe("release-check package guards", () => {
     expect(isExactVersion("3.2.1-rc.0")).toBe(true);
   });
 
+  it("flags floating release dependencies in the cloud-agent template", () => {
+    expect(
+      findFloatingDependencySpecs(
+        {
+          dependencies: {
+            "@elizaos/core": "alpha",
+            "@elizaos/plugin-elizacloud": "2.0.0-alpha.7",
+            "@elizaos/plugin-sql": "^2.0.0-alpha.17",
+          },
+        },
+        ["@elizaos/core", "@elizaos/plugin-elizacloud", "@elizaos/plugin-sql"],
+      ),
+    ).toEqual([
+      { name: "@elizaos/core", specifier: "alpha" },
+      { name: "@elizaos/plugin-sql", specifier: "^2.0.0-alpha.17" },
+    ]);
+  });
+
   it("accepts only strict semver specifiers for orchestrator release pins", () => {
     expect(isExactVersionSpecifier("0.3.14")).toBe(true);
     expect(isExactVersionSpecifier("2.0.0-alpha.1")).toBe(true);
@@ -156,5 +177,49 @@ describe("release-check package guards", () => {
         () => true,
       ),
     ).toBe(false);
+  });
+
+  it("parses Bun dry-run pack output into publish file entries", () => {
+    const results = parseBunPackDryRunOutput(`bun pack v1.3.10
+
+packed 9.97KB package.json
+packed 1.51KB dist/entry.js
+packed 4.70KB scripts/run-repo-setup.mjs
+bundled @elizaos/plugin-agent-orchestrator
+
+miladyai-2.0.0-alpha.92.tgz
+`);
+
+    expect(results).toEqual([
+      {
+        files: [
+          { path: "package.json" },
+          { path: "dist/entry.js" },
+          { path: "scripts/run-repo-setup.mjs" },
+        ],
+      },
+    ]);
+  });
+
+  it("detects npm override conflicts for pack fallback", () => {
+    expect(
+      isNpmOverrideConflictError({
+        name: "Error",
+        message: "pack failed",
+        stdout: '{"error":{"code":"EOVERRIDE"}}',
+        stderr:
+          "npm error code EOVERRIDE\nnpm error Override for @elizaos/core conflicts with direct dependency",
+      }),
+    ).toBe(false);
+
+    const error = new Error("pack failed") as Error & {
+      stdout?: string;
+      stderr?: string;
+    };
+    error.stdout = '{"error":{"code":"EOVERRIDE"}}';
+    error.stderr =
+      "npm error code EOVERRIDE\nnpm error Override for @elizaos/core conflicts with direct dependency";
+
+    expect(isNpmOverrideConflictError(error)).toBe(true);
   });
 });

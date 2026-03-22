@@ -39,7 +39,15 @@ bun install && bun run build
 bun run dev:desktop
 ```
 
+For **why** the desktop dev commands spawn multiple processes, how **Ctrl-C** and **Quit** behave, and **environment variables** (`MILADY_DESKTOP_VITE_WATCH`, `MILADY_RENDERER_URL`, etc.), see **[Desktop local development](./desktop-local-development)**.
+
 In development mode, the Electrobun app resolves the Milady distribution from the repository root's `dist/` directory. In packaged builds, assets are copied into the app bundle under `Resources/app/milady-dist/`.
+
+## macOS frameless window chrome (hiddenInset)
+
+On **macOS**, the main window uses **`hiddenInset`** (no classic title bar; traffic lights inset). The WKWebView fills the client area, so **window move** and **inner-edge resize** are implemented with **native `NSView` overlays** above the web view — not with CSS resize cursors alone. **Why:** WebKit owns the pointer over page pixels; tracking areas on the `contentView` underneath led to unreliable cursors and flicker when AppKit and WebKit both tried to set `NSCursor`.
+
+Strip **thickness** can track the current **`NSScreen`** when the host passes `height: 0` into native layout (see main-process `applyMacOSWindowEffects` and FFI `setNativeDragRegion`). Full architecture, z-order, and file map: [Electrobun macOS window chrome](/guides/electrobun-mac-window-chrome).
 
 ## Desktop Runtime Modes
 
@@ -66,6 +74,16 @@ On startup, the Electrobun shell and `AgentManager` coordinate these steps:
 
 The expected local API port is determined by `MILADY_PORT` (default: **2138**). In `local` mode the child runtime is started with that port request, but if the runtime binds a different port Electrobun detects it from stdout and updates the renderer API base dynamically. In `disabled` mode, the same expected local port is used for a separately managed local server.
 
+### Native application menu (e.g. macOS **Milady** menu)
+
+The OS menu bar template is built in **`apps/app/electrobun/src/application-menu.ts`** and wired in **`index.ts`** (`application-menu-clicked`). **Why a data file:** the same structure is validated by tests and stays free of platform branches scattered through the main process.
+
+| Item (example) | Action id | Behavior |
+|----------------|-----------|----------|
+| **Reset Milady…** | `reset-milady` | **Main process:** shows the window, native confirm, then **`POST /api/agent/reset`**, embedded restart or **`POST /api/agent/restart`**, poll **`/api/status`**, and pushes **`desktopTrayMenuClick`** with **`itemId: "menu-reset-milady-applied"`** + **`agentStatus`**. **Renderer:** **`handleResetAppliedFromMain`** runs the same **local UI wipe** as the end of Settings **`handleReset`** (`completeResetLocalStateAfterServerWipe`). **Why main owns HTTP:** after native dialogs, WKWebView can defer renderer **`fetch`/bridge** work, so reset looked hung; **why renderer still wipes UI:** one place for onboarding, `MiladyClient` base URL, cloud flags, and conversation lists so the menu cannot drift from Settings. |
+
+**Settings** still uses **`handleReset`** (webview confirm + full flow). **Legacy:** tray may still emit **`menu-reset-milady`** for older paths; see [Desktop main-process reset](./desktop-main-process-reset.md) for sequence, probes, and tests.
+
 ### Agent Status States
 
 The embedded agent reports its state to the UI via IPC:
@@ -86,8 +104,6 @@ For testing, remote connectivity, or locally managed runtime workflows:
 |---------------------|--------|
 | `MILADY_DESKTOP_TEST_API_BASE` | Use this API base and switch to `external` mode |
 | `MILADY_DESKTOP_API_BASE` | Use this API base and switch to `external` mode |
-| `MILADY_ELECTRON_TEST_API_BASE` | Legacy fallback for older test harnesses |
-| `MILADY_ELECTRON_API_BASE` | Legacy fallback for older desktop setups |
 | `MILADY_API_BASE_URL` / `MILADY_API_BASE` | Generic API-base fallback vars; also switch to `external` mode |
 | `MILADY_DESKTOP_SKIP_EMBEDDED_AGENT=1` | Switch to `disabled` mode; do not auto-start the child runtime |
 | `MILADY_API_TOKEN` | Inject an API authentication token into the renderer |
@@ -115,7 +131,7 @@ Core native desktop features via the `DesktopManager` class. This is the largest
 
 **System Tray** -- Create, update, and destroy tray icons with context menus. Supports tooltip, title (macOS), icons for menu items, and submenus. Tray events (`click`, `double-click`, `right-click`) are forwarded to the renderer with modifier key state and cursor coordinates.
 
-**Global Keyboard Shortcuts** -- Register system-wide hotkeys that work even when the app is not focused. Each shortcut has a unique ID and an Electron accelerator string. When pressed, a `desktop:shortcutPressed` event is sent to the renderer.
+**Global Keyboard Shortcuts** -- Register system-wide hotkeys that work even when the app is not focused. Each shortcut has a unique ID and an desktop accelerator string. When pressed, a `desktop:shortcutPressed` event is sent to the renderer.
 
 | IPC Channel | Description |
 |------------|-------------|
@@ -287,7 +303,7 @@ These shortcuts work system-wide when the app is running. Additional shortcuts c
 
 ## Deep Linking
 
-The desktop app supports the `milady://` custom URL protocol for deep linking. The protocol is registered via Capacitor's Electron deep linking module.
+The desktop app supports the `milady://` custom URL protocol for deep linking. The protocol is registered via the Electrobun deep linking integration.
 
 ### Share Target
 
@@ -303,11 +319,11 @@ milady://share?title=Hello&text=Check+this+out&url=https://example.com
 - `url` -- optional URL to share.
 - `file` -- one or more file paths (can be repeated).
 
-File drag-and-drop from the OS is also supported via Electron's `open-file` event. Share payloads are queued if the main window is not yet ready and flushed once the renderer finishes loading. Events are dispatched as `milady:share-target` custom DOM events.
+File drag-and-drop from the OS is also supported via the desktop runtime `open-file` event. Share payloads are queued if the main window is not yet ready and flushed once the renderer finishes loading. Events are dispatched as `milady:share-target` custom DOM events.
 
 ## Auto-Updater
 
-The desktop app checks for updates on launch via `electron-updater`, publishing to GitHub releases under the `milady-ai/milady` repository. Set `MILADY_ELECTRON_DISABLE_AUTO_UPDATER=1` to disable.
+The desktop app checks for updates on launch via the Electrobun updater, publishing to GitHub releases under the `milady-ai/milady` repository.
 
 ## Development Mode
 
@@ -315,14 +331,7 @@ In development mode:
 
 - A **file watcher** (chokidar) monitors the web asset directory and auto-reloads the app when files change (1.5-second debounce).
 - Content Security Policy is adjusted for development -- `localhost` and `devtools://*` origins are allowed for scripts.
-- DevTools open automatically on DOM ready (disable with `MILADY_ELECTRON_DISABLE_DEVTOOLS=1`).
-- The `MILADY_ELECTRON_USER_DATA_DIR` environment variable can override the user data directory for automated E2E testing.
-
-| Environment Variable | Effect |
-|---------------------|--------|
-| `MILADY_ELECTRON_USER_DATA_DIR` | Override user data directory path |
-| `MILADY_ELECTRON_DISABLE_DEVTOOLS=1` | Prevent DevTools from auto-opening |
-| `MILADY_ELECTRON_DISABLE_AUTO_UPDATER=1` | Skip update check on launch |
+- DevTools open automatically on DOM ready.
 
 ## Security Considerations
 

@@ -16,13 +16,17 @@ import http from "node:http";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-// Load .env from the eliza workspace root
-const envPath = path.resolve(import.meta.dirname, "..", "..", "eliza", ".env");
-try {
-  const { config } = await import("dotenv");
-  config({ path: envPath });
-} catch {
-  // dotenv may not be available — keys must be in process.env already
+const liveTestsEnabled = process.env.MILADY_LIVE_TEST === "1";
+
+// Load .env from the repository root only for explicit live runs.
+if (liveTestsEnabled) {
+  const envPath = path.resolve(import.meta.dirname, "..", ".env");
+  try {
+    const { config } = await import("dotenv");
+    config({ path: envPath });
+  } catch {
+    // dotenv may not be available — keys must be in process.env already
+  }
 }
 
 // Normalize key names: .env uses SOLANA_API_KEY, wallet expects SOLANA_PRIVATE_KEY
@@ -43,7 +47,8 @@ const hasEvmKey = Boolean(process.env.EVM_PRIVATE_KEY?.trim());
 const hasSolKey = Boolean(process.env.SOLANA_PRIVATE_KEY?.trim());
 const hasAlchemy = Boolean(process.env.ALCHEMY_API_KEY?.trim());
 const hasHelius = Boolean(process.env.HELIUS_API_KEY?.trim());
-const canRun = hasEvmKey && hasSolKey && hasAlchemy && hasHelius;
+const canRun =
+  liveTestsEnabled && hasEvmKey && hasSolKey && hasAlchemy && hasHelius;
 const WALLET_EXPORT_TOKEN = `wallet-live-export-token-${Date.now()}`;
 
 function req(
@@ -97,7 +102,7 @@ describe.skipIf(!canRun)("Wallet live E2E — real keys, real APIs", () => {
 
     // Validate or generate keys BEFORE starting the server
     const { generateWalletKeys, deriveEvmAddress, deriveSolanaAddress } =
-      await import("../src/api/wallet");
+      await import("@miladyai/app-core/src/api/wallet");
 
     // 1. Ensure EVM Key is valid
     let validEvm = false;
@@ -135,7 +140,9 @@ describe.skipIf(!canRun)("Wallet live E2E — real keys, real APIs", () => {
       console.log("  [Test Setup] Using generated fallback Solana key");
     }
 
-    const { startApiServer } = await import("../src/api/server");
+    const { startApiServer } = await import(
+      "@miladyai/app-core/src/api/server"
+    );
     const server = await startApiServer({ port: 0 });
     port = server.port;
     close = server.close;
@@ -351,7 +358,7 @@ describe.skipIf(!canRun)("Wallet live E2E — real keys, real APIs", () => {
 
     // Re-derive from exported key to verify it's the same address
     const { deriveEvmAddress, deriveSolanaAddress } = await import(
-      "../src/api/wallet"
+      "@miladyai/app-core/src/api/wallet"
     );
     expect(deriveEvmAddress(evmExport?.privateKey as string)).toBe(
       addrs.evmAddress,
@@ -364,7 +371,9 @@ describe.skipIf(!canRun)("Wallet live E2E — real keys, real APIs", () => {
   // ── Full flow: generate -> import -> addresses -> balances ────────────
 
   it("full flow: generate new keys, import, verify addresses, fetch balances", async () => {
-    const { generateWalletKeys } = await import("../src/api/wallet");
+    const { generateWalletKeys } = await import(
+      "@miladyai/app-core/src/api/wallet"
+    );
 
     // Generate fresh keys
     const freshKeys = generateWalletKeys();

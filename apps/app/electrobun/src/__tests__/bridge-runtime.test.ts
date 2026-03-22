@@ -8,7 +8,7 @@ const defineRpc = vi.fn();
 vi.mock("electrobun/view", () => {
   const Electroview = vi.fn(function MockElectroview(options: unknown) {
     electroviewInstances(options);
-  }) as unknown as {
+  }) as {
     new (options: unknown): unknown;
     defineRPC: typeof defineRpc;
   };
@@ -23,7 +23,7 @@ describe("electrobun bridge runtime", () => {
     defineRpc.mockReset();
     delete (window as typeof window & { __MILADY_ELECTROBUN_RPC__?: unknown })
       .__MILADY_ELECTROBUN_RPC__;
-    delete (window as typeof window & { electron?: unknown }).electron;
+    delete (window as typeof window & { electrobun?: unknown }).electrobun;
     delete (window as typeof window & { __MILADY_API_BASE__?: unknown })
       .__MILADY_API_BASE__;
     delete (window as typeof window & { __MILADY_API_TOKEN__?: unknown })
@@ -47,9 +47,6 @@ describe("electrobun bridge runtime", () => {
     expect(window.__MILADY_ELECTROBUN_RPC__.request).toBe(request);
     expect(typeof window.__MILADY_ELECTROBUN_RPC__.onMessage).toBe("function");
     expect(typeof window.__MILADY_ELECTROBUN_RPC__.offMessage).toBe("function");
-    expect((window as typeof window & { electron?: unknown }).electron).toBe(
-      undefined,
-    );
     expect(electroviewInstances).toHaveBeenCalledTimes(1);
   });
 

@@ -9,9 +9,12 @@ ENV PATH="/root/.bun/bin:${PATH}"
 
 WORKDIR /app
 
-# Copy dependency manifests first for better layer caching
-COPY package.json bun.lock* .npmrc ./
+# Copy dependency manifests first for better layer caching.
+# Do not require a checked-in .npmrc; CI and open-source builds run without one.
+COPY package.json bun.lock* ./
 COPY apps/app/package.json ./apps/app/package.json
+COPY apps/app/electrobun/package.json ./apps/app/electrobun/package.json
+COPY deploy/cloud-agent-template/package.json ./deploy/cloud-agent-template/package.json
 COPY scripts ./scripts
 
 # Install ALL dependencies (dev + prod) for the build step.
@@ -73,6 +76,9 @@ USER node
 # Default: bind to 0.0.0.0 in containers so the service is reachable.
 # Set MILADY_API_TOKEN in production to require auth.
 ENV MILADY_API_BIND="0.0.0.0"
+
+ENV MILADY_PORT=2138
+EXPOSE 2138
 
 # Start the API server + dashboard UI on port 2138.
 CMD ["node", "milady.mjs", "start"]

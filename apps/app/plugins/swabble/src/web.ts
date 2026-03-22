@@ -56,6 +56,8 @@ interface ElectrobunRendererRpc {
 }
 
 type DesktopBridgeWindow = Window & {
+  __ELIZA_ELECTROBUN_RPC__?: ElectrobunRendererRpc;
+  /** @deprecated Use __ELIZA_ELECTROBUN_RPC__ */
   __MILADY_ELECTROBUN_RPC__?: ElectrobunRendererRpc;
 };
 
@@ -68,7 +70,8 @@ function getDesktopBridgeWindow(): DesktopBridgeWindow | null {
 }
 
 function getElectrobunRendererRpc(): ElectrobunRendererRpc | null {
-  return getDesktopBridgeWindow()?.__MILADY_ELECTROBUN_RPC__ ?? null;
+  const w = getDesktopBridgeWindow();
+  return w?.__ELIZA_ELECTROBUN_RPC__ ?? w?.__MILADY_ELECTROBUN_RPC__ ?? null;
 }
 
 async function invokeDesktopBridgeRequest<T>(options: {
@@ -170,7 +173,7 @@ export class SwabbleWeb extends WebPlugin {
   private mediaStream: MediaStream | null = null;
   private levelInterval: ReturnType<typeof setInterval> | null = null;
 
-  // Native IPC state (Electron/Electrobun)
+  // Native IPC state (Electrobun)
   private captureStream: MediaStream | null = null;
   private captureContext: AudioContext | null = null;
   private captureProcessor: ScriptProcessorNode | null = null;

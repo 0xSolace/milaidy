@@ -167,7 +167,7 @@ bun run build
 # TypeScript only
 bun run build:node
 
-# Desktop app (Electron)
+# Desktop app (Electrobun)
 bun run build:desktop
 
 # Mobile (Android)
@@ -236,6 +236,15 @@ MILADY_RUNTIME=node bun run milady start
 | `*.e2e.test.ts` | End-to-end tests |
 | `*.live.test.ts` | Live API tests |
 | `test/**/*.test.ts` | Integration tests |
+
+### `packages/app-core` in the root Vitest config
+
+The repo root **`vitest.config.ts`** (used by **`bun run test`** → unit shard) includes:
+
+- **`packages/app-core/src/**/*.test.ts`** and **`packages/app-core/src/**/*.test.tsx`** — colocated tests, including TSX, without listing each file.
+- **`packages/app-core/test/**/*.test.ts`** and **`.../test/**/*.test.tsx`** — shared harness tests (e.g. `test/state`, `test/runtime`).
+
+**Why:** those directories were previously omitted, so new suites never ran in CI. **`packages/app-core/test/**/*.e2e.test.ts(x)`** is excluded from this job so e2e stays on **`vitest.e2e.config.ts`**. **`vitest.unit.config.ts`** still omits **`packages/app-core/test/app/**`** (heavy renderer harness) from the coverage-focused unit pass—**why:** those are run in targeted app workspaces or separate jobs.
 
 ---
 

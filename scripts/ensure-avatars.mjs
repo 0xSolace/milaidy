@@ -3,7 +3,7 @@
  * Ensure avatar assets (VRMs, animations, backgrounds) are present in the app.
  *
  * On a fresh clone, apps/app/public/vrms/ and animations/ may be empty or
- * contain only Git LFS pointers.  This script clones the milady-ai/avatars
+ * contain only Git LFS pointers.  This script clones the elizaos/avatars
  * repository (org-owned) into a temp directory and copies the assets into
  * the correct locations under apps/app/public/.
  *
@@ -41,10 +41,11 @@ const UNUSED_ANIMATION_PATHS = [
   join("mixamo", "Crying.fbx"),
 ];
 
-// milady-ai/avatars is an org-owned repo in the milady-ai GitHub organization.
+// elizaos/avatars is an org-owned repo in the elizaos GitHub organization.
 // Pinned to a specific commit for reproducible installs (supply-chain safety).
-const AVATARS_REPO = "https://github.com/milady-ai/avatars.git";
+const AVATARS_REPO = "https://github.com/elizaos/avatars.git";
 const AVATARS_COMMIT = "50f6bf0ad6db583581d4cbaeb377ca005b45195b";
+const AVATARS_REF = process.env.MILADY_AVATARS_REF?.trim() || "";
 const TAG = "[ensure-avatars]";
 const CHARACTERS_VRM = join(ROOT, "apps", "app", "characters", "vrm");
 
@@ -214,12 +215,12 @@ export function runEnsureAvatars({
     }
 
     // Clone and checkout pinned commit for reproducibility.
-    // Uses --depth 1 + fetch for speed (avoids full history).
-    // TODO: Pin the initial clone to a tag (e.g. --branch v1.0) so the
-    //       shallow clone fetches a known ref instead of the current default
-    //       branch HEAD.  The checkout below still locks to AVATARS_COMMIT,
-    //       so correctness is unaffected — a tag would just save one fetch.
-    _exec(`git clone --depth 1 ${AVATARS_REPO} "${tmpDir}"`, {
+    // Uses --depth 1 + fetch for speed (avoids full history). When an explicit
+    // ref/tag is supplied via MILADY_AVATARS_REF we clone that shallow ref first.
+    const cloneArgs = AVATARS_REF
+      ? `git clone --depth 1 --branch "${AVATARS_REF}" ${AVATARS_REPO} "${tmpDir}"`
+      : `git clone --depth 1 ${AVATARS_REPO} "${tmpDir}"`;
+    _exec(cloneArgs, {
       cwd: ROOT,
       stdio: "inherit",
     });
@@ -241,19 +242,19 @@ export function runEnsureAvatars({
 
       for (const sourceId of BUNDLED_VRM_SOURCE_IDS) {
         copyPathIfExists(
-          join(avatarVrms, `milady-${sourceId}.vrm`),
-          join(VRMS_DIR, `milady-${sourceId}.vrm`),
+          join(avatarVrms, `eliza-${sourceId}.vrm`),
+          join(VRMS_DIR, `eliza-${sourceId}.vrm`),
         );
         copyPathIfExists(
-          join(avatarVrms, "previews", `milady-${sourceId}.png`),
-          join(VRMS_DIR, "previews", `milady-${sourceId}.png`),
+          join(avatarVrms, "previews", `eliza-${sourceId}.png`),
+          join(VRMS_DIR, "previews", `eliza-${sourceId}.png`),
         );
       }
 
       for (const sourceId of BUNDLED_BACKGROUND_SOURCE_IDS) {
         copyPathIfExists(
-          join(avatarVrms, "backgrounds", `milady-${sourceId}.png`),
-          join(VRMS_DIR, "backgrounds", `milady-${sourceId}.png`),
+          join(avatarVrms, "backgrounds", `eliza-${sourceId}.png`),
+          join(VRMS_DIR, "backgrounds", `eliza-${sourceId}.png`),
         );
       }
 

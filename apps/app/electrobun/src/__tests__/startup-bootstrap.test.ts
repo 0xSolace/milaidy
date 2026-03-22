@@ -3,6 +3,11 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 const INDEX_PATH = path.resolve(import.meta.dirname, "..", "index.ts");
+const BACKGROUND_NOTICE_PATH = path.resolve(
+  import.meta.dirname,
+  "..",
+  "background-notice.ts",
+);
 
 describe("Electrobun startup bootstrap", () => {
   it("logs a structured startup environment block", () => {
@@ -29,12 +34,15 @@ describe("Electrobun startup bootstrap", () => {
   it("validates the built preload before creating the BrowserWindow", () => {
     const source = fs.readFileSync(INDEX_PATH, "utf8");
     const validateIndex = source.indexOf(
-      "const preload = readBuiltPreloadScript(import.meta.dir);",
+      "preload = readBuiltPreloadScript(import.meta.dir);",
     );
     const browserWindowIndex = source.indexOf("const win = new BrowserWindow(");
 
     expect(validateIndex).toBeGreaterThan(-1);
     expect(browserWindowIndex).toBeGreaterThan(validateIndex);
+    expect(source).toContain(
+      'console.error("[Main] Failed to read preload script:", err);',
+    );
   });
 
   it("resolves the initial renderer API base from desktop runtime mode", () => {
@@ -49,5 +57,21 @@ describe("Electrobun startup bootstrap", () => {
 
     expect(source).toContain('if (runtimeResolution.mode !== "local")');
     expect(source).toContain("[Main] Skipping embedded agent startup");
+  });
+
+  it("shows a one-time background notice after recreating the minimized window", () => {
+    const indexSource = fs.readFileSync(INDEX_PATH, "utf8");
+    const noticeSource = fs.readFileSync(BACKGROUND_NOTICE_PATH, "utf8");
+    const minimizeIndex = indexSource.indexOf("replacementWindow.minimize();");
+    const noticeIndex = indexSource.indexOf("showBackgroundRunNoticeOnce();");
+
+    expect(minimizeIndex).toBeGreaterThan(-1);
+    expect(noticeIndex).toBeGreaterThan(minimizeIndex);
+    expect(noticeSource).toContain(
+      'export const BACKGROUND_NOTICE_TITLE = "Milady Is Still Running";',
+    );
+    expect(noticeSource).toContain(
+      '"Milady can send notifications and will keep running in the background after you close the window."',
+    );
   });
 });

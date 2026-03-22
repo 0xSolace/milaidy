@@ -5,9 +5,15 @@
  * - NSVisualEffectView vibrancy
  * - Window shadow
  * - Traffic light button positioning
- * - Native drag region
+ * - Native drag + resize chrome (`setNativeDragRegion` → `setNativeWindowDragRegion`
+ *   in `native/macos/window-effects.mm`)
  * - Window hide/show via orderOut / makeKeyAndOrderFront
  * - Focus detection via isKeyWindow
+ *
+ * WHY ObjC++ in a dylib: keeps Cocoa code out of the Bun bundle and matches how
+ * Electrobun expects native helpers to ship beside the main process.
+ *
+ * Architecture / WHYs for drag & resize: `docs/guides/electrobun-mac-window-chrome.md`.
  *
  * All functions are no-ops on non-macOS platforms.
  */
@@ -34,7 +40,7 @@ type MacEffectsSymbols = {
 
 type MacEffectsLib = { symbols: MacEffectsSymbols; close(): void } | null;
 
-let _lib: MacEffectsLib = undefined as unknown as MacEffectsLib;
+let _lib: MacEffectsLib = undefined as MacEffectsLib;
 
 function loadLib(): MacEffectsLib {
   const dylibPath = join(import.meta.dir, "../libMacWindowEffects.dylib");
@@ -65,7 +71,7 @@ function loadLib(): MacEffectsLib {
       },
       isAppActive: { args: [], returns: FFIType.bool },
       isWindowKey: { args: [FFIType.ptr], returns: FFIType.bool },
-    }) as unknown as MacEffectsLib;
+    }) as MacEffectsLib;
   } catch (err) {
     console.warn("[MacEffects] Failed to load dylib:", err);
     return null;
@@ -74,7 +80,7 @@ function loadLib(): MacEffectsLib {
 
 function getLib(): NonNullable<MacEffectsLib> | null {
   if (process.platform !== "darwin") return null;
-  if (_lib === (undefined as unknown as MacEffectsLib)) {
+  if (_lib === (undefined as MacEffectsLib)) {
     _lib = loadLib();
   }
   return _lib;
@@ -96,6 +102,12 @@ export function setTrafficLightsPosition(
   return getLib()?.symbols.setWindowTrafficLightsPosition(ptr, x, y) ?? false;
 }
 
+/**
+ * @param height Pass `0` for thickness derived from the window's NSScreen (backing
+ *   scale + very wide displays). Pass a positive value (points) to pin depth. The same
+ *   value sizes the top drag strip and the right/bottom/corner resize overlay views
+ *   (native, above WKWebView).
+ */
 export function setNativeDragRegion(
   ptr: Pointer,
   x: number,

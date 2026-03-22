@@ -97,7 +97,7 @@ function Get-ObservedBackendPorts([int]$DefaultPort) {
     if (
       $line -match 'Runtime started -- agent: .* port: ([0-9]+), pid:' -or
       $line -match 'Server bound to dynamic port ([0-9]+)' -or
-      $line -match 'Waiting for health endpoint at http://localhost:([0-9]+)/api/health'
+      $line -match 'Waiting for health endpoint at http://(?:localhost|127\.0\.0\.1):([0-9]+)/api/health'
     ) {
       $observedPort = [int]$Matches[1]
       if (-not $ports.Contains($observedPort)) {
@@ -116,6 +116,14 @@ if ($resolvedBuildDir) {
 
 Stop-MiladyProcesses
 $env:ELECTROBUN_CONSOLE = "1"
+$env:MILADY_FORCE_AUTOSTART_AGENT = "1"
+
+# Reset stale startup logs before launch so fatal classification only applies
+# to this run.
+if (Test-Path $startupLog) {
+  Remove-Item $startupLog -Force -ErrorAction SilentlyContinue
+  Write-Host "Cleared stale startup log: $startupLog"
+}
 
 if (Test-Path $selfExtractionRoot) {
   Remove-Item $selfExtractionRoot -Recurse -Force -ErrorAction SilentlyContinue
@@ -128,22 +136,32 @@ $installer = $null
 $installerProcess = $null
 $launcherProcess = $null
 $launcherStarted = $false
+$requireInstaller = $env:MILADY_WINDOWS_SMOKE_REQUIRE_INSTALLER -eq "1"
+$installerRoot = if ($env:MILADY_TEST_WINDOWS_INSTALL_DIR) {
+  $env:MILADY_TEST_WINDOWS_INSTALL_DIR
+} else {
+  Join-Path $env:RUNNER_TEMP ("milady-windows-installed-" + [Guid]::NewGuid().ToString("N"))
+}
+if ($requireInstaller) {
+  $launcher = $null
+  $launcherSource = $null
+}
 
-if ($resolvedBuildDir) {
+if (-not $requireInstaller -and $resolvedBuildDir) {
   $launcher = Find-Launcher $resolvedBuildDir
   if ($launcher) {
     $launcherSource = "build"
   }
 }
 
-if (-not $launcher) {
+if (-not $requireInstaller -and -not $launcher) {
   $launcher = Find-Launcher $resolvedArtifactsDir
   if ($launcher) {
     $launcherSource = "artifacts"
   }
 }
 
-if (-not $launcher) {
+if (-not $requireInstaller -and -not $launcher) {
   $packagedTarball = Get-ChildItem -Path $resolvedArtifactsDir -File -Filter "*.tar.zst" -ErrorAction SilentlyContinue |
     Sort-Object LastWriteTime -Descending |
     Select-Object -First 1
@@ -163,47 +181,219 @@ if (-not $launcher) {
       Write-Warning "Falling back to installer path."
     }
   }
+}
 
-  if ($launcher) {
-    $launcher = Write-ReusableLauncherPath -Launcher $launcher -TemporaryRoot $tempExtractDir
-    Write-Host "Using $launcherSource launcher: $($launcher.FullName)"
-    $launcherDir = Split-Path -Parent $launcher.FullName
-    $launcherProcess = Start-Process -FilePath $launcher.FullName -WorkingDirectory $launcherDir -PassThru
-    $launcherStarted = $true
-  } else {
+# Installer-required runs skip build/tarball reuse and validate the installed package directly.
+if (-not $launcher) {
+  $installer = Get-ChildItem -Path $resolvedArtifactsDir -File -Filter "Milady-Setup-*.exe" -ErrorAction SilentlyContinue |
+    Select-Object -First 1
+
+  if (-not $installer) {
     $installer = Get-ChildItem -Path $resolvedArtifactsDir -File -Filter "*Setup*.exe" -ErrorAction SilentlyContinue |
       Select-Object -First 1
+  }
 
-    if (-not $installer) {
+  if (-not $installer) {
+    $installerZip = Get-ChildItem -Path $resolvedArtifactsDir -File -Filter "Milady-Setup-*.exe.zip" -ErrorAction SilentlyContinue |
+      Select-Object -First 1
+    if (-not $installerZip) {
       $installerZip = Get-ChildItem -Path $resolvedArtifactsDir -File -Filter "*Setup*.zip" -ErrorAction SilentlyContinue |
         Select-Object -First 1
-      if (-not $installerZip) {
-        throw "No launcher.exe, packaged .tar.zst, installer .exe, or installer .zip found under $resolvedArtifactsDir"
-      }
-
-      New-Item -ItemType Directory -Force -Path $tempExtractDir | Out-Null
-      Expand-Archive -Path $installerZip.FullName -DestinationPath $tempExtractDir -Force
-      $installer = Get-ChildItem -Path $tempExtractDir -Recurse -File -Filter "*Setup*.exe" -ErrorAction SilentlyContinue |
-        Select-Object -First 1
+    }
+    if (-not $installerZip) {
+      throw "No launcher.exe, packaged .tar.zst, installer .exe, or installer .zip found under $resolvedArtifactsDir"
     }
 
-    if (-not $installer) {
-      throw "No installer executable found for Windows smoke test."
-    }
-
-    Write-Host "Using installer: $($installer.FullName)"
-    $installerProcess = Start-Process -FilePath $installer.FullName -WorkingDirectory (Split-Path -Parent $installer.FullName) -PassThru
+    New-Item -ItemType Directory -Force -Path $tempExtractDir | Out-Null
+    Expand-Archive -Path $installerZip.FullName -DestinationPath $tempExtractDir -Force
+    $installer = Get-ChildItem -Path $tempExtractDir -Recurse -File -Filter "*Setup*.exe" -ErrorAction SilentlyContinue |
+      Select-Object -First 1
   }
-} else {
-  $launcher = Write-ReusableLauncherPath -Launcher $launcher -TemporaryRoot $tempExtractDir
-  Write-Host "Using $launcherSource launcher: $($launcher.FullName)"
-  $launcherDir = Split-Path -Parent $launcher.FullName
-  $launcherProcess = Start-Process -FilePath $launcher.FullName -WorkingDirectory $launcherDir -PassThru
-  $launcherStarted = $true
+
+  if (-not $installer) {
+    throw "No installer executable found for Windows smoke test."
+  }
+
+  Write-Host "Installing via Inno Setup: $($installer.FullName)"
+  Remove-Item $installerRoot -Recurse -Force -ErrorAction SilentlyContinue
+  New-Item -ItemType Directory -Force -Path $installerRoot | Out-Null
+
+  $installerArgs = @(
+    "/VERYSILENT",
+    "/SUPPRESSMSGBOXES",
+    "/NORESTART",
+    "/SP-",
+    "/DIR=$installerRoot"
+  )
+
+  $installerProcess = Start-Process -FilePath $installer.FullName -ArgumentList $installerArgs -WorkingDirectory (Split-Path -Parent $installer.FullName) -PassThru -Wait
+  if ($installerProcess.ExitCode -ne 0) {
+    throw "Windows installer exited with code $($installerProcess.ExitCode)"
+  }
+
+  $launcher = Find-Launcher $installerRoot
+  if (-not $launcher) {
+    throw "Installed launcher.exe not found under $installerRoot"
+  }
+
+  $launcherSource = "installed Inno package"
 }
+
+$launcher = Write-ReusableLauncherPath -Launcher $launcher -TemporaryRoot $tempExtractDir
+Write-Host "Using $launcherSource launcher: $($launcher.FullName)"
+$launcherDir = Split-Path -Parent $launcher.FullName
+$launcherProcess = Start-Process -FilePath $launcher.FullName -WorkingDirectory $launcherDir -PassThru
+$launcherStarted = $true
+
+# Bypass proxy for loopback — WinHTTP (used by Invoke-WebRequest) respects
+# system proxy settings on GitHub Actions runners, causing 127.0.0.1 requests
+# to route through a non-existent proxy and timeout.
+$env:NO_PROXY = "127.0.0.1,localhost"
 
 $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
 $healthy = $false
+$healthCheckMethod = $null
+$lastNetstatDump = [DateTime]::MinValue
+
+function Dump-PortDiagnostics([int]$Port) {
+  Write-Host "--- netstat for port $Port ---"
+  try {
+    netstat -ano | Select-String ":$Port " | ForEach-Object { Write-Host $_ }
+  } catch {
+    Write-Host "(netstat failed: $($_.Exception.Message))"
+  }
+  Write-Host "--- end netstat ---"
+}
+
+function Test-BackendProbeStatus([int]$StatusCode) {
+  # A 401 still proves the packaged backend is running and enforcing auth.
+  return $StatusCode -eq 200 -or $StatusCode -eq 401
+}
+
+function Test-StartupLogFatalLine([string]$Line) {
+  if ([string]::IsNullOrWhiteSpace($Line)) {
+    return $false
+  }
+
+  $trimmedLine = $Line.Trim()
+
+  $knownBenignPatterns = @(
+    "optional plugin",
+    "optional provider",
+    "failed to load optional plugin",
+    "plugin not installed"
+  )
+
+  foreach ($pattern in $knownBenignPatterns) {
+    if ($trimmedLine -match [regex]::Escape($pattern)) {
+      return $false
+    }
+  }
+
+  if ($trimmedLine -match "Cannot find module" -and $trimmedLine -match "@elizaos/plugin-") {
+    return $false
+  }
+
+  $fatalPatterns = @(
+    "Failed to start:",
+    "Child process exited with code",
+    "Error: Cannot find module",
+    "UnhandledPromiseRejection",
+    "Unhandled Exception",
+    "Error: listen EADDRINUSE"
+  )
+
+  foreach ($pattern in $fatalPatterns) {
+    if ($trimmedLine -match [regex]::Escape($pattern)) {
+      return $true
+    }
+  }
+
+  return $false
+}
+
+function Dump-ProcessDiagnostics() {
+  Write-Host "--- Bun/launcher processes ---"
+  try {
+    Get-Process -ErrorAction SilentlyContinue |
+      Where-Object {
+        $_.ProcessName -in @("launcher", "bun") -or
+        $_.ProcessName -like "Milady*"
+      } |
+      Format-Table -Property Id, ProcessName, StartTime, Responding -AutoSize |
+      Out-String |
+      Write-Host
+  } catch {
+    Write-Host "(process list failed: $($_.Exception.Message))"
+  }
+  Write-Host "--- end processes ---"
+}
+
+function Dump-FailureDiagnostics([int]$Port) {
+  Write-Host ""
+  Write-Host "========== FAILURE DIAGNOSTICS =========="
+
+  # 1. Port binding state
+  Write-Host ""
+  Write-Host "[1/6] Port $Port binding state:"
+  Dump-PortDiagnostics $Port
+
+  # 2. All listening TCP ports (find if server bound elsewhere)
+  Write-Host ""
+  Write-Host "[2/6] All LISTENING TCP ports:"
+  try {
+    netstat -ano -p TCP | Select-String "LISTENING" | ForEach-Object { Write-Host $_ }
+  } catch {
+    Write-Host "(netstat LISTENING failed)"
+  }
+
+  # 3. Process tree
+  Write-Host ""
+  Write-Host "[3/6] Process tree:"
+  Dump-ProcessDiagnostics
+
+  # 4. Full startup log (not just tail 200)
+  Write-Host ""
+  Write-Host "[4/6] Full startup log:"
+  if (Test-Path $startupLog) {
+    $fullLog = Get-Content $startupLog -ErrorAction SilentlyContinue
+    $lineCount = ($fullLog | Measure-Object).Count
+    Write-Host "(startup log: $lineCount lines total)"
+    $fullLog | ForEach-Object { Write-Host $_ }
+  } else {
+    Write-Host "(startup log not found at $startupLog)"
+  }
+
+  # 5. Firewall state for port
+  Write-Host ""
+  Write-Host "[5/6] Firewall rules mentioning port $Port or Bun/Milady:"
+  try {
+    netsh advfirewall firewall show rule name=all dir=in |
+      Select-String -Pattern "($Port|bun|milady|launcher)" -Context 2 |
+      ForEach-Object { Write-Host $_ }
+  } catch {
+    Write-Host "(firewall query failed: $($_.Exception.Message))"
+  }
+
+  # 6. Relevant environment variables
+  Write-Host ""
+  Write-Host "[6/6] Relevant environment variables:"
+  foreach ($varName in @(
+    "MILADY_PORT", "MILADY_API_BIND", "MILADY_API_PORT",
+    "MILADY_DISABLE_LOCAL_EMBEDDINGS", "ANTHROPIC_API_KEY",
+    "NO_PROXY", "HTTP_PROXY", "HTTPS_PROXY",
+    "ELECTROBUN_CONSOLE", "APPDATA", "LOCALAPPDATA"
+  )) {
+    $val = [System.Environment]::GetEnvironmentVariable($varName)
+    if ($varName -eq "ANTHROPIC_API_KEY" -and $val) {
+      $val = "$($val.Substring(0, [Math]::Min(8, $val.Length)))..."
+    }
+    Write-Host "  ${varName}=$($val ?? '<unset>')"
+  }
+
+  Write-Host "========== END DIAGNOSTICS =========="
+  Write-Host ""
+}
 
 try {
   while ((Get-Date) -lt $deadline) {
@@ -231,23 +421,81 @@ try {
 
     if (Test-Path $startupLog) {
       $recentLog = Get-Content $startupLog -Tail 200 -ErrorAction SilentlyContinue
-      if ($recentLog -match 'Cannot find module|Child process exited with code|Failed to start:') {
+      $fatalLines = @($recentLog | Where-Object { Test-StartupLogFatalLine $_ })
+      if ($fatalLines.Count -gt 0) {
         Write-Host "Recent startup log:"
         $recentLog
+        Write-Host "Fatal startup lines detected:"
+        $fatalLines
         throw "Windows packaged app reported a startup failure."
       }
     }
 
+    # Periodic diagnostics: dump netstat + process list every 60s during the wait
+    $now = Get-Date
+    if (($now - $lastNetstatDump).TotalSeconds -ge 60) {
+      $elapsed = [int](($now) - $deadline.AddSeconds(-$TimeoutSeconds)).TotalSeconds
+      Write-Host "--- periodic diagnostics at ${elapsed}s ---"
+      Dump-PortDiagnostics $BackendPort
+      Dump-ProcessDiagnostics
+      $lastNetstatDump = $now
+    }
+
     foreach ($port in Get-ObservedBackendPorts $BackendPort) {
+      $uri = "http://127.0.0.1:${port}/api/health"
+
+      # Method 1: .NET HttpClient with proxy explicitly disabled.
+      # Invoke-WebRequest uses WinHTTP which honours system proxy settings;
+      # on GitHub Actions runners this can route 127.0.0.1 through a
+      # non-existent proxy, causing a TCP timeout.
       try {
-        $response = Invoke-WebRequest -Uri "http://127.0.0.1:$port/api/health" -UseBasicParsing -TimeoutSec 2
-        if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 300) {
+        $handler = [System.Net.Http.HttpClientHandler]::new()
+        $handler.UseProxy = $false
+        $client = [System.Net.Http.HttpClient]::new($handler)
+        $client.Timeout = [TimeSpan]::FromSeconds(3)
+        $task = $client.GetAsync($uri)
+        $task.Wait()
+        $statusCode = [int]$task.Result.StatusCode
+        if (Test-BackendProbeStatus $statusCode) {
           $healthy = $true
-          Write-Host "Backend health check passed on port $port."
+          $healthCheckMethod = "HttpClient(no-proxy)"
+          Write-Host "Backend health check passed on port $port (via HttpClient, proxy bypassed, HTTP $statusCode)."
           break
         }
       } catch {
-        # ignore and continue checking other observed ports
+        $elapsed = [int]((Get-Date) - $deadline.AddSeconds(-$TimeoutSeconds)).TotalSeconds
+        if ($elapsed % 30 -lt 3) {
+          Write-Host "Health check on port ${port} failed ($elapsed s): $($_.Exception.InnerException.Message ?? $_.Exception.Message)"
+        }
+      } finally {
+        if ($client) { $client.Dispose() }
+        if ($handler) { $handler.Dispose() }
+      }
+
+      # Method 2: curl.exe (ships with Windows 10+, uses its own network stack).
+      if (-not $healthy) {
+        try {
+          $curlResult = & "$env:SystemRoot\System32\curl.exe" -s -o NUL -w "%{http_code}" $uri --connect-timeout 3 --noproxy "127.0.0.1" 2>$null
+          if ($curlResult -eq "200" -or $curlResult -eq "401") {
+            $healthy = $true
+            $healthCheckMethod = "curl.exe"
+            Write-Host "Backend health check passed on port $port (via curl.exe, HTTP $curlResult)."
+            break
+          }
+        } catch {}
+      }
+
+      # Method 3: Invoke-WebRequest with -NoProxy (PowerShell 7+).
+      if (-not $healthy) {
+        try {
+          $response = Invoke-WebRequest -Uri $uri -UseBasicParsing -TimeoutSec 3 -NoProxy -SkipHttpErrorCheck
+          if (Test-BackendProbeStatus ([int]$response.StatusCode)) {
+            $healthy = $true
+            $healthCheckMethod = "Invoke-WebRequest(-NoProxy)"
+            Write-Host "Backend health check passed on port $port (via Invoke-WebRequest -NoProxy, HTTP $($response.StatusCode))."
+            break
+          }
+        } catch {}
       }
     }
 
@@ -272,7 +520,7 @@ try {
       }
     }
     if (Test-Path $startupLog) {
-      Write-Host "Recent startup log:"
+      Write-Host "Recent startup log (tail 200):"
       Get-Content $startupLog -Tail 200
     }
     if (Test-Path $selfExtractionRoot) {
@@ -280,6 +528,9 @@ try {
       Get-ChildItem -Path $selfExtractionRoot -Recurse -File -ErrorAction SilentlyContinue |
         Select-Object -ExpandProperty FullName
     }
+
+    Dump-FailureDiagnostics $BackendPort
+
     throw "Windows packaged app did not become healthy within $TimeoutSeconds seconds."
   }
 } finally {

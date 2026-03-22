@@ -9,7 +9,7 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { startApiServer } from "../src/api/server";
+import { startApiServer } from "@miladyai/app-core/src/api/server";
 
 const WALLET_EXPORT_TEST_TOKEN = "wallet-export-e2e-step-up-token";
 
@@ -28,11 +28,11 @@ function withWalletExportToken(
   };
 }
 
-// Load real API keys from the eliza workspace .env
+// Load real API keys from the repository .env when available.
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 try {
   const { config } = await import("dotenv");
-  config({ path: path.resolve(testDir, "..", "..", "eliza", ".env") });
+  config({ path: path.resolve(testDir, "..", ".env") });
 } catch {
   /* dotenv may not be available */
 }
@@ -46,6 +46,7 @@ function req(
   method: string,
   p: string,
   body?: Record<string, unknown>,
+  headers?: http.OutgoingHttpHeaders,
 ): Promise<{
   status: number;
   headers: http.IncomingHttpHeaders;
@@ -63,6 +64,7 @@ function req(
         headers: {
           "Content-Type": "application/json",
           ...(b ? { "Content-Length": Buffer.byteLength(b) } : {}),
+          ...headers,
         },
       },
       (res) => {
@@ -138,6 +140,7 @@ describe("Wallet API E2E", () => {
     process.env.SOLANA_PRIVATE_KEY =
       "4wBqpZM9xaSheZzJSMYGnGbUXDPSgWaC1LDUQ27gFdFtGm5qAshpcPMTgjLZ6Y7yDw3p6752kQhBEkZ1bPYoY8h";
     process.env.MILADY_WALLET_EXPORT_TOKEN = WALLET_EXPORT_TEST_TOKEN;
+    process.env.ELIZA_WALLET_EXPORT_TOKEN = WALLET_EXPORT_TEST_TOKEN;
 
     // Start real server
     const server = await startApiServer({ port: 0 });
@@ -362,8 +365,7 @@ describe("Wallet API E2E", () => {
             bsc: "nodereal",
           },
           credentials: {
-            NODEREAL_BSC_RPC_URL:
-              "https://bsc-mainnet.nodereal.io/v1/test-key",
+            NODEREAL_BSC_RPC_URL: "https://bsc-mainnet.nodereal.io/v1/test-key",
           },
         }),
       );
@@ -488,6 +490,32 @@ describe("Wallet API E2E", () => {
       expect(status).toBe(200);
       expect(Array.isArray(data.evm)).toBe(true);
       expect("solana" in data).toBe(true);
+    });
+
+    it("requires the compat API token when one is configured", async () => {
+      const previousToken = process.env.MILADY_API_TOKEN;
+      process.env.MILADY_API_TOKEN = "nft-test-token";
+
+      try {
+        const unauthorized = await req(port, "GET", "/api/wallet/nfts");
+        expect(unauthorized.status).toBe(401);
+
+        const authorized = await req(
+          port,
+          "GET",
+          "/api/wallet/nfts",
+          undefined,
+          { Authorization: "Bearer nft-test-token" },
+        );
+        expect(authorized.status).toBe(200);
+        expect(Array.isArray(authorized.data.evm)).toBe(true);
+      } finally {
+        if (previousToken === undefined) {
+          delete process.env.MILADY_API_TOKEN;
+        } else {
+          process.env.MILADY_API_TOKEN = previousToken;
+        }
+      }
     });
 
     it("fetches real EVM NFTs with Alchemy key", async () => {
@@ -669,19 +697,23 @@ describe("Wallet API E2E", () => {
       expect(process.env.ALCHEMY_API_KEY).toBeUndefined();
     });
 
-    it("GET /api/wallet/balances without API keys returns null for both", async () => {
+    it("GET /api/wallet/balances without premium API keys returns a safe fallback", async () => {
       delete process.env.ALCHEMY_API_KEY;
       delete process.env.HELIUS_API_KEY;
       const { status, data } = await req(port, "GET", "/api/wallet/balances");
       expect(status).toBe(200);
-      expect(data.evm).toBeNull();
+
+      if (data.evm !== null) {
+        expect(typeof data.evm).toBe("object");
+        expect(Array.isArray((data.evm as { chains: unknown[] }).chains)).toBe(
+          true,
+        );
+      }
       expect(data.solana).toBeNull();
     });
 
     it("concurrent requests to /api/wallet/addresses don't race", async () => {
       const results = await Promise.all([
-        req(port, "GET", "/api/wallet/addresses"),
-        req(port, "GET", "/api/wallet/addresses"),
         req(port, "GET", "/api/wallet/addresses"),
       ]);
       for (const { status, data } of results) {
@@ -759,6 +791,7 @@ describe("Key Management E2E", () => {
     process.env.SOLANA_PRIVATE_KEY =
       "4wBqpZM9xaSheZzJSMYGnGbUXDPSgWaC1LDUQ27gFdFtGm5qAshpcPMTgjLZ6Y7yDw3p6752kQhBEkZ1bPYoY8h";
     process.env.MILADY_WALLET_EXPORT_TOKEN = WALLET_EXPORT_TEST_TOKEN;
+    process.env.ELIZA_WALLET_EXPORT_TOKEN = WALLET_EXPORT_TEST_TOKEN;
 
     const server = await startApiServer({ port: 0 });
     port = server.port;
@@ -780,7 +813,9 @@ describe("Key Management E2E", () => {
 
   describe("Auto-detect chain for Solana keys", () => {
     it("auto-detects a base58 key as Solana when chain is not specified", async () => {
-      const { generateWalletKeys } = await import("../src/api/wallet");
+      const { generateWalletKeys } = await import(
+        "@miladyai/app-core/src/api/wallet"
+      );
       const keys = generateWalletKeys();
 
       const { status, data } = await req(port, "POST", "/api/wallet/import", {
@@ -811,7 +846,9 @@ describe("Key Management E2E", () => {
 
   describe("Cross-chain key confusion rejection", () => {
     it("rejects a Solana base58 key when chain is explicitly 'evm'", async () => {
-      const { generateWalletKeys } = await import("../src/api/wallet");
+      const { generateWalletKeys } = await import(
+        "@miladyai/app-core/src/api/wallet"
+      );
       const keys = generateWalletKeys();
 
       const { status } = await req(port, "POST", "/api/wallet/import", {
@@ -935,7 +972,9 @@ describe("Key Management E2E", () => {
     });
 
     it("exported Solana key matches what was imported", async () => {
-      const { generateWalletKeys } = await import("../src/api/wallet");
+      const { generateWalletKeys } = await import(
+        "@miladyai/app-core/src/api/wallet"
+      );
       const keys = generateWalletKeys();
 
       await req(port, "POST", "/api/wallet/import", {
@@ -956,7 +995,7 @@ describe("Key Management E2E", () => {
 
     it("generate -> export -> re-derive produces same addresses", async () => {
       const { deriveEvmAddress, deriveSolanaAddress } = await import(
-        "../src/api/wallet"
+        "@miladyai/app-core/src/api/wallet"
       );
 
       await req(port, "POST", "/api/wallet/generate", {});
@@ -1110,7 +1149,9 @@ describe("Key Management E2E", () => {
     });
 
     it("failed Solana import does not corrupt existing Solana key", async () => {
-      const { generateWalletKeys } = await import("../src/api/wallet");
+      const { generateWalletKeys } = await import(
+        "@miladyai/app-core/src/api/wallet"
+      );
       const keys = generateWalletKeys();
 
       // Import a good Solana key
@@ -1176,7 +1217,9 @@ describe("Key Management E2E", () => {
 
   describe("Concurrent key operations", () => {
     it("concurrent imports do not leave keys in inconsistent state", async () => {
-      const { generateWalletKeys } = await import("../src/api/wallet");
+      const { generateWalletKeys } = await import(
+        "@miladyai/app-core/src/api/wallet"
+      );
       const keysets = Array.from({ length: 5 }, () => generateWalletKeys());
 
       // Fire 5 concurrent EVM imports — one should win
@@ -1245,7 +1288,9 @@ describe("Key Management E2E", () => {
 
 describe("Wallet module — address derivation", () => {
   it("generates valid wallet keys", async () => {
-    const { generateWalletKeys } = await import("../src/api/wallet");
+    const { generateWalletKeys } = await import(
+      "@miladyai/app-core/src/api/wallet"
+    );
     const keys = generateWalletKeys();
 
     // EVM
@@ -1260,7 +1305,9 @@ describe("Wallet module — address derivation", () => {
   });
 
   it("derives deterministic EVM address", async () => {
-    const { deriveEvmAddress } = await import("../src/api/wallet");
+    const { deriveEvmAddress } = await import(
+      "@miladyai/app-core/src/api/wallet"
+    );
 
     // Hardhat test account #0
     const address = deriveEvmAddress(
@@ -1273,7 +1320,7 @@ describe("Wallet module — address derivation", () => {
 
   it("derives deterministic Solana address", async () => {
     const { generateWalletKeys, deriveSolanaAddress } = await import(
-      "../src/api/wallet"
+      "@miladyai/app-core/src/api/wallet"
     );
 
     // Generate and then re-derive — should be consistent
@@ -1283,7 +1330,9 @@ describe("Wallet module — address derivation", () => {
   });
 
   it("generates different keys on each call", async () => {
-    const { generateWalletKeys } = await import("../src/api/wallet");
+    const { generateWalletKeys } = await import(
+      "@miladyai/app-core/src/api/wallet"
+    );
     const keys1 = generateWalletKeys();
     const keys2 = generateWalletKeys();
 

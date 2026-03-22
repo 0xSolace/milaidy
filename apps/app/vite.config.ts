@@ -2,26 +2,31 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
-import react from "@vitejs/plugin-react";
+import react from "@vitejs/plugin-react-swc";
 import type { Plugin } from "vite";
 import { defineConfig } from "vite";
 
+// Keep this as a workspace-relative import so Vite transpiles the TS module
+// while bundling the config instead of asking Node to load a package-exported
+// .ts file directly in CI.
 const here = path.dirname(fileURLToPath(import.meta.url));
 const miladyRoot = path.resolve(here, "../..");
-const elizaRoot = path.resolve(miladyRoot, "../eliza");
+
 // The dev script sets MILADY_API_PORT; default to 31337 for standalone vite dev.
 const apiPort = Number(process.env.MILADY_API_PORT) || 31337;
 const enableAppSourceMaps = process.env.MILADY_APP_SOURCEMAP === "1";
+/** Set by scripts/dev-platform.mjs for `vite build --watch` (Electrobun desktop). */
+const desktopFastDist = process.env.MILADY_DESKTOP_VITE_FAST_DIST === "1";
 
 /**
- * Dev-only middleware that handles CORS for Electron's custom-scheme origin
- * (capacitor-electron://-). Vite's proxy doesn't reliably forward CORS headers
+ * Dev-only middleware that handles CORS for the desktop custom-scheme origin
+ * (electrobun://-). Vite's proxy doesn't reliably forward CORS headers
  * for non-http origins, so we intercept preflight OPTIONS requests and tag
  * every /api response with the correct headers before the proxy layer.
  */
-function electronCorsPlugin(): Plugin {
+function desktopCorsPlugin(): Plugin {
   return {
-    name: "electron-cors",
+    name: "desktop-cors",
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const origin = req.headers.origin;
@@ -49,81 +54,6 @@ function electronCorsPlugin(): Plugin {
   };
 }
 
-/**
- * Serves raw VRM and animation files from public_src for the screenshotter.
- * Public ships .vrm.gz and .glb.gz; the screenshotter needs uncompressed .vrm and .glb.
- */
-function publicSrcPlugin(): Plugin {
-  const publicSrc = path.resolve(here, "public_src");
-  const charactersVrm = path.resolve(here, "characters", "vrm");
-  const charToIndex: Record<string, number> = {
-    Chen: 1,
-    Jin: 2,
-    Kei: 3,
-    Momo: 4,
-    Rin: 5,
-    Ryu: 6,
-    Satoshi: 7,
-    Yuki: 8,
-  };
-  const indexToChar = Object.fromEntries(
-    Object.entries(charToIndex).map(([k, v]) => [v, k]),
-  );
-  return {
-    name: "public-src",
-    configureServer(server) {
-      server.middlewares.use((req, res, next) => {
-        const url = req.url?.split("?")[0] ?? "";
-        const vrmMatch = url.match(/^\/vrms\/milady-(\d+)\.vrm$/);
-        if (vrmMatch) {
-          const index = Number(vrmMatch[1]);
-          const charName = indexToChar[index];
-          const charFile =
-            charName && path.join(charactersVrm, `${charName}.vrm`);
-          const publicSrcFile = path.join(
-            publicSrc,
-            "vrms",
-            `milady-${index}.vrm`,
-          );
-          const file =
-            charFile && fs.existsSync(charFile) ? charFile : publicSrcFile;
-          if (fs.existsSync(file)) {
-            res.setHeader("Content-Type", "model/gltf-binary");
-            fs.createReadStream(file).pipe(res);
-            return;
-          }
-        }
-        if (url === "/animations/idle.glb") {
-          const file = path.join(publicSrc, "animations", "idle.glb");
-          if (fs.existsSync(file)) {
-            res.setHeader("Content-Type", "model/gltf-binary");
-            fs.createReadStream(file).pipe(res);
-            return;
-          }
-        }
-        if (url.startsWith("/public_src/")) {
-          if (url === "/public_src/screenshotter.html") {
-            return next();
-          }
-          const file = path.join(publicSrc, url.slice("/public_src/".length));
-          if (fs.existsSync(file) && fs.statSync(file).isFile()) {
-            const ext = path.extname(file);
-            const types: Record<string, string> = {
-              ".html": "text/html",
-              ".png": "image/png",
-              ".jpg": "image/jpeg",
-            };
-            if (types[ext]) res.setHeader("Content-Type", types[ext]);
-            fs.createReadStream(file).pipe(res);
-            return;
-          }
-        }
-        next();
-      });
-    },
-  };
-}
-
 function sparkWasmDataUrlPlugin(): Plugin {
   return {
     name: "spark-wasm-data-url",
@@ -143,91 +73,146 @@ function sparkWasmDataUrlPlugin(): Plugin {
   };
 }
 
+function watchWorkspacePackagesPlugin(): Plugin {
+  return {
+    name: "watch-workspace-packages",
+    configureServer(server) {
+      server.watcher.add(path.resolve(miladyRoot, "packages"));
+      server.watcher.on("change", (file) => {
+        if (file.includes("/packages/")) {
+          if (file.endsWith("package.json")) {
+            server.restart();
+          } else {
+            // Force a full reload on any other package file change (e.g. ts/tsx files)
+            server.ws.send({ type: "full-reload" });
+          }
+        }
+      });
+    },
+  };
+}
+
 export default defineConfig({
   root: here,
   base: "./",
   publicDir: path.resolve(here, "public"),
   plugins: [
-    publicSrcPlugin(),
     sparkWasmDataUrlPlugin(),
+    watchWorkspacePackagesPlugin(),
     tailwindcss(),
     react(),
-    electronCorsPlugin(),
+    desktopCorsPlugin(),
   ],
+  esbuild: {
+    // Override tsconfig target — some extended configs use ES2024 which older
+    // esbuild does not recognize; this avoids "Unrecognized target environment"
+    // warnings regardless of tsconfig resolution.
+    target: "es2022",
+  },
   resolve: {
-    dedupe: ["react", "react-dom", "three", "@sparkjsdev/spark"],
+    dedupe: [
+      "react",
+      "react-dom",
+      "three",
+      "@sparkjsdev/spark",
+      "@miladyai/app-core",
+    ],
     alias: [
-      /**
-       * Map @miladyai/capacitor-* and @elizaos/capacitor-* packages directly
-       * to their TS source. This bypasses resolution issues with local
-       * workspace symlinks and outdated bundle exports in the plugins' dist
-       * folders.
-       */
+      // Capacitor plugins — resolve to local plugin sources
       {
-        find: /^@(?:miladyai|elizaos)\/capacitor-(.*)/,
-        replacement: path.resolve(here, "plugins/$1/src/index.ts"),
-      },
-      // @elizaos/* → eliza submodule packages
-      {
-        find: /^@elizaos\/autonomous$/,
-        replacement: path.resolve(
-          elizaRoot,
-          "packages/autonomous/src/index.ts",
-        ),
+        find: /^@miladyai\/capacitor-agent$/,
+        replacement: path.resolve(here, "plugins/agent/src/index.ts"),
       },
       {
-        find: /^@elizaos\/autonomous\/(.*)$/,
-        replacement: path.resolve(elizaRoot, "packages/autonomous/src/$1"),
+        find: /^@miladyai\/capacitor-camera$/,
+        replacement: path.resolve(here, "plugins/camera/src/index.ts"),
       },
       {
-        find: /^@elizaos\/app-core$/,
-        replacement: path.resolve(elizaRoot, "packages/app-core/src/index.ts"),
+        find: /^@miladyai\/capacitor-canvas$/,
+        replacement: path.resolve(here, "plugins/canvas/src/index.ts"),
       },
       {
-        find: /^@elizaos\/app-core\/(.*)$/,
-        replacement: path.resolve(elizaRoot, "packages/app-core/src/$1"),
+        find: /^@miladyai\/capacitor-desktop$/,
+        replacement: path.resolve(here, "plugins/desktop/src/index.ts"),
       },
       {
-        find: /^@elizaos\/ui$/,
-        replacement: path.resolve(elizaRoot, "packages/ui/src/index.ts"),
+        find: /^@miladyai\/capacitor-gateway$/,
+        replacement: path.resolve(here, "plugins/gateway/src/index.ts"),
       },
       {
-        find: /^@elizaos\/ui\/(.*)$/,
-        replacement: path.resolve(elizaRoot, "packages/ui/src/$1"),
+        find: /^@miladyai\/capacitor-location$/,
+        replacement: path.resolve(here, "plugins/location/src/index.ts"),
       },
-      // @miladyai/* → milady local packages
       {
-        find: /^@miladyai\/autonomous$/,
-        replacement: path.resolve(
+        find: /^@miladyai\/capacitor-screencapture$/,
+        replacement: path.resolve(here, "plugins/screencapture/src/index.ts"),
+      },
+      {
+        find: /^@miladyai\/capacitor-swabble$/,
+        replacement: path.resolve(here, "plugins/swabble/src/index.ts"),
+      },
+      {
+        find: /^@miladyai\/capacitor-talkmode$/,
+        replacement: path.resolve(here, "plugins/talkmode/src/index.ts"),
+      },
+      // Force local @miladyai/app-core when workspace-linked (prevents stale
+      // bun cache copies from overriding the symlinked local source).
+      ...(() => {
+        const appCorePkgPath = path.resolve(
           miladyRoot,
-          "packages/autonomous/src/index.ts",
-        ),
-      },
-      {
-        find: /^@miladyai\/autonomous\/(.*)$/,
-        replacement: path.resolve(miladyRoot, "packages/autonomous/src/$1"),
-      },
-      {
-        find: /^@miladyai\/app-core$/,
-        replacement: path.resolve(miladyRoot, "packages/app-core/src/index.ts"),
-      },
-      {
-        find: /^@miladyai\/app-core\/(.*)$/,
-        replacement: path.resolve(miladyRoot, "packages/app-core/src/$1"),
-      },
-      {
-        find: /^@miladyai\/ui$/,
-        replacement: path.resolve(miladyRoot, "packages/ui/src/index.ts"),
-      },
-      {
-        find: /^@miladyai\/ui\/(.*)$/,
-        replacement: path.resolve(miladyRoot, "packages/ui/src/$1"),
-      },
-      // Allow importing from the milady src (but NOT workspace packages)
-      {
-        find: /^@(?:miladyai|elizaos)(?!\/(?:autonomous|capacitor-|app-core|ui))/,
-        replacement: path.resolve(miladyRoot, "src"),
-      },
+          "packages/app-core/package.json",
+        );
+        const appCorePkgDir = path.dirname(appCorePkgPath);
+        const appCorePkg = JSON.parse(fs.readFileSync(appCorePkgPath, "utf8"));
+
+        const generatedAliases = [];
+
+        for (const [key, value] of Object.entries(appCorePkg.exports || {})) {
+          if (typeof value === "string") {
+            const aliasKey =
+              key === "."
+                ? "@miladyai/app-core"
+                : `@miladyai/app-core/${key.replace(/^\.\//, "")}`;
+            // If the package exports something ending with .js instead of .ts, we check for .ts locally
+            // But the exports in app-core point directly to .ts, .tsx, .css, so we can just resolve it
+            const targetPath = path.resolve(appCorePkgDir, value);
+
+            generatedAliases.push({
+              find: new RegExp(`^${aliasKey}$`),
+              replacement: targetPath,
+            });
+            // Also map .js extension for users importing it as .js
+            if (!aliasKey.endsWith(".js") && !aliasKey.endsWith(".css")) {
+              generatedAliases.push({
+                find: new RegExp(`^${aliasKey}\\.js$`),
+                replacement: targetPath,
+              });
+            }
+          }
+        }
+
+        const uiSource = path.resolve(miladyRoot, "packages/ui/src");
+        const autonomousSource = path.resolve(
+          miladyRoot,
+          "node_modules/@elizaos/agent/packages/agent/src",
+        );
+
+        return [
+          ...generatedAliases,
+          {
+            find: /^@miladyai\/ui$/,
+            replacement: path.join(uiSource, "index.ts"),
+          },
+          {
+            find: /^@miladyai\/ui\/(.*)$/,
+            replacement: `${uiSource}/$1/index.ts`, // assumes subpaths are directories
+          },
+          {
+            find: /^@elizaos\/agent$/,
+            replacement: path.join(autonomousSource, "index.ts"),
+          },
+        ];
+      })(),
     ],
   },
   optimizeDeps: {
@@ -236,9 +221,13 @@ export default defineConfig({
   },
   build: {
     outDir: path.resolve(here, "dist"),
-    emptyOutDir: true,
-    sourcemap: enableAppSourceMaps,
+    // Watch + incremental: avoid wiping dist each cycle; keeps Electrobun reloads fast.
+    emptyOutDir: !desktopFastDist,
+    sourcemap: desktopFastDist ? false : enableAppSourceMaps,
     target: "es2022",
+    minify: desktopFastDist ? false : undefined,
+    cssMinify: desktopFastDist ? false : undefined,
+    reportCompressedSize: !desktopFastDist,
     rollupOptions: {
       input: {
         main: path.resolve(here, "index.html"),
@@ -266,6 +255,14 @@ export default defineConfig({
       "/api": {
         target: `http://localhost:${apiPort}`,
         changeOrigin: true,
+        configure: (proxy) => {
+          proxy.on("error", (_err, _req, res) => {
+            if (!res.headersSent) {
+              res.writeHead(502, { "Content-Type": "application/json" });
+              res.end(JSON.stringify({ error: "API server unavailable" }));
+            }
+          });
+        },
       },
       "/ws": {
         target: `ws://localhost:${apiPort}`,
@@ -273,8 +270,8 @@ export default defineConfig({
       },
     },
     fs: {
-      // Allow serving files from the app directory, milady src, and eliza src
-      allow: [here, miladyRoot, elizaRoot],
+      // Allow serving files from the app directory and milady src
+      allow: [here, miladyRoot],
     },
     watch: {
       // Polling is only needed in Docker/WSL where native fs events are unreliable
