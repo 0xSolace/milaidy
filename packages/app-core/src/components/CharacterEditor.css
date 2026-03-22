@@ -16,12 +16,6 @@
 }
 
 .ce-root {
-  --ce-gold: var(--classic-gold, #cfaf5a);
-  --ce-gold-highlight: var(--highlight-gold, #f2d27a);
-  --ce-gold-bright: var(--champagne-gold, #e8d9a8);
-  --ce-gold-shadow: var(--burnished-gold, #7a5a1f);
-  --ce-gold-glow: var(--gold-glow, rgba(242, 210, 122, 0.25));
-  --ce-white-glow: var(--soft-white-glow, rgba(255, 255, 255, 0.08));
   position: relative;
   display: flex;
   flex-direction: column;
@@ -44,6 +38,13 @@
   .ce-root--editor-active {
     width: 40%;
     margin-left: auto;
+  }
+}
+
+/* Let roster cards overflow on mobile so negative margins don't get clipped */
+@media (max-width: 600px) {
+  .ce-root {
+    overflow: visible;
   }
 }
 
@@ -158,15 +159,15 @@
 .ce-page-tab--active {
   background: linear-gradient(
     135deg,
-    var(--ce-gold-shadow) 0%,
-    var(--ce-gold) 58%,
-    var(--ce-gold-highlight) 100%
+    var(--burnished-gold) 0%,
+    var(--classic-gold) 58%,
+    var(--highlight-gold) 100%
   );
   color: #1a1a1a;
   border-color: rgba(232, 217, 168, 0.55);
   box-shadow:
-    0 0 18px var(--ce-gold-glow),
-    inset 0 1px 0 var(--ce-white-glow);
+    0 0 18px var(--gold-glow),
+    inset 0 1px 0 var(--soft-white-glow);
 }
 
 /* Hidden panel in single-panel mode */
@@ -184,26 +185,26 @@
   letter-spacing: 0.05em;
   background: linear-gradient(
     135deg,
-    var(--ce-gold-shadow) 0%,
-    var(--ce-gold) 58%,
-    var(--ce-gold-highlight) 100%
+    var(--burnished-gold) 0%,
+    var(--classic-gold) 58%,
+    var(--highlight-gold) 100%
   );
   color: #1a1a1a;
-  border-color: var(--ce-gold);
+  border-color: var(--classic-gold);
   box-shadow:
-    0 0 18px var(--ce-gold-glow),
-    inset 0 1px 0 var(--ce-white-glow);
+    0 0 18px var(--gold-glow),
+    inset 0 1px 0 var(--soft-white-glow);
 }
 
 .ce-customize-btn:hover {
   background: linear-gradient(
     135deg,
-    var(--ce-gold) 0%,
-    var(--ce-gold-highlight) 100%
+    var(--classic-gold) 0%,
+    var(--highlight-gold) 100%
   );
   box-shadow:
-    0 0 22px var(--ce-gold-glow),
-    inset 0 1px 0 var(--ce-white-glow);
+    0 0 22px var(--gold-glow),
+    inset 0 1px 0 var(--soft-white-glow);
 }
 
 .ce-back-btn {
@@ -285,7 +286,7 @@
   padding: 0 8px;
   font-size: 10px;
   font-weight: 700;
-  color: var(--ce-gold-bright);
+  color: var(--champagne-gold);
 }
 
 /* ── Name + Voice row ─────────────────────────────────────────── */
@@ -296,11 +297,6 @@
   gap: 0.75rem;
 }
 
-@media (max-width: 480px) {
-  .ce-name-voice-row {
-    grid-template-columns: 1fr;
-  }
-}
 
 .ce-name-voice-col {
   display: flex;
@@ -343,8 +339,8 @@
    is hard to read, so we swap to a subtle highlight with light text. */
 
 .ce-voice-inline .bg-accent {
-  background: var(--ce-gold-glow);
-  color: var(--ce-gold-highlight);
+  background: var(--gold-glow);
+  color: var(--highlight-gold);
 }
 
 /* ── Inputs ────────────────────────────────────────────────────── */
@@ -426,8 +422,8 @@
 }
 
 .ce-sound-toggle:hover {
-  border-color: var(--ce-gold);
-  color: var(--ce-gold);
+  border-color: var(--classic-gold);
+  color: var(--classic-gold);
   background: rgba(0, 0, 0, 0.6);
 }
 
@@ -461,12 +457,12 @@
   border: none;
   background: none;
   padding: 0;
-  margin: 0 -2.5rem;
-  opacity: 0.65;
+  margin: 0 -5rem;
+  opacity: 0.85;
 }
 
 .ce-roster-card:hover {
-  opacity: 0.9;
+  opacity: 1;
 }
 
 .ce-roster-card--active {
@@ -486,11 +482,11 @@
 .ce-roster-card-frame--active {
   background: linear-gradient(
     135deg,
-    var(--ce-gold-shadow) 0%,
-    var(--ce-gold) 58%,
-    var(--ce-gold-highlight) 100%
+    var(--burnished-gold) 0%,
+    var(--classic-gold) 58%,
+    var(--highlight-gold) 100%
   );
-  box-shadow: 0 0 20px var(--ce-gold-glow);
+  box-shadow: 0 0 20px var(--gold-glow);
 }
 
 .ce-roster-card-glow {
@@ -550,7 +546,7 @@
 .ce-roster-card-catchphrase {
   font-size: clamp(7px, 1vw, 9px);
   font-style: italic;
-  color: var(--ce-gold-bright);
+  color: var(--champagne-gold);
   text-align: center;
   padding: 1px 4px;
   white-space: nowrap;
@@ -568,8 +564,8 @@
     display: grid !important;
     grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
     gap: 1.5rem 0;
-    /* Add vertical padding between rows */
-    padding: 0 1.5rem 1.5rem 1.5rem;
+    /* Extra side padding absorbs the uniform negative card margins */
+    padding: 0 2.35rem 1.5rem 2.35rem;
     max-width: 100%;
     width: 100%;
   }
@@ -612,22 +608,22 @@
   font-weight: 600;
   background: linear-gradient(
     135deg,
-    var(--ce-gold-shadow) 0%,
-    var(--ce-gold) 58%,
-    var(--ce-gold-highlight) 100%
+    var(--burnished-gold) 0%,
+    var(--classic-gold) 58%,
+    var(--highlight-gold) 100%
   );
   color: #1a1a1a;
-  border-color: var(--ce-gold);
+  border-color: var(--classic-gold);
   box-shadow:
-    0 0 18px var(--ce-gold-glow),
-    inset 0 1px 0 var(--ce-white-glow);
+    0 0 18px var(--gold-glow),
+    inset 0 1px 0 var(--soft-white-glow);
 }
 
 .ce-reset-btn:hover {
   background: linear-gradient(
     135deg,
-    var(--ce-gold) 0%,
-    var(--ce-gold-highlight) 100%
+    var(--classic-gold) 0%,
+    var(--highlight-gold) 100%
   );
 }
 
@@ -680,15 +676,15 @@
 .ce-right-toggle-btn--active {
   background: linear-gradient(
     135deg,
-    var(--ce-gold-shadow) 0%,
-    var(--ce-gold) 58%,
-    var(--ce-gold-highlight) 100%
+    var(--burnished-gold) 0%,
+    var(--classic-gold) 58%,
+    var(--highlight-gold) 100%
   );
   color: #1a1a1a;
   border-color: rgba(232, 217, 168, 0.55);
   box-shadow:
-    0 0 18px var(--ce-gold-glow),
-    inset 0 1px 0 var(--ce-white-glow);
+    0 0 18px var(--gold-glow),
+    inset 0 1px 0 var(--soft-white-glow);
 }
 
 /* ── Style Rules ───────────────────────────────────────────────── */
@@ -950,9 +946,20 @@
   min-height: 2.25rem;
 }
 
-.ce-footer-actions > :nth-child(2) {
+.ce-footer-actions-left {
+  position: absolute;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ce-footer-actions-right {
   position: absolute;
   right: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .ce-voice-picker {
@@ -991,27 +998,27 @@
   letter-spacing: 0.05em;
   background: linear-gradient(
     135deg,
-    var(--ce-gold-shadow) 0%,
-    var(--ce-gold) 58%,
-    var(--ce-gold-highlight) 100%
+    var(--burnished-gold) 0%,
+    var(--classic-gold) 58%,
+    var(--highlight-gold) 100%
   );
   color: #1a1a1a;
-  border-color: var(--ce-gold);
+  border-color: var(--classic-gold);
   box-shadow:
-    0 0 18px var(--ce-gold-glow),
-    inset 0 1px 0 var(--ce-white-glow);
+    0 0 18px var(--gold-glow),
+    inset 0 1px 0 var(--soft-white-glow);
   transition: all 0.2s;
 }
 
 .ce-save-btn:hover {
   background: linear-gradient(
     135deg,
-    var(--ce-gold) 0%,
-    var(--ce-gold-highlight) 100%
+    var(--classic-gold) 0%,
+    var(--highlight-gold) 100%
   );
   box-shadow:
-    0 0 22px var(--ce-gold-glow),
-    inset 0 1px 0 var(--ce-white-glow);
+    0 0 22px var(--gold-glow),
+    inset 0 1px 0 var(--soft-white-glow);
 }
 
 .ce-save-btn--idle {
@@ -1040,26 +1047,26 @@
 .ce-save-btn--secondary {
   background: linear-gradient(
     135deg,
-    var(--ce-gold-shadow) 0%,
-    var(--ce-gold) 58%,
-    var(--ce-gold-highlight) 100%
+    var(--burnished-gold) 0%,
+    var(--classic-gold) 58%,
+    var(--highlight-gold) 100%
   );
   color: #1a1a1a;
-  border-color: var(--ce-gold);
+  border-color: var(--classic-gold);
   box-shadow:
-    0 0 18px var(--ce-gold-glow),
-    inset 0 1px 0 var(--ce-white-glow);
+    0 0 18px var(--gold-glow),
+    inset 0 1px 0 var(--soft-white-glow);
 }
 
 .ce-save-btn--secondary:hover {
   background: linear-gradient(
     135deg,
-    var(--ce-gold) 0%,
-    var(--ce-gold-highlight) 100%
+    var(--classic-gold) 0%,
+    var(--highlight-gold) 100%
   );
   box-shadow:
-    0 0 22px var(--ce-gold-glow),
-    inset 0 1px 0 var(--ce-white-glow);
+    0 0 22px var(--gold-glow),
+    inset 0 1px 0 var(--soft-white-glow);
 }
 
 .ce-save-btn:disabled {

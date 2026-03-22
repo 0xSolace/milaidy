@@ -4,12 +4,17 @@ import React from "react";
 import TestRenderer, { act } from "react-test-renderer";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { invokeDesktopBridgeRequestMock, useAppMock, isElectrobunRuntimeMock } =
-  vi.hoisted(() => ({
-    invokeDesktopBridgeRequestMock: vi.fn(),
-    useAppMock: vi.fn(),
-    isElectrobunRuntimeMock: vi.fn(),
-  }));
+const {
+  invokeDesktopBridgeRequestMock,
+  useAppMock,
+  isElectrobunRuntimeMock,
+  subscribeDesktopBridgeEventMock,
+} = vi.hoisted(() => ({
+  invokeDesktopBridgeRequestMock: vi.fn(),
+  useAppMock: vi.fn(),
+  isElectrobunRuntimeMock: vi.fn(),
+  subscribeDesktopBridgeEventMock: vi.fn(() => () => {}),
+}));
 const { openDesktopSettingsWindowMock } = vi.hoisted(() => ({
   openDesktopSettingsWindowMock: vi.fn(),
 }));
@@ -20,6 +25,7 @@ vi.mock("@miladyai/app-core/bridge", async (importOriginal) => {
     ...actual,
     invokeDesktopBridgeRequest: invokeDesktopBridgeRequestMock,
     isElectrobunRuntime: isElectrobunRuntimeMock,
+    subscribeDesktopBridgeEvent: subscribeDesktopBridgeEventMock,
   };
 });
 
@@ -51,6 +57,7 @@ describe("DesktopTrayRuntime", () => {
     invokeDesktopBridgeRequestMock.mockReset();
     useAppMock.mockReset();
     isElectrobunRuntimeMock.mockReset();
+    subscribeDesktopBridgeEventMock.mockReset();
     openDesktopSettingsWindowMock.mockReset();
     handleStart.mockReset();
     handleStop.mockReset();

@@ -13,7 +13,7 @@ export function DesktopOnboardingRuntime() {
     if (!isElectrobunRuntime()) {
       return;
     }
-    if (onboardingLoading || onboardingStep !== "senses") {
+    if (onboardingLoading || onboardingStep !== "permissions") {
       return;
     }
     if (requestedBackgroundNoticeRef.current) {

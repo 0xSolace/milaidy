@@ -141,7 +141,11 @@ describe("GET /api/wallet/keys", () => {
     }
   });
 
-  it("rejects loopback requests without a token during active onboarding", async () => {
+  it.each([
+    "production",
+    "development",
+  ])("rejects loopback requests without a token during active onboarding in %s", async (nodeEnv) => {
+    process.env.NODE_ENV = nodeEnv;
     await fs.writeFile(
       path.join(tempDir, "eliza.json"),
       JSON.stringify({

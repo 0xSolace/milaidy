@@ -111,6 +111,16 @@ const { mockClient } = vi.hoisted(() => ({
       triggers: [],
       todos: [],
     })),
+    renameConversation: vi.fn(async (_id: string, _title: string) => ({
+      conversation: {
+        id: "conv-1",
+        title: "Chat",
+        roomId: "room-1",
+        createdAt: "2026-02-01T00:00:00.000Z",
+        updatedAt: "2026-02-01T00:00:00.000Z",
+      },
+    })),
+    deleteConversation: vi.fn(async () => ({ ok: true })),
   },
 }));
 
@@ -313,6 +323,16 @@ describe("chat send locking", () => {
       todos: [],
     });
     mockClient.getCodingAgentStatus.mockResolvedValue(null);
+    mockClient.renameConversation.mockResolvedValue({
+      conversation: {
+        id: "conv-1",
+        title: "Chat",
+        roomId: "room-1",
+        createdAt: "2026-02-01T00:00:00.000Z",
+        updatedAt: "2026-02-01T00:00:00.000Z",
+      },
+    });
+    mockClient.deleteConversation.mockResolvedValue({ ok: true });
   });
 
   it("allows only one same-tick chat send request", async () => {
@@ -807,9 +827,25 @@ describe("chat send locking", () => {
         },
       ],
     });
-    mockClient.truncateConversationMessages.mockResolvedValue({
-      ok: true,
-      deletedCount: 2,
+    mockClient.truncateConversationMessages.mockImplementation(async () => {
+      // After truncation, the server would return only the first 2 messages.
+      mockClient.getConversationMessages.mockResolvedValue({
+        messages: [
+          {
+            id: "user-1",
+            role: "user",
+            text: "hello",
+            timestamp: 1,
+          },
+          {
+            id: "assistant-1",
+            role: "assistant",
+            text: "hi",
+            timestamp: 2,
+          },
+        ],
+      });
+      return { ok: true, deletedCount: 2 };
     });
     mockClient.sendConversationMessageStream.mockImplementation(
       async (
@@ -1388,7 +1424,10 @@ describe("chat send locking", () => {
         createdAt: "2026-02-02T00:00:00.000Z",
         updatedAt: "2026-02-02T00:00:00.000Z",
       },
-      greeting: undefined,
+      greeting: {
+        text: "Hello! I'm here and ready to help.",
+        persisted: false,
+      },
     });
     mockClient.requestGreeting.mockReturnValue(deferred.promise);
 
@@ -1419,39 +1458,15 @@ describe("chat send locking", () => {
       await api?.handleNewConversation();
     });
 
-    await vi.waitFor(() => {
-      expect(mockClient.requestGreeting).toHaveBeenCalledWith(
-        "conv-fresh",
-        "en",
-      );
-    });
-
     expect(api?.snapshot()).toEqual(
       expect.objectContaining({
         activeConversationId: "conv-fresh",
         chatSending: false,
         chatFirstTokenReceived: false,
-        conversationMessages: [],
-      }),
-    );
-
-    await act(async () => {
-      deferred.resolve({
-        text: "Hey there.",
-        agentName: "Eliza",
-        generated: true,
-        persisted: false,
-      });
-      await Promise.resolve();
-    });
-
-    expect(api?.snapshot()).toEqual(
-      expect.objectContaining({
-        chatSending: false,
         conversationMessages: [
           expect.objectContaining({
             role: "assistant",
-            text: "Hey there.",
+            text: "Hello! I'm here and ready to help.",
             source: "agent_greeting",
           }),
         ],

@@ -24,6 +24,15 @@ export default defineConfig({
     dedupe: ["react", "react-dom", "ethers", "@elizaos/core"],
     alias: [
       {
+        // The @lookingglass/webxr package has a broken ESM import chain
+        // (extensionless relative import of @lookingglass/webxr-polyfill/src/api/index)
+        // that crashes under Node's strict ESM resolver used by vitest.
+        // Stub all @lookingglass/* imports so tests that transitively import
+        // VrmEngine.ts don't fail at module resolution time.
+        find: /^@lookingglass\/.*/,
+        replacement: path.join(repoRoot, "test", "stubs", "lookingglass-webxr.ts"),
+      },
+      {
         find: "milady/plugin-sdk",
         replacement: path.join(repoRoot, "src", "plugin-sdk", "index.ts"),
       },

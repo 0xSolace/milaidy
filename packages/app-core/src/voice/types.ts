@@ -174,6 +174,63 @@ export const PREMADE_VOICES: VoicePreset[] = [
     previewUrl:
       "https://storage.googleapis.com/eleven-public-prod/premade/voices/N2lVS1w4EtoT3dr4eOWO/ac833bd8-ffda-4938-9ebc-b0f99ca25481.mp3",
   },
+  // Custom Character Voices
+  {
+    id: "momo",
+    name: "Momo",
+    voiceId: "n7Wi4g1bhpw4Bs8HK5ph",
+    gender: "female",
+    hint: "Custom Voice",
+    previewUrl: "",
+  },
+  {
+    id: "yuki",
+    name: "Yuki",
+    voiceId: "4tRn1lSkEn13EVTuqb0g",
+    gender: "female",
+    hint: "Custom Voice",
+    previewUrl: "",
+  },
+  {
+    id: "rin",
+    name: "Rin",
+    voiceId: "cNYrMw9glwJZXR8RwbuR",
+    gender: "female",
+    hint: "Custom Voice",
+    previewUrl: "",
+  },
+  {
+    id: "kei",
+    name: "Kei",
+    voiceId: "eadgjmk4R4uojdsheG9t",
+    gender: "male",
+    hint: "Custom Voice",
+    previewUrl: "",
+  },
+  {
+    id: "jin",
+    name: "Jin",
+    voiceId: "6IwYbsNENZgAB1dtBZDp",
+    gender: "male",
+    hint: "Custom Voice",
+    previewUrl: "",
+  },
+  {
+    id: "satoshi",
+    name: "Satoshi",
+    voiceId: "7cOBG34AiHrAzs842Rdi",
+    gender: "male",
+    hint: "Custom Voice",
+    previewUrl: "",
+  },
+  {
+    id: "ryu",
+    name: "Ryu",
+    voiceId: "QzTKubutNn9TjrB7Xb2Q",
+    gender: "male",
+    hint: "Custom Voice",
+    previewUrl: "",
+  },
 ];
 
 export const VOICE_PROVIDERS: Array<{

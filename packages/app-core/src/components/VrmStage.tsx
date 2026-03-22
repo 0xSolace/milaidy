@@ -263,14 +263,6 @@ export const VrmStage = memo(function VrmStage({
             boxShadow: "0 -24px 90px rgba(40, 184, 255, 0.14)",
           }}
         />
-        <div
-          className="absolute inset-x-0 top-[39%] h-px opacity-55"
-          style={{
-            background:
-              "linear-gradient(90deg, transparent 0%, rgba(118, 232, 255, 0.12) 18%, rgba(118, 232, 255, 0.58) 50%, rgba(118, 232, 255, 0.12) 82%, transparent 100%)",
-            boxShadow: "0 0 20px rgba(118, 232, 255, 0.18)",
-          }}
-        />
       </div>
 
       {/* Single persistent VrmViewer — world stays loaded, only character swaps */}

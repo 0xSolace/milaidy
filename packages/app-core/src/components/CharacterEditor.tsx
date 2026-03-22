@@ -11,7 +11,7 @@ import {
   dispatchWindowEvent,
   VOICE_CONFIG_UPDATED_EVENT,
 } from "@miladyai/app-core/events";
-import { STYLE_PRESETS } from "@miladyai/app-core/onboarding-presets";
+import { STYLE_PRESETS, type MiladyStylePreset } from "@miladyai/app-core/onboarding-presets";
 import { useApp } from "@miladyai/app-core/state";
 import { normalizeCharacterMessageExamples } from "@miladyai/app-core/utils/character-message-examples";
 import { useChatAvatarVoiceBridge, useVoiceChat } from "../hooks";
@@ -121,7 +121,7 @@ const EDGE_VOICE_GROUPS = [
 
 /* ── Helpers ───────────────────────────────────────────────────────── */
 
-type OnboardingPreset = StylePreset;
+type OnboardingPreset = MiladyStylePreset;
 
 function getOnboardingPresetStyles(
   options: unknown,
@@ -300,7 +300,7 @@ export function CharacterEditor({
     interruptOnSpeech: false,
     lang: "en-US",
     voiceConfig: voiceConfig as any,
-    onTranscript: () => {},
+    onTranscript: () => { },
   });
 
   useChatAvatarVoiceBridge({
@@ -327,7 +327,19 @@ export function CharacterEditor({
   // needed. If the server provides styles via onboardingOptions, prefer those.
   useEffect(() => {
     if (onboardingPresetStyles.length) {
-      setRosterStyles([...onboardingPresetStyles]);
+      const merged = onboardingPresetStyles.map((serverPreset) => {
+        const localMeta = STYLE_PRESETS.find(
+          (p) => p.catchphrase === serverPreset.catchphrase,
+        );
+        return {
+          ...serverPreset,
+          name: localMeta?.name ?? (("name" in serverPreset) ? (serverPreset as unknown as {name: string}).name : undefined),
+          avatarIndex: localMeta?.avatarIndex,
+          voicePresetId: localMeta?.voicePresetId,
+          greetingAnimation: localMeta?.greetingAnimation,
+        } as unknown as MiladyStylePreset;
+      });
+      setRosterStyles(merged);
     } else {
       setRosterStyles([...STYLE_PRESETS]);
     }
@@ -342,9 +354,9 @@ export function CharacterEditor({
     "Agent";
   const normalizedMessageExamples = Array.isArray(d.messageExamples)
     ? normalizeCharacterMessageExamples(
-        d.messageExamples,
-        fallbackCharacterName,
-      )
+      d.messageExamples,
+      fallbackCharacterName,
+    )
     : [];
   const bioText =
     typeof d.bio === "string"
@@ -365,6 +377,11 @@ export function CharacterEditor({
       const found = characterRoster.find((e) => e.id === selectedCharacterId);
       if (found) return found;
     }
+    const byVrm = characterRoster.find(
+      (e) => e.avatarIndex === selectedVrmIndex,
+    );
+    if (byVrm) return byVrm;
+
     if (!currentCharacter) return null;
     const currentName =
       typeof currentCharacter.name === "string"
@@ -435,7 +452,7 @@ export function CharacterEditor({
             setSelectedVoicePresetId(preset?.id ?? null);
           }
         }
-      } catch {}
+      } catch { }
       setVoiceLoading(false);
     })();
   }, []);
@@ -540,7 +557,7 @@ export function CharacterEditor({
                 },
               },
             })
-            .catch(() => {});
+            .catch(() => { });
         }
       }
       if (applyDefaults) {
@@ -604,9 +621,9 @@ export function CharacterEditor({
       currentCharacter.name.trim().length > 0;
     const hasBioOrSystem = Boolean(
       currentCharacter.bio ||
-        ("system" in currentCharacter &&
-          typeof currentCharacter.system === "string" &&
-          currentCharacter.system),
+      ("system" in currentCharacter &&
+        typeof currentCharacter.system === "string" &&
+        currentCharacter.system),
     );
     const hasMeaningfulContent = isNamed || hasBioOrSystem;
 
@@ -689,8 +706,9 @@ export function CharacterEditor({
   useEffect(() => {
     if (typeof window === "undefined") return;
     const mql = window.matchMedia("(max-width: 768px)");
+    const isEditorTab = tab === "character" || tab === "character-select";
     const dispatch = () => {
-      const offset = customizing && !mql.matches ? 0.6 : 0;
+      const offset = customizing && isEditorTab && !mql.matches ? 0.85 : 0;
       window.dispatchEvent(
         new CustomEvent("eliza:editor-camera-offset", {
           detail: { offset },
@@ -700,8 +718,16 @@ export function CharacterEditor({
     dispatch();
     const onChange = () => dispatch();
     mql.addEventListener("change", onChange);
-    return () => mql.removeEventListener("change", onChange);
-  }, [customizing]);
+    return () => {
+      mql.removeEventListener("change", onChange);
+      // Reset camera offset when leaving customize mode or switching tabs
+      window.dispatchEvent(
+        new CustomEvent("eliza:editor-camera-offset", {
+          detail: { offset: 0 },
+        }),
+      );
+    };
+  }, [customizing, tab]);
 
   /* ── Sync style entry drafts ────────────────────────────────────── */
   useEffect(() => {
@@ -839,7 +865,7 @@ export function CharacterEditor({
               if (parsed.chat) handleStyleEdit("chat", parsed.chat.join("\n"));
               if (parsed.post) handleStyleEdit("post", parsed.post.join("\n"));
             }
-          } catch {}
+          } catch { }
         } else if (field === "chatExamples") {
           const formatted = normalizeCharacterMessageExamples(
             generated,
@@ -861,7 +887,7 @@ export function CharacterEditor({
                 handleCharacterArrayInput("postExamples", parsed.join("\n"));
               }
             }
-          } catch {}
+          } catch { }
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Generation failed";
@@ -956,7 +982,7 @@ export function CharacterEditor({
 
   /* ── Render ─────────────────────────────────────────────────────── */
   return (
-    <div className="ce-layout-container">
+    <div className="ce-layout-container" onWheel={(e) => e.stopPropagation()}>
       <div className={`ce-root${customizing ? " ce-root--editor-active" : ""}`}>
         {/* ── Character Roster (when NOT customizing) ────────────────── */}
         {!customizing && (
@@ -1121,29 +1147,6 @@ export function CharacterEditor({
                 </div>
               </section>
 
-              {/* Avatar Selector */}
-              <section className="ce-section ce-section--avatar">
-                <div className="ce-section-header">
-                  <span className="ce-label">
-                    {t("charactereditor.Avatar", { defaultValue: "Avatar" })}
-                  </span>
-                </div>
-                <AvatarSelector
-                  selected={selectedVrmIndex}
-                  onSelect={(index: number) => {
-                    setState("selectedVrmIndex", index);
-                    if (index > 0) {
-                      setState("customVrmUrl", "");
-                    }
-                  }}
-                  onUpload={(file: File) => {
-                    // The backend or state manager will handle the actual upload
-                    // and update customVrmUrl. For now we just set the index.
-                    setState("selectedVrmIndex", 0);
-                  }}
-                />
-              </section>
-
               {/* Bio / About Me */}
               <section className="ce-section ce-section--grow">
                 <div className="ce-section-header">
@@ -1159,11 +1162,11 @@ export function CharacterEditor({
                   >
                     {generating === "bio"
                       ? t("charactereditor.Generating", {
-                          defaultValue: "generating...",
-                        })
+                        defaultValue: "generating...",
+                      })
                       : t("charactereditor.Regenerate", {
-                          defaultValue: "regenerate",
-                        })}
+                        defaultValue: "regenerate",
+                      })}
                   </Button>
                 </div>
                 <Textarea
@@ -1364,8 +1367,8 @@ export function CharacterEditor({
                     {generating === "chatExamples"
                       ? t("charactereditor.Generating")
                       : t("charactereditor.Generate", {
-                          defaultValue: "generate",
-                        })}
+                        defaultValue: "generate",
+                      })}
                   </Button>
                 </div>
                 <div className="ce-examples-list">
@@ -1553,6 +1556,43 @@ export function CharacterEditor({
         )}
 
         <div className="ce-footer-actions">
+          <div className="ce-footer-actions-left">
+            {customizing && (
+              <>
+                <input
+                  type="file"
+                  id="ce-vrm-upload"
+                  accept=".vrm"
+                  className="hidden"
+                  style={{ display: "none" }}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setState("selectedVrmIndex", 0);
+                    }
+                    e.target.value = "";
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="ce-save-btn ce-save-btn--idle"
+                  onClick={() =>
+                    document.getElementById("ce-vrm-upload")?.click()
+                  }
+                  title={t("charactereditor.UploadVRM", {
+                    defaultValue: "Upload",
+                  })}
+                >
+                  {t("charactereditor.UploadVRM", {
+                    defaultValue: "Upload",
+                  })}
+                </Button>
+              </>
+            )}
+          </div>
+
           {/* Save Character — centered; transparent when nothing to save */}
           <Button
             size="sm"
@@ -1565,28 +1605,30 @@ export function CharacterEditor({
               : t("charactereditor.Save", { defaultValue: "Save" })}
           </Button>
 
-          {/* Toggle between Customize and Select — always present, just text changes */}
-          <Button
-            type="button"
-            variant="default"
-            size="sm"
-            className="ce-save-btn ce-save-btn--secondary"
-            onClick={() => {
-              if (customizing) {
-                setCustomizing(false);
-                setTab("character-select");
-              } else {
-                setCustomizing(true);
-                setTab("character");
-              }
-            }}
-          >
-            {customizing
-              ? t("charactereditor.SelectBtn", { defaultValue: "Select" })
-              : t("charactereditor.CustomizeBtn", {
+          <div className="ce-footer-actions-right">
+            {/* Toggle between Customize and Select — always present, just text changes */}
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              className="ce-save-btn ce-save-btn--secondary"
+              onClick={() => {
+                if (customizing) {
+                  setCustomizing(false);
+                  setTab("character-select");
+                } else {
+                  setCustomizing(true);
+                  setTab("character");
+                }
+              }}
+            >
+              {customizing
+                ? t("charactereditor.SelectBtn", { defaultValue: "Select" })
+                : t("charactereditor.CustomizeBtn", {
                   defaultValue: "Customize",
                 })}
-          </Button>
+            </Button>
+          </div>
         </div>
       </div>
     </div>

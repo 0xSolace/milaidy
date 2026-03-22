@@ -65,11 +65,11 @@ describe("WelcomeStep", () => {
     });
     expect(setState).toHaveBeenCalledWith(
       "onboardingStyle",
-      "I'm here to help you.",
+      "Let's get to work!",
     );
     expect(setState).toHaveBeenCalledWith("onboardingName", "Chen");
     expect(setState).toHaveBeenCalledWith("selectedVrmIndex", 1);
-    expect(goToOnboardingStep).toHaveBeenCalledWith("connection");
+    expect(goToOnboardingStep).toHaveBeenCalledWith("hosting");
   });
 
   it("lets users continue with an already detected setup without resetting onboarding", async () => {
@@ -102,7 +102,7 @@ describe("WelcomeStep", () => {
     });
 
     expect(setState).toHaveBeenCalledTimes(1);
-    expect(setState).toHaveBeenCalledWith("onboardingStep", "connection");
+    expect(setState).toHaveBeenCalledWith("onboardingStep", "hosting");
     expect(handleOnboardingUseLocalBackend).not.toHaveBeenCalled();
   });
 });

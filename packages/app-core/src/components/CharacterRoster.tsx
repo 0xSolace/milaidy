@@ -3,9 +3,7 @@
  * onboarding (selection-only) and the character editor (with customization).
  */
 
-import type { StylePreset } from "@miladyai/app-core/api";
-import { CHARACTER_PRESET_META } from "@miladyai/app-core/onboarding-presets";
-export { CHARACTER_PRESET_META } from "@miladyai/app-core/onboarding-presets";
+import type { MiladyStylePreset } from "@miladyai/app-core/onboarding-presets";
 import { getVrmPreviewUrl } from "@miladyai/app-core/state";
 
 /* ── Shared constants ─────────────────────────────────────────────────── */
@@ -24,24 +22,23 @@ export type CharacterRosterEntry = {
   voicePresetId?: string;
   catchphrase?: string;
   greetingAnimation?: string;
-  preset: StylePreset;
+  preset: MiladyStylePreset;
 };
 
 /* ── Helpers ──────────────────────────────────────────────────────────── */
 
 export function resolveRosterEntries(
-  styles: readonly StylePreset[],
+  styles: readonly MiladyStylePreset[],
 ): CharacterRosterEntry[] {
   return styles.map((preset, index) => {
-    const meta = CHARACTER_PRESET_META[preset.catchphrase];
     const fallbackName = `Character ${index + 1}`;
     return {
       id: preset.catchphrase,
-      name: meta?.name ?? fallbackName,
-      avatarIndex: meta?.avatarIndex ?? (index % 4) + 1,
-      voicePresetId: meta?.voicePresetId,
-      catchphrase: meta?.catchphrase ?? preset.catchphrase,
-      greetingAnimation: meta?.greetingAnimation,
+      name: preset.name ?? fallbackName,
+      avatarIndex: preset.avatarIndex ?? (index % 4) + 1,
+      voicePresetId: preset.voicePresetId,
+      catchphrase: preset.catchphrase,
+      greetingAnimation: preset.greetingAnimation,
       preset,
     };
   });

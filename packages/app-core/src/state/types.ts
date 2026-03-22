@@ -64,13 +64,10 @@ export type ShellView = "companion" | "character" | "desktop";
 
 export type OnboardingStep =
   | "welcome"
-  | "cloudLogin"
-  // Custom (local) flow steps
-  | "identity"
-  | "connection"
-  | "rpc"
-  | "senses"
-  | "activate";
+  | "hosting"
+  | "providers"
+  | "permissions"
+  | "launch";
 
 export interface OnboardingStepMeta {
   id: OnboardingStep;
@@ -78,48 +75,33 @@ export interface OnboardingStepMeta {
   subtitle: string;
 }
 
-/** Steps shown for the default cloud fast-track. */
-export const CLOUD_ONBOARDING_STEPS: OnboardingStepMeta[] = [
+/** Unified 5-step onboarding flow. */
+export const ONBOARDING_STEPS: OnboardingStepMeta[] = [
   {
     id: "welcome",
     name: "onboarding.stepName.welcome",
     subtitle: "onboarding.stepSub.welcome",
   },
   {
-    id: "cloudLogin",
-    name: "onboarding.connect",
-    subtitle: "providerswitcher.elizaCloud",
-  },
-];
-
-/** Steps shown for the custom/local setup flow. */
-export const CUSTOM_ONBOARDING_STEPS: OnboardingStepMeta[] = [
-  {
-    id: "connection",
-    name: "onboarding.connect",
-    subtitle: "onboarding.stepSub.connection",
+    id: "hosting",
+    name: "onboarding.stepName.hosting",
+    subtitle: "onboarding.stepSub.hosting",
   },
   {
-    id: "rpc",
-    name: "onboarding.stepName.rpc",
-    subtitle: "onboarding.stepSub.rpc",
+    id: "providers",
+    name: "onboarding.stepName.providers",
+    subtitle: "onboarding.stepSub.providers",
   },
   {
-    id: "senses",
-    name: "onboarding.stepName.senses",
-    subtitle: "onboarding.stepSub.senses",
+    id: "permissions",
+    name: "onboarding.stepName.permissions",
+    subtitle: "onboarding.stepSub.permissions",
   },
   {
-    id: "activate",
-    name: "onboarding.stepName.activate",
-    subtitle: "onboarding.readyTitle",
+    id: "launch",
+    name: "onboarding.stepName.launch",
+    subtitle: "onboarding.stepSub.launch",
   },
-];
-
-/** All steps — used by ONBOARDING_STEPS for backwards compat. */
-export const ONBOARDING_STEPS: OnboardingStepMeta[] = [
-  ...CLOUD_ONBOARDING_STEPS,
-  ...CUSTOM_ONBOARDING_STEPS,
 ];
 
 export type OnboardingMode = "basic" | "advanced" | "elizacloudonly";

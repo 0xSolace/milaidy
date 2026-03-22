@@ -2744,13 +2744,14 @@ export function AppProvider({
         setActiveConversationId(conversation.id);
         activeConversationIdRef.current = conversation.id;
         setCompanionMessageCutoffTs(nextCutoffTs);
-        const greetingText = greeting?.text?.trim() ?? "";
+        const greetingText = greeting?.text?.trim() || "";
+
         if (greetingText) {
           greetingFiredRef.current = true;
-          if (greeting?.persisted === true) {
+          if (greeting?.persisted !== false) {
             scheduleGreetingWaveForCompanion();
           }
-          setConversationMessages([
+          const initMessages: ConversationMessage[] = [
             {
               id: `greeting-${Date.now()}`,
               role: "assistant",
@@ -2758,11 +2759,13 @@ export function AppProvider({
               timestamp: Date.now(),
               source: "agent_greeting",
             },
-          ]);
+          ];
+          conversationMessagesRef.current = initMessages;
+          setConversationMessages(initMessages);
         } else {
           greetingFiredRef.current = false;
+          conversationMessagesRef.current = [];
           setConversationMessages([]);
-          void requestGreetingWhenRunning(conversation.id);
         }
         client.sendWsMessage({
           type: "active-conversation",
@@ -2783,6 +2786,7 @@ export function AppProvider({
       }
     },
     [
+      characterData,
       companionMessageCutoffTs,
       requestGreetingWhenRunning,
       resetConversationDraftState,
@@ -3121,11 +3125,11 @@ export function AppProvider({
           options?.conversationId ?? activeConversationId ?? "";
         if (!convId) {
           try {
-            // Use the first message as the conversation title
-            const convTitle =
-              text.length > 50 ? `${text.slice(0, 47)}...` : text;
             const { conversation } = await client.createConversation(
-              convTitle || undefined,
+              undefined,
+              {
+                lang: uiLanguage,
+              },
             );
             const nextCutoffTs = Date.now();
             setConversations((prev) => [conversation, ...prev]);
@@ -3153,13 +3157,12 @@ export function AppProvider({
             activeConv.title === "conversations.newChatTitle")
         ) {
           const fallbackTitle =
-            text.length > 30 ? `${text.slice(0, 30)}...` : text;
+            text.length > 15 ? `${text.slice(0, 15)}...` : text;
           setConversations((prev) =>
             prev.map((c) =>
               c.id === convId ? { ...c, title: fallbackTitle } : c,
             ),
           );
-          void client.renameConversation(convId, fallbackTitle).catch(() => {});
         }
 
         const now = Date.now();
@@ -3247,7 +3250,20 @@ export function AppProvider({
               ),
             );
           }
-          void loadConversations();
+
+          // Trigger AI summarization if this was the second user message (4th message overall)
+          const userMessageCount = conversationMessagesRef.current.filter(
+            (m) => m.role === "user" && !m.id.startsWith("temp-"),
+          ).length;
+          
+          if (userMessageCount === 1) {
+            // It was 1 before this turn was persisted, so this makes it the 2nd
+            void client.renameConversation(convId, "", { generate: true }).then(() => {
+              void loadConversations();
+            });
+          } else {
+            void loadConversations();
+          }
         } catch (err) {
           const abortError = err as Error;
           if (abortError.name === "AbortError") {
@@ -3395,13 +3411,12 @@ export function AppProvider({
             activeConv.title === "conversations.newChatTitle")
         ) {
           const fallbackTitle =
-            trimmed.length > 30 ? `${trimmed.slice(0, 30)}...` : trimmed;
+            trimmed.length > 15 ? `${trimmed.slice(0, 15)}...` : trimmed;
           setConversations((prev) =>
             prev.map((c) =>
               c.id === convId ? { ...c, title: fallbackTitle } : c,
             ),
           );
-          void client.renameConversation(convId, fallbackTitle).catch(() => {});
         }
 
         const now = Date.now();
@@ -4542,6 +4557,10 @@ export function AppProvider({
             `You are ${onboardingName || defaultName}, an autonomous AI agent powered by elizaOS.`,
           style: style?.style,
           adjectives: style?.adjectives,
+          postExamples: (style as any)?.postExamples,
+          postExamples_zhCN: (style as any)?.postExamples_zhCN,
+          messageExamples: (style as any)?.messageExamples,
+          topics: (style as any)?.topics,
           // Cloud onboarding: the API key was already persisted server-side
           // by handleCloudLogin → persistCloudLoginStatus. We just need to
           // tell the backend to enable cloud mode with default models.
@@ -4871,22 +4890,9 @@ export function AppProvider({
 
   const advanceOnboarding = useCallback(
     async (options?: OnboardingNextOptions) => {
-      // ── Cloud flow ──────────────────────────────────────────────────
-      if (onboardingStep === "welcome") {
-        try {
-          await handleCloudLoginRef.current();
-        } catch (err) {
-          console.error("[onboarding] Cloud login failed to start:", err);
-        }
-      }
-
-      if (onboardingStep === "cloudLogin") {
-        await handleOnboardingFinish();
-        return;
-      }
 
       if (
-        onboardingStep === "connection" &&
+        onboardingStep === "providers" &&
         onboardingRunMode === "local" &&
         !onboardingProvider
       ) {
@@ -4908,12 +4914,12 @@ export function AppProvider({
         }
       }
 
-      if (onboardingStep === "activate") {
+      if (onboardingStep === "launch") {
         await handleOnboardingFinish();
         return;
       }
 
-      if (onboardingStep === "senses") {
+      if (onboardingStep === "permissions") {
         if (options?.allowPermissionBypass) {
           if (options.skipTask) addDeferredOnboardingTask(options.skipTask);
           await handleOnboardingFinish();
@@ -6451,7 +6457,7 @@ export function AppProvider({
       // If the user navigates directly to /character while onboarding is incomplete,
       // override the persisted step to show them the connection step.
       if (onboardingNeedsOptions && navPath === "/character") {
-        setOnboardingStepRaw("connection");
+        setOnboardingStepRaw("hosting");
       }
 
       const shouldStartAtCharacterSelect = shouldStartAtCharacterSelectOnLaunch(

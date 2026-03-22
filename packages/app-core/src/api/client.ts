@@ -4749,10 +4749,11 @@ export class MiladyClient {
   async renameConversation(
     id: string,
     title: string,
+    options?: { generate?: boolean },
   ): Promise<{ conversation: Conversation }> {
     return this.fetch(`/api/conversations/${encodeURIComponent(id)}`, {
       method: "PATCH",
-      body: JSON.stringify({ title }),
+      body: JSON.stringify({ title, generate: options?.generate }),
     });
   }
 

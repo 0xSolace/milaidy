@@ -3,8 +3,7 @@ export {
   canRevertOnboardingTo,
   getFlaminaTopicForOnboardingStep,
   getOnboardingNavMetas,
-  getStepOrderForCurrentStep,
-  isOnboardingCustomFlowStep,
+  getStepOrder,
   resolveOnboardingNextStep,
   resolveOnboardingPreviousStep,
 } from "../onboarding/flow";
@@ -73,8 +72,7 @@ export {
   type AppContextValue,
   type AppState,
   type ChatTurnUsage,
-  CLOUD_ONBOARDING_STEPS,
-  CUSTOM_ONBOARDING_STEPS,
+
   type GamePostMessageAuthPayload,
   LIFECYCLE_MESSAGES,
   type LifecycleAction,
