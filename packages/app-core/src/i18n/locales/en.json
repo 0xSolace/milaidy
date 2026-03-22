@@ -1081,6 +1081,7 @@
   "configpageview.RestartRequired": "Restart required",
   "configpageview.CloudServicesDesc": "Choose which services to use from Eliza Cloud. Disable inference to use your own API keys instead.",
   "configpageview.CustomRpcProviders": "Custom RPC Providers",
+  "configpageview.UsingElizaCloudRpcs": "Using Eliza Cloud RPCs",
   "configpageview.Saving": "Saving...",
   "configpageview.Save": "Save",
   "appsview.NoDescription": "No description",

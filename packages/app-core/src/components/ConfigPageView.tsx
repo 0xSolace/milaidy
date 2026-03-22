@@ -688,7 +688,27 @@ export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
       {elizaCloudConnected && <CloudServicesSection />}
 
       {/* Custom RPC — only show when user wants BYOK */}
-      {!elizaCloudConnected && (
+      {elizaCloudConnected ? (
+        <div className="flex items-center gap-3 rounded-xl border border-border/30 bg-surface/50 px-4 py-3 mt-4">
+          <svg
+            className="w-4 h-4 text-muted"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <title>Cloud</title>
+            <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
+          </svg>
+          <span className="text-sm text-muted">
+            {t("configpageview.UsingElizaCloudRpcs", {
+              defaultValue: "Using Eliza Cloud RPCs",
+            })}
+          </span>
+        </div>
+      ) : (
         <div className="mt-4 p-5 border border-border rounded-xl bg-card">
           <div className="flex items-center justify-between mb-4">
             <div className="font-bold text-sm">
