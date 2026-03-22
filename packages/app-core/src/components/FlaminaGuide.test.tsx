@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
+import { act } from "react";
 import TestRenderer from "react-test-renderer";
 import { describe, expect, it } from "vitest";
 import { FlaminaGuideCard } from "./FlaminaGuide";
@@ -12,11 +13,14 @@ function textOf(node: TestRenderer.ReactTestInstance): string {
 
 describe("FlaminaGuideCard", () => {
   it("explains provider impact on character behavior", () => {
-    const tree = TestRenderer.create(
-      React.createElement(FlaminaGuideCard, { topic: "provider" }),
-    );
+    let tree: TestRenderer.ReactTestRenderer;
+    act(() => {
+      tree = TestRenderer.create(
+        React.createElement(FlaminaGuideCard, { topic: "provider" }),
+      );
+    });
 
-    const renderedText = textOf(tree.root);
+    const renderedText = textOf(tree!.root);
 
     expect(renderedText).toContain("reasons");
     expect(renderedText).toContain("latency");
@@ -24,11 +28,14 @@ describe("FlaminaGuideCard", () => {
   });
 
   it("explains rpc impact on external capabilities", () => {
-    const tree = TestRenderer.create(
-      React.createElement(FlaminaGuideCard, { topic: "rpc" }),
-    );
+    let tree: TestRenderer.ReactTestRenderer;
+    act(() => {
+      tree = TestRenderer.create(
+        React.createElement(FlaminaGuideCard, { topic: "rpc" }),
+      );
+    });
 
-    const renderedText = textOf(tree.root);
+    const renderedText = textOf(tree!.root);
 
     expect(renderedText).toContain("wallets");
     expect(renderedText).toContain("chains");
@@ -36,11 +43,14 @@ describe("FlaminaGuideCard", () => {
   });
 
   it("explains permissions impact on local access", () => {
-    const tree = TestRenderer.create(
-      React.createElement(FlaminaGuideCard, { topic: "permissions" }),
-    );
+    let tree: TestRenderer.ReactTestRenderer;
+    act(() => {
+      tree = TestRenderer.create(
+        React.createElement(FlaminaGuideCard, { topic: "permissions" }),
+      );
+    });
 
-    const renderedText = textOf(tree.root);
+    const renderedText = textOf(tree!.root);
 
     expect(renderedText).toContain("see");
     expect(renderedText).toContain("control");
@@ -48,11 +58,14 @@ describe("FlaminaGuideCard", () => {
   });
 
   it("explains voice impact on presentation", () => {
-    const tree = TestRenderer.create(
-      React.createElement(FlaminaGuideCard, { topic: "voice" }),
-    );
+    let tree: TestRenderer.ReactTestRenderer;
+    act(() => {
+      tree = TestRenderer.create(
+        React.createElement(FlaminaGuideCard, { topic: "voice" }),
+      );
+    });
 
-    const renderedText = textOf(tree.root);
+    const renderedText = textOf(tree!.root);
 
     expect(renderedText).toContain("sounds");
     expect(renderedText).toContain("spoken interactions");

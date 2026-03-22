@@ -5,11 +5,11 @@ import { describe, expect, it } from "vitest";
 const ROOT = path.resolve(import.meta.dirname, "..");
 const SERVER_TS_PATH = path.join(
   ROOT,
-  "node_modules/@elizaos/agent/packages/agent/src/api/server.js",
+  "node_modules/@elizaos/agent/src/api/server.ts",
 );
 const ELIZA_TS_PATH = path.join(
   ROOT,
-  "node_modules/@elizaos/agent/packages/agent/src/runtime/eliza.js",
+  "node_modules/@elizaos/agent/src/runtime/eliza.ts",
 );
 const WORKFLOW_PATH = path.join(
   ROOT,

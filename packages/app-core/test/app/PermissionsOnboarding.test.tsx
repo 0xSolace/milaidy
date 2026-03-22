@@ -32,9 +32,7 @@ const {
 /** Mirrors `hasRequiredOnboardingPermissions` without importing `platform` (avoids bridge/init). */
 const { hasRequiredOnboardingPermissionsForTest } = vi.hoisted(() => {
   const REQUIRED = ["accessibility", "screen-recording", "microphone"] as const;
-  function isGranted(
-    status: string | undefined,
-  ): boolean {
+  function isGranted(status: string | undefined): boolean {
     return status === "granted" || status === "not-applicable";
   }
   return {

@@ -939,14 +939,17 @@ export function PermissionsSection() {
 /** Onboarding section for mobile — streaming permissions to cloud sandbox. */
 function MobileOnboardingPermissions({
   onContinue,
+  onBack,
 }: {
   onContinue: (options?: { allowPermissionBypass?: boolean }) => void;
+  onBack?: () => void;
 }) {
   const { t } = useApp();
   return (
     <StreamingPermissionsOnboardingView
       mode="mobile"
       onContinue={onContinue}
+      onBack={onBack}
       testId="mobile-onboarding-permissions"
       title={translateWithFallback(
         t,
@@ -965,14 +968,17 @@ function MobileOnboardingPermissions({
 /** Web onboarding — browser media permissions. */
 function WebOnboardingPermissions({
   onContinue,
+  onBack,
 }: {
   onContinue: (options?: { allowPermissionBypass?: boolean }) => void;
+  onBack?: () => void;
 }) {
   const { t } = useApp();
   return (
     <StreamingPermissionsOnboardingView
       mode="web"
       onContinue={onContinue}
+      onBack={onBack}
       testId="web-onboarding-permissions"
       title={translateWithFallback(
         t,
@@ -990,27 +996,31 @@ function WebOnboardingPermissions({
 
 export function PermissionsOnboardingSection({
   onContinue,
+  onBack,
 }: {
   onContinue: (options?: { allowPermissionBypass?: boolean }) => void;
+  onBack?: () => void;
 }) {
   // Web: no permissions needed
   if (isWebPlatform()) {
-    return <WebOnboardingPermissions onContinue={onContinue} />;
+    return <WebOnboardingPermissions onContinue={onContinue} onBack={onBack} />;
   }
 
   // Mobile (Capacitor): streaming permissions
   if (isNative && !isDesktopPlatform()) {
-    return <MobileOnboardingPermissions onContinue={onContinue} />;
+    return <MobileOnboardingPermissions onContinue={onContinue} onBack={onBack} />;
   }
 
   // Desktop shell: existing permission flow
-  return <DesktopOnboardingPermissions onContinue={onContinue} />;
+  return <DesktopOnboardingPermissions onContinue={onContinue} onBack={onBack} />;
 }
 
 function DesktopOnboardingPermissions({
   onContinue,
+  onBack,
 }: {
   onContinue: (options?: { allowPermissionBypass?: boolean }) => void;
+  onBack?: () => void;
 }) {
   const { t } = useApp();
   const { handleOpenSettings, handleRequest, loading, permissions } =
@@ -1157,7 +1167,18 @@ function DesktopOnboardingPermissions({
         </div>
       )}
 
-      <div className="flex flex-wrap justify-center gap-3">
+      <div className="onboarding-panel-footer">
+        {onBack ? (
+          <button
+            className="onboarding-back-link"
+            onClick={() => onBack()}
+            type="button"
+          >
+            {translateWithFallback(t, "onboarding.back", "Back")}
+          </button>
+        ) : (
+          <span />
+        )}
         <Button
           type="button"
           variant="default"
