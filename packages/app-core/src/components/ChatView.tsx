@@ -725,8 +725,9 @@ export function ChatView({ variant = "default" }: ChatViewProps) {
       <div
         ref={messagesRef}
         data-testid="chat-messages-scroll"
-        data-no-camera-drag={isGameModal || undefined}
-        data-no-camera-zoom={isGameModal || undefined}
+        data-no-window-drag={isGameModal ? undefined : ""}
+        data-no-camera-drag={isGameModal ? "true" : undefined}
+        data-no-camera-zoom={isGameModal ? "true" : undefined}
         className={
           isGameModal
             ? "chat-native-scrollbar absolute inset-x-0 overflow-x-hidden overflow-y-auto pointer-events-auto"
