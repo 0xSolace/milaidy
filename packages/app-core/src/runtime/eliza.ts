@@ -26,7 +26,7 @@ import {
   syncElizaEnvToMilady,
   syncMiladyEnvToEliza,
 } from "../config/brand-env.js";
-import { loadElizaConfig } from "../config/config.js";
+import { loadElizaConfig, saveElizaConfig } from "../config/config.js";
 import { STYLE_PRESETS } from "../onboarding-presets.js";
 import { normalizeCharacterMessageExamples } from "../utils/character-message-examples";
 import { ensureRuntimeSqlCompatibility } from "../utils/sql-compat";
@@ -677,6 +677,30 @@ export interface BootElizaRuntimeOptionsExt extends BootElizaRuntimeOptions {
   onEmbeddingProgress?: EmbeddingProgressCallback;
 }
 
+/**
+ * Ensure plugin-plugin-manager is in the config's plugins.entries so
+ * upstream collectPluginNames loads it. Required for the dashboard
+ * "Install Plugin" button — upstream has it commented out of CORE_PLUGINS.
+ */
+function ensurePluginManagerAllowed(): void {
+  try {
+    const config = loadElizaConfig();
+    const entries =
+      config.plugins?.entries ?? ({} as Record<string, { enabled?: boolean }>);
+    const id = "plugin-manager";
+    if (entries[id]?.enabled === false) return; // explicitly disabled by user
+    if (entries[id]) return; // already present
+    config.plugins ??= {} as unknown as typeof config.plugins;
+    (config.plugins as Record<string, unknown>).entries = {
+      ...entries,
+      [id]: { enabled: true },
+    };
+    saveElizaConfig(config);
+  } catch {
+    // Non-fatal — plugin install button won't work but everything else is fine
+  }
+}
+
 export async function bootElizaRuntime(
   opts: BootElizaRuntimeOptionsExt = {},
 ): Promise<Awaited<ReturnType<typeof upstreamBootElizaRuntime>>> {
@@ -694,6 +718,8 @@ export async function bootElizaRuntime(
     if (!process.env.EMBEDDING_DIMENSION) {
       process.env.EMBEDDING_DIMENSION = "384";
     }
+
+    ensurePluginManagerAllowed();
 
     const runtime = await upstreamBootElizaRuntime(opts);
     return runtime ? await repairRuntimeAfterBoot(runtime) : runtime;
@@ -720,6 +746,8 @@ export async function startEliza(
     if (!process.env.EMBEDDING_DIMENSION) {
       process.env.EMBEDDING_DIMENSION = "384";
     }
+
+    ensurePluginManagerAllowed();
 
     if (options?.serverOnly) {
       let currentRuntime =

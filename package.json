@@ -161,6 +161,7 @@
     "@elizaos/plugin-todo": "^2.0.0-alpha.13",
     "@elizaos/plugin-trajectory-logger": "^2.0.0-alpha.20",
     "@elizaos/plugin-trust": "^1.2.2",
+    "@elizaos/plugin-whatsapp": "^2.0.0-alpha.9",
     "@elizaos/prompts": "^2.0.0-alpha.91",
     "@elizaos/skills": "^2.0.0-alpha.91",
     "@hapi/boom": "^10.0.1",
