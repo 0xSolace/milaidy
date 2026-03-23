@@ -4,6 +4,7 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -16,9 +17,10 @@ import {
   applyMissingLifecycleScriptPatch,
   applyNobleHashesCompat,
   applyPatchToPackageJson,
-  applyPtyManagerCursorPositionCompat,
   applyPluginVisionPermissionPatch,
   applyProperLockfileSignalExitCompat,
+  applyPtyManagerCursorPositionCompat,
+  applyPtyManagerEsmDirnameCompat,
   findPackageFilePaths,
   findPackageJsonPaths,
   patchAgentSkillsCatalogFetch,
@@ -30,9 +32,10 @@ import {
   patchExtensionlessJsExports,
   patchMissingLifecycleScript,
   patchNobleHashesCompat,
-  patchPtyManagerCursorPositionCompat,
   patchPluginVisionPermissionHandling,
   patchProperLockfileSignalExitCompat,
+  patchPtyManagerCursorPositionCompat,
+  patchPtyManagerEsmDirnameCompat,
   repairElizaCoreRuntimeDist,
   warnStaleBunCache,
 } from "./patch-bun-exports.mjs";
@@ -179,6 +182,57 @@ describe("patch-bun-exports", () => {
 
       const paths = findPackageJsonPaths(tmp, "@noble/hashes");
       expect(paths).toContain(join(bunScoped, "package.json"));
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("findPackageJsonPaths deduplicates symlinked node_modules entries that point at the Bun cache", () => {
+    const tmp = mkdtempSync(join(tmpdir(), "patch-bun-exports-test-"));
+    try {
+      const cacheDir = join(
+        tmp,
+        "node_modules",
+        ".bun",
+        "@elizaos+plugin-agent-orchestrator@0.3.16",
+        "node_modules",
+        "@elizaos",
+        "plugin-agent-orchestrator",
+      );
+      const mainDir = join(
+        tmp,
+        "node_modules",
+        "@elizaos",
+        "plugin-agent-orchestrator",
+      );
+
+      mkdirSync(cacheDir, { recursive: true });
+      mkdirSync(join(mainDir, ".."), { recursive: true });
+      writeFileSync(join(cacheDir, "package.json"), "{}", "utf8");
+
+      try {
+        symlinkSync(
+          join(
+            "..",
+            ".bun",
+            "@elizaos+plugin-agent-orchestrator@0.3.16",
+            "node_modules",
+            "@elizaos",
+            "plugin-agent-orchestrator",
+          ),
+          mainDir,
+        );
+      } catch (err) {
+        // Some environments disallow symlink creation; skip the regression in that case.
+        if (err instanceof Error) return;
+        throw err;
+      }
+
+      const paths = findPackageJsonPaths(
+        tmp,
+        "@elizaos/plugin-agent-orchestrator",
+      );
+      expect(paths).toHaveLength(1);
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }
@@ -1140,7 +1194,7 @@ describe("patch-bun-exports", () => {
 
       const updated = readFileSync(target, "utf8");
       expect(updated).toContain("respondToCursorPositionRequests(data)");
-      expect(updated).toContain('data.replace(/\\x1B\\[6n/g');
+      expect(updated).toContain("data.replace(/\\x1B\\[6n/g");
       expect(updated).toContain('this.ptyProcess.write("\\x1B[1;1R");');
       expect(updated).toContain("if (sanitizedData.length > 0)");
     } finally {
@@ -1148,11 +1202,133 @@ describe("patch-bun-exports", () => {
     }
   });
 
-  it("patchPtyManagerCursorPositionCompat patches installed worker and manager files", () => {
+  it("applyPtyManagerCursorPositionCompat patches the ESM bundle too", () => {
+    const tmp = mkdtempSync(join(tmpdir(), "patch-bun-exports-test-"));
+    try {
+      const target = join(tmp, "dist", "index.mjs");
+      mkdirSync(join(tmp, "dist"), { recursive: true });
+      writeFileSync(
+        target,
+        [
+          "class PTYSession {",
+          "  setupEventHandlers() {",
+          "    if (!this.ptyProcess) return;",
+          "    this.ptyProcess.onData((data) => {",
+          "      this._lastActivityAt = /* @__PURE__ */ new Date();",
+          "      this.outputBuffer += data;",
+          '      this.emit("output", data);',
+          "      if (!this._processScheduled) {",
+          "        this._processScheduled = true;",
+          "      }",
+          "    });",
+          "  }",
+          "  /**",
+          "   * Process the accumulated output buffer.",
+          "   */",
+          "}",
+        ].join("\n"),
+        "utf8",
+      );
+
+      const patched = applyPtyManagerCursorPositionCompat(target);
+      expect(patched).toBe(true);
+
+      const updated = readFileSync(target, "utf8");
+      expect(updated).toContain("respondToCursorPositionRequests(data)");
+      expect(updated).toContain("data.replace(/\\x1B\\[6n/g");
+      expect(updated).toContain('this.ptyProcess.write("\\x1B[1;1R");');
+      expect(updated).toContain("if (sanitizedData.length > 0)");
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("applyPtyManagerEsmDirnameCompat defines __dirname in the ESM bundle", () => {
+    const tmp = mkdtempSync(join(tmpdir(), "patch-bun-exports-test-"));
+    try {
+      const target = join(tmp, "dist", "index.mjs");
+      mkdirSync(join(tmp, "dist"), { recursive: true });
+      writeFileSync(
+        target,
+        [
+          'var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : x)(function(x) {',
+          '  if (typeof require !== "undefined") return require.apply(this, arguments);',
+          `  throw Error('Dynamic require of "' + x + '" is not supported');`,
+          "});",
+          'import { join, relative, dirname } from "path";',
+          'import { execSync } from "child_process";',
+          'const packageRoot = join(__dirname, "..");',
+        ].join("\n"),
+        "utf8",
+      );
+
+      const patched = applyPtyManagerEsmDirnameCompat(target);
+      expect(patched).toBe(true);
+
+      const updated = readFileSync(target, "utf8");
+      expect(updated).toContain('import { createRequire } from "module";');
+      expect(updated).toContain(
+        "const __require = createRequire(import.meta.url);",
+      );
+      expect(updated).toContain('import { fileURLToPath } from "url";');
+      expect(updated).toContain(
+        "const __dirname = dirname(fileURLToPath(import.meta.url));",
+      );
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("patchPtyManagerEsmDirnameCompat patches installed ESM bundles and logs", () => {
+    const tmp = mkdtempSync(join(tmpdir(), "patch-bun-exports-test-"));
+    try {
+      const pkgDir = join(tmp, "node_modules", "pty-manager", "dist");
+      mkdirSync(pkgDir, { recursive: true });
+      const target = join(pkgDir, "index.mjs");
+      writeFileSync(
+        target,
+        [
+          'var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : x)(function(x) {',
+          '  if (typeof require !== "undefined") return require.apply(this, arguments);',
+          `  throw Error('Dynamic require of "' + x + '" is not supported');`,
+          "});",
+          'import { join, relative, dirname } from "path";',
+          'import { execSync } from "child_process";',
+          'const packageRoot = join(__dirname, "..");',
+        ].join("\n"),
+        "utf8",
+      );
+      writeFileSync(
+        join(tmp, "node_modules", "pty-manager", "package.json"),
+        JSON.stringify({ name: "pty-manager" }, null, 2),
+        "utf8",
+      );
+
+      const logs: string[] = [];
+      const patched = patchPtyManagerEsmDirnameCompat(tmp, (msg) =>
+        logs.push(msg),
+      );
+
+      expect(patched).toBe(true);
+      expect(readFileSync(target, "utf8")).toContain(
+        "const __require = createRequire(import.meta.url);",
+      );
+      expect(readFileSync(target, "utf8")).toContain(
+        "const __dirname = dirname(fileURLToPath(import.meta.url));",
+      );
+      expect(logs).toHaveLength(1);
+      expect(logs[0]).toContain("pty-manager");
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("patchPtyManagerCursorPositionCompat patches installed CJS, ESM, and worker files", () => {
     const tmp = mkdtempSync(join(tmpdir(), "patch-bun-exports-test-"));
     try {
       const pkgDir = join(tmp, "node_modules", "pty-manager", "dist");
       const managerPath = join(pkgDir, "index.js");
+      const esmPath = join(pkgDir, "index.mjs");
       const workerPath = join(pkgDir, "pty-worker.js");
       mkdirSync(pkgDir, { recursive: true });
 
@@ -1176,6 +1352,7 @@ describe("patch-bun-exports", () => {
       ].join("\n");
 
       writeFileSync(managerPath, source, "utf8");
+      writeFileSync(esmPath, source, "utf8");
       writeFileSync(workerPath, source, "utf8");
       writeFileSync(
         join(tmp, "node_modules", "pty-manager", "package.json"),
@@ -1192,10 +1369,13 @@ describe("patch-bun-exports", () => {
       expect(readFileSync(managerPath, "utf8")).toContain(
         'this.ptyProcess.write("\\x1B[1;1R");',
       );
+      expect(readFileSync(esmPath, "utf8")).toContain(
+        'this.ptyProcess.write("\\x1B[1;1R");',
+      );
       expect(readFileSync(workerPath, "utf8")).toContain(
         'this.ptyProcess.write("\\x1B[1;1R");',
       );
-      expect(logs).toHaveLength(2);
+      expect(logs).toHaveLength(3);
       expect(logs.every((line) => line.includes("pty-manager"))).toBe(true);
     } finally {
       rmSync(tmp, { recursive: true, force: true });
