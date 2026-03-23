@@ -39,6 +39,9 @@
     "./awareness": "./src/awareness/index.ts",
     "./cli": "./src/cli/index.ts",
     "./cloud": "./src/cloud/index.ts",
+    "./cloud/base-url": "./src/cloud/base-url.ts",
+    "./cloud/validate-url": "./src/cloud/validate-url.ts",
+    "./cloud/cloud-manager": "./src/cloud/cloud-manager.ts",
     "./config": "./src/config/index.ts",
     "./config/config": "./src/config/config.ts",
     "./contracts": "./src/contracts/index.ts",
@@ -52,6 +55,7 @@
     "./providers": "./src/providers/index.ts",
     "./runtime": "./src/runtime/index.ts",
     "./runtime/eliza": "./src/runtime/eliza.ts",
+    "./runtime/restart": "./src/runtime/restart.ts",
     "./security": "./src/security/index.ts",
     "./server": "./src/server/index.ts",
     "./services": "./src/services/index.ts",
@@ -64,7 +68,9 @@
     "./services/signal-pairing": "./src/services/signal-pairing.ts",
     "./services/whatsapp-pairing": "./src/services/whatsapp-pairing.ts",
     "./services/plugin-manager-types": "./src/services/plugin-manager-types.ts",
-    "./services/tts-stream-bridge": "./src/services/tts-stream-bridge.ts"
+    "./services/tts-stream-bridge": "./src/services/tts-stream-bridge.ts",
+    "./services/registry-client-types": "./src/services/registry-client-types.ts",
+    "./services/skill-catalog-client": "./src/services/skill-catalog-client.ts"
   },
   "publishConfig": {
     "access": "public",
@@ -73,7 +79,7 @@
   "dependencies": {
     "@clack/prompts": "^1.0.0",
     "@elizaos/core": "alpha",
-    "@elizaos/plugin-agent-orchestrator": "0.3.15",
+    "@elizaos/plugin-agent-orchestrator": "0.3.16",
     "@elizaos/plugin-agent-skills": "alpha",
     "@elizaos/plugin-anthropic": "alpha",
     "@elizaos/plugin-coding-agent": "0.1.0-next.1",
@@ -100,6 +106,7 @@
     "@hapi/boom": "^10.0.1",
     "@lunchtable/plugin-ltcg": "^0.1.0",
     "@mariozechner/pi-ai": "0.52.12",
+    "@miladyai/shared": "workspace:*",
     "@noble/curves": "^2.0.1",
     "@whiskeysockets/baileys": "7.0.0-rc.9",
     "dotenv": "^17.2.3",

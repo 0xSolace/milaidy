@@ -11,8 +11,8 @@ import {
   dispatchWindowEvent,
   VOICE_CONFIG_UPDATED_EVENT,
 } from "../events/index";
-import type { StylePreset } from "@miladyai/agent/contracts/onboarding";
-import { STYLE_PRESETS } from "@miladyai/agent/onboarding-presets";
+import type { StylePreset } from "@miladyai/shared/contracts/onboarding";
+import { STYLE_PRESETS } from "@miladyai/shared/onboarding-presets";
 import { useApp } from "../state/useApp";
 import { normalizeCharacterMessageExamples } from "../utils/character-message-examples";
 import {

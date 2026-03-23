@@ -1,4 +1,4 @@
-import { ONBOARDING_PROVIDER_CATALOG } from "@miladyai/agent/contracts/onboarding";
+import { ONBOARDING_PROVIDER_CATALOG } from "@miladyai/shared/contracts/onboarding";
 import {
   Button,
   Input,

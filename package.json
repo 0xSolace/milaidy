@@ -18,7 +18,6 @@
     "apps/app/dist",
     "scripts/rt.sh",
     "scripts/run-node.mjs",
-    "scripts/patch-deps.mjs",
     "scripts/init-submodules.mjs",
     "scripts/setup-eliza-workspace.mjs",
     "scripts/run-repo-setup.mjs",
@@ -26,8 +25,7 @@
     "scripts/skills",
     "scripts/ensure-avatars.mjs",
     "scripts/link-browser-server.mjs",
-    "scripts/ensure-vision-deps.mjs",
-    "scripts/lib/patch-bun-exports.mjs"
+    "scripts/ensure-vision-deps.mjs"
   ],
   "bundleDependencies": [
     "@elizaos/plugin-agent-orchestrator"
@@ -40,6 +38,7 @@
     "packages/plugin-wechat",
     "packages/ui",
     "packages/vrm-utils",
+    "packages/shared",
     "packages/agent",
     "deploy/cloud-agent-template"
   ],
@@ -138,8 +137,8 @@
     "@electric-sql/pglite": "^0.3.16",
     "@miladyai/agent": "workspace:*",
     "@elizaos/app-hyperscape": "1.0.0",
-    "@elizaos/core": "^2.0.0-alpha.93",
-    "@elizaos/plugin-agent-orchestrator": "0.3.14",
+    "@elizaos/core": "^2.0.0-alpha.98",
+    "@elizaos/plugin-agent-orchestrator": "0.3.16",
     "@elizaos/plugin-agent-skills": "^2.0.0-alpha.70",
     "@elizaos/plugin-anthropic": "^2.0.0-alpha.9",
     "@elizaos/plugin-cron": "^2.0.0-alpha.7",
@@ -231,6 +230,14 @@
     "pty-manager": "1.9.8"
   },
   "patchedDependencies": {
-    "electrobun@1.15.1": "patches/electrobun@1.15.1.patch"
+    "electrobun@1.15.1": "patches/electrobun@1.15.1.patch",
+    "@elizaos/core@2.0.0-alpha.98": "patches/@elizaos%2Fcore@2.0.0-alpha.98.patch",
+    "@elizaos/plugin-agent-orchestrator@0.3.16": "patches/@elizaos%2Fplugin-agent-orchestrator@0.3.16.patch",
+    "@elizaos/plugin-coding-agent@0.1.0-next.1": "patches/@elizaos%2Fplugin-coding-agent@0.1.0-next.1.patch",
+    "@elizaos/plugin-agent-skills@2.0.0-alpha.70": "patches/@elizaos%2Fplugin-agent-skills@2.0.0-alpha.70.patch",
+    "@elizaos/plugin-sql@2.0.0-alpha.17": "patches/@elizaos%2Fplugin-sql@2.0.0-alpha.17.patch",
+    "@noble/curves@2.0.1": "patches/@noble%2Fcurves@2.0.1.patch",
+    "proper-lockfile@4.1.2": "patches/proper-lockfile@4.1.2.patch",
+    "@pixiv/three-vrm@3.5.1": "patches/@pixiv%2Fthree-vrm@3.5.1.patch"
   }
 }

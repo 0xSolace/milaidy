@@ -3,7 +3,7 @@ import {
   ONBOARDING_PROVIDER_CATALOG,
   type OnboardingConnection,
   type OnboardingLocalProviderId,
-} from "@miladyai/agent/contracts/onboarding";
+} from "@miladyai/shared/contracts/onboarding";
 import type { BuildOnboardingConnectionArgs } from "../onboarding-config";
 import { asRecord, readString } from "./config-readers";
 import type { OnboardingStep } from "./types";

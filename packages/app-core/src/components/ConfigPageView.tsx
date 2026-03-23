@@ -9,7 +9,7 @@
 import {
   WALLET_RPC_PROVIDER_OPTIONS,
   type WalletRpcSelections,
-} from "@miladyai/agent/contracts/wallet";
+} from "@miladyai/shared/contracts/wallet";
 import { useCallback, useEffect, useState } from "react";
 import { client } from "../api";
 import {

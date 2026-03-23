@@ -4,7 +4,7 @@
  * Children access state and actions through the useApp() hook.
  */
 
-import { ONBOARDING_PROVIDER_CATALOG } from "@miladyai/agent/contracts/onboarding";
+import { ONBOARDING_PROVIDER_CATALOG } from "@miladyai/shared/contracts/onboarding";
 import {
   type ReactNode,
   useCallback,
