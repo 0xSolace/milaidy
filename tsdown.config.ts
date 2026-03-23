@@ -15,6 +15,12 @@ const nativeExternals = [
   "@reflink/reflink-linux-arm64-gnu",
   "@reflink/reflink-linux-x64-gnu",
   "fsevents",
+  // React is a browser-only dependency pulled in transitively through
+  // boot-config.ts (createContext/useContext).  Bundling it into Node
+  // server builds creates CJS/ESM interop wrappers (require_react) that
+  // fail at runtime in Docker where only the ESM entry is available.
+  "react",
+  "react-dom",
 ];
 
 // @elizaos/plugin-* are loaded at runtime via dynamic import(); every entry that
