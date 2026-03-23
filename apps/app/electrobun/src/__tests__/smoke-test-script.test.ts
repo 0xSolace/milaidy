@@ -45,6 +45,18 @@ describe("smoke-test.sh", () => {
     );
     expect(script).toContain("Contents/Resources/app/bun/index\\\\.js");
     expect(script).toContain("Contents/Resources/main\\\\.js");
+    expect(
+      script.match(/^\s*verify_packaged_renderer_assets\(\)/gm),
+    ).toHaveLength(1);
+    expect(script).toContain("assert_packaged_asset_variants()");
+    expect(script).toContain("assert_packaged_archive_asset_variants()");
+    expect(script).toContain('"$renderer_dir/vrms/milady-1.vrm.gz"');
+    expect(script).toContain('"$renderer_dir/vrms/milady-1.vrm"');
+    expect(script).toContain('"$archive_bundle_root/animations/idle.glb.gz"');
+    expect(script).toContain('"$archive_bundle_root/animations/idle.glb"');
+    expect(script).toContain(
+      'echo "Packaged renderer asset check PASSED (wrapper archive)."',
+    );
   });
 
   it("uses a minimal launcher environment on macOS GitHub Actions", () => {

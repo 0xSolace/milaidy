@@ -42,6 +42,7 @@ import {
 import { getPermissionManager } from "./native/permissions";
 import { checkWebGpuSupport } from "./native/webgpu-browser-support";
 import { readBuiltPreloadScript } from "./preload-validation";
+import { resolveRendererAsset } from "./renderer-static";
 import { registerRpcHandlers } from "./rpc-handlers";
 import { startScreenshotDevServer } from "./screenshot-dev-server";
 import {
@@ -566,6 +567,7 @@ async function startRendererServer(): Promise<string> {
     ".wasm": "application/wasm",
     ".glb": "model/gltf-binary",
     ".gltf": "model/gltf+json",
+    ".vrm": "model/gltf-binary",
   };
 
   // Determine the expected agent API base URL so we can inject it into the
@@ -604,37 +606,17 @@ async function startRendererServer(): Promise<string> {
     port,
     hostname: "127.0.0.1",
     fetch(req) {
-      const urlPath =
-        new URL(req.url).pathname.replace(/^\//, "") || "index.html";
-      let filePath = path.join(rendererDir, urlPath);
-      // Path traversal guard: ensure resolved path stays within rendererDir
-      if (
-        !filePath.startsWith(rendererDir + path.sep) &&
-        filePath !== rendererDir
-      ) {
-        filePath = path.join(rendererDir, "index.html");
-      }
-
-      let isGzipped = false;
-      let requestedExt = path.extname(filePath);
-
-      // Check for pre-compressed .gz file if the uncompressed file doesn't exist
-      if (!fs.existsSync(filePath) && fs.existsSync(`${filePath}.gz`)) {
-        filePath = `${filePath}.gz`;
-        isGzipped = true;
-      }
-
-      // SPA fallback — serve index.html for unknown paths
-      if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
-        filePath = path.join(rendererDir, "index.html");
-        requestedExt = ".html";
-        isGzipped = false;
-      }
+      const { filePath, isGzipped, mimeExt } = resolveRendererAsset({
+        rendererDir,
+        urlPath: new URL(req.url).pathname,
+        existsSync: fs.existsSync,
+        statSync: fs.statSync,
+      });
 
       try {
         const content = fs.readFileSync(filePath);
         // Inject API base into HTML responses
-        if (requestedExt === ".html" || filePath.endsWith("index.html")) {
+        if (mimeExt === ".html" || filePath.endsWith("index.html")) {
           const html = injectApiBaseIntoHtml(content.toString("utf8"));
           return new Response(html, {
             headers: {
@@ -645,7 +627,7 @@ async function startRendererServer(): Promise<string> {
         }
 
         const headers: Record<string, string> = {
-          "Content-Type": mimeTypes[requestedExt] ?? "application/octet-stream",
+          "Content-Type": mimeTypes[mimeExt] ?? "application/octet-stream",
           "Access-Control-Allow-Origin": "*",
         };
 
