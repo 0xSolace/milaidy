@@ -50,7 +50,7 @@ export interface ChatStateValue {
   chatAgentVoiceMuted: boolean;
   chatMode: ConversationMode;
   chatAvatarSpeaking: boolean;
-  chatAwaitingGreeting: boolean;
+
   conversations: Conversation[];
   activeConversationId: string | null;
   companionMessageCutoffTs: number;
@@ -73,7 +73,7 @@ export interface ChatStateValue {
   setChatAgentVoiceMuted: (v: boolean) => void;
   setChatMode: (v: ConversationMode) => void;
   setChatAvatarSpeaking: (v: boolean) => void;
-  setChatAwaitingGreeting: (v: boolean) => void;
+
   setConversations: React.Dispatch<React.SetStateAction<Conversation[]>>;
   setActiveConversationId: (v: string | null) => void;
   setCompanionMessageCutoffTs: (v: number) => void;
@@ -118,7 +118,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     useState(loadChatVoiceMuted);
   const [chatMode, setChatMode] = useState<ConversationMode>(loadChatMode);
   const [chatAvatarSpeaking, setChatAvatarSpeaking] = useState(false);
-  const [chatAwaitingGreeting, setChatAwaitingGreeting] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<
     string | null
@@ -184,7 +183,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       chatAgentVoiceMuted,
       chatMode,
       chatAvatarSpeaking,
-      chatAwaitingGreeting,
+
       conversations,
       activeConversationId,
       companionMessageCutoffTs,
@@ -205,7 +204,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       setChatAgentVoiceMuted,
       setChatMode,
       setChatAvatarSpeaking,
-      setChatAwaitingGreeting,
+
       setConversations,
       setActiveConversationId: setActiveConversationIdWrapped,
       setCompanionMessageCutoffTs,
@@ -230,7 +229,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       chatAgentVoiceMuted,
       chatMode,
       chatAvatarSpeaking,
-      chatAwaitingGreeting,
+
       conversations,
       activeConversationId,
       companionMessageCutoffTs,
