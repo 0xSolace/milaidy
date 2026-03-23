@@ -437,40 +437,6 @@ describe("ChatView UI", () => {
     expect(tree).not.toBeNull();
   });
 
-  it("renders message input", async () => {
-    let tree: TestRenderer.ReactTestRenderer | null = null;
-
-    await act(async () => {
-      tree = TestRenderer.create(React.createElement(ChatView));
-    });
-
-    const inputs = tree?.root.findAll(
-      (node) =>
-        node.type === "input" ||
-        node.type === "textarea" ||
-        node.props?.contentEditable === true,
-    );
-    expect(inputs.length).toBeGreaterThanOrEqual(0);
-  });
-
-  it("renders send button", async () => {
-    let tree: TestRenderer.ReactTestRenderer | null = null;
-
-    await act(async () => {
-      tree = TestRenderer.create(React.createElement(ChatView));
-    });
-
-    const sendButtons = tree?.root.findAll(
-      (node) =>
-        node.type === "button" &&
-        (node.props["aria-label"]?.toLowerCase().includes("send") ||
-          node.children.some(
-            (c) => typeof c === "string" && c.toLowerCase().includes("send"),
-          )),
-    );
-    expect(sendButtons.length).toBeGreaterThanOrEqual(0);
-  });
-
   it("displays existing messages", async () => {
     let tree: TestRenderer.ReactTestRenderer | null = null;
 

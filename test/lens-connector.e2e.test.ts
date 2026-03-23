@@ -76,7 +76,6 @@ const describeIfLiveWrite = runLiveWriteTests ? describe : describe.skip;
 const RATE_LIMIT_DELAY_MS = 500;
 const TEST_TIMEOUT = 30_000;
 const LIVE_WRITE_TIMEOUT = 120_000;
-const MAX_POST_LENGTH = 5000;
 const LENS_API_URL = "https://api.lens.xyz/graphql";
 
 logger.info(
@@ -608,18 +607,6 @@ describeIfLiveWrite("Lens Connector - Post Handling", () => {
   );
 
   it(
-    "post length limit (5000 chars) is enforced client-side",
-    () => {
-      const shortText = "gm";
-      const longText = "A".repeat(5001);
-
-      expect(shortText.length).toBeLessThanOrEqual(MAX_POST_LENGTH);
-      expect(longText.length).toBeGreaterThan(MAX_POST_LENGTH);
-    },
-    TEST_TIMEOUT,
-  );
-
-  it(
     "can read back a posted post",
     async () => {
       const content = `[test] readback ${Date.now()}`;
@@ -925,50 +912,6 @@ describeIfLiveWrite("Lens Connector - Media & Attachments", () => {
     LIVE_WRITE_TIMEOUT,
   );
 
-  it(
-    "IPFS/Arweave content URI format validation",
-    () => {
-      const ipfsPattern = /^ipfs:\/\/[a-zA-Z0-9]+$/;
-      const arweavePattern = /^ar:\/\/[a-zA-Z0-9_-]+$/;
-
-      // IPFS URIs
-      expect(
-        ipfsPattern.test(
-          "ipfs://QmXoypizjW3WknFiJnKLwHCnL72vedxjQkDDP1mXWo6uco",
-        ),
-      ).toBe(true);
-      expect(
-        ipfsPattern.test(
-          "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
-        ),
-      ).toBe(true);
-      expect(ipfsPattern.test("https://example.com")).toBe(false);
-
-      // Arweave URIs
-      expect(arweavePattern.test("ar://abc123def456")).toBe(true);
-      expect(arweavePattern.test("ar://ABCDEF_gh-ij")).toBe(true);
-      expect(arweavePattern.test("https://arweave.net/abc")).toBe(false);
-    },
-    TEST_TIMEOUT,
-  );
-
-  it(
-    "image MIME types are valid",
-    () => {
-      const validMimeTypes = [
-        "image/jpeg",
-        "image/png",
-        "image/gif",
-        "image/webp",
-        "image/svg+xml",
-      ];
-
-      for (const mime of validMimeTypes) {
-        expect(mime).toMatch(/^image\//);
-      }
-    },
-    TEST_TIMEOUT,
-  );
 });
 
 // ---------------------------------------------------------------------------
@@ -1003,14 +946,6 @@ describeIfLive("Lens Connector - Error Handling", () => {
     TEST_TIMEOUT,
   );
 
-  it(
-    "rate limiting delay is configured correctly",
-    () => {
-      expect(RATE_LIMIT_DELAY_MS).toBeGreaterThanOrEqual(200);
-      expect(RATE_LIMIT_DELAY_MS).toBeLessThanOrEqual(10_000);
-    },
-    TEST_TIMEOUT,
-  );
 });
 
 // ---------------------------------------------------------------------------

@@ -324,22 +324,22 @@ export class DesktopManager {
     }
 
     if (action === "ask-agent") {
-      this.send("contextMenu:askAgent", { text });
+      this.send("contextMenuAskAgent", { text });
       return;
     }
 
     if (action === "quote-in-chat") {
-      this.send("contextMenu:quoteInChat", { text });
+      this.send("contextMenuQuoteInChat", { text });
       return;
     }
 
     if (action === "create-skill") {
-      this.send("contextMenu:createSkill", { text });
+      this.send("contextMenuCreateSkill", { text });
       return;
     }
 
     if (action === "save-as-command") {
-      this.send("contextMenu:saveAsCommand", { text });
+      this.send("contextMenuSaveAsCommand", { text });
     }
   }
 

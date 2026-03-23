@@ -17,6 +17,37 @@ export interface LifecycleMessages {
   inProgress: string;
 }
 
+export const LIFECYCLE_I18N_KEYS: Record<
+  LifecycleAction,
+  { progress: string; success: string; verb: string; inProgress: string }
+> = {
+  start: {
+    progress: "lifecycle.startProgress",
+    success: "lifecycle.startSuccess",
+    verb: "lifecycle.startVerb",
+    inProgress: "lifecycle.startInProgress",
+  },
+  stop: {
+    progress: "lifecycle.stopProgress",
+    success: "lifecycle.stopSuccess",
+    verb: "lifecycle.stopVerb",
+    inProgress: "lifecycle.stopInProgress",
+  },
+  restart: {
+    progress: "lifecycle.restartProgress",
+    success: "lifecycle.restartSuccess",
+    verb: "lifecycle.restartVerb",
+    inProgress: "lifecycle.restartInProgress",
+  },
+  reset: {
+    progress: "lifecycle.resetProgress",
+    success: "lifecycle.resetSuccess",
+    verb: "lifecycle.resetVerb",
+    inProgress: "lifecycle.resetInProgress",
+  },
+};
+
+/** @deprecated Use LIFECYCLE_I18N_KEYS with a translator instead */
 export const LIFECYCLE_MESSAGES: Record<LifecycleAction, LifecycleMessages> = {
   start: {
     progress: "Starting agent...",
@@ -30,7 +61,6 @@ export const LIFECYCLE_MESSAGES: Record<LifecycleAction, LifecycleMessages> = {
     verb: "stop",
     inProgress: "stopping",
   },
-
   restart: {
     progress: "Restarting agent...",
     success: "Agent restarted.",

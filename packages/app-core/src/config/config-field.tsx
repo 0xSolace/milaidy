@@ -9,6 +9,7 @@
  *  - ConfigField wrapper component (label + renderer + help + errors)
  */
 
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@miladyai/ui";
 import { ChevronDown, X } from "lucide-react";
 import React, { useCallback, useRef, useState } from "react";
 import { Switch } from "../components/ui-switch";
@@ -370,31 +371,35 @@ export function RenderSelectField(props: FieldRenderProps) {
   }
 
   return (
-    <select
-      className={`${INPUT_CLS} appearance-auto`}
+    <Select
       defaultValue={effectiveValue}
-      data-config-key={props.key}
-      data-field-type="select"
       disabled={props.readonly}
-      onChange={(e) => {
-        props.onChange(e.target.value);
+      onValueChange={(value) => {
+        props.onChange(value);
         fireAction(props, "change");
+        fireAction(props, "blur");
       }}
-      onBlur={() => fireAction(props, "blur")}
-      onClick={() => fireAction(props, "click")}
+      onOpenChange={(open) => {
+        if (open) fireAction(props, "click");
+      }}
     >
-      {!props.required && (
-        <option value="">
-          {t("config-field.None", { defaultValue: "None" })}
-        </option>
-      )}
-      {allOptions.map((opt) => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-          {opt.description ? ` — ${opt.description}` : ""}
-        </option>
-      ))}
-    </select>
+      <SelectTrigger className={INPUT_CLS} data-config-key={props.key} data-field-type="select">
+        <SelectValue placeholder={!props.required ? t("config-field.None", { defaultValue: "None" }) : undefined} />
+      </SelectTrigger>
+      <SelectContent>
+        {!props.required && (
+          <SelectItem value="">
+            {t("config-field.None", { defaultValue: "None" })}
+          </SelectItem>
+        )}
+        {allOptions.map((opt) => (
+          <SelectItem key={opt.value} value={opt.value}>
+            {opt.label}
+            {opt.description ? ` — ${opt.description}` : ""}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 

@@ -70,12 +70,12 @@ function SkillCard({
           <StatusBadge
             label={
               skill.scanStatus === "blocked" || skill.scanStatus === "critical"
-                ? "Blocked"
+                ? t("skillsview.statusBlocked")
                 : skill.scanStatus === "warning"
-                  ? "Warning"
+                  ? t("skillsview.statusWarning")
                   : skill.enabled
-                    ? "Active"
-                    : "Inactive"
+                    ? t("skillsview.statusActive")
+                    : t("skillsview.statusInactive")
             }
             tone={
               skill.scanStatus === "blocked" ||
@@ -121,7 +121,7 @@ function SkillCard({
           {skill.name}
         </div>
         <div className="text-[11px] text-[var(--muted)] line-clamp-2 min-h-[2em]">
-          {skill.description || "No description provided"}
+          {skill.description || t("skillsview.noDescription")}
         </div>
       </div>
 
@@ -139,8 +139,8 @@ function SkillCard({
           triggerClassName="h-7 px-3 text-[11px] font-bold text-danger hover:bg-danger/10 hover:text-danger-foreground transition-colors rounded-md"
           confirmClassName="px-3 py-1 text-[11px] font-bold bg-danger text-danger-foreground hover:bg-danger/90 transition-colors rounded-md shadow-sm"
           cancelClassName="px-3 py-1 text-[11px] font-bold text-muted border border-border/40 hover:text-txt transition-colors rounded-md"
-          confirmLabel="Yes"
-          cancelLabel="No"
+          confirmLabel={t("conversations.deleteYes")}
+          cancelLabel={t("conversations.deleteNo")}
           onConfirm={() => onDelete(skill.id, skill.name)}
         />
         <span className="flex-1" />

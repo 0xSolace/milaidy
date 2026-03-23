@@ -423,22 +423,6 @@ describe("PluginsView UI", () => {
     expect(tree).not.toBeNull();
   });
 
-  it("renders search/filter input", async () => {
-    let tree: TestRenderer.ReactTestRenderer | null = null;
-
-    await act(async () => {
-      tree = TestRenderer.create(React.createElement(PluginsView));
-    });
-
-    const inputs = tree?.root.findAll(
-      (node) =>
-        node.type === "input" &&
-        (node.props.placeholder?.toLowerCase().includes("search") ||
-          node.props.placeholder?.toLowerCase().includes("filter")),
-    );
-    expect(inputs.length).toBeGreaterThanOrEqual(0);
-  });
-
   it("shows saving state when pluginSaving is true", async () => {
     state.pluginSaving = true;
 
@@ -540,14 +524,6 @@ describe("Plugin Filter Integration", () => {
 
     expect(results.length).toBe(1);
     expect(results[0].name).toContain("openai");
-  });
-
-  it("filtering by tag returns matching plugins", () => {
-    const filterFn = mockUseApp().filterPlugins;
-    const results = filterFn("llm");
-
-    // LLM doesn't match name but would match tags
-    expect(results.length).toBeGreaterThanOrEqual(0);
   });
 
   it("filtering with no match returns empty", () => {

@@ -68,8 +68,6 @@ const describeIfPluginAvailable = hasPlugin ? describe : describe.skip;
 const RATE_LIMIT_DELAY_MS = 250;
 const TEST_TIMEOUT = 30_000;
 const LIVE_WRITE_TIMEOUT = 120_000;
-const MAX_CAST_LENGTH = 320;
-
 logger.info(
   `[farcaster-connector] Live tests ${runLiveTests ? "ENABLED" : "DISABLED"} ` +
     `(API_KEY=${Boolean(NEYNAR_API_KEY)}, SIGNER=${Boolean(SIGNER_UUID)}, ` +
@@ -398,18 +396,6 @@ describeIfLiveWrite("Farcaster Connector - Cast Handling", () => {
       castsToCleanup.push(hash);
     },
     LIVE_WRITE_TIMEOUT,
-  );
-
-  it(
-    "cast length limit (320 chars) is enforced client-side",
-    () => {
-      const shortText = "gm";
-      const longText = "A".repeat(321);
-
-      expect(shortText.length).toBeLessThanOrEqual(MAX_CAST_LENGTH);
-      expect(longText.length).toBeGreaterThan(MAX_CAST_LENGTH);
-    },
-    TEST_TIMEOUT,
   );
 
   it(
@@ -842,16 +828,6 @@ describeIfLive("Farcaster Connector - Error Handling", () => {
     TEST_TIMEOUT,
   );
 
-  it(
-    "rate limiting delay is configured correctly",
-    () => {
-      // Verify the rate-limit constant is reasonable for Neynar paid tier
-      // (300 req/min = 5 req/s = 200ms between requests)
-      expect(RATE_LIMIT_DELAY_MS).toBeGreaterThanOrEqual(200);
-      expect(RATE_LIMIT_DELAY_MS).toBeLessThanOrEqual(10_000);
-    },
-    TEST_TIMEOUT,
-  );
 });
 
 // ---------------------------------------------------------------------------

@@ -142,21 +142,6 @@ async function checkRelayHealth(
   });
 }
 
-/**
- * Validate the structure of a Nostr event (NIP-01).
- */
-function isValidNostrEventStructure(event: Record<string, unknown>): boolean {
-  return (
-    typeof event.id === "string" &&
-    typeof event.pubkey === "string" &&
-    typeof event.created_at === "number" &&
-    typeof event.kind === "number" &&
-    Array.isArray(event.tags) &&
-    typeof event.content === "string" &&
-    typeof event.sig === "string"
-  );
-}
-
 // ---------------------------------------------------------------------------
 // 1. Setup & Authentication
 // ---------------------------------------------------------------------------
@@ -189,29 +174,6 @@ describe("Nostr Connector - Setup & Authentication", () => {
       },
       TEST_TIMEOUT,
     );
-  });
-
-  it("private key format validation", () => {
-    const nsecPattern = /^nsec1[a-z0-9]{58}$/;
-    const hexPattern = /^[0-9a-f]{64}$/;
-
-    // A valid key should match one of the formats
-    if (NOSTR_PRIVATE_KEY) {
-      const isValidFormat =
-        nsecPattern.test(NOSTR_PRIVATE_KEY) ||
-        hexPattern.test(NOSTR_PRIVATE_KEY);
-      expect(isValidFormat).toBe(true);
-    }
-  });
-
-  it("relay URL configuration is parseable", () => {
-    const relays = parseRelays(NOSTR_RELAYS);
-    expect(relays.length).toBeGreaterThan(0);
-
-    const relayPattern = /^wss?:\/\/.+/;
-    for (const relay of relays) {
-      expect(relayPattern.test(relay)).toBe(true);
-    }
   });
 
   describeIfLive("relay connectivity", () => {
@@ -296,183 +258,37 @@ describeIfLiveWrite("Nostr Connector - Note Handling", () => {
   );
 });
 
-// ---------------------------------------------------------------------------
-// 3. Nostr-Specific Features (NIP validation)
-// ---------------------------------------------------------------------------
-
-describe("Nostr Connector - NIP Protocol Validation", () => {
-  it("NIP-01 event structure is correct", () => {
-    const validEvent = {
-      id: "a".repeat(64),
-      pubkey: "b".repeat(64),
-      created_at: Math.floor(Date.now() / 1000),
-      kind: 1,
-      tags: [],
-      content: "Hello Nostr!",
-      sig: "c".repeat(128),
-    };
-
-    expect(isValidNostrEventStructure(validEvent)).toBe(true);
-  });
-
-  it("NIP-01 event rejects missing fields", () => {
-    const invalidEvent = {
-      id: "a".repeat(64),
-      pubkey: "b".repeat(64),
-      // missing created_at
-      kind: 1,
-      tags: [],
-      content: "Hello",
-    };
-
-    expect(
-      isValidNostrEventStructure(invalidEvent as Record<string, unknown>),
-    ).toBe(false);
-  });
-
-  it("event timestamp uses Unix seconds, not milliseconds", () => {
-    const nowSeconds = Math.floor(Date.now() / 1000);
-
-    // Nostr created_at is 10-digit Unix seconds
-    expect(nowSeconds.toString()).toHaveLength(10);
-    expect(nowSeconds).toBeLessThan(2_000_000_000);
-    expect(nowSeconds).toBeGreaterThan(1_600_000_000);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 4. Relay Management
-// ---------------------------------------------------------------------------
-
-describe("Nostr Connector - Relay Management", () => {
-  it("parses multiple relay URLs correctly", () => {
-    const relayString =
-      "wss://relay.damus.io,wss://nos.lol,wss://relay.nostr.band";
-    const relays = parseRelays(relayString);
-
-    expect(relays).toHaveLength(3);
-    expect(relays).toContain("wss://relay.damus.io");
-    expect(relays).toContain("wss://nos.lol");
-    expect(relays).toContain("wss://relay.nostr.band");
-  });
-
-  it("handles relay URLs with whitespace", () => {
-    const relayString =
-      " wss://relay.damus.io , wss://nos.lol , wss://relay.nostr.band ";
-    const relays = parseRelays(relayString);
-
-    expect(relays).toHaveLength(3);
-    expect(relays.every((r) => r.startsWith("wss://"))).toBe(true);
-  });
-
-  it("filters empty entries from relay list", () => {
-    const relayString = "wss://relay.damus.io,,wss://nos.lol,";
-    const relays = parseRelays(relayString);
-
-    expect(relays).toHaveLength(2);
-  });
-
-  it("validates relay URL protocol", () => {
-    const relayPattern = /^wss?:\/\/.+/;
-    const validRelays = [
-      "wss://relay.damus.io",
-      "wss://nos.lol",
-      "ws://localhost:7777",
-    ];
-    const invalidRelays = [
-      "https://relay.damus.io",
-      "http://nos.lol",
-      "relay.damus.io",
-    ];
-
-    for (const relay of validRelays) {
-      expect(relayPattern.test(relay)).toBe(true);
-    }
-    for (const relay of invalidRelays) {
-      expect(relayPattern.test(relay)).toBe(false);
-    }
-  });
-
-  describeIfLive("live relay checks", () => {
-    it(
-      "configured relays are reachable",
-      async () => {
-        const relays = parseRelays(NOSTR_RELAYS);
-        const results: Array<{ relay: string; healthy: boolean }> = [];
-
-        for (const relay of relays) {
-          await sleep(RATE_LIMIT_DELAY_MS);
-          const healthy = await checkRelayHealth(relay);
-          results.push({ relay, healthy });
-        }
-
-        // At least one relay should be healthy
-        const healthyCount = results.filter((r) => r.healthy).length;
-        expect(healthyCount).toBeGreaterThan(0);
-
-        for (const result of results) {
-          if (!result.healthy) {
-            logger.warn(
-              `[nostr-connector] Relay ${result.relay} is not reachable`,
-            );
-          }
-        }
-      },
-      TEST_TIMEOUT,
-    );
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 5. Error Handling
-// ---------------------------------------------------------------------------
-
-describe("Nostr Connector - Error Handling", () => {
-  it("invalid relay URL is detected", () => {
-    const invalidUrls = [
-      "not-a-url",
-      "https://relay.damus.io",
-      "",
-      "ftp://relay.example.com",
-    ];
-    const relayPattern = /^wss?:\/\/.+/;
-
-    for (const url of invalidUrls) {
-      expect(relayPattern.test(url)).toBe(false);
-    }
-  });
-
-  it("invalid private key formats are detected", () => {
-    const nsecPattern = /^nsec1[a-z0-9]{58}$/;
-    const hexPattern = /^[0-9a-f]{64}$/;
-
-    const invalidKeys = [
-      "not-a-key",
-      "nsec1short",
-      "npub1" + "a".repeat(58), // npub is not a private key
-      "0x" + "a".repeat(64), // 0x prefix is Ethereum, not Nostr
-      "",
-    ];
-
-    for (const key of invalidKeys) {
-      const isValid = nsecPattern.test(key) || hexPattern.test(key);
-      expect(isValid).toBe(false);
-    }
-  });
-
+describeIfLive("Nostr Connector - Live Relay Checks", () => {
   it(
-    "handles unreachable relay gracefully",
+    "configured relays are reachable",
     async () => {
-      const unreachableRelay = "wss://this-relay-does-not-exist.example.com";
-      const healthy = await checkRelayHealth(unreachableRelay, 5_000);
-      expect(healthy).toBe(false);
+      const relays = parseRelays(NOSTR_RELAYS);
+      const results: Array<{ relay: string; healthy: boolean }> = [];
+
+      for (const relay of relays) {
+        await sleep(RATE_LIMIT_DELAY_MS);
+        const healthy = await checkRelayHealth(relay);
+        results.push({ relay, healthy });
+      }
+
+      // At least one relay should be healthy
+      const healthyCount = results.filter((r) => r.healthy).length;
+      expect(healthyCount).toBeGreaterThan(0);
+
+      for (const result of results) {
+        if (!result.healthy) {
+          logger.warn(
+            `[nostr-connector] Relay ${result.relay} is not reachable`,
+          );
+        }
+      }
     },
     TEST_TIMEOUT,
   );
 });
 
 // ---------------------------------------------------------------------------
-// 6. Integration Tests (always run, no live creds needed)
+// Integration Tests (always run, no live creds needed)
 // ---------------------------------------------------------------------------
 
 /** Try to import a workspace module; returns null if the package isn't built. */

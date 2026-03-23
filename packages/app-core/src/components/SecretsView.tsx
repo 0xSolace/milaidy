@@ -65,8 +65,8 @@ function loadPinnedKeys(): Set<string> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return new Set(JSON.parse(raw) as string[]);
-  } catch {
-    /* ignore */
+  } catch (err) {
+    console.warn("[SecretsView] Failed to load pinned keys from localStorage:", err);
   }
   return new Set();
 }
@@ -74,8 +74,8 @@ function loadPinnedKeys(): Set<string> {
 function savePinnedKeys(keys: Set<string>) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify([...keys]));
-  } catch {
-    /* ignore */
+  } catch (err) {
+    console.warn("[SecretsView] Failed to save pinned keys to localStorage:", err);
   }
 }
 

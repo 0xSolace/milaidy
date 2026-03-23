@@ -53,12 +53,6 @@ const INTERNAL_CHANNEL_PLUGIN_OVERRIDES = {
   whatsapp: "@elizaos/plugin-whatsapp",
   wechat: "@miladyai/plugin-wechat",
 } as const;
-const LEGACY_INTERNAL_CHANNEL_PLUGIN_NAMES = new Map<string, string>(
-  Object.entries({
-    "@miladyai/plugin-signal": INTERNAL_CHANNEL_PLUGIN_OVERRIDES.signal,
-    "@miladyai/plugin-whatsapp": INTERNAL_CHANNEL_PLUGIN_OVERRIDES.whatsapp,
-  }),
-);
 
 /** Swarm / PTY paths call TEXT_TO_SPEECH; Edge TTS supplies that model with no API key. */
 const AGENT_ORCHESTRATOR_PLUGIN = "@elizaos/plugin-agent-orchestrator";
@@ -162,15 +156,6 @@ export function collectPluginNames(
   syncBrandEnvAliases();
   const [config] = args;
   const result = upstreamCollectPluginNames(...args);
-  for (const [
-    legacyName,
-    normalizedName,
-  ] of LEGACY_INTERNAL_CHANNEL_PLUGIN_NAMES) {
-    if (result.has(legacyName)) {
-      result.delete(legacyName);
-      result.add(normalizedName);
-    }
-  }
   if (
     result.has(AGENT_ORCHESTRATOR_PLUGIN) &&
     !isMiladyEdgeTtsDisabled(config) &&
@@ -280,6 +265,32 @@ export function buildCharacterFromConfig(
     );
   }
   if (bundledPreset) {
+    // The upstream buildCharacterFromConfig may use its own preset data
+    // which can differ from the Milady presets. Backfill all Milady preset
+    // fields so character data is complete even when the Bun body replay
+    // drops fields during onboarding.
+    if (!agentEntry?.style && !character.style && bundledPreset.style) {
+      character.style = {
+        all: [...bundledPreset.style.all],
+        chat: [...bundledPreset.style.chat],
+        post: [...bundledPreset.style.post],
+      } as any;
+    }
+    if (
+      !agentEntry?.adjectives &&
+      (!character.adjectives || character.adjectives.length === 0) &&
+      bundledPreset.adjectives.length > 0
+    ) {
+      character.adjectives = [...bundledPreset.adjectives];
+    }
+    if (
+      !agentEntry?.topics &&
+      (!Array.isArray(character.topics) || character.topics.length === 0) &&
+      Array.isArray(bundledPreset.topics) &&
+      bundledPreset.topics.length > 0
+    ) {
+      character.topics = [...bundledPreset.topics];
+    }
     if (
       !agentEntry?.postExamples &&
       (character.postExamples?.length ?? 0) === 0

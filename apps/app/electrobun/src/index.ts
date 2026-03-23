@@ -49,7 +49,7 @@ import { getPermissionManager } from "./native/permissions";
 import { checkWebGpuSupport } from "./native/webgpu-browser-support";
 import { readBuiltPreloadScript } from "./preload-validation";
 import { registerRpcHandlers } from "./rpc-handlers";
-import { PUSH_CHANNEL_TO_RPC_MESSAGE } from "./rpc-schema";
+
 import {
   isDetachedSurface,
   type ManagedWindowLike,
@@ -1048,11 +1048,8 @@ function wireRpcAndModules(
   // Create the sendToWebview callback that native modules use to push events.
   // Uses typed RPC push messages instead of JS evaluation.
   const sendToWebview = (message: string, payload?: unknown): void => {
-    // Resolve via map (legacy colon-separated format) or use message directly
-    // as the RPC method name (Electrobun camelCase format).
-    const rpcMessage = PUSH_CHANNEL_TO_RPC_MESSAGE[message] ?? message;
     if (rpc?.send) {
-      const sender = rpc?.send?.[rpcMessage];
+      const sender = rpc?.send?.[message];
       if (sender) {
         sender(payload ?? null);
         return;
@@ -1079,9 +1076,8 @@ function wireSettingsRpc(win: BrowserWindow): void {
   const rpc = win.webview.rpc as unknown as ElectrobunRpcInstance | undefined;
 
   const sendToWebview = (message: string, payload?: unknown): void => {
-    const rpcMessage = PUSH_CHANNEL_TO_RPC_MESSAGE[message] ?? message;
     if (rpc?.send) {
-      const sender = rpc?.send?.[rpcMessage];
+      const sender = rpc?.send?.[message];
       if (sender) {
         sender(payload ?? null);
         return;

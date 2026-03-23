@@ -37,25 +37,20 @@ function findNode(
 
 /**
  * Retarget a Mixamo-style GLB animation clip onto a VRM.
- * Intended for idle clips; quaternion tracks are converted into VRM space and
- * position tracks are scaled by hips height ratio.
+ * Position tracks are ignored to avoid root motion.
  */
 export function retargetMixamoGltfToVrm(
   animation: { scene: THREE.Group; animations: THREE.AnimationClip[] },
   vrm: VRM,
+  clipName?: string,
 ): THREE.AnimationClip {
   animation.scene.updateMatrixWorld(true);
   vrm.scene.updateMatrixWorld(true);
 
   const sourceClip = animation.animations[0];
   if (!sourceClip) {
-    throw new Error("idle.glb contains no animation clips");
+    throw new Error("GLB contains no animation clips");
   }
-
-  const tracks: THREE.KeyframeTrack[] = [];
-  const restRotationInverse = new THREE.Quaternion();
-  const parentRestWorldRotation = new THREE.Quaternion();
-  const q = new THREE.Quaternion();
 
   const motionHipsNode = findNode(
     animation.scene,
@@ -71,11 +66,17 @@ export function retargetMixamoGltfToVrm(
       ? vrmHipsHeight / motionHipsHeight
       : 1;
 
+  const tracks: Array<THREE.KeyframeTrack> = [];
+  const restRotationInverse = new THREE.Quaternion();
+  const parentRestWorldRotation = new THREE.Quaternion();
+  const q = new THREE.Quaternion();
+
   for (const track of sourceClip.tracks) {
     const parts = track.name.split(".");
     const rawRigName = parts[0];
     const propertyName = parts[1];
     if (!rawRigName || !propertyName) continue;
+
     const normalizedRigName = normalizeMixamoRigName(rawRigName);
     const vrmBoneName = mixamoVRMRigMap[normalizedRigName];
     if (!vrmBoneName) continue;
@@ -92,13 +93,13 @@ export function retargetMixamoGltfToVrm(
     );
     if (!mixamoRigNode || !mixamoRigNode.parent) continue;
 
-    mixamoRigNode.getWorldQuaternion(restRotationInverse).invert();
-    mixamoRigNode.parent.getWorldQuaternion(parentRestWorldRotation);
-
     if (
       propertyName === "quaternion" &&
       track instanceof THREE.QuaternionKeyframeTrack
     ) {
+      mixamoRigNode.getWorldQuaternion(restRotationInverse).invert();
+      mixamoRigNode.parent.getWorldQuaternion(parentRestWorldRotation);
+
       const values = track.values.slice();
       for (let i = 0; i < values.length; i += 4) {
         q.fromArray(values, i);
@@ -116,14 +117,19 @@ export function retargetMixamoGltfToVrm(
       continue;
     }
 
-    // Keep position-track behavior aligned with Girlfie runtime.
     if (
       propertyName === "position" &&
       track instanceof THREE.VectorKeyframeTrack
     ) {
-      const values = track.values.map(
-        (v, i) => (isVrm0(vrm) && i % 3 !== 1 ? -v : v) * hipsPositionScale,
-      );
+      const isHips =
+        vrmNode ===
+        vrm.humanoid?.getNormalizedBoneNode("hips" as VRMHumanBoneName);
+
+      if (!isHips) continue;
+
+      const values = track.values.map((v, i) => {
+        return (isVrm0(vrm) && i % 3 !== 1 ? -v : v) * hipsPositionScale;
+      });
       tracks.push(
         new THREE.VectorKeyframeTrack(
           `${vrmNode.name}.position`,
@@ -134,14 +140,20 @@ export function retargetMixamoGltfToVrm(
     }
   }
 
-  if (tracks.length < 10) {
+  const hasHipsTrack = tracks.some((track) =>
+    track.name.startsWith(
+      `${vrm.humanoid?.getNormalizedBoneNode("hips" as VRMHumanBoneName)?.name ?? "__missing__"}.`,
+    ),
+  );
+  if (!hasHipsTrack) {
     throw new Error(
-      `Idle retargeting mapped too few tracks (${tracks.length}). ` +
+      `Retargeting failed: no hips bone track found (mapped ${tracks.length} tracks). ` +
         "Expected Mixamo bone names like mixamorigHips/mixamorigSpine...",
     );
   }
 
-  const clip = new THREE.AnimationClip("idle", sourceClip.duration, tracks);
+  const name = clipName ?? sourceClip.name ?? "retargeted";
+  const clip = new THREE.AnimationClip(name, sourceClip.duration, tracks);
   clip.optimize();
   return clip;
 }

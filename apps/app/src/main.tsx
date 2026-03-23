@@ -26,6 +26,11 @@ import {
 import { CharacterEditor } from "@miladyai/app-core/components";
 import type { BrandingConfig } from "@miladyai/app-core/config";
 import {
+  getBootConfig,
+  setBootConfig,
+  type AppBootConfig,
+} from "@miladyai/app-core/config";
+import {
   AGENT_READY_EVENT,
   APP_PAUSE_EVENT,
   APP_RESUME_EVENT,
@@ -59,6 +64,8 @@ import { Agent } from "@miladyai/capacitor-agent";
 import { Desktop } from "@miladyai/capacitor-desktop";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { MILADY_ENV_ALIASES } from "./brand-env";
+import { MILADY_CHARACTER_CATALOG } from "./character-catalog";
 
 const MILADY_BRANDING: Partial<BrandingConfig> = {
   appName: "Milady",
@@ -143,20 +150,12 @@ installDesktopPermissionsClientPatch(client as never);
 // Register custom character editor for app-core's ViewRouter to pick up
 window.__MILADY_CHARACTER_EDITOR__ = CharacterEditor;
 
-// Point Eliza Cloud API to the correct base URL.
-(window as unknown as Record<string, unknown>).__ELIZA_CLOUD_API_BASE__ =
-  import.meta.env.VITE_CLOUD_BASE ?? "https://www.elizacloud.ai";
-
-// Inject onboarding style presets so the frontend-only onboarding flow
-// can populate character data without an API call.
 import { STYLE_PRESETS } from "@miladyai/app-core/onboarding-presets";
 
-(window as unknown as Record<string, unknown>).__APP_ONBOARDING_STYLES__ =
-  STYLE_PRESETS;
-
-// Override the VRM asset roster with Milady characters so avatar URLs
-// resolve to milady-*.vrm.gz instead of the upstream eliza-*.vrm.gz.
-(window as unknown as Record<string, unknown>).__APP_VRM_ASSETS__ = [
+// ── Boot config ─────────────────────────────────────────────────────────
+// Single typed config object replaces all window.__ globals.
+// app-core reads from this instead of reaching for window globals.
+const MILADY_VRM_ASSETS = [
   { title: "Chen", slug: "milady-1" },
   { title: "Jin", slug: "milady-2" },
   { title: "Kei", slug: "milady-3" },
@@ -166,6 +165,23 @@ import { STYLE_PRESETS } from "@miladyai/app-core/onboarding-presets";
   { title: "Satoshi", slug: "milady-7" },
   { title: "Yuki", slug: "milady-8" },
 ];
+
+const miladyBootConfig: AppBootConfig = {
+  branding: MILADY_BRANDING,
+  cloudApiBase: (import.meta.env.VITE_CLOUD_BASE as string) ?? "https://www.elizacloud.ai",
+  vrmAssets: MILADY_VRM_ASSETS,
+  onboardingStyles: STYLE_PRESETS,
+  characterEditor: CharacterEditor,
+  characterCatalog: MILADY_CHARACTER_CATALOG,
+  envAliases: MILADY_ENV_ALIASES,
+  clientMiddleware: {
+    forceFreshOnboarding: shouldInstallMainWindowOnboardingPatches(windowShellRoute),
+    preferLocalProvider: true,
+    desktopPermissions: isDesktopPlatform(),
+  },
+};
+
+setBootConfig(miladyBootConfig);
 
 function dispatchShareTarget(payload: ShareTargetPayload): void {
   if (!window.__MILADY_SHARE_QUEUE__) {
@@ -523,14 +539,14 @@ function injectPopoutApiBase(): void {
         parsed.protocol === "https:" ||
         (parsed.protocol === "http:" && allowPrivateHttp)
       ) {
-        window.__MILADY_API_BASE__ = apiBase;
+        setBootConfig({ ...getBootConfig(), apiBase });
       } else {
         console.warn("[Milady] Rejected non-local apiBase:", host);
       }
     } catch {
       // Relative URL — only allow paths starting with "/" but not "//" (protocol-relative)
       if (apiBase.startsWith("/") && !apiBase.startsWith("//")) {
-        window.__MILADY_API_BASE__ = apiBase;
+        setBootConfig({ ...getBootConfig(), apiBase });
       } else {
         console.warn("[Milady] Rejected invalid relative apiBase:", apiBase);
       }
@@ -564,14 +580,14 @@ function injectDetachedShellApiBase(): void {
         parsed.protocol === "https:" ||
         (parsed.protocol === "http:" && allowPrivateHttp)
       ) {
-        window.__MILADY_API_BASE__ = apiBase;
+        setBootConfig({ ...getBootConfig(), apiBase });
       } else {
         console.warn("[Milady] Rejected non-local apiBase:", host);
       }
     } catch {
       // Relative URL — only allow paths starting with "/" but not "//" (protocol-relative)
       if (apiBase.startsWith("/") && !apiBase.startsWith("//")) {
-        window.__MILADY_API_BASE__ = apiBase;
+        setBootConfig({ ...getBootConfig(), apiBase });
       } else {
         console.warn("[Milady] Rejected invalid relative apiBase:", apiBase);
       }

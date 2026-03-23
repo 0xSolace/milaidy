@@ -1,4 +1,5 @@
 import { ONBOARDING_PROVIDER_CATALOG } from "@elizaos/agent/contracts/onboarding";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@miladyai/ui";
 import type { ChangeEvent } from "react";
 import { useState } from "react";
 import type {
@@ -235,7 +236,7 @@ export function ConnectionProviderDetailScreen({
 
   return (
     <>
-      <div className="onboarding-section-title">
+      <div className="text-xs tracking-[0.3em] uppercase text-[rgba(240,238,250,0.62)] font-semibold text-center mb-0" style={{ textShadow: '0 2px 10px rgba(3,5,10,0.55)' }}>
         <span
           style={{
             display: "flex",
@@ -260,7 +261,7 @@ export function ConnectionProviderDetailScreen({
         </span>
       </div>
       <div className="onboarding-divider">
-        <div className="onboarding-divider-diamond" />
+        <div className="w-1.5 h-1.5 bg-[rgba(240,185,11,0.4)] rotate-45 shrink-0" />
       </div>
 
       {onboardingProvider === "elizacloud" && (
@@ -863,10 +864,9 @@ export function ConnectionProviderDetailScreen({
           </span>
           {piAiModels.length > 0 ? (
             <>
-              <select
+              <Select
                 value={piAiSelectValue}
-                onChange={(e) => {
-                  const next = e.target.value;
+                onValueChange={(next) => {
                   if (next === "__custom__") {
                     if (piAiSelectValue !== "__custom__") {
                       setState("onboardingPrimaryModel", "");
@@ -875,21 +875,25 @@ export function ConnectionProviderDetailScreen({
                   }
                   setState("onboardingPrimaryModel", next);
                 }}
-                className="onboarding-input"
               >
-                <option value="">
-                  {t("onboarding.useDefaultModel")}
-                  {piAiDefaultModel ? ` (${piAiDefaultModel})` : ""}
-                </option>
-                {piAiModels.map((model: PiAiModelOption) => (
-                  <option key={model.id} value={model.id}>
-                    {model.name} ({model.provider})
-                  </option>
-                ))}
-                <option value="__custom__">
-                  {t("onboarding.customModel")}
-                </option>
-              </select>
+                <SelectTrigger className="onboarding-input">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">
+                    {t("onboarding.useDefaultModel")}
+                    {piAiDefaultModel ? ` (${piAiDefaultModel})` : ""}
+                  </SelectItem>
+                  {piAiModels.map((model: PiAiModelOption) => (
+                    <SelectItem key={model.id} value={model.id}>
+                      {model.name} ({model.provider})
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="__custom__">
+                    {t("onboarding.customModel")}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
               {piAiSelectValue === "__custom__" && (
                 <input
                   type="text"
@@ -971,7 +975,7 @@ export function ConnectionProviderDetailScreen({
           </div>
         )}
 
-      <div className="onboarding-panel-footer">
+      <div className="flex justify-between items-center gap-6 mt-[18px] pt-3.5 border-t border-white/[0.08]">
         <button
           className="onboarding-back-link"
           onClick={clearProvider}

@@ -71,12 +71,15 @@ export type ElizaEventName = ElizaDocumentEventName | ElizaWindowEventName;
 // ── Helpers ──────────────────────────────────────────────────────────────
 
 /** Dispatch a typed custom event on `document`. */
-export function dispatchElizaEvent(
+export function dispatchMiladyEvent(
   name: ElizaDocumentEventName,
   detail?: unknown,
 ): void {
   document.dispatchEvent(new CustomEvent(name, { detail }));
 }
+
+/** @deprecated Use dispatchMiladyEvent directly. */
+export const dispatchElizaEvent = dispatchMiladyEvent;
 
 /** Dispatch a typed custom event on `window`. */
 export function dispatchWindowEvent(
@@ -92,10 +95,18 @@ export function dispatchAppEmoteEvent(detail: AppEmoteEventDetail): void {
   dispatchWindowEvent(APP_EMOTE_EVENT, detail);
 }
 
-// ── Milady compatibility aliases ─────────────────────────────────────────
-export type MiladyDocumentEventName = ElizaDocumentEventName;
-export type MiladyWindowEventName = ElizaWindowEventName;
-export type MiladyEventName = ElizaEventName;
+// ── Generic app aliases (preferred) ──────────────────────────────────────
+export type AppDocumentEventName = ElizaDocumentEventName;
+export type AppWindowEventName = ElizaWindowEventName;
+export type AppEventName = ElizaEventName;
 
-/** Dispatch a typed custom event on `document` (milady compat alias). */
-export const dispatchMiladyEvent = dispatchElizaEvent;
+/** Dispatch a typed custom event on `document`. */
+export const dispatchAppEvent = dispatchElizaEvent;
+
+// ── Deprecated Milady compatibility aliases ─────────────────────────────
+/** @deprecated Use AppDocumentEventName instead. */
+export type MiladyDocumentEventName = ElizaDocumentEventName;
+/** @deprecated Use AppWindowEventName instead. */
+export type MiladyWindowEventName = ElizaWindowEventName;
+/** @deprecated Use AppEventName instead. */
+export type MiladyEventName = ElizaEventName;

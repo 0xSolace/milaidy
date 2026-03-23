@@ -33,13 +33,13 @@ const DEFAULT_ELEVEN_FAST_MODEL = "eleven_flash_v2_5";
 
 const MODEL_SIZES: Array<{
   id: NonNullable<SwabbleConfig["modelSize"]>;
-  hint: string;
+  hintKey: string;
 }> = [
-  { id: "tiny", hint: "(faster)" },
-  { id: "base", hint: "(recommended)" },
-  { id: "small", hint: "" },
-  { id: "medium", hint: "(accurate)" },
-  { id: "large", hint: "(accurate)" },
+  { id: "tiny", hintKey: "voiceconfigview.hintFaster" },
+  { id: "base", hintKey: "voiceconfigview.hintRecommended" },
+  { id: "small", hintKey: "" },
+  { id: "medium", hintKey: "voiceconfigview.hintAccurate" },
+  { id: "large", hintKey: "voiceconfigview.hintAccurate" },
 ];
 
 export const DESKTOP_TALKMODE_CLICK_AUDIT: readonly DesktopClickAuditItem[] = [
@@ -84,7 +84,8 @@ export function DesktopTalkModePanel() {
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [phrase, setPhrase] = useState("Hello from Milady desktop talk mode.");
+  const { t } = useApp();
+  const [phrase, setPhrase] = useState(t("voiceconfigview.testPhrase"));
   const [panelState, setPanelState] = useState<{
     state: string;
     enabled: boolean;
@@ -572,8 +573,8 @@ function WakeWordSection({
                 onClick={() => void handleModelSizeChange(m.id)}
               >
                 <div className="font-semibold">{m.id}</div>
-                {m.hint && (
-                  <div className="text-[10px] opacity-70 mt-0.5">{m.hint}</div>
+                {m.hintKey && (
+                  <div className="text-[10px] opacity-70 mt-0.5">{t(m.hintKey)}</div>
                 )}
               </Button>
             );

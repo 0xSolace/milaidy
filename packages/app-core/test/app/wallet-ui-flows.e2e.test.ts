@@ -371,22 +371,6 @@ describe("InventoryView UI", () => {
     expect(tree).not.toBeNull();
   });
 
-  it("renders copy button for address", async () => {
-    let tree: TestRenderer.ReactTestRenderer | null = null;
-
-    await act(async () => {
-      tree = TestRenderer.create(React.createElement(InventoryView));
-    });
-
-    const copyButtons = tree?.root.findAll(
-      (node) =>
-        node.type === "button" &&
-        node.children.some(
-          (c) => typeof c === "string" && c.toLowerCase().includes("copy"),
-        ),
-    );
-    expect(copyButtons.length).toBeGreaterThanOrEqual(0);
-  });
 });
 
 // ---------------------------------------------------------------------------

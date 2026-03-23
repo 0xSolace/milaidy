@@ -564,22 +564,6 @@ describe("KnowledgeView UI", () => {
     expect(tree).not.toBeNull();
   });
 
-  it("renders search input", async () => {
-    let tree: TestRenderer.ReactTestRenderer | null = null;
-
-    await act(async () => {
-      tree = TestRenderer.create(React.createElement(KnowledgeView));
-    });
-
-    const searchInputs = tree?.root.findAll(
-      (node) =>
-        node.type === "input" &&
-        (node.props.placeholder?.toLowerCase().includes("search") ||
-          node.props.type === "search"),
-    );
-    expect(searchInputs.length).toBeGreaterThanOrEqual(0);
-  });
-
   it("keeps yellow knowledge action buttons on a dark foreground", async () => {
     let tree: TestRenderer.ReactTestRenderer | null = null;
 

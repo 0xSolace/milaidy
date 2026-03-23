@@ -14,16 +14,16 @@ export function ConnectionHostingScreen({
 
   return (
     <>
-      <div className="onboarding-section-title">
+      <div className="text-xs tracking-[0.3em] uppercase text-[rgba(240,238,250,0.62)] font-semibold text-center mb-0" style={{ textShadow: '0 2px 10px rgba(3,5,10,0.55)' }}>
         {t("onboarding.hostingTitle")}
       </div>
       <div className="onboarding-divider">
-        <div className="onboarding-divider-diamond" />
+        <div className="w-1.5 h-1.5 bg-[rgba(240,185,11,0.4)] rotate-45 shrink-0" />
       </div>
-      <div className="onboarding-question">
+      <div className="text-xl font-light leading-[1.4] text-[rgba(240,238,250,0.95)] text-center mb-[18px]" style={{ textShadow: '0 2px 10px rgba(3,5,10,0.55)' }}>
         {t("onboarding.hostingQuestion", appNameInterpolationVars(branding))}
       </div>
-      <div className="onboarding-provider-grid">
+      <div className="flex flex-col gap-1.5 mb-4">
         {showHostingLocalCard && (
           <button
             type="button"
@@ -31,7 +31,7 @@ export function ConnectionHostingScreen({
             onClick={() => dispatch({ type: "selectLocalHosting" })}
           >
             <div style={{ flex: 1 }}>
-              <div className="onboarding-provider-name">
+              <div className="text-xs text-[rgba(240,238,250,0.88)] leading-[1.3]" style={{ textShadow: '0 1px 8px rgba(3,5,10,0.6)' }}>
                 {t("onboarding.hostingLocal")}
               </div>
               <div className="onboarding-provider-desc">
@@ -49,7 +49,7 @@ export function ConnectionHostingScreen({
           onClick={() => dispatch({ type: "selectRemoteHosting" })}
         >
           <div style={{ flex: 1 }}>
-            <div className="onboarding-provider-name">
+            <div className="text-xs text-[rgba(240,238,250,0.88)] leading-[1.3]" style={{ textShadow: '0 1px 8px rgba(3,5,10,0.6)' }}>
               {t("onboarding.hostingRemote")}
             </div>
             <div className="onboarding-provider-desc">
@@ -63,14 +63,14 @@ export function ConnectionHostingScreen({
           onClick={() => dispatch({ type: "selectElizaCloudHosting" })}
         >
           <div style={{ flex: 1 }}>
-            <div className="onboarding-provider-name">{t("header.Cloud")}</div>
+            <div className="text-xs text-[rgba(240,238,250,0.88)] leading-[1.3]" style={{ textShadow: '0 1px 8px rgba(3,5,10,0.6)' }}>{t("header.Cloud")}</div>
             <div className="onboarding-provider-desc">
               {t("onboarding.hostingElizaCloudDesc")}
             </div>
           </div>
         </button>
       </div>
-      <div className="onboarding-panel-footer">
+      <div className="flex justify-between items-center gap-6 mt-[18px] pt-3.5 border-t border-white/[0.08]">
         <button
           className="onboarding-back-link"
           onClick={handleOnboardingBack}

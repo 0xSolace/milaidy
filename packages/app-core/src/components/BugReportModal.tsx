@@ -1,4 +1,4 @@
-import { Input } from "@miladyai/ui";
+import { Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@miladyai/ui";
 import { ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { client } from "../api";
@@ -76,7 +76,9 @@ export function BugReportModal() {
                     : "Other",
           }));
       })
-      .catch(() => {});
+      .catch((err: unknown) => {
+        console.warn("[BugReportModal] Failed to fetch bug report info:", err);
+      });
     setTimeout(() => descRef.current?.focus(), 50);
 
     return () => {
@@ -115,7 +117,7 @@ export function BugReportModal() {
 
   const handleSubmit = useCallback(async () => {
     if (!form.description.trim() || !form.stepsToReproduce.trim()) {
-      setErrorMsg("Description and Steps to Reproduce are required.");
+      setErrorMsg(t("bugreportmodal.descriptionRequired"));
       return;
     }
     setSubmitting(true);
@@ -139,7 +141,8 @@ export function BugReportModal() {
         try {
           await copyToClipboard(formatMarkdown());
           ok = true;
-        } catch {
+        } catch (err) {
+          console.warn("[BugReportModal] Failed to copy bug report to clipboard:", err);
           ok = false;
         }
         setCopied(ok);
@@ -159,7 +162,8 @@ export function BugReportModal() {
     try {
       await copyToClipboard(formatMarkdown());
       ok = true;
-    } catch {
+    } catch (err) {
+      console.warn("[BugReportModal] Failed to copy bug report to clipboard:", err);
       ok = false;
     }
     setCopied(ok);
@@ -350,7 +354,7 @@ export function BugReportModal() {
             <textarea
               className={textareaClass}
               style={textareaStyle}
-              placeholder={"1. Go to ...\n2. Click on ...\n3. Observe ..."}
+              placeholder={t("bugreportmodal.stepsPlaceholder")}
               value={form.stepsToReproduce}
               onChange={(e) => updateField("stepsToReproduce", e.target.value)}
               rows={3}
@@ -382,22 +386,27 @@ export function BugReportModal() {
           </label>
 
           <div className="flex gap-3">
-            <label className={`${labelClass} flex-1`} style={labelStyle}>
-              {t("bugreportmodal.Environment")}
-              <select
-                className={inputClass}
-                style={inputStyle}
+            <div className="flex-1">
+              <span className={labelClass} style={labelStyle}>
+                {t("bugreportmodal.Environment")}
+              </span>
+              <Select
                 value={form.environment}
-                onChange={(e) => updateField("environment", e.target.value)}
+                onValueChange={(value) => updateField("environment", value)}
               >
-                <option value="">{t("bugreportmodal.Select")}</option>
-                {ENV_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
-            </label>
+                <SelectTrigger className={inputClass} style={inputStyle}>
+                  <SelectValue placeholder={t("bugreportmodal.Select")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">{t("bugreportmodal.Select")}</SelectItem>
+                  {ENV_OPTIONS.map((opt) => (
+                    <SelectItem key={opt} value={opt}>
+                      {opt}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             {/* biome-ignore lint/a11y/noLabelWithoutControl: Custom <Input> component is inside <label> */}
             <label className={`${labelClass} flex-1`} style={labelStyle}>
               {t("bugreportmodal.NodeVersion")}
@@ -480,7 +489,7 @@ export function BugReportModal() {
               onClick={handleCopyAndOpen}
               disabled={!canSubmit}
             >
-              {copied ? "Copied!" : "Copy & Open GitHub"}
+              {copied ? t("bugreportmodal.copied") : t("bugreportmodal.copyAndOpenGitHub")}
             </button>
             <button
               type="button"
@@ -489,7 +498,7 @@ export function BugReportModal() {
               onClick={handleSubmit}
               disabled={!canSubmit}
             >
-              {submitting ? "Submitting..." : "Submit"}
+              {submitting ? t("bugreportmodal.submitting") : t("bugreportmodal.submit")}
             </button>
           </div>
         </div>

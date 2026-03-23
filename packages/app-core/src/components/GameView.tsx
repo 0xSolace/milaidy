@@ -12,6 +12,7 @@ import { Button, Input } from "@miladyai/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { client, type LogEntry } from "../api";
 import { invokeDesktopBridgeRequest, isElectrobunRuntime } from "../bridge";
+import { useBranding } from "../config/branding";
 import { useRetakeCapture, useTimeout } from "../hooks";
 import { useApp } from "../state";
 import { openExternalUrl } from "../utils";
@@ -91,6 +92,7 @@ export function DesktopGameWindowControls({
   const [error, setError] = useState<string | null>(null);
   const [boundsLabel, setBoundsLabel] = useState("Bounds unavailable.");
   const [gpuWindowId, setGpuWindowId] = useState<string | null>(null);
+  const branding = useBranding();
 
   const refresh = useCallback(async () => {
     if (!gameWindowId) {
@@ -292,8 +294,8 @@ export function DesktopGameWindowControls({
                 rpcMethod: "gpuWindowCreate",
                 ipcChannel: "gpuWindow:create",
                 params: {
-                  id: "milady-gpu-diagnostics",
-                  title: "Milady GPU Diagnostics",
+                  id: "gpu-diagnostics",
+                  title: `${branding.appName} GPU Diagnostics`,
                   width: 640,
                   height: 360,
                 },

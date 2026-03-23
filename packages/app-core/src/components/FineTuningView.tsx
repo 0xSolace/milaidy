@@ -13,7 +13,7 @@ import {
 import { formatTime } from "@miladyai/app-core/components";
 import { useApp } from "@miladyai/app-core/state";
 import { confirmDesktopAction } from "@miladyai/app-core/utils";
-import { Button, Input } from "@miladyai/ui";
+import { Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@miladyai/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   parsePositiveFloat,
@@ -733,29 +733,37 @@ export function FineTuningView() {
           {t("finetuningview.TrainingJobs")}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
-          <select
-            className="px-2 py-1 border border-border bg-bg text-sm"
+          <Select
             value={selectedDatasetId}
-            onChange={(event) => setSelectedDatasetId(event.target.value)}
+            onValueChange={(value) => setSelectedDatasetId(value)}
           >
-            <option value="">{t("finetuningview.AutoBuildDatasetF")}</option>
-            {datasets.map((dataset) => (
-              <option key={dataset.id} value={dataset.id}>
-                {dataset.id}
-              </option>
-            ))}
-          </select>
-          <select
-            className="px-2 py-1 border border-border bg-bg text-sm"
+            <SelectTrigger className="px-2 py-1 border border-border bg-bg text-sm h-auto">
+              <SelectValue placeholder={t("finetuningview.AutoBuildDatasetF")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">{t("finetuningview.AutoBuildDatasetF")}</SelectItem>
+              {datasets.map((dataset) => (
+                <SelectItem key={dataset.id} value={dataset.id}>
+                  {dataset.id}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
             value={startBackend}
-            onChange={(event) =>
-              setStartBackend(event.target.value as "mlx" | "cuda" | "cpu")
+            onValueChange={(value) =>
+              setStartBackend(value as "mlx" | "cuda" | "cpu")
             }
           >
-            <option value="cpu">{t("finetuningview.cpu")}</option>
-            <option value="mlx">{t("finetuningview.mlx")}</option>
-            <option value="cuda">{t("finetuningview.cuda")}</option>
-          </select>
+            <SelectTrigger className="px-2 py-1 border border-border bg-bg text-sm h-auto">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="cpu">{t("finetuningview.cpu")}</SelectItem>
+              <SelectItem value="mlx">{t("finetuningview.mlx")}</SelectItem>
+              <SelectItem value="cuda">{t("finetuningview.cuda")}</SelectItem>
+            </SelectContent>
+          </Select>
           <Input
             className="px-2 py-1 h-8 text-sm bg-bg border-border focus-visible:ring-accent"
             value={startModel}

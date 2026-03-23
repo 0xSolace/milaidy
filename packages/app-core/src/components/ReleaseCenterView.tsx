@@ -248,7 +248,7 @@ export function ReleaseCenterView() {
         ipcChannel: "desktop:openReleaseNotesWindow",
         params: {
           url: releaseNotesUrl,
-          title: "Milady Release Notes",
+          title: "Release Notes",
         },
       });
     setReleaseNotesWindow(info);

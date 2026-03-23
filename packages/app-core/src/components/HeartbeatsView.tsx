@@ -1,4 +1,12 @@
-import { Button, Input } from "@miladyai/ui";
+import {
+  Button,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@miladyai/ui";
 import { ChevronDown, Clock3, PencilLine, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type {
@@ -596,47 +604,55 @@ export function HeartbeatsView() {
                     <span className={FIELD_LABEL_CLASS}>
                       {t("triggersview.ScheduleType")}
                     </span>
-                    <select
-                      className={SELECT_CLASS}
+                    <Select
                       value={form.triggerType}
-                      onChange={(event) =>
+                      onValueChange={(value) =>
                         setField(
                           "triggerType",
-                          event.target.value as TriggerType,
+                          value as TriggerType,
                         )
                       }
                     >
-                      <option value="interval">
-                        {t("triggersview.RepeatingInterval")}
-                      </option>
-                      <option value="once">{t("triggersview.OneTime")}</option>
-                      <option value="cron">
-                        {t("triggersview.CronSchedule")}
-                      </option>
-                    </select>
+                      <SelectTrigger className={SELECT_CLASS}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="interval">
+                          {t("triggersview.RepeatingInterval")}
+                        </SelectItem>
+                        <SelectItem value="once">{t("triggersview.OneTime")}</SelectItem>
+                        <SelectItem value="cron">
+                          {t("triggersview.CronSchedule")}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div>
                     <span className={FIELD_LABEL_CLASS}>
                       {t("triggersview.WakeMode")}
                     </span>
-                    <select
-                      className={SELECT_CLASS}
+                    <Select
                       value={form.wakeMode}
-                      onChange={(event) =>
+                      onValueChange={(value) =>
                         setField(
                           "wakeMode",
-                          event.target.value as TriggerWakeMode,
+                          value as TriggerWakeMode,
                         )
                       }
                     >
-                      <option value="inject_now">
-                        {t("triggersview.InjectAmpWakeIm")}
-                      </option>
-                      <option value="next_autonomy_cycle">
-                        {t("triggersview.QueueForNextCycle")}
-                      </option>
-                    </select>
+                      <SelectTrigger className={SELECT_CLASS}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="inject_now">
+                          {t("triggersview.InjectAmpWakeIm")}
+                        </SelectItem>
+                        <SelectItem value="next_autonomy_cycle">
+                          {t("triggersview.QueueForNextCycle")}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
@@ -656,22 +672,26 @@ export function HeartbeatsView() {
                         }
                         placeholder="1"
                       />
-                      <select
-                        className={SELECT_CLASS}
+                      <Select
                         value={form.durationUnit}
-                        onChange={(event) =>
+                        onValueChange={(value) =>
                           setField(
                             "durationUnit",
-                            event.target.value as DurationUnit,
+                            value as DurationUnit,
                           )
                         }
                       >
-                        {DURATION_UNITS.map((unit) => (
-                          <option key={unit.unit} value={unit.unit}>
-                            {durationUnitLabel(unit.unit, t)}
-                          </option>
-                        ))}
-                      </select>
+                        <SelectTrigger className={SELECT_CLASS}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {DURATION_UNITS.map((unit) => (
+                            <SelectItem key={unit.unit} value={unit.unit}>
+                              {durationUnitLabel(unit.unit, t)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 )}

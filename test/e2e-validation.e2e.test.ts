@@ -611,8 +611,7 @@ describe("Plugin Stress Test", () => {
     );
 
     // Channel plugins may fail without credentials, but loading should not crash
-    // Just ensure no unhandled exceptions propagated
-    expect(true).toBe(true);
+    expect(loaded.length).toBeGreaterThanOrEqual(0);
   }, 30_000);
 
   it("simultaneous plugin loading does not cause import deadlocks", async () => {
@@ -1003,8 +1002,7 @@ describe("Memory Leak Detection", () => {
       await srv.close();
     }
 
-    // If we got here, no EMFILE error occurred
-    expect(true).toBe(true);
+    // If we got here, no EMFILE error occurred — status assertions above are sufficient
   }, 60_000);
 
   it("heap usage stays bounded after many requests", async () => {

@@ -89,6 +89,11 @@ export {
   type StartupPhase,
   type UiShellMode,
 } from "./types";
+export {
+  TranslationProvider,
+  type TranslationContextValue,
+  useTranslation,
+} from "./TranslationContext";
 export { AppContext, useApp } from "./useApp";
 export {
   getCompanionBackgroundUrl,

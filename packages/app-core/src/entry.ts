@@ -10,7 +10,7 @@ import process from "node:process";
 import { applyCliProfileEnv, parseCliProfileArgs } from "./cli/profile";
 import { getLogPrefix } from "./utils/log-prefix";
 
-process.title = "milady";
+process.title = process.env.APP_CLI_NAME?.trim() || "eliza";
 
 // NOTE: Z_AI_API_KEY → ZAI_API_KEY normalization is handled in
 // run-main.ts (after dotenv loads), so we don't duplicate it here.

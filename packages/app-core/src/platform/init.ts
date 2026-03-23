@@ -5,6 +5,7 @@
  */
 
 import { isElectrobunRuntime } from "../bridge";
+import { getBootConfig, setBootConfig } from "../config/boot-config";
 
 // ── Platform detection ──────────────────────────────────────────────
 
@@ -223,13 +224,13 @@ export function injectPopoutApiBase(): void {
         parsed.protocol === "https:" ||
         (parsed.protocol === "http:" && allowPrivateHttp)
       ) {
-        window.__MILADY_API_BASE__ = apiBase;
+        setBootConfig({ ...getBootConfig(), apiBase });
       } else {
         console.warn("[app-core] Rejected non-local apiBase:", host);
       }
     } catch {
       if (apiBase.startsWith("/") && !apiBase.startsWith("//")) {
-        window.__MILADY_API_BASE__ = apiBase;
+        setBootConfig({ ...getBootConfig(), apiBase });
       } else {
         console.warn("[app-core] Rejected invalid relative apiBase:", apiBase);
       }

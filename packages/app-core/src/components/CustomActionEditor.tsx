@@ -4,7 +4,7 @@ import {
   client,
 } from "@miladyai/app-core/api";
 import { useApp } from "@miladyai/app-core/state";
-import { Button } from "@miladyai/ui";
+import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@miladyai/ui";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -872,17 +872,21 @@ export function CustomActionEditor({
           {handlerType === "http" && (
             <div className="flex flex-col gap-3 border border-border p-3">
               <div className="flex gap-2">
-                <select
+                <Select
                   value={httpMethod}
-                  onChange={(e) => setHttpMethod(e.target.value as HttpMethod)}
-                  className="bg-surface border border-border px-2 py-1.5 text-sm text-txt outline-none focus:border-accent"
+                  onValueChange={(value) => setHttpMethod(value as HttpMethod)}
                 >
-                  {HTTP_METHODS_LIST.map((method) => (
-                    <option key={method} value={method}>
-                      {method}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className="bg-surface border border-border px-2 py-1.5 text-sm text-txt w-auto">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {HTTP_METHODS_LIST.map((method) => (
+                      <SelectItem key={method} value={method}>
+                        {method}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <input
                   type="text"
                   value={httpUrl}

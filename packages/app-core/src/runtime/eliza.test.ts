@@ -933,13 +933,7 @@ describe("applyConnectorSecretsToEnv", () => {
     expect(() => applyConnectorSecretsToEnv(config)).not.toThrow();
   });
 
-  it("supports legacy channels key for backward compat", () => {
-    const config = {
-      channels: { telegram: { botToken: "legacy-tg-tok" } },
-    } as ElizaConfig;
-    applyConnectorSecretsToEnv(config);
-    expect(process.env.TELEGRAM_BOT_TOKEN).toBe("legacy-tg-tok");
-  });
+
 
   it("copies Signal account, httpUrl, and cliPath from config to env", () => {
     const config = {
@@ -1649,6 +1643,53 @@ describe("buildCharacterFromConfig", () => {
     expect(char.name).toBe("Marisa");
     expect(char.username).toBe("marisa-labs");
     expect(char.topics).toEqual(["magic", "research"]);
+  });
+
+  it("backfills bundled preset style and adjectives for name-only config", () => {
+    const config = {
+      agents: { list: [{ id: "main", name: "Chen" }] },
+    } as ElizaConfig;
+    const char = buildCharacterFromConfig(config);
+
+    expect(char.name).toBe("Chen");
+    expect(char.style).toBeTruthy();
+    expect(char.style?.all?.length).toBeGreaterThan(0);
+    expect(char.style?.chat?.length).toBeGreaterThan(0);
+    expect(char.style?.post?.length).toBeGreaterThan(0);
+    expect(char.adjectives).toBeTruthy();
+    expect(char.adjectives?.length).toBeGreaterThan(0);
+    expect(char.adjectives).toContain("warm");
+  });
+
+  it("backfills bundled preset topics when agent config has none", () => {
+    const config = {
+      agents: { list: [{ id: "main", name: "Chen" }] },
+    } as ElizaConfig;
+    const char = buildCharacterFromConfig(config);
+
+    expect(Array.isArray(char.topics)).toBe(true);
+    expect((char.topics as string[]).length).toBeGreaterThan(0);
+  });
+
+  it("preserves agent config fields over bundled preset fallback", () => {
+    const config = {
+      agents: {
+        list: [
+          {
+            id: "main",
+            name: "Chen",
+            style: { all: ["custom rule"], chat: [], post: [] },
+            adjectives: ["custom-adj"],
+            topics: ["custom-topic"],
+          },
+        ],
+      },
+    } as ElizaConfig;
+    const char = buildCharacterFromConfig(config);
+
+    expect(char.style?.all).toContain("custom rule");
+    expect(char.adjectives).toContain("custom-adj");
+    expect(char.topics).toEqual(["custom-topic"]);
   });
 });
 

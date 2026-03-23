@@ -17,7 +17,7 @@ const GUIDE_CONTENT: Record<FlaminaGuideTopic, GuideContent> = {
     whenToUse:
       "Choose it now if you care about reasoning style, latency, or subscription path.",
     skipEffect:
-      "If you skip, Milady uses the recommended route so you can get into the app first.",
+      "If you skip, the app uses the recommended route so you can get started first.",
     characterImpact:
       "This affects how the character reasons, how fast it replies, and the overall output quality.",
     recommended:

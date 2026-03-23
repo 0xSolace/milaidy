@@ -103,7 +103,8 @@ function loadStoredCompanionZoom(): number {
     return Number.isFinite(parsed)
       ? clampCompanionZoom(parsed)
       : DEFAULT_COMPANION_ZOOM;
-  } catch {
+  } catch (err) {
+    console.warn("[CompanionSceneHost] Failed to load stored companion zoom:", err);
     return DEFAULT_COMPANION_ZOOM;
   }
 }
@@ -115,8 +116,8 @@ function persistCompanionZoom(value: number): void {
       COMPANION_ZOOM_STORAGE_KEY,
       String(clampCompanionZoom(value)),
     );
-  } catch {
-    // Ignore persistence failures so camera controls remain responsive.
+  } catch (err) {
+    console.warn("[CompanionSceneHost] Failed to persist companion zoom:", err);
   }
 }
 
@@ -461,7 +462,9 @@ function CompanionSceneSurface({
     for (const entry of preloadAvatars) {
       // Fire-and-forget fetch to warm browser cache; low priority.
       void fetch(entry.vrmPath, { priority: "low" } as RequestInit).catch(
-        () => {},
+        (err: unknown) => {
+          console.warn("[CompanionSceneHost] VRM preload fetch failed:", entry.vrmPath, err);
+        },
       );
     }
   }, [preloadAvatars]);

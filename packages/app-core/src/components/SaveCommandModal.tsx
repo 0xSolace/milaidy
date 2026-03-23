@@ -40,9 +40,9 @@ export function SaveCommandModal({
   }, [open]);
 
   const validate = useCallback((value: string) => {
-    if (!value) return "Name is required";
+    if (!value) return t("savecommandmodal.nameRequired");
     if (!NAME_PATTERN.test(value))
-      return "Must start with a letter, no spaces (a-z, 0-9, -)";
+      return t("savecommandmodal.nameFormat");
     return "";
   }, []);
 
