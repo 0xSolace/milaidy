@@ -1675,18 +1675,21 @@ async function sendLocalWalletTransaction(
 function resolveCloudConfig(): ElizaConfig {
   const config = loadElizaConfig();
   if (config.cloud?.enabled && !config.cloud?.apiKey) {
-    const sealedKey = getCloudSecret("ELIZAOS_CLOUD_API_KEY");
-    if (sealedKey) {
+    // Try sealed secret store first, then raw process.env
+    const backfillKey =
+      getCloudSecret("ELIZAOS_CLOUD_API_KEY") ||
+      process.env.ELIZAOS_CLOUD_API_KEY;
+    if (backfillKey) {
       if (!config.cloud) {
         (config as Record<string, unknown>).cloud = {};
       }
-      (config.cloud as Record<string, unknown>).apiKey = sealedKey;
+      (config.cloud as Record<string, unknown>).apiKey = backfillKey;
       // Persist the backfilled key so future reads find it on disk
       try {
         saveElizaConfig(config);
-        logger.info("[cloud] Backfilled missing cloud.apiKey from sealed secrets to config file");
+        logger.info("[cloud] Backfilled missing cloud.apiKey to config file");
       } catch {
-        // Non-fatal: the key is still available from sealed secrets for this request
+        // Non-fatal: the key is still available for this request
       }
     }
   }
@@ -2740,6 +2743,7 @@ async function handleMiladyCompatRoute(
 
           resolvedCloudApiKey = (config.cloud as Record<string, unknown>)
             .apiKey as string | undefined;
+
           if (!resolvedCloudApiKey) {
             const { getCloudSecret: getSecret } = await import(
               "./cloud-secrets"
@@ -2750,6 +2754,27 @@ async function handleMiladyCompatRoute(
               (config.cloud as Record<string, unknown>).apiKey =
                 resolvedCloudApiKey;
             }
+          }
+
+          // Last resort: check process.env directly (key may not have been
+          // scrubbed yet if persistCloudLoginStatus is still running).
+          if (!resolvedCloudApiKey) {
+            resolvedCloudApiKey = process.env.ELIZAOS_CLOUD_API_KEY;
+            if (resolvedCloudApiKey) {
+              (config.cloud as Record<string, unknown>).apiKey =
+                resolvedCloudApiKey;
+            }
+          }
+
+          if (!resolvedCloudApiKey) {
+            logger.warn(
+              "[milady-api] Cloud onboarding but no API key found on disk, in sealed secrets, or in env. " +
+              "The upstream handler will save config WITHOUT cloud.apiKey.",
+            );
+          } else {
+            logger.info(
+              "[milady-api] Cloud onboarding: resolved API key, injecting into replay body",
+            );
           }
 
           if (body.smallModel) {

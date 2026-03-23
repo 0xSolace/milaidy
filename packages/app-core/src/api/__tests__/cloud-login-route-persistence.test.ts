@@ -23,6 +23,11 @@ vi.mock("../../config/config", () => ({
   saveElizaConfig: (...args: unknown[]) => saveElizaConfigMock(...args),
 }));
 
+vi.mock("@miladyai/agent/config/config", () => ({
+  loadElizaConfig: (...args: unknown[]) => loadElizaConfigMock(...args),
+  saveElizaConfig: (...args: unknown[]) => saveElizaConfigMock(...args),
+}));
+
 vi.mock("@elizaos/core", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), debug: vi.fn(), error: vi.fn() },
 }));
