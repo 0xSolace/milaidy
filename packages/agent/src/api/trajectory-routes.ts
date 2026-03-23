@@ -549,17 +549,17 @@ async function maybeBackfillTrajectoryFromConversationMemory(
       return traj;
     }
 
-    const baseSteps =
+    const baseSteps: TrajectoryStep[] =
       traj.steps && traj.steps.length > 0
         ? traj.steps.map((step) => ({
             ...step,
-            llmCalls: [],
+            llmCalls: [] as TrajectoryLlmCall[],
           }))
         : [
             {
               stepId: traj.trajectoryId,
               timestamp: traj.startTime,
-              llmCalls: [],
+              llmCalls: [] as TrajectoryLlmCall[],
               providerAccesses: [],
             },
           ];

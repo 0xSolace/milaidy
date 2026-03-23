@@ -64,6 +64,12 @@ type QaVoiceStats = {
   ttsFetches: QaFetchRecord[];
 };
 
+type CharacterRosterState = {
+  labels: string[];
+  selectedLabel: string | null;
+  selectedTestId: string | null;
+};
+
 type Profile = {
   id: "desktop" | "mobile";
   label: string;
@@ -194,7 +200,9 @@ describe.skipIf(!CAN_RUN)("Live QA checklist", () => {
             return page.url().endsWith("/character-select") ? true : null;
           }, 180_000, 1000);
 
-          await waitForText(page, "Chen", 60_000);
+          const rosterState = await waitForCharacterRoster(page, 120_000);
+          expect(rosterState.labels[0]).toBe("Chen");
+          expect(rosterState.selectedLabel).toBe("Chen");
           expect(await onboardingComplete()).toBe(true);
 
           const voiceConfig = await waitFor(async () => {
@@ -565,10 +573,44 @@ async function waitForText(page: Page, text: string, timeout = 45_000) {
   await waitFor(async () => {
     const bodyText = await page.evaluate(() => {
       const body = document.body;
-      return body?.textContent ?? body?.innerText ?? "";
+      const visibleText = body?.innerText ?? "";
+      const domText = body?.textContent ?? "";
+      return `${visibleText}\n${domText}`;
     });
     return bodyText.toLowerCase().includes(text.toLowerCase()) ? true : null;
   }, timeout);
+}
+
+async function waitForCharacterRoster(
+  page: Page,
+  timeout = 90_000,
+): Promise<CharacterRosterState> {
+  return waitFor(async () => {
+    const state = await page.evaluate(() => {
+      const buttons = Array.from(
+        document.querySelectorAll<HTMLButtonElement>(
+          '[data-testid^="character-preset-"]',
+        ),
+      );
+
+      const labels = buttons
+        .map((button) => (button.innerText ?? button.textContent ?? "").trim())
+        .filter(Boolean);
+      const selected = buttons.find(
+        (button) => button.getAttribute("aria-pressed") === "true",
+      );
+
+      return {
+        labels,
+        selectedLabel: selected
+          ? (selected.innerText ?? selected.textContent ?? "").trim() || null
+          : null,
+        selectedTestId: selected?.getAttribute("data-testid") ?? null,
+      };
+    });
+
+    return state.labels.length > 0 && state.selectedLabel ? state : null;
+  }, timeout, 1000);
 }
 
 async function clickByText(page: Page, text: string) {
@@ -812,7 +854,34 @@ async function resolveLiveUiUrl(): Promise<string> {
 }
 
 async function navigate(page: Page, url: string) {
-  await page.goto(url, { waitUntil: "domcontentloaded" });
+  const targetUrl = new URL(url);
+  const currentUrl = page.url();
+
+  if (currentUrl) {
+    const current = new URL(currentUrl);
+    if (current.origin === targetUrl.origin) {
+      await page.evaluate((nextHref) => {
+        const next = new URL(nextHref, window.location.href);
+        const nextPath = `${next.pathname}${next.search}${next.hash}`;
+        const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+        if (currentPath === nextPath) return;
+        window.history.pushState({}, "", nextPath);
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      }, targetUrl.href);
+
+      await waitFor(async () => {
+        const href = await page.evaluate(() => window.location.href);
+        return href === targetUrl.href ? true : null;
+      }, 30_000, 100);
+
+      await page.waitForFunction(() => document.readyState !== "loading", {
+        timeout: 30_000,
+      });
+      return;
+    }
+  }
+
+  await page.goto(targetUrl.href, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(() => document.readyState !== "loading", {
     timeout: 30_000,
   });
