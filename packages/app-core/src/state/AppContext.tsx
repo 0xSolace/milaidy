@@ -5387,6 +5387,16 @@ export function AppProvider({
 
   // ── Generic state setter ───────────────────────────────────────────
 
+  /**
+   * @deprecated Use typed setters from the appropriate sub-context instead:
+   * - Chat state: `useChatState()` — setChatInput, setChatMode, etc.
+   * - Navigation: `useNavigation()` — setTab, setUiShellMode, etc.
+   * - Lifecycle: `useLifecycle()` — setStartupPhase, setActionNotice, etc.
+   * - Translation: `useTranslation()` — read-only t() function
+   *
+   * This generic dispatcher remains for backwards compatibility during
+   * the incremental migration. New code should use typed setters.
+   */
   const setState = useCallback(
     <K extends keyof AppState>(key: K, value: AppState[K]) => {
       const setterMap: Partial<{
