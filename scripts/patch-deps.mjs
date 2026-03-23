@@ -37,7 +37,6 @@ import {
   warnStaleBunCache,
 } from "./lib/patch-bun-exports.mjs";
 
-
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
 

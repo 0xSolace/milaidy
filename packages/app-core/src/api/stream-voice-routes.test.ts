@@ -26,7 +26,7 @@ vi.mock("./stream-persistence", () => {
 });
 
 // Mock the TTS bridge so we can control isSpeaking/isAttached
-vi.mock("../services/tts-stream-bridge", () => ({
+vi.mock("@miladyai/agent/services/tts-stream-bridge", () => ({
   ttsStreamBridge: {
     isSpeaking: vi.fn(() => false),
     isAttached: vi.fn(() => false),
@@ -49,7 +49,7 @@ vi.mock("@elizaos/core", async (importOriginal) => ({
   logger: { info: vi.fn(), warn: vi.fn(), debug: vi.fn(), error: vi.fn() },
 }));
 
-import { ttsStreamBridge } from "../services/tts-stream-bridge";
+import { ttsStreamBridge } from "@miladyai/agent/services/tts-stream-bridge";
 import * as persistence from "./stream-persistence";
 import type { StreamRouteState } from "./stream-routes";
 import { handleStreamVoiceRoute } from "./stream-voice-routes";
