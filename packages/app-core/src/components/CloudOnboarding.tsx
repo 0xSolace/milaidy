@@ -1,3 +1,4 @@
+import { Button } from "@miladyai/ui";
 import { useEffect } from "react";
 import { useApp } from "../state";
 import { openExternalUrl } from "../utils";
@@ -46,8 +47,8 @@ export function CloudOnboarding() {
             </p>
           ) : (
             <>
-              <button
-                type="button"
+              <Button
+                variant="default"
                 className="w-full py-3 px-4 rounded-lg bg-accent text-white font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
                 onClick={handleCloudLogin}
                 disabled={elizaCloudLoginBusy}
@@ -55,18 +56,18 @@ export function CloudOnboarding() {
                 {elizaCloudLoginBusy
                   ? "Waiting for login..."
                   : "Connect to Eliza Cloud"}
-              </button>
+              </Button>
 
               {elizaCloudLoginError && (
                 <div className="w-full text-sm text-center">
                   {urlMatch ? (
-                    <button
-                      type="button"
+                    <Button
+                      variant="link"
                       className="text-accent underline"
                       onClick={() => void openExternalUrl(urlMatch[1])}
                     >
                       Click here to open the login page
-                    </button>
+                    </Button>
                   ) : (
                     <p className="text-err">{elizaCloudLoginError}</p>
                   )}

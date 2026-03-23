@@ -364,9 +364,11 @@ export function SubscriptionStatus({
           )}
 
           <div className="flex items-center gap-4 border-b border-[var(--border)] mb-3">
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               type="button"
-              className={`text-xs pb-2 border-b-2 ${
+              className={`text-xs pb-2 border-b-2 rounded-none ${
                 subscriptionTab === "token"
                   ? "border-[var(--accent)] text-[var(--accent)]"
                   : "border-transparent text-[var(--muted)] hover:text-[var(--text)]"
@@ -374,10 +376,12 @@ export function SubscriptionStatus({
               onClick={() => setSubscriptionTab("token")}
             >
               {t("onboarding.setupToken")}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               type="button"
-              className={`text-xs pb-2 border-b-2 ${
+              className={`text-xs pb-2 border-b-2 rounded-none ${
                 subscriptionTab === "oauth"
                   ? "border-[var(--accent)] text-[var(--accent)]"
                   : "border-transparent text-[var(--muted)] hover:text-[var(--text)]"
@@ -385,7 +389,7 @@ export function SubscriptionStatus({
               onClick={() => setSubscriptionTab("oauth")}
             >
               {t("onboarding.oauthLogin")}
-            </button>
+            </Button>
           </div>
 
           {subscriptionTab === "token" ? (

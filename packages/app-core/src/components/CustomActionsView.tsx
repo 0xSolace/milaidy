@@ -237,9 +237,9 @@ export function CustomActionsView() {
               key={action.id}
               className="border border-border bg-card rounded p-4 space-y-3 cursor-pointer hover:border-accent/50 transition-colors"
             >
-              <button
-                type="button"
-                className="w-full bg-transparent border-0 p-0 m-0 text-left cursor-pointer"
+              <Button
+                variant="ghost"
+                className="w-full p-0 m-0 text-left h-auto"
                 onClick={() => handleEdit(action)}
               >
                 {/* Name and Badge */}
@@ -269,7 +269,7 @@ export function CustomActionsView() {
                   {t("customactionsview.parameter")}
                   {action.parameters?.length === 1 ? "" : "s"}
                 </p>
-              </button>
+              </Button>
 
               {/* Actions Row */}
               <div className="flex items-center justify-between pt-2 border-t border-border">

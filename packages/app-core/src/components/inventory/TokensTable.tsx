@@ -4,6 +4,7 @@
 
 import type { EvmChainBalance } from "@miladyai/app-core/api";
 import type { createTranslator } from "@miladyai/app-core/i18n";
+import { Button } from "@miladyai/ui";
 import { chainIcon, formatBalance, type TokenRow } from "./constants";
 import { TokenLogo } from "./TokenLogo";
 
@@ -166,15 +167,16 @@ export function TokensTable({
                 {/* Actions */}
                 <td className="pl-2 pr-3 py-3 align-middle whitespace-nowrap text-right">
                   {row.isTracked && contractAddress && (
-                    <button
-                      type="button"
+                    <Button
+                      variant="link"
+                      size="sm"
                       data-testid="wallet-token-untrack"
-                      className="text-[10px] text-danger hover:underline cursor-pointer bg-transparent border-none p-0"
+                      className="text-[10px] text-danger hover:underline cursor-pointer p-0 h-auto"
                       title={t("wallet.removeManualTitle")}
                       onClick={() => handleUntrackToken(contractAddress)}
                     >
                       {t("wallet.remove")}
-                    </button>
+                    </Button>
                   )}
                 </td>
               </tr>

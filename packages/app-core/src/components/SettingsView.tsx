@@ -35,7 +35,6 @@ import { isElectrobunRuntime } from "../bridge";
 import { useApp } from "../state";
 import { CodingAgentSettingsSection } from "./CodingAgentSettingsSection";
 import { ConfigPageView } from "./ConfigPageView";
-import { DesktopWorkspaceSection } from "./DesktopWorkspaceSection";
 import { CloudDashboard } from "./ElizaCloudDashboard";
 import { MediaSettingsSection } from "./MediaSettingsSection";
 import { PermissionsSection } from "./PermissionsSection";
@@ -156,13 +155,15 @@ function SettingsSidebar({
               const Icon = section.icon;
               const isActive = activeSection === section.id;
               return (
-                <button
+                <Button
                   key={section.id}
+                  variant="ghost"
+                  size="sm"
                   type="button"
                   onClick={() => onSectionChange(section.id)}
                   aria-current={isActive ? "page" : undefined}
                   className={`group w-full flex items-center gap-3 text-left px-3 py-2.5 rounded-lg transition-all duration-150
-                    text-sm
+                    text-sm h-auto
                     ${
                       isActive
                         ? "text-txt font-semibold bg-surface"
@@ -173,7 +174,7 @@ function SettingsSidebar({
                     className={`w-4 h-4 shrink-0 ${isActive ? "text-accent" : ""}`}
                   />
                   <span className="truncate">{t(section.label)}</span>
-                </button>
+                </Button>
               );
             })}
           </div>
@@ -255,10 +256,11 @@ function AdvancedSection() {
       <div className="space-y-6">
         {/* Export/Import */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <button
+          <Button
+            variant="outline"
             type="button"
             onClick={openExportModal}
-            className="min-h-[5.5rem] p-5 rounded-[calc(var(--radius-xl)+2px)] flex items-center gap-4 border border-border/50 bg-card/60 text-left backdrop-blur-md transition-all group hover:-translate-y-0.5 hover:border-accent hover:shadow-[0_4px_20px_rgba(var(--accent),0.1)]"
+            className="min-h-[5.5rem] p-5 rounded-[calc(var(--radius-xl)+2px)] flex items-center gap-4 border border-border/50 bg-card/60 text-left backdrop-blur-md transition-all group hover:-translate-y-0.5 hover:border-accent hover:shadow-[0_4px_20px_rgba(var(--accent),0.1)] h-auto"
             aria-haspopup="dialog"
           >
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-border/50 bg-bg-accent p-3 shadow-sm transition-all group-hover:border-accent group-hover:bg-accent">
@@ -272,12 +274,13 @@ function AdvancedSection() {
                 {t("settings.exportAgentShort")}
               </div>
             </div>
-          </button>
+          </Button>
 
-          <button
+          <Button
+            variant="outline"
             type="button"
             onClick={openImportModal}
-            className="min-h-[5.5rem] p-5 rounded-[calc(var(--radius-xl)+2px)] flex items-center gap-4 border border-border/50 bg-card/60 text-left backdrop-blur-md transition-all group hover:-translate-y-0.5 hover:border-accent hover:shadow-[0_4px_20px_rgba(var(--accent),0.1)]"
+            className="min-h-[5.5rem] p-5 rounded-[calc(var(--radius-xl)+2px)] flex items-center gap-4 border border-border/50 bg-card/60 text-left backdrop-blur-md transition-all group hover:-translate-y-0.5 hover:border-accent hover:shadow-[0_4px_20px_rgba(var(--accent),0.1)] h-auto"
             aria-haspopup="dialog"
           >
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-border/50 bg-bg-accent p-3 shadow-sm transition-all group-hover:border-accent group-hover:bg-accent">
@@ -291,7 +294,7 @@ function AdvancedSection() {
                 {t("settings.importAgentShort")}
               </div>
             </div>
-          </button>
+          </Button>
         </div>
 
         {/* Danger Zone */}
@@ -696,14 +699,6 @@ export function SettingsView({
           description={t("settings.sections.advanced.desc")}
           className="p-4 sm:p-5 lg:p-6"
         >
-          {isElectrobunRuntime() && (
-            <div className="mb-6 pb-6 border-b border-border/40">
-              <h3 className="text-sm font-semibold text-txt mb-4">
-                {t("settings.sections.desktop.label")}
-              </h3>
-              <DesktopWorkspaceSection />
-            </div>
-          )}
           <AdvancedSection />
         </SectionCard>
       )}

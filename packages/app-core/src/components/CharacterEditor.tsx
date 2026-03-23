@@ -1055,17 +1055,17 @@ export function CharacterEditor({
           >
             <div className="ce-page-tabs-row">
               <div className="ce-page-tabs">
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
                   className={`ce-page-tab ${activePage === "identity" ? "ce-page-tab--active" : ""}`}
                   onClick={() => setActivePage("identity")}
                 >
                   {t("charactereditor.TabCharacter", {
                     defaultValue: "Character",
                   })}
-                </button>
-                <button
-                  type="button"
+                </Button>
+                <Button
+                  variant="ghost"
                   className={`ce-page-tab ${activePage === "style" ? "ce-page-tab--active" : ""}`}
                   onClick={() => {
                     setRightTab("style");
@@ -1073,9 +1073,9 @@ export function CharacterEditor({
                   }}
                 >
                   {t("charactereditor.TabStyles", { defaultValue: "Styles" })}
-                </button>
-                <button
-                  type="button"
+                </Button>
+                <Button
+                  variant="ghost"
                   className={`ce-page-tab ${activePage === "examples" ? "ce-page-tab--active" : ""}`}
                   onClick={() => {
                     setRightTab("examples");
@@ -1085,7 +1085,7 @@ export function CharacterEditor({
                   {t("charactereditor.TabExamples", {
                     defaultValue: "Examples",
                   })}
-                </button>
+                </Button>
               </div>
               <Button
                 type="button"

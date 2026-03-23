@@ -703,16 +703,18 @@ export function ProviderSwitcher(props: ProviderSwitcherProps = {}) {
                     >
                       ${elizaCloudCredits.toFixed(2)}
                     </span>
-                    <button
+                    <Button
+                      variant="link"
+                      size="sm"
                       type="button"
                       onClick={() => {
                         setState("cloudDashboardView", "billing");
                         setTab("settings");
                       }}
-                      className="ml-2 bg-transparent border-0 p-0 cursor-pointer text-[11px] text-[var(--text)] underline decoration-[var(--accent)] underline-offset-2 hover:opacity-80"
+                      className="ml-2 bg-transparent border-0 p-0 cursor-pointer text-[11px] text-[var(--text)] underline decoration-[var(--accent)] underline-offset-2 hover:opacity-80 h-auto min-h-0"
                     >
                       {t("configpageview.TopUp")}
-                    </button>
+                    </Button>
                   </span>
                 )}
               </div>

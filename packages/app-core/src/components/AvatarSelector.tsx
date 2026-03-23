@@ -12,7 +12,7 @@ import {
   useApp,
   VRM_COUNT,
 } from "@miladyai/app-core/state";
-import { Spinner } from "@miladyai/ui";
+import { Button, Spinner } from "@miladyai/ui";
 import { alertDesktopMessage } from "@miladyai/app-core/utils";
 import { useCallback, useRef, useState } from "react";
 
@@ -141,16 +141,16 @@ export function AvatarSelector({
     <div className={fullWidth ? "w-full" : undefined}>
       <div className={containerClass} style={containerStyle}>
         {avatarIndices.map((i) => (
-          <button
+          <Button
             key={i}
+            variant="ghost"
             className={`${avatarButtonClass} ${
               selected === i
                 ? "ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--card)] scale-105"
                 : "opacity-60 hover:opacity-100 hover:scale-105"
-            } ${loading ? "cursor-wait pointer-events-none" : ""}`}
+            } ${loading ? "cursor-wait pointer-events-none" : ""} p-0`}
             onClick={() => !loading && onSelect(i)}
             disabled={loading}
-            type="button"
           >
             <img
               src={getVrmPreviewUrl(i)}
@@ -163,7 +163,7 @@ export function AvatarSelector({
                 <Spinner size={24} className="text-white" />
               </div>
             )}
-          </button>
+          </Button>
         ))}
 
         {/* Upload custom VRM — click or drag-and-drop */}
@@ -176,7 +176,8 @@ export function AvatarSelector({
               className="hidden"
               onChange={handleFileChange}
             />
-            <button
+            <Button
+              variant="outline"
               className={`${uploadButtonClass} ${
                 dragOver
                   ? "border-[var(--accent)] bg-[var(--accent)]/20 text-[var(--accent)] scale-105 border-solid"
@@ -190,7 +191,6 @@ export function AvatarSelector({
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
               title={t("avatarselector.UploadCustomVrm")}
-              type="button"
             >
               <svg
                 width="20"
@@ -215,7 +215,7 @@ export function AvatarSelector({
                   {t("avatarselector.dropVrm")}
                 </span>
               )}
-            </button>
+            </Button>
           </>
         )}
       </div>

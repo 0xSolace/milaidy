@@ -337,9 +337,9 @@ function DocumentCard({
   const { t } = useApp();
   return (
     <div className="flex items-center justify-between p-4 border border-border/40 bg-card/40 backdrop-blur-md rounded-xl shadow-sm hover:shadow-[0_0_15px_rgba(var(--accent),0.1)] hover:border-accent/50 transition-all group">
-      <button
-        type="button"
-        className="flex-1 min-w-0 cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-sm"
+      <Button
+        variant="ghost"
+        className="flex-1 min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-sm h-auto p-0"
         onClick={() => onSelect(doc.id)}
         aria-label={`Open ${doc.filename}`}
       >
@@ -379,7 +379,7 @@ function DocumentCard({
             </>
           )}
         </div>
-      </button>
+      </Button>
       <div className="flex items-center gap-2 ml-4 opacity-0 group-hover:opacity-100 transition-opacity focus-within:opacity-100">
         <ConfirmDeleteControl
           triggerClassName="h-8 px-3 text-xs font-bold text-danger hover:bg-danger/10 hover:text-danger rounded-lg transition-all"

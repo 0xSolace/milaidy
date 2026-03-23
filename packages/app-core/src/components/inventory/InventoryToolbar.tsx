@@ -82,8 +82,9 @@ export function InventoryToolbar({
         </div>
 
         <div className="flex items-center gap-1">
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
             data-testid="wallet-view-tokens"
             className={`h-8 border-b-2 px-2 text-xs font-medium cursor-pointer ${
               inventoryView === "tokens"
@@ -96,9 +97,10 @@ export function InventoryToolbar({
             }}
           >
             {t("wallet.tokens")}
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             data-testid="wallet-view-nfts"
             className={`h-8 border-b-2 px-2 text-xs font-medium cursor-pointer ${
               inventoryView === "nfts"
@@ -111,7 +113,7 @@ export function InventoryToolbar({
             }}
           >
             {t("wallet.nfts")}
-          </button>
+          </Button>
         </div>
 
         <Select

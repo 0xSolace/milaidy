@@ -24,7 +24,7 @@ import {
   resolveInitialWalletRpcSelections,
 } from "../wallet-rpc";
 import { SecretsView } from "./SecretsView";
-import { Switch } from "@miladyai/ui";
+import { Button, Switch } from "@miladyai/ui";
 
 type RpcProviderOption<T extends string> = {
   id: T;
@@ -91,16 +91,17 @@ function CloudRpcStatus({
             >
               ${credits.toFixed(2)}
             </span>
-            <button
-              type="button"
+            <Button
+              variant="link"
+              size="sm"
               onClick={() => {
                 setState("cloudDashboardView", "billing");
                 setTab("settings");
               }}
-              className="ml-1.5 text-[10px] text-txt underline decoration-accent underline-offset-2 hover:opacity-80 bg-transparent border-0 p-0 cursor-pointer"
+              className="ml-1.5 text-[10px] h-auto p-0"
             >
               {t("configpageview.TopUp")}
-            </button>
+            </Button>
           </span>
         )}
       </div>
@@ -117,16 +118,17 @@ function CloudRpcStatus({
           })}
         </span>
       </div>
-      <button
-        type="button"
-        className="inline-flex items-center justify-center border border-accent bg-accent text-accent-fg cursor-pointer text-[13px] font-[inherit] no-underline whitespace-nowrap rounded-lg transition-opacity duration-100 hover:opacity-85 disabled:opacity-50 disabled:cursor-not-allowed text-xs py-[3px] px-3 !mt-0 font-bold"
+      <Button
+        variant="default"
+        size="sm"
+        className="text-xs font-bold"
         onClick={() => void onLogin()}
         disabled={loginBusy}
       >
         {loginBusy
           ? t("configpageview.Connecting", { defaultValue: "Connecting..." })
           : t("configpageview.LogIn", { defaultValue: "Log in" })}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -276,12 +278,12 @@ function renderRpcProviderButtons<T extends string>(
       {options.map((provider) => {
         const active = selectedProvider === provider.id;
         return (
-          <button
-            type="button"
+          <Button
+            variant={active ? "default" : "outline"}
             key={provider.id}
-            className={`flex min-h-[44px] items-center justify-center rounded-lg border px-3 py-2 text-center text-xs font-semibold leading-tight shadow-sm transition-colors ${
+            className={`flex min-h-[44px] items-center justify-center rounded-lg px-3 py-2 text-center text-xs font-semibold leading-tight shadow-sm ${
               active
-                ? "border-accent bg-accent text-accent-foreground"
+                ? ""
                 : "border-border bg-card text-txt hover:border-accent hover:bg-bg-hover"
             }`}
             onClick={() => onSelect(provider.id)}
@@ -291,7 +293,7 @@ function renderRpcProviderButtons<T extends string>(
                 ? tFallback("providerswitcher.elizaCloud")
                 : provider.label}
             </div>
-          </button>
+          </Button>
         );
       })}
     </div>
@@ -646,10 +648,10 @@ export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
           MODE SELECTOR: Eliza Cloud vs Custom RPC
           ═══════════════════════════════════════════════════════════════ */}
       <div className="grid grid-cols-2 gap-3 mb-5">
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           onClick={() => handleModeChange("cloud")}
-          className={`relative flex flex-col items-start gap-1.5 rounded-xl border-2 p-4 text-left transition-all ${
+          className={`relative flex flex-col items-start gap-1.5 rounded-xl border-2 p-4 text-left transition-all h-auto ${
             rpcMode === "cloud"
               ? "border-accent bg-accent/8 shadow-[0_0_20px_rgba(var(--accent),0.1)]"
               : "border-border/40 bg-card/30 opacity-50 grayscale hover:opacity-70 hover:grayscale-0"
@@ -680,12 +682,12 @@ export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
               ✓
             </span>
           )}
-        </button>
+        </Button>
 
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           onClick={() => handleModeChange("custom")}
-          className={`relative flex flex-col items-start gap-1.5 rounded-xl border-2 p-4 text-left transition-all ${
+          className={`relative flex flex-col items-start gap-1.5 rounded-xl border-2 p-4 text-left transition-all h-auto ${
             rpcMode === "custom"
               ? "border-accent bg-accent/8 shadow-[0_0_20px_rgba(var(--accent),0.1)]"
               : "border-border/40 bg-card/30 opacity-50 grayscale hover:opacity-70 hover:grayscale-0"
@@ -716,7 +718,7 @@ export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
               ✓
             </span>
           )}
-        </button>
+        </Button>
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════
@@ -815,28 +817,30 @@ export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
                   keys required.
                 </p>
               </div>
-              <button
-                type="button"
-                className="inline-flex items-center justify-center border border-accent bg-accent text-accent-fg cursor-pointer text-[13px] font-[inherit] no-underline whitespace-nowrap rounded-lg transition-opacity duration-100 hover:opacity-85 disabled:opacity-50 disabled:cursor-not-allowed text-xs py-2 px-5 font-bold"
+              <Button
+                variant="default"
+                size="sm"
+                className="text-xs font-bold"
                 onClick={() => void handleCloudLogin()}
                 disabled={elizaCloudLoginBusy}
               >
                 {elizaCloudLoginBusy
                   ? "Connecting..."
                   : "Log in to Eliza Cloud"}
-              </button>
+              </Button>
             </div>
           )}
 
           <div className="flex justify-end mt-4">
-            <button
-              type="button"
-              className="inline-flex items-center justify-center border border-accent bg-accent text-accent-fg cursor-pointer text-[13px] font-[inherit] no-underline whitespace-nowrap rounded-lg transition-opacity duration-100 hover:opacity-85 disabled:opacity-50 disabled:cursor-not-allowed text-[11px] py-1 px-3.5 !mt-0"
+            <Button
+              variant="default"
+              size="sm"
+              className="text-[11px]"
               onClick={handleWalletSaveAll}
               disabled={walletApiKeySaving}
             >
               {walletApiKeySaving ? "Saving..." : "Save"}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -848,9 +852,9 @@ export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
         <div>
           <div className="flex items-center justify-between mb-4">
             <div className="font-bold text-sm">Custom RPC Providers</div>
-            <button
-              type="button"
-              className="min-h-[2.625rem] px-4 rounded-[calc(var(--radius-lg)+2px)] flex items-center gap-1.5 text-[12px] text-muted hover:text-txt bg-transparent border border-border cursor-pointer transition-colors hover:border-accent"
+            <Button
+              variant="outline"
+              className="min-h-[2.625rem] px-4 rounded-[calc(var(--radius-lg)+2px)] flex items-center gap-1.5 text-[12px] text-muted hover:text-txt"
               onClick={() => setSecretsOpen(true)}
             >
               <svg
@@ -868,7 +872,7 @@ export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
                 <path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>
               Secrets
-            </button>
+            </Button>
           </div>
 
           <div className="space-y-5">
@@ -937,14 +941,15 @@ export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
           )}
 
           <div className="flex justify-end mt-4">
-            <button
-              type="button"
-              className="inline-flex items-center justify-center border border-accent bg-accent text-accent-fg cursor-pointer text-[13px] font-[inherit] no-underline whitespace-nowrap rounded-lg transition-opacity duration-100 hover:opacity-85 disabled:opacity-50 disabled:cursor-not-allowed text-[11px] py-1 px-3.5 !mt-0"
+            <Button
+              variant="default"
+              size="sm"
+              className="text-[11px]"
               onClick={handleWalletSaveAll}
               disabled={walletApiKeySaving}
             >
               {walletApiKeySaving ? "Saving..." : "Save"}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -987,13 +992,14 @@ export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
                   {t("configpageview.SecretsVault1")}
                 </span>
               </div>
-              <button
-                type="button"
-                className="text-muted hover:text-txt text-lg leading-none px-1 bg-transparent border-0 cursor-pointer"
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted hover:text-txt text-lg leading-none"
                 onClick={() => setSecretsOpen(false)}
               >
                 {t("bugreportmodal.Times")}
-              </button>
+              </Button>
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto">
               <SecretsView />

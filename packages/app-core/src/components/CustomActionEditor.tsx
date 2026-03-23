@@ -853,16 +853,17 @@ export function CustomActionEditor({
             </span>
             <div className="flex gap-2">
               {(["http", "shell", "code"] as const).map((type) => (
-                <button
-                  type="button"
+                <Button
+                  variant={handlerType === type ? "default" : "outline"}
+                  size="sm"
                   key={type}
                   onClick={() => {
                     setHandlerType(type);
                     setFormError("");
                   }}
-                  className={`px-3 py-1.5 text-xs border cursor-pointer ${
+                  className={`px-3 py-1.5 text-xs ${
                     handlerType === type
-                      ? "border-accent bg-accent text-[var(--accent-foreground,#1a1f26)]"
+                      ? ""
                       : "border-border text-muted hover:text-txt"
                   }`}
                 >
@@ -871,7 +872,7 @@ export function CustomActionEditor({
                     : type === "shell"
                       ? "Shell Command"
                       : "JavaScript"}
-                </button>
+                </Button>
               ))}
             </div>
           </div>

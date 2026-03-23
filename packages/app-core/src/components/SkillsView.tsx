@@ -394,7 +394,9 @@ function InstallModal({
               { id: "url" as const, label: "GITHUB URL" },
             ] as const
           ).map((t) => (
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               type="button"
               key={t.id}
               style={{
@@ -410,11 +412,12 @@ function InstallModal({
                   tab === t.id ? "2px solid #f0b232" : "2px solid transparent",
                 color: tab === t.id ? "#f0b232" : "var(--muted)",
                 transition: "color 0.2s, border-color 0.2s",
+                borderRadius: 0,
               }}
               onClick={() => setTab(t.id)}
             >
               {t.label}
-            </button>
+            </Button>
           ))}
         </div>
 
@@ -436,7 +439,9 @@ function InstallModal({
                     if (e.key === "Enter") void searchSkillsMarketplace();
                   }}
                 />
-                <button
+                <Button
+                  variant="default"
+                  size="sm"
                   type="button"
                   className="plugins-game-chip"
                   style={{ minHeight: 36, padding: "0 16px", fontWeight: 700 }}
@@ -444,7 +449,7 @@ function InstallModal({
                   disabled={skillsMarketplaceLoading}
                 >
                   {skillsMarketplaceLoading ? "Searching..." : "Search"}
-                </button>
+                </Button>
               </div>
 
               {skillsMarketplaceError && (
@@ -525,7 +530,9 @@ function InstallModal({
                     if (e.key === "Enter") void installSkillFromGithubUrl();
                   }}
                 />
-                <button
+                <Button
+                  variant="default"
+                  size="sm"
                   type="button"
                   className="plugins-game-chip"
                   style={{ minHeight: 36, padding: "0 16px", fontWeight: 700 }}
@@ -538,7 +545,7 @@ function InstallModal({
                   {skillsMarketplaceAction === "install:manual"
                     ? "Installing..."
                     : "Install"}
-                </button>
+                </Button>
               </div>
 
               {skillsMarketplaceError && (
@@ -936,28 +943,32 @@ function SkillsModalView() {
               onChange={(e) => setFilterText(e.target.value)}
               className="plugins-game-search-input"
             />
-            <button
+            <Button
+              variant="default"
+              size="sm"
               type="button"
               className="plugins-game-chip plugins-game-add-btn"
               onClick={() => setInstallModalOpen(true)}
             >
               <span className="plugins-game-add-symbol">+</span>{" "}
               {t("skillsview.Install", { defaultValue: "Install" })}
-            </button>
+            </Button>
           </div>
         </div>
 
         {/* Filter tabs */}
         <div className="plugins-game-chip-row">
           {tabs.map((tab) => (
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               key={tab.key}
               type="button"
               className={`plugins-game-chip plugins-game-chip-small${filterTab === tab.key ? " is-active" : ""}`}
               onClick={() => setFilterTab(tab.key)}
             >
               {tab.label}
-            </button>
+            </Button>
           ))}
         </div>
 
@@ -971,10 +982,11 @@ function SkillsModalView() {
             </div>
           ) : (
             filtered.map((skill) => (
-              <button
+              <Button
+                variant="ghost"
                 key={skill.id}
                 type="button"
-                className={`plugins-game-card${effectiveSelectedId === skill.id ? " is-selected" : ""}${!skill.enabled ? " is-disabled" : ""}`}
+                className={`plugins-game-card${effectiveSelectedId === skill.id ? " is-selected" : ""}${!skill.enabled ? " is-disabled" : ""} h-auto`}
                 onClick={() => setSelectedId(skill.id)}
               >
                 <div className="plugins-game-card-icon-shell">
@@ -992,7 +1004,7 @@ function SkillsModalView() {
                     </span>
                   </div>
                 </div>
-              </button>
+              </Button>
             ))
           )}
         </div>
@@ -1014,7 +1026,9 @@ function SkillsModalView() {
                     {selected.name}
                   </div>
                 </div>
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   type="button"
                   className={`plugins-game-toggle ${selected.enabled ? "is-on" : "is-off"}`}
                   onClick={() =>
@@ -1027,27 +1041,31 @@ function SkillsModalView() {
                     : selected.enabled
                       ? "ON"
                       : "OFF"}
-                </button>
+                </Button>
               </div>
             </div>
             <div className="plugins-game-detail-description">
               {selected.description || "No description provided."}
             </div>
             <div className="plugins-game-detail-actions">
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 type="button"
                 className="plugins-game-action-btn"
                 onClick={() => setEditingSkill(selected)}
               >
                 {t("skillsview.EditSource", { defaultValue: "Edit Source" })}
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
                 type="button"
                 className="plugins-game-action-btn"
                 onClick={() => handleDeleteSkill(selected.id, selected.name)}
               >
                 {t("skillsview.Delete", { defaultValue: "Delete" })}
-              </button>
+              </Button>
             </div>
           </>
         ) : (

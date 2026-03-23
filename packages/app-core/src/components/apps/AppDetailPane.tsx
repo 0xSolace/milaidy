@@ -33,13 +33,14 @@ export function AppDetailPane({
   if (compact) {
     return (
       <div className="phone-inline-detail">
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
           className="flex items-center gap-1.5 text-[12px] text-muted hover:text-txt mb-4 cursor-pointer"
           onClick={onBack}
         >
           ← {t("appsview.Back")}
-        </button>
+        </Button>
         <div className="flex items-center gap-3 mb-4">
           <div className="phone-app-icon-lg">{getAppEmoji(app)}</div>
           <div className="flex-1 min-w-0">

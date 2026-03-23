@@ -21,6 +21,7 @@ import {
 } from "@miladyai/app-core/components";
 import type { Tab } from "@miladyai/app-core/navigation";
 import { useApp } from "@miladyai/app-core/state";
+import { Button } from "@miladyai/ui";
 import React, { type ReactNode, useState } from "react";
 import { CustomActionsView } from "./CustomActionsView";
 import { DesktopWorkspaceSection } from "./DesktopWorkspaceSection";
@@ -261,16 +262,16 @@ export function AdvancedPageView({ inModal }: { inModal?: boolean } = {}) {
       {inModal ? (
         <nav className="settings-icon-sidebar">
           {tabs.map((subTab) => (
-            <button
+            <Button
               key={subTab.id}
-              type="button"
+              variant="ghost"
               className={`select-none [&_*]:select-none [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] focus:outline-none focus-visible:outline-none settings-icon-btn ${currentSubTab === subTab.id ? "is-active" : ""}`}
               onClick={() => handleSubTabChange(subTab.id)}
               title={subTab.description}
             >
               {SUBTAB_ICONS[subTab.id]}
               <span className="settings-icon-label">{subTab.label}</span>
-            </button>
+            </Button>
           ))}
         </nav>
       ) : (
@@ -279,10 +280,10 @@ export function AdvancedPageView({ inModal }: { inModal?: boolean } = {}) {
             {tabs.map((subTab) => {
               const isActive = currentSubTab === subTab.id;
               return (
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
                   key={subTab.id}
-                  className={`select-none [&_*]:select-none [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] focus:outline-none focus-visible:outline-none px-4 py-2 text-xs font-medium border-b-2 -mb-px transition-colors ${
+                  className={`select-none [&_*]:select-none [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] focus:outline-none focus-visible:outline-none px-4 py-2 text-xs font-medium border-b-2 -mb-px transition-colors rounded-none ${
                     isActive
                       ? "border-accent text-txt"
                       : "border-transparent text-muted hover:text-txt hover:border-border"
@@ -291,7 +292,7 @@ export function AdvancedPageView({ inModal }: { inModal?: boolean } = {}) {
                   title={subTab.description}
                 >
                   {subTab.label}
-                </button>
+                </Button>
               );
             })}
           </div>

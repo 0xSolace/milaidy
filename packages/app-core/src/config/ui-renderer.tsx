@@ -11,6 +11,7 @@
  */
 
 import {
+  Button,
   Select,
   SelectContent,
   SelectItem,
@@ -665,15 +666,16 @@ const SwitchComponent: ComponentFn = (props, _children, ctx) => {
   const checked = !!value;
   return (
     <span className="flex items-center gap-2 cursor-pointer">
-      <button
+      <Button
         type="button"
-        className={`relative w-9 h-[18px] transition-colors ${checked ? "bg-[var(--accent)]" : "bg-[var(--muted)]"}`}
+        variant="ghost"
+        className={`relative w-9 h-[18px] p-0 transition-colors rounded-none ${checked ? "bg-[var(--accent)]" : "bg-[var(--muted)]"}`}
         onClick={() => setValue(!checked)}
       >
         <div
           className={`absolute top-0.5 w-[14px] h-[14px] bg-white transition-all ${checked ? "left-5" : "left-0.5"}`}
         />
-      </button>
+      </Button>
       <span className="text-xs font-semibold">{String(props.label ?? "")}</span>
     </span>
   );
@@ -715,12 +717,13 @@ const ToggleComponent: ComponentFn = (props, _children, ctx, el) => {
   );
   const pressed = !!value;
   return (
-    <button
+    <Button
       type="button"
-      className={`px-3 py-1.5 text-xs border cursor-pointer transition-colors ${
+      variant={pressed ? "default" : "outline"}
+      className={`px-3 py-1.5 text-xs transition-colors ${
         pressed
           ? "bg-[var(--accent)] text-[var(--accent-foreground,#1a1f26)] border-[var(--accent)]"
-          : "bg-[var(--card)] text-[var(--text)] border-[var(--border)] hover:bg-[var(--bg-hover)]"
+          : "bg-[var(--card)] text-[var(--text)] hover:bg-[var(--bg-hover)]"
       }`}
       onClick={() => {
         setValue(!pressed);
@@ -728,7 +731,7 @@ const ToggleComponent: ComponentFn = (props, _children, ctx, el) => {
       }}
     >
       {String(props.label ?? "Toggle")}
-    </button>
+    </Button>
   );
 };
 
@@ -759,18 +762,19 @@ const ToggleGroupComponent: ComponentFn = (props, _children, ctx) => {
           ? selected.has(item.value)
           : value === item.value;
         return (
-          <button
+          <Button
             key={item.value}
             type="button"
-            className={`px-2.5 py-1 text-xs border cursor-pointer transition-colors ${
+            variant={active ? "default" : "outline"}
+            className={`px-2.5 py-1 text-xs transition-colors ${
               active
                 ? "bg-[var(--accent)] text-[var(--accent-foreground,#1a1f26)] border-[var(--accent)]"
-                : "bg-[var(--card)] text-[var(--text)] border-[var(--border)] hover:bg-[var(--bg-hover)]"
+                : "bg-[var(--card)] text-[var(--text)] hover:bg-[var(--bg-hover)]"
             }`}
             onClick={() => toggle(item.value)}
           >
             {item.label}
-          </button>
+          </Button>
         );
       })}
     </div>
@@ -789,18 +793,19 @@ const ButtonGroupComponent: ComponentFn = (props, _children, ctx) => {
       {buttons.map((btn) => {
         const active = value === btn.value;
         return (
-          <button
+          <Button
             key={btn.value}
             type="button"
-            className={`px-3 py-1.5 text-xs border cursor-pointer transition-colors ${
+            variant={active ? "default" : "outline"}
+            className={`px-3 py-1.5 text-xs transition-colors ${
               active
                 ? "bg-[var(--accent)] text-[var(--accent-foreground,#1a1f26)] border-[var(--accent)]"
-                : "bg-[var(--card)] text-[var(--text)] border-[var(--border)] hover:bg-[var(--bg-hover)]"
+                : "bg-[var(--card)] text-[var(--text)] hover:bg-[var(--bg-hover)]"
             }`}
             onClick={() => setValue(btn.value)}
           >
             {btn.label}
-          </button>
+          </Button>
         );
       })}
     </div>
@@ -869,25 +874,29 @@ const CarouselComponent: ComponentFn = (props) => {
         )}
       </div>
       <div className="flex justify-center gap-2 mt-2">
-        <button
+        <Button
           type="button"
-          className="text-xs px-2 py-0.5 border border-[var(--border)] bg-[var(--card)] cursor-pointer hover:bg-[var(--bg-hover)]"
+          variant="outline"
+          size="sm"
+          className="text-xs px-2 py-0.5"
           onClick={() => setCurrent((p) => Math.max(0, p - 1))}
           disabled={current === 0}
         >
           {t("ui-renderer.Larr")}
-        </button>
+        </Button>
         <span className="text-[10px] text-[var(--muted)] self-center">
           {current + 1} / {items.length}
         </span>
-        <button
+        <Button
           type="button"
-          className="text-xs px-2 py-0.5 border border-[var(--border)] bg-[var(--card)] cursor-pointer hover:bg-[var(--bg-hover)]"
+          variant="outline"
+          size="sm"
+          className="text-xs px-2 py-0.5"
           onClick={() => setCurrent((p) => Math.min(items.length - 1, p + 1))}
           disabled={current === items.length - 1}
         >
           {t("ui-renderer.Rarr")}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -1085,14 +1094,15 @@ const ButtonComponent: ComponentFn = (props, _children, ctx, el) => {
       "bg-transparent text-[var(--text)] border-transparent hover:bg-[var(--bg-hover)]",
   };
   return (
-    <button
+    <Button
       type="button"
-      className={`px-3 py-1.5 text-xs font-medium border cursor-pointer transition-colors ${cls[variant] ?? cls.primary}`}
+      variant={variant === "danger" ? "destructive" : variant === "ghost" ? "ghost" : variant === "secondary" ? "outline" : "default"}
+      className={`px-3 py-1.5 text-xs font-medium transition-colors ${cls[variant] ?? cls.primary}`}
       disabled={!!props.disabled}
       onClick={() => fireEvent(el.on?.press, ctx)}
     >
       {String(props.label ?? "Button")}
-    </button>
+    </Button>
   );
 };
 
@@ -1122,20 +1132,23 @@ const DropdownMenuComponent: ComponentFn = (props, _children, ctx) => {
   const items = (props.items as Array<{ label: string; value: string }>) ?? [];
   return (
     <div className="relative inline-block">
-      <button
+      <Button
         type="button"
-        className="px-3 py-1.5 text-xs border border-[var(--border)] bg-[var(--card)] cursor-pointer hover:bg-[var(--bg-hover)]"
+        variant="outline"
+        size="sm"
+        className="px-3 py-1.5 text-xs"
         onClick={() => setOpen(!open)}
       >
         {String(props.label ?? "Menu")} ▾
-      </button>
+      </Button>
       {open && (
         <div className="absolute top-full left-0 mt-1 min-w-[120px] border border-[var(--border)] bg-[var(--card)] shadow-md z-10">
           {items.map((item) => (
-            <button
+            <Button
               key={item.value}
               type="button"
-              className="block w-full text-left px-3 py-1.5 text-xs hover:bg-[var(--bg-hover)] cursor-pointer"
+              variant="ghost"
+              className="block w-full text-left px-3 py-1.5 text-xs hover:bg-[var(--bg-hover)] rounded-none justify-start h-auto"
               onClick={() => {
                 setOpen(false);
                 if (ctx.onAction)
@@ -1146,7 +1159,7 @@ const DropdownMenuComponent: ComponentFn = (props, _children, ctx) => {
               }}
             >
               {item.label}
-            </button>
+            </Button>
           ))}
         </div>
       )}
@@ -1168,10 +1181,11 @@ const TabsComponent: ComponentFn = (props, _children, ctx) => {
     <div>
       <div className="flex border-b border-[var(--border)]">
         {tabs.map((tab) => (
-          <button
+          <Button
             key={tab.value}
             type="button"
-            className={`px-3 py-1.5 text-xs cursor-pointer transition-colors ${
+            variant="ghost"
+            className={`px-3 py-1.5 text-xs rounded-none transition-colors h-auto ${
               tab.value === active
                 ? "border-b-2 border-[var(--accent)] text-[var(--accent)] font-semibold"
                 : "text-[var(--muted)] hover:text-[var(--text)]"
@@ -1179,7 +1193,7 @@ const TabsComponent: ComponentFn = (props, _children, ctx) => {
             onClick={() => setValue(tab.value)}
           >
             {tab.label}
-          </button>
+          </Button>
         ))}
       </div>
       {activeTab && <div className="py-3 text-xs">{activeTab.content}</div>}
@@ -1196,36 +1210,42 @@ const PaginationComponent: ComponentFn = (props, _children, ctx) => {
   const current = Number(value ?? 1);
   return (
     <div className="flex items-center gap-1">
-      <button
+      <Button
         type="button"
-        className="px-2 py-1 text-xs border border-[var(--border)] bg-[var(--card)] cursor-pointer hover:bg-[var(--bg-hover)] disabled:opacity-40"
+        variant="outline"
+        size="sm"
+        className="px-2 py-1 text-xs disabled:opacity-40"
         disabled={current <= 1}
         onClick={() => setValue(current - 1)}
       >
         ←
-      </button>
+      </Button>
       {Array.from({ length: total }, (_, i) => i + 1).map((page) => (
-        <button
+        <Button
           key={page}
           type="button"
-          className={`px-2 py-1 text-xs border cursor-pointer ${
+          variant={page === current ? "default" : "outline"}
+          size="sm"
+          className={`px-2 py-1 text-xs ${
             page === current
               ? "bg-[var(--accent)] text-[var(--accent-foreground,#1a1f26)] border-[var(--accent)]"
-              : "border-[var(--border)] bg-[var(--card)] hover:bg-[var(--bg-hover)]"
+              : "hover:bg-[var(--bg-hover)]"
           }`}
           onClick={() => setValue(page)}
         >
           {page}
-        </button>
+        </Button>
       ))}
-      <button
+      <Button
         type="button"
-        className="px-2 py-1 text-xs border border-[var(--border)] bg-[var(--card)] cursor-pointer hover:bg-[var(--bg-hover)] disabled:opacity-40"
+        variant="outline"
+        size="sm"
+        className="px-2 py-1 text-xs disabled:opacity-40"
         disabled={current >= total}
         onClick={() => setValue(current + 1)}
       >
         →
-      </button>
+      </Button>
     </div>
   );
 };
@@ -1357,9 +1377,10 @@ const LineGraphComponent: ComponentFn = (props) => {
 const TooltipComponent: ComponentFn = (props) => {
   const [show, setShow] = useState(false);
   return (
-    <button
+    <Button
       type="button"
-      className="relative inline-block"
+      variant="ghost"
+      className="relative inline-block p-0 h-auto"
       onMouseEnter={() => setShow(true)}
       onMouseLeave={() => setShow(false)}
       onFocus={() => setShow(true)}
@@ -1374,7 +1395,7 @@ const TooltipComponent: ComponentFn = (props) => {
           {String(props.content ?? "")}
         </div>
       )}
-    </button>
+    </Button>
   );
 };
 
@@ -1382,23 +1403,26 @@ const PopoverComponent: ComponentFn = (props) => {
   const [open, setOpen] = useState(false);
   return (
     <div className="relative inline-block">
-      <button
+      <Button
         type="button"
-        className="text-xs text-[var(--accent)] underline cursor-pointer"
+        variant="link"
+        className="text-xs text-[var(--accent)] underline p-0 h-auto"
         onClick={() => setOpen(!open)}
       >
         {String(props.trigger ?? "Click")}
-      </button>
+      </Button>
       {open && (
         <div className="absolute top-full left-0 mt-1 p-3 border border-[var(--border)] bg-[var(--card)] shadow-md z-10 min-w-[150px]">
           <div className="text-xs">{String(props.content ?? "")}</div>
-          <button
+          <Button
             type="button"
-            className="text-[10px] text-[var(--muted)] mt-1 cursor-pointer hover:text-[var(--text)]"
+            variant="ghost"
+            size="sm"
+            className="text-[10px] text-[var(--muted)] mt-1 hover:text-[var(--text)] p-0 h-auto"
             onClick={() => setOpen(false)}
           >
             Close
-          </button>
+          </Button>
         </div>
       )}
     </div>
@@ -1409,9 +1433,10 @@ const CollapsibleComponent: ComponentFn = (props, children) => {
   const [open, setOpen] = useState(!!props.defaultOpen);
   return (
     <div className="border border-[var(--border)]">
-      <button
+      <Button
         type="button"
-        className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold cursor-pointer hover:bg-[var(--bg-hover)] transition-colors"
+        variant="ghost"
+        className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold hover:bg-[var(--bg-hover)] transition-colors rounded-none justify-start h-auto"
         onClick={() => setOpen(!open)}
       >
         <span
@@ -1421,7 +1446,7 @@ const CollapsibleComponent: ComponentFn = (props, children) => {
           &#9654;
         </span>
         {String(props.title ?? "Collapsible")}
-      </button>
+      </Button>
       {open && <div className="px-3 pb-3">{children}</div>}
     </div>
   );
@@ -1446,9 +1471,10 @@ const AccordionComponent: ComponentFn = (props) => {
     <div className="border border-[var(--border)] divide-y divide-[var(--border)]">
       {items.map((item, i) => (
         <div key={`${item.title}:${item.content}`}>
-          <button
+          <Button
             type="button"
-            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold cursor-pointer hover:bg-[var(--bg-hover)]"
+            variant="ghost"
+            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold hover:bg-[var(--bg-hover)] rounded-none justify-start h-auto"
             onClick={() => toggle(i)}
           >
             <span
@@ -1458,7 +1484,7 @@ const AccordionComponent: ComponentFn = (props) => {
               &#9654;
             </span>
             {item.title}
-          </button>
+          </Button>
           {openSet.has(i) && (
             <div className="px-3 pb-3 text-xs">{item.content}</div>
           )}
@@ -1502,13 +1528,15 @@ const DialogComponent: ComponentFn = (props, children, ctx) => {
               </div>
             ) : null}
           </div>
-          <button
+          <Button
             type="button"
-            className="text-[var(--muted)] hover:text-[var(--text)] text-lg leading-none px-1 cursor-pointer"
+            variant="ghost"
+            size="icon"
+            className="text-[var(--muted)] hover:text-[var(--text)] text-lg leading-none px-1 h-auto w-auto"
             onClick={close}
           >
             ×
-          </button>
+          </Button>
         </div>
         {children}
       </div>

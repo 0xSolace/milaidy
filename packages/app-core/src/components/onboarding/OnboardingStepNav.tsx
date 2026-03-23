@@ -6,6 +6,7 @@
  * (enforced in AppContext via canRevertOnboardingTo).
  */
 import { useApp } from "@miladyai/app-core/state";
+import { Button } from "@miladyai/ui";
 import { useBranding } from "../../config/branding";
 import { getOnboardingNavMetas } from "../../onboarding/flow";
 
@@ -74,8 +75,9 @@ export function OnboardingStepNav() {
 
           if (isClickable) {
             return (
-              <button
+              <Button
                 key={step.id}
+                variant="ghost"
                 type="button"
                 className={rowClass}
                 onClick={() => handleOnboardingJumpToStep(step.id)}
@@ -85,7 +87,7 @@ export function OnboardingStepNav() {
                   <span className={nameClass}>{t(step.name)}</span>
                   <span className={subClass}>{t(step.subtitle)}</span>
                 </div>
-              </button>
+              </Button>
             );
           }
 

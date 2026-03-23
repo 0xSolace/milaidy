@@ -195,7 +195,10 @@ import { buildWhitelistTree, generateProof } from "./merkle-tree.js";
 import { handleModelsRoutes } from "./models-routes.js";
 import { handleNfaRoutes } from "./nfa-routes.js";
 
-import type { PTYService } from "./parse-action-block.js";
+import type {
+  CoordinationLLMResponse,
+  PTYService,
+} from "./parse-action-block.js";
 import { handlePermissionRoutes } from "./permissions-routes.js";
 import {
   type PluginParamInfo,
@@ -237,31 +240,11 @@ import {
   handleWhatsAppRoute,
 } from "./whatsapp-routes.js";
 
-/**
- * Local stubs for types removed from @elizaos/plugin-agent-orchestrator 2.x.
- * These are only used as structural types for the SwarmCoordinator callbacks;
- * no runtime import is needed.
- */
-// biome-ignore lint/suspicious/noExplicitAny: legacy coordinator event payload
-type SwarmEvent = Record<string, any>;
-// biome-ignore lint/suspicious/noExplicitAny: legacy coordinator task context
-type TaskContext = Record<string, any>;
-interface CoordinationLLMResponse {
-  action: string;
-  reasoning: string;
-  response?: string;
-  useKeys?: boolean;
-  keys?: string[];
-}
-interface TaskCompletionSummary {
-  sessionId: string;
-  label: string;
-  agentType: string;
-  originalTask: string;
-  status: string;
-  completionSummary: string;
-  [key: string]: unknown;
-}
+import type {
+  SwarmEvent,
+  TaskCompletionSummary,
+  TaskContext,
+} from "./coordinator-types.js";
 
 // @ts-ignore
 type PiAiPluginModule = typeof import("@elizaos/plugin-pi-ai");
@@ -8242,8 +8225,7 @@ async function handleRequest(
             content: m.content,
           })),
         };
-        // biome-ignore lint/suspicious/noExplicitAny: mixed legacy/new formats
-      }) as any;
+      }) as unknown as typeof agent.messageExamples;
     }
 
     // ── Theme preference ──────────────────────────────────────────────────
@@ -11250,7 +11232,7 @@ async function handleRequest(
     }
     // Also remove from legacy channels key
     const stateConfigRecord = state.config as Record<string, unknown>;
-    if (stateConfigRecord.channels && Object.hasOwn(stateConfigRecord.channels, name)) {
+    if (stateConfigRecord.channels && typeof stateConfigRecord.channels === "object" && Object.hasOwn(stateConfigRecord.channels, name)) {
       delete (stateConfigRecord.channels as Record<string, unknown>)[name];
     }
 

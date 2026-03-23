@@ -1,3 +1,4 @@
+import { Button } from "@miladyai/ui";
 import type { ProviderOption } from "../../../api";
 import { appNameInterpolationVars, useBranding } from "../../../config";
 import type {
@@ -73,7 +74,7 @@ export function ConnectionProviderGridScreen({
           const isRecommended = recommendedIds.has(p.id);
           const detectedLabel = getDetectedLabel(p.id);
           return (
-            <button
+            <Button
               type="button"
               key={p.id}
               className={`flex items-center justify-between gap-[8px] px-[14px] py-[10px] min-h-[52px] bg-[rgba(10,14,20,0.24)] backdrop-blur-[18px] backdrop-saturate-[1.2] border border-[rgba(255,255,255,0.1)] rounded-[8px] cursor-pointer transition-all duration-300 text-left hover:bg-[rgba(10,14,20,0.34)] hover:border-[rgba(255,255,255,0.16)]${isRecommended ? " bg-[rgba(240,185,11,0.1)] border-[rgba(240,185,11,0.24)] hover:bg-[rgba(240,185,11,0.14)] hover:border-[rgba(240,185,11,0.4)]" : ""}${detectedLabel ? " border-[rgba(34,197,94,0.4)] bg-[rgba(34,197,94,0.1)] hover:bg-[rgba(34,197,94,0.15)] hover:border-[rgba(34,197,94,0.5)]" : ""}`}
@@ -122,12 +123,13 @@ export function ConnectionProviderGridScreen({
                   {t("onboarding.recommended") ?? "Recommended"}
                 </span>
               )}
-            </button>
+            </Button>
           );
         })}
       </div>
       <div className="flex justify-between items-center gap-6 mt-[18px] pt-3.5 border-t border-white/[0.08]">
-        <button
+        <Button
+          variant="ghost"
           className="text-[10px] text-[rgba(240,238,250,0.62)] tracking-[0.15em] uppercase cursor-pointer no-underline bg-none border-none font-inherit transition-colors duration-300 p-0 hover:text-[rgba(240,238,250,0.9)]"
           style={{ textShadow: "0 1px 8px rgba(3,5,10,0.45)" }}
           onClick={() => {
@@ -140,7 +142,7 @@ export function ConnectionProviderGridScreen({
           type="button"
         >
           {t("onboarding.back")}
-        </button>
+        </Button>
         <span />
       </div>
     </>

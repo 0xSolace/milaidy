@@ -1217,15 +1217,9 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
   const isSocialMode = mode === "social" || mode === "all-social";
   const isConnectorLikeMode = mode === "connectors" || mode === "social";
   const resultLabel = mode === "social" ? "connectors" : label.toLowerCase();
-  const searchPlaceholder = isSocialMode
-    ? "Search..."
-    : `Search ${label.toLowerCase()}...`;
-  const effectiveStatusFilter: StatusFilter =
-    isSocialMode && pluginStatusFilter === "disabled"
-      ? "all"
-      : pluginStatusFilter;
-  const effectiveSearch = pluginSearch;
-  const showToolbar = true;
+  const effectiveStatusFilter: StatusFilter = "all";
+  const effectiveSearch = "";
+
   const allowCustomOrder = !isSocialMode;
   const showPluginManagementActions = !isSocialMode;
 
@@ -2189,43 +2183,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
         )}
 
         <div className="min-w-0 flex-1">
-          <div className="sticky top-0 z-20 border-b border-border/50 bg-bg/85 px-4 py-4 shadow-[0_12px_30px_rgba(0,0,0,0.14)] backdrop-blur-xl sm:px-6 lg:px-8">
-            <div className="mx-auto max-w-5xl">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Input
-                  type="text"
-                  className="h-11 w-full rounded-xl border-border/60 bg-card/70 text-sm shadow-sm"
-                  placeholder="Search connectors..."
-                  value={pluginSearch}
-                  onChange={(e) => setState("pluginSearch", e.target.value)}
-                />
-                <div className="flex shrink-0 gap-1.5 rounded-xl border border-white/5 bg-black/10 p-1">
-                  {(["all", "enabled"] as const).map((status) => (
-                    <Button
-                      key={status}
-                      variant={
-                        effectiveStatusFilter === status ? "default" : "ghost"
-                      }
-                      size="sm"
-                      className={`h-8 px-3 text-[11px] font-bold tracking-wide transition-all ${
-                        effectiveStatusFilter === status
-                          ? "shadow-sm"
-                          : "text-muted hover:bg-white/5 hover:text-txt"
-                      }`}
-                      onClick={() =>
-                        setState("pluginStatusFilter", status as StatusFilter)
-                      }
-                    >
-                      {status === "all"
-                        ? `All (${categoryPlugins.length})`
-                        : `Enabled (${enabledCount})`}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
           <div className="mx-auto max-w-5xl px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
             {hasPluginToggleInFlight && (
               <div className="mb-4 rounded-2xl border border-accent bg-accent-subtle px-4 py-3 text-[11px] text-txt">
@@ -2235,9 +2192,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
 
             {visiblePlugins.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border px-5 py-10 text-center text-muted">
-                {effectiveSearch
-                  ? "No connectors match your search."
-                  : "No connectors match your filters."}
+                No connectors available.
               </div>
             ) : (
               <div
@@ -2617,12 +2572,13 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
               </div>
             ) : (
               gameVisiblePlugins.map((p: PluginInfo) => (
-                <button
+                <Button
+                  variant="ghost"
                   key={p.id}
                   type="button"
                   className={`plugins-game-card${
                     effectiveGameSelected === p.id ? " is-selected" : ""
-                  }${!p.enabled ? " is-disabled" : ""}`}
+                  }${!p.enabled ? " is-disabled" : ""} h-auto`}
                   onClick={() => {
                     setGameSelectedId(p.id);
                     if (gameNarrow) setGameMobileDetail(true);
@@ -2663,7 +2619,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                       </span>
                     </div>
                   </div>
-                </button>
+                </Button>
               ))
             )}
           </div>
@@ -2677,13 +2633,15 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
             <>
               <div className="plugins-game-detail-head">
                 {gameNarrow && (
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     type="button"
                     className="plugins-game-back-btn"
                     onClick={() => setGameMobileDetail(false)}
                   >
                     {t("pluginsview.Back")}
-                  </button>
+                  </Button>
                 )}
                 <div className="plugins-game-detail-title-row">
                   <div className="plugins-game-detail-icon-shell">
@@ -2718,7 +2676,9 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                       </span>
                     )}
                   </div>
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     type="button"
                     className={`plugins-game-toggle ${
                       selectedPlugin.enabled ? "is-on" : "is-off"
@@ -2732,7 +2692,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                     disabled={togglingPlugins.has(selectedPlugin.id)}
                   >
                     {selectedPlugin.enabled ? "ON" : "OFF"}
-                  </button>
+                  </Button>
                 </div>
               </div>
               <div className="plugins-game-detail-description">
@@ -2753,7 +2713,9 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
               {selectedPluginLinks.length > 0 && (
                 <div className="plugins-game-detail-links flex flex-wrap gap-2 px-3 pb-3">
                   {selectedPluginLinks.map((link) => (
-                    <button
+                    <Button
+                      variant="outline"
+                      size="sm"
                       key={`${selectedPlugin.id}:${link.key}`}
                       type="button"
                       className="plugins-game-link-btn border border-border bg-transparent px-2.5 py-1 text-[11px] text-muted transition-colors hover:border-accent hover:text-txt"
@@ -2762,7 +2724,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                       }}
                     >
                       {link.label}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               )}
@@ -2800,14 +2762,18 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                   </div>
                 )}
               <div className="plugins-game-detail-actions">
-                <button
+                <Button
+                  variant="outline"
+                  size="sm"
                   type="button"
                   className="plugins-game-action-btn"
                   onClick={() => void handleTestConnection(selectedPlugin.id)}
                 >
                   {t("pluginsview.TestConnection")}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="default"
+                  size="sm"
                   type="button"
                   className={`plugins-game-action-btn plugins-game-save-btn${
                     pluginSaveSuccess.has(selectedPlugin.id) ? " is-saved" : ""
@@ -2820,7 +2786,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                     : pluginSaveSuccess.has(selectedPlugin.id)
                       ? "Saved!"
                       : "Save"}
-                </button>
+                </Button>
               </div>
             </>
           ) : (
@@ -2872,55 +2838,8 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
       <div
         className={`flex-1 min-w-0 ${showDesktopSubgroupSidebar ? "px-5 py-6 sm:px-8 sm:py-8 lg:px-10" : ""}`}
       >
-        {showToolbar && (
+        {(allowCustomOrder && pluginOrder.length > 0) || showPluginManagementActions ? (
           <div className="flex items-center gap-3 mb-4 flex-wrap">
-            <div className="relative flex-1 min-w-[220px]">
-              <Input
-                type="text"
-                name="plugin-search"
-                autoComplete="off"
-                data-1p-ignore
-                data-lpignore="true"
-                className="w-full bg-card/60 backdrop-blur-md shadow-inner pr-8 h-9 rounded-xl focus-visible:ring-accent border-border/40"
-                placeholder={searchPlaceholder}
-                value={pluginSearch}
-                onChange={(e) => setState("pluginSearch", e.target.value)}
-              />
-              {pluginSearch && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 text-muted hover:text-txt rounded-full"
-                  onClick={() => setState("pluginSearch", "")}
-                  title={t("pluginsview.ClearSearch")}
-                >
-                  ✕
-                </Button>
-              )}
-            </div>
-
-            <div className="flex gap-1.5 shrink-0 bg-black/10 p-1 rounded-xl border border-white/5">
-              {(["all", "enabled"] as const).map((s) => (
-                <Button
-                  key={s}
-                  variant={pluginStatusFilter === s ? "default" : "ghost"}
-                  size="sm"
-                  className={`h-7 px-3 text-[11px] font-bold tracking-wide rounded-lg transition-all ${
-                    pluginStatusFilter === s
-                      ? "shadow-sm"
-                      : "text-muted hover:text-txt hover:bg-white/5"
-                  }`}
-                  onClick={() =>
-                    setState("pluginStatusFilter", s as StatusFilter)
-                  }
-                >
-                  {s === "all"
-                    ? `All (${categoryPlugins.length})`
-                    : `Enabled (${enabledCount})`}
-                </Button>
-              ))}
-            </div>
-
             {allowCustomOrder && pluginOrder.length > 0 && (
               <Button
                 variant="outline"
@@ -2932,7 +2851,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                 {t("pluginsview.ResetOrder")}
               </Button>
             )}
-
             {showPluginManagementActions && (
               <Button
                 variant="secondary"
@@ -2944,7 +2862,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
               </Button>
             )}
           </div>
-        )}
+        ) : null}
 
         {hasPluginToggleInFlight && (
           <div className="mb-3 px-3 py-2 border border-accent bg-accent-subtle text-[11px] text-txt">
@@ -2965,9 +2883,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
         <div className="overflow-y-auto">
           {sorted.length === 0 ? (
             <div className="text-center py-10 px-5 text-muted border border-dashed border-border">
-              {effectiveSearch
-                ? `No ${resultLabel} match your search.`
-                : `No ${resultLabel} available.`}
+              {`No ${resultLabel} available.`}
             </div>
           ) : visiblePlugins.length === 0 ? (
             <div className="text-center py-10 px-5 text-muted border border-dashed border-border">

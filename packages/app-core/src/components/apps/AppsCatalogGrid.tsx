@@ -70,8 +70,8 @@ export function AppsCatalogGrid({
       </div>
 
       {hasCurrentGame ? (
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           className="w-full mb-4 px-3 py-2.5 rounded-xl border border-ok/30 bg-ok/5 flex items-center gap-2 cursor-pointer hover:bg-ok/10 transition-colors"
           onClick={onOpenCurrentGame}
         >
@@ -80,7 +80,7 @@ export function AppsCatalogGrid({
             {activeGameDisplayName || "Game running"}
           </span>
           <span className="text-[10px] text-muted">→</span>
-        </button>
+        </Button>
       ) : null}
 
       {error ? (
@@ -112,9 +112,9 @@ export function AppsCatalogGrid({
             const displayName = app.displayName ?? getAppShortName(app);
 
             return (
-              <button
+              <Button
                 key={app.name}
-                type="button"
+                variant="ghost"
                 className={`phone-app-tile group ${isSelected ? "is-selected" : ""}`}
                 title={`Open ${displayName}`}
                 aria-label={`Open ${displayName}`}
@@ -127,7 +127,7 @@ export function AppsCatalogGrid({
                   <span className="text-xl">{getAppEmoji(app)}</span>
                 </div>
                 <span className="phone-app-label">{getAppShortName(app)}</span>
-              </button>
+              </Button>
             );
           })}
         </div>

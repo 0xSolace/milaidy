@@ -964,30 +964,28 @@ export function CloudDashboard() {
 
         <div className="flex items-center gap-2">
           <div className="inline-flex items-center gap-0.5 rounded-lg border border-border/50 bg-bg/50 p-0.5">
-            <button
-              type="button"
-              className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                activeView === "billing"
-                  ? "bg-accent text-accent-fg"
-                  : "text-muted hover:text-txt"
+            <Button
+              variant={activeView === "billing" ? "default" : "ghost"}
+              size="sm"
+              className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium ${
+                activeView !== "billing" ? "text-muted hover:text-txt" : ""
               }`}
               onClick={() => setState("cloudDashboardView", "billing")}
             >
               <CircleDollarSign className="w-3.5 h-3.5" />
               Billing
-            </button>
-            <button
-              type="button"
-              className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                activeView === "agents"
-                  ? "bg-accent text-accent-fg"
-                  : "text-muted hover:text-txt"
+            </Button>
+            <Button
+              variant={activeView === "agents" ? "default" : "ghost"}
+              size="sm"
+              className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium ${
+                activeView !== "agents" ? "text-muted hover:text-txt" : ""
               }`}
               onClick={() => setState("cloudDashboardView", "agents")}
             >
               <Server className="w-3.5 h-3.5" />
               Agents
-            </button>
+            </Button>
           </div>
           <Button
             variant="outline"
@@ -1089,18 +1087,19 @@ export function CloudDashboard() {
                 </div>
                 <div className="flex flex-wrap gap-1.5 mb-3">
                   {BILLING_PRESET_AMOUNTS.map((amount) => (
-                    <button
+                    <Button
                       key={amount}
-                      type="button"
-                      className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${
-                        billingAmount === String(amount)
-                          ? "border-accent bg-accent text-accent-fg"
-                          : "border-border/50 bg-bg/30 text-txt hover:border-accent/40"
+                      variant={billingAmount === String(amount) ? "default" : "outline"}
+                      size="sm"
+                      className={`rounded-lg px-2.5 py-1 text-xs font-medium ${
+                        billingAmount !== String(amount)
+                          ? "border-border/50 bg-bg/30 text-txt hover:border-accent/40"
+                          : ""
                       }`}
                       onClick={() => setBillingAmount(String(amount))}
                     >
                       ${amount}
-                    </button>
+                    </Button>
                   ))}
                 </div>
                 <div className="flex gap-2">

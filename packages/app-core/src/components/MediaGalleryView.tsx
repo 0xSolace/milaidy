@@ -302,11 +302,12 @@ export function MediaGalleryView({ leftNav }: { leftNav?: ReactNode }) {
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
             {filtered.map((item, i) => (
-              <button
+              <Button
+                variant="ghost"
                 type="button"
                 // biome-ignore lint/suspicious/noArrayIndexKey: composite key with index as tiebreaker
                 key={`${item.url}-${i}`}
-                className="bg-[var(--card)] border border-[var(--border)] p-0 cursor-pointer text-left hover:border-[var(--accent)] transition-colors group"
+                className="bg-[var(--card)] border border-[var(--border)] p-0 cursor-pointer text-left hover:border-[var(--accent)] transition-colors group h-auto rounded-none"
                 onClick={() => setLightboxItem(item)}
               >
                 {/* Thumbnail area */}
@@ -354,7 +355,7 @@ export function MediaGalleryView({ leftNav }: { leftNav?: ReactNode }) {
                     </span>
                   </div>
                 </div>
-              </button>
+              </Button>
             ))}
           </div>
         )}

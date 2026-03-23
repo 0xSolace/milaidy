@@ -1,6 +1,7 @@
 import { X } from "lucide-react";
 import * as React from "react";
 import { cn } from "../../lib/utils";
+import { Button } from "./button";
 
 export interface TagInputProps
   extends Omit<React.HTMLAttributes<HTMLDivElement>, "onChange"> {
@@ -75,13 +76,14 @@ export const TagInput = React.forwardRef<HTMLDivElement, TagInputProps>(
             }}
             className="flex-1 min-w-0 rounded-md border border-input bg-bg px-2 py-1 text-[11px] placeholder:text-muted focus-visible:outline-none focus-visible:border-ring"
           />
-          <button
-            type="button"
-            className="rounded-md border border-input bg-bg px-1.5 py-0.5 text-[10px] text-muted transition-colors hover:border-accent hover:text-accent"
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-auto px-1.5 py-0.5 text-[10px]"
             onClick={addItem}
           >
             {addLabel}
-          </button>
+          </Button>
         </div>
         <div className="flex flex-wrap gap-1.5 rounded-md border border-border bg-bg-accent p-1.5 min-h-[60px] content-start">
           {items.map((item, i) => (
@@ -90,14 +92,15 @@ export const TagInput = React.forwardRef<HTMLDivElement, TagInputProps>(
               className="inline-flex items-center gap-1 rounded-sm border border-border bg-bg px-2 py-0.5 text-[11px]"
             >
               {item}
-              <button
-                type="button"
-                className="text-muted hover:text-destructive transition-colors"
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-4 w-4 text-muted hover:text-destructive transition-colors"
                 onClick={() => removeItem(i)}
                 aria-label={`${removeLabel} ${item}`}
               >
                 <X className="h-3 w-3" />
-              </button>
+              </Button>
             </span>
           ))}
         </div>

@@ -7,6 +7,7 @@
  * - Explicit load order metadata
  */
 
+import { Button } from "@miladyai/ui";
 import { useCallback, useEffect, useState } from "react";
 import {
   client,
@@ -133,14 +134,16 @@ function TreeNode(props: {
         style={{ paddingLeft: `${depth * 14}px` }}
       >
         {canExpand ? (
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             type="button"
             onClick={() => onToggle(path)}
-            className="w-4 text-left text-muted hover:text-txt"
+            className="w-4 h-auto text-left text-muted hover:text-txt p-0"
             title={open ? "Collapse" : "Expand"}
           >
             {open ? "▾" : "▸"}
-          </button>
+          </Button>
         ) : (
           <span className="inline-block w-4 text-muted">·</span>
         )}
@@ -326,30 +329,36 @@ export function RuntimeView() {
             className="w-20 px-1.5 py-0.5 border border-border bg-bg text-txt rounded-lg"
           />
         </label>
-        <button
+        <Button
+          variant="outline"
+          size="sm"
           type="button"
           onClick={() => void loadSnapshot()}
           disabled={loading}
-          className="px-3 py-1.5 text-xs rounded-lg border border-border bg-bg hover:bg-card disabled:opacity-60"
+          className="px-3 py-1.5 text-xs rounded-lg"
         >
           {loading ? t("runtimeview.Refreshing") : t("common.refresh")}
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
           type="button"
           onClick={() => setExpandedPaths(new Set([rootPath]))}
-          className="px-3 py-1.5 text-xs rounded-lg border border-border bg-bg hover:bg-card"
+          className="px-3 py-1.5 text-xs rounded-lg"
         >
           {t("runtimeview.Collapse")}
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
           type="button"
           onClick={() =>
             setExpandedPaths(buildInitialExpanded(rootPath, sectionData))
           }
-          className="px-3 py-1.5 text-xs rounded-lg border border-border bg-bg hover:bg-card"
+          className="px-3 py-1.5 text-xs rounded-lg"
         >
           {t("runtimeview.ExpandTop")}
-        </button>
+        </Button>
         <div className="text-[11px] text-muted ml-auto">
           {snapshot
             ? `${t("runtimeview.lastUpdated")} ${formatDateTime(snapshot.generatedAt, { fallback: "n/a" })}`
@@ -420,18 +429,20 @@ export function RuntimeView() {
         {SECTION_TAB_KEYS.map((tab) => {
           const active = tab.key === activeSection;
           return (
-            <button
+            <Button
               key={tab.key}
+              variant="ghost"
+              size="sm"
               type="button"
               onClick={() => setActiveSection(tab.key)}
-              className={`px-3 py-2 text-xs font-medium border-b-2 -mb-px ${
+              className={`px-3 py-2 text-xs font-medium border-b-2 -mb-px rounded-none ${
                 active
                   ? "border-accent text-txt"
                   : "border-transparent text-muted hover:text-txt hover:border-border"
               }`}
             >
               {t(tab.i18nKey)}
-            </button>
+            </Button>
           );
         })}
       </div>

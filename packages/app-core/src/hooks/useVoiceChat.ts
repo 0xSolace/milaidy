@@ -144,6 +144,8 @@ export interface VoiceChatState {
   ) => void;
   /** Stop any current speech */
   stopSpeaking: () => void;
+  /** Increments when AudioContext is unlocked by a user gesture, allowing callers to retry speech that was silently blocked by autoplay policy. */
+  voiceUnlockedGeneration: number;
 }
 
 interface SpeakTask {
@@ -524,6 +526,7 @@ export function useVoiceChat(options: VoiceChatOptions): VoiceChatState {
   const [interimTranscript, setInterimTranscript] = useState("");
   const [supported, setSupported] = useState(false);
   const [usingAudioAnalysis, setUsingAudioAnalysis] = useState(false);
+  const [voiceUnlockedGeneration, setVoiceUnlockedGeneration] = useState(0);
 
   // Refs — stable across renders, read from animation loop & callbacks
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
@@ -1547,31 +1550,28 @@ export function useVoiceChat(options: VoiceChatOptions): VoiceChatState {
     [enqueueSpeech, makeElevenCacheKey],
   );
 
-  // ── Keep ElevenLabs runtime warm for lower startup latency ────────
+  // ── Unlock audio on first user gesture ─────────────────────────────
+  // Browsers block AudioContext and SpeechSynthesis until a user gesture.
+  // On the first interaction we warm AudioContext (for ElevenLabs) and
+  // bump voiceUnlockedGeneration so the auto-speak effect retries any
+  // greeting that was silently dropped by autoplay policy.
 
   useEffect(() => {
-    const config = effectiveVoiceConfig;
-    if (
-      typeof window === "undefined" ||
-      config?.provider !== "elevenlabs" ||
-      !config.elevenlabs
-    ) {
-      return;
-    }
+    if (typeof window === "undefined") return;
 
-    const warmAudioContext = () => {
-      if (!sharedAudioCtx) {
-        sharedAudioCtx = new AudioContext();
-      }
-
-      void sharedAudioCtx.resume().catch(() => {
-        // Ignore until the next gesture or playback attempt.
-      });
-    };
     const handleUserGesture = () => {
       window.removeEventListener("pointerdown", handleUserGesture, true);
       window.removeEventListener("keydown", handleUserGesture, true);
-      warmAudioContext();
+
+      // Warm AudioContext for ElevenLabs
+      if (!sharedAudioCtx) {
+        sharedAudioCtx = new AudioContext();
+      }
+      void sharedAudioCtx.resume().catch(() => {});
+
+      // Signal that audio is now unlocked so callers can retry speech
+      // that was silently blocked by browser autoplay policy.
+      setVoiceUnlockedGeneration((g) => g + 1);
     };
 
     window.addEventListener("pointerdown", handleUserGesture, true);
@@ -1581,7 +1581,7 @@ export function useVoiceChat(options: VoiceChatOptions): VoiceChatState {
       window.removeEventListener("pointerdown", handleUserGesture, true);
       window.removeEventListener("keydown", handleUserGesture, true);
     };
-  }, [effectiveVoiceConfig]);
+  }, []);
 
   // ── Cleanup on unmount ────────────────────────────────────────────
 
@@ -1607,5 +1607,6 @@ export function useVoiceChat(options: VoiceChatOptions): VoiceChatState {
     speak,
     queueAssistantSpeech,
     stopSpeaking,
+    voiceUnlockedGeneration,
   };
 }

@@ -1,3 +1,4 @@
+import { Button } from "@miladyai/ui";
 import type { ChangeEvent } from "react";
 import type { ConnectionEvent } from "../../../onboarding/connection-flow";
 import { useApp } from "../../../state";
@@ -60,7 +61,8 @@ export function ConnectionElizaCloudPreProviderScreen({
             marginBottom: "1rem",
           }}
         >
-          <button
+          <Button
+            variant="ghost"
             type="button"
             style={{
               fontSize: "0.875rem",
@@ -80,8 +82,9 @@ export function ConnectionElizaCloudPreProviderScreen({
             onClick={() => dispatch({ type: "setElizaCloudTab", tab: "login" })}
           >
             {t("onboarding.login")}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             type="button"
             style={{
               fontSize: "0.875rem",
@@ -103,7 +106,7 @@ export function ConnectionElizaCloudPreProviderScreen({
             }
           >
             {t("onboarding.apiKey")}
-          </button>
+          </Button>
         </div>
 
         {onboardingElizaCloudTab === "login" ? (
@@ -139,7 +142,7 @@ export function ConnectionElizaCloudPreProviderScreen({
                 {t("onboarding.connected")}
               </div>
             ) : (
-              <button
+              <Button
                 type="button"
                 className="group relative inline-flex items-center justify-center gap-[8px] px-[32px] py-[12px] min-h-[44px] bg-[rgba(240,185,11,0.18)] border border-[rgba(240,185,11,0.35)] rounded-[6px] text-[rgba(240,238,250,0.94)] text-[11px] font-semibold tracking-[0.18em] uppercase cursor-pointer transition-all duration-300 font-inherit overflow-hidden hover:bg-[rgba(240,185,11,0.28)] hover:border-[rgba(240,185,11,0.6)] disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ textShadow: "0 1px 6px rgba(3,5,10,0.55)" }}
@@ -161,7 +164,7 @@ export function ConnectionElizaCloudPreProviderScreen({
                 {elizaCloudLoginBusy
                   ? t("onboarding.connecting")
                   : t("onboarding.connectAccount")}
-              </button>
+              </Button>
             )}
             {elizaCloudLoginError &&
               (() => {
@@ -245,15 +248,16 @@ export function ConnectionElizaCloudPreProviderScreen({
       </div>
 
       <div className="flex justify-between items-center gap-6 mt-[18px] pt-3.5 border-t border-white/[0.08]">
-        <button
+        <Button
+          variant="ghost"
           className="text-[10px] text-[rgba(240,238,250,0.62)] tracking-[0.15em] uppercase cursor-pointer no-underline bg-none border-none font-inherit transition-colors duration-300 p-0 hover:text-[rgba(240,238,250,0.9)]"
           style={{ textShadow: "0 1px 8px rgba(3,5,10,0.45)" }}
           onClick={() => dispatch({ type: "backElizaCloudPreProvider" })}
           type="button"
         >
           {t("onboarding.back")}
-        </button>
-        <button
+        </Button>
+        <Button
           className="group relative inline-flex items-center justify-center gap-[8px] px-[32px] py-[12px] min-h-[44px] bg-[rgba(240,185,11,0.18)] border border-[rgba(240,185,11,0.35)] rounded-[6px] text-[rgba(240,238,250,0.94)] text-[11px] font-semibold tracking-[0.18em] uppercase cursor-pointer transition-all duration-300 font-inherit overflow-hidden hover:bg-[rgba(240,185,11,0.28)] hover:border-[rgba(240,185,11,0.6)] disabled:opacity-40 disabled:cursor-not-allowed"
           style={{ textShadow: "0 1px 6px rgba(3,5,10,0.55)" }}
           onClick={(e) => {
@@ -273,7 +277,7 @@ export function ConnectionElizaCloudPreProviderScreen({
           type="button"
         >
           {t("onboarding.confirm")}
-        </button>
+        </Button>
       </div>
     </>
   );

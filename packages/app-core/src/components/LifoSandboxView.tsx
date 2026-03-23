@@ -1,3 +1,4 @@
+import { Button } from "@miladyai/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import "@miladyai/app-core/styles/xterm.css";
 import {
@@ -395,9 +396,9 @@ export function LifoSandboxView({ inModal }: { inModal?: boolean } = {}) {
 
             <span className={badgeCls}>embedded</span>
 
-            <button type="button" onClick={resetSession} className={btnCls}>
+            <Button variant="outline" size="sm" type="button" onClick={resetSession} className={btnCls}>
               {t("lifosandboxview.Reset")}
-            </button>
+            </Button>
           </div>
         </div>
 

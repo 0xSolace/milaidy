@@ -34,6 +34,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { Button } from "@miladyai/ui";
 import { AgentActivityBox } from "./AgentActivityBox";
 import { ChatComposer } from "./ChatComposer";
 import { ChatMessage, TypingIndicator } from "./ChatMessage";
@@ -315,6 +316,9 @@ function useChatVoiceController(options: {
     isGameModal,
     queueAssistantSpeech,
     voice.isListening,
+    // Re-run when AudioContext is unlocked by user gesture so we retry
+    // speech that was silently blocked by browser autoplay policy.
+    voice.voiceUnlockedGeneration,
   ]);
 
   useEffect(() => {
@@ -906,15 +910,16 @@ export function ChatView({ variant = "default" }: ChatViewProps) {
                 alt={img.name}
                 className="w-16 h-16 object-cover border border-border rounded"
               />
-              <button
-                type="button"
+              <Button
+                variant="destructive"
+                size="icon"
                 title={t("chatview.RemoveImage")}
                 aria-label={`Remove image ${img.name}`}
                 onClick={() => removeImage(imgIdx)}
                 className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-danger text-white text-[10px] flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity cursor-pointer"
               >
                 ×
-              </button>
+              </Button>
             </div>
           ))}
         </div>

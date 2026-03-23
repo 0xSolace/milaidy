@@ -499,10 +499,10 @@ function WakeWordSection({
         <div className="text-xs font-semibold text-muted">
           {t("voiceconfigview.WakeWord")}
         </div>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           onClick={() => void handleToggle()}
-          className={`relative inline-flex h-5 w-9 cursor-pointer items-center rounded-full transition-colors ${
+          className={`relative inline-flex h-5 w-9 cursor-pointer items-center rounded-full p-0 transition-colors ${
             enabled ? "bg-accent" : "bg-border"
           }`}
           aria-label={enabled ? "Disable wake word" : "Enable wake word"}
@@ -512,7 +512,7 @@ function WakeWordSection({
               enabled ? "translate-x-4" : "translate-x-0.5"
             }`}
           />
-        </button>
+        </Button>
       </div>
 
       {/* Trigger tag input */}
@@ -912,10 +912,10 @@ export function VoiceConfigView() {
               {PREMADE_VOICES.map((preset) => {
                 const active = selectedVoiceId === preset.voiceId;
                 return (
-                  <button
+                  <Button
                     key={preset.id}
-                    type="button"
-                    className={`h-auto flex flex-col items-start py-2.5 px-3 text-left rounded-lg border transition-all cursor-pointer ${
+                    variant={active ? "default" : "outline"}
+                    className={`h-auto flex flex-col items-start py-2.5 px-3 text-left rounded-lg transition-all cursor-pointer ${
                       active
                         ? "border-accent bg-accent/8 text-txt"
                         : "border-border bg-bg-accent text-txt hover:border-border hover:bg-bg-hover"
@@ -928,7 +928,7 @@ export function VoiceConfigView() {
                     <div className="text-[10px] text-muted truncate w-full">
                       {preset.hint}
                     </div>
-                  </button>
+                  </Button>
                 );
               })}
             </div>

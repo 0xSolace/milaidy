@@ -11,6 +11,7 @@
  *   - Prompt generation: registry.catalog.prompt() for AI system prompts
  */
 
+import { Button } from "@miladyai/ui";
 import React, {
   forwardRef,
   useCallback,
@@ -219,16 +220,17 @@ function ValidationSummary({
       <ul className="list-none m-0 p-0 flex flex-col gap-1">
         {errorEntries.map(([key]) => (
           <li key={key}>
-            <button
+            <Button
               type="button"
-              className="text-[12px] text-[var(--destructive)] cursor-pointer bg-transparent border-none p-0 hover:underline transition-all text-left flex items-center gap-1.5"
+              variant="link"
+              className="text-[12px] text-[var(--destructive)] p-0 h-auto hover:underline transition-all text-left flex items-center gap-1.5"
               onClick={() => handleFieldClick(key)}
             >
               <span className="opacity-60">
                 {t("config-renderer.Rarr", { defaultValue: "→" })}
               </span>
               <span>{fieldLabels.get(key) ?? key}</span>
-            </button>
+            </Button>
           </li>
         ))}
       </ul>
@@ -674,9 +676,10 @@ function AdvancedSectionToggle({
 }) {
   const { t } = useApp();
   return (
-    <button
+    <Button
       type="button"
-      className="flex items-center gap-2 cursor-pointer select-none group mb-3"
+      variant="ghost"
+      className="flex items-center gap-2 cursor-pointer select-none group mb-3 p-0 h-auto"
       onClick={() => setAdvancedOpen((prev) => !prev)}
     >
       <span
@@ -692,7 +695,7 @@ function AdvancedSectionToggle({
         {advanced.length}
       </span>
       <span className="flex-1 h-px bg-[var(--border)] opacity-50 ml-1" />
-    </button>
+    </Button>
   );
 }
 

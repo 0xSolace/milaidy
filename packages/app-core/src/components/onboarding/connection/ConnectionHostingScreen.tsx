@@ -1,3 +1,4 @@
+import { Button } from "@miladyai/ui";
 import { appNameInterpolationVars, useBranding } from "../../../config";
 import type { ConnectionEvent } from "../../../onboarding/connection-flow";
 import { useApp } from "../../../state";
@@ -31,7 +32,7 @@ export function ConnectionHostingScreen({
       </div>
       <div className="flex flex-col gap-1.5 mb-4">
         {showHostingLocalCard && (
-          <button
+          <Button
             type="button"
             className="flex items-center justify-between gap-[8px] px-[14px] py-[10px] min-h-[52px] bg-[rgba(240,185,11,0.1)] backdrop-blur-[18px] backdrop-saturate-[1.2] border border-[rgba(240,185,11,0.24)] rounded-[8px] cursor-pointer transition-all duration-300 text-left hover:bg-[rgba(240,185,11,0.14)] hover:border-[rgba(240,185,11,0.4)]"
             onClick={() => dispatch({ type: "selectLocalHosting" })}
@@ -56,9 +57,10 @@ export function ConnectionHostingScreen({
             >
               {t("onboarding.recommended") ?? "Recommended"}
             </span>
-          </button>
+          </Button>
         )}
-        <button
+        <Button
+          variant="outline"
           type="button"
           className="flex items-center justify-between gap-[8px] px-[14px] py-[10px] min-h-[52px] bg-[rgba(10,14,20,0.24)] backdrop-blur-[18px] backdrop-saturate-[1.2] border border-[rgba(255,255,255,0.1)] rounded-[8px] cursor-pointer transition-all duration-300 text-left hover:bg-[rgba(10,14,20,0.34)] hover:border-[rgba(255,255,255,0.16)]"
           onClick={() => dispatch({ type: "selectRemoteHosting" })}
@@ -77,8 +79,9 @@ export function ConnectionHostingScreen({
               {t("onboarding.hostingRemoteDesc")}
             </div>
           </div>
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="outline"
           type="button"
           className="flex items-center justify-between gap-[8px] px-[14px] py-[10px] min-h-[52px] bg-[rgba(10,14,20,0.24)] backdrop-blur-[18px] backdrop-saturate-[1.2] border border-[rgba(255,255,255,0.1)] rounded-[8px] cursor-pointer transition-all duration-300 text-left hover:bg-[rgba(10,14,20,0.34)] hover:border-[rgba(255,255,255,0.16)]"
           onClick={() => dispatch({ type: "selectElizaCloudHosting" })}
@@ -97,17 +100,18 @@ export function ConnectionHostingScreen({
               {t("onboarding.hostingElizaCloudDesc")}
             </div>
           </div>
-        </button>
+        </Button>
       </div>
       <div className="flex justify-between items-center gap-6 mt-[18px] pt-3.5 border-t border-white/[0.08]">
-        <button
+        <Button
+          variant="ghost"
           className="text-[10px] text-[rgba(240,238,250,0.62)] tracking-[0.15em] uppercase cursor-pointer no-underline bg-none border-none font-inherit transition-colors duration-300 p-0 hover:text-[rgba(240,238,250,0.9)]"
           style={{ textShadow: "0 1px 8px rgba(3,5,10,0.45)" }}
           onClick={handleOnboardingBack}
           type="button"
         >
           {t("onboarding.back")}
-        </button>
+        </Button>
         <span />
       </div>
     </>

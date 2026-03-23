@@ -1,3 +1,4 @@
+import { Button } from "@miladyai/ui";
 import { useState } from "react";
 
 type ConfirmDeleteControlProps = {
@@ -31,21 +32,25 @@ export function ConfirmDeleteControl({
 
   if (!confirming) {
     return (
-      <button
+      <Button
+        variant="destructive"
+        size="sm"
         type="button"
         className={triggerClassName}
         onClick={() => setConfirming(true)}
         disabled={disabled}
       >
         {triggerLabel}
-      </button>
+      </Button>
     );
   }
 
   return (
     <>
       <span className={promptClassName}>{promptText}</span>
-      <button
+      <Button
+        variant="destructive"
+        size="sm"
         type="button"
         className={confirmClassName}
         onClick={() => {
@@ -55,15 +60,17 @@ export function ConfirmDeleteControl({
         disabled={disabled}
       >
         {disabled && busyLabel ? busyLabel : confirmLabel}
-      </button>
-      <button
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
         type="button"
         className={cancelClassName}
         onClick={() => setConfirming(false)}
         disabled={disabled}
       >
         {cancelLabel}
-      </button>
+      </Button>
     </>
   );
 }

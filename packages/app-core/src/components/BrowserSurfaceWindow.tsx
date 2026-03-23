@@ -1,3 +1,4 @@
+import { Button } from "@miladyai/ui";
 import type { WebviewTagElement } from "electrobun/view";
 import {
   createElement,
@@ -181,46 +182,46 @@ export function BrowserSurfaceWindow() {
         style={toolbarStyle}
       >
         <div className="flex shrink-0 items-center gap-2 max-[900px]:flex-wrap">
-          <button
+          <Button
+            variant="ghost"
             className={navBtnBase}
             disabled={!canGoBack}
             onClick={() => {
               webviewRef.current?.goBack();
             }}
-            type="button"
           >
             Back
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             className={navBtnBase}
             disabled={!canGoForward}
             onClick={() => {
               webviewRef.current?.goForward();
             }}
-            type="button"
           >
             Forward
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             className={navBtnBase}
             onClick={() => {
               setIsLoading(true);
               webviewRef.current?.reload();
             }}
-            type="button"
           >
             Reload
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="default"
             className={navBtnBase}
             onClick={() => {
               navigateTo(DEFAULT_BROWSER_HOME);
             }}
             style={goldGradientStyle}
-            type="button"
           >
             Home
-          </button>
+          </Button>
         </div>
 
         <form
@@ -240,13 +241,14 @@ export function BrowserSurfaceWindow() {
             type="text"
             value={addressValue}
           />
-          <button
+          <Button
+            variant="default"
             className={navBtnBase}
             style={goldGradientStyle}
             type="submit"
           >
             Go
-          </button>
+          </Button>
         </form>
       </header>
 

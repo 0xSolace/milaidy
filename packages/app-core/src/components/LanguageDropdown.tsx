@@ -10,6 +10,7 @@
  */
 
 import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -68,8 +69,8 @@ export function LanguageDropdown({
     >
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger asChild>
-          <button
-            type="button"
+          <Button
+            variant="outline"
             className={triggerClass}
             onPointerDown={(event) => event.stopPropagation()}
             aria-label={t?.("settings.language") ?? "Language"}
@@ -82,7 +83,7 @@ export function LanguageDropdown({
             <ChevronDown
               className={`w-3.5 h-3.5 opacity-60 transition-transform ${open ? "rotate-180" : ""}`}
             />
-          </button>
+          </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="end"

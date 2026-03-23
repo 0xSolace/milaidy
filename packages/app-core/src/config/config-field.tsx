@@ -10,6 +10,7 @@
  */
 
 import {
+  Button,
   Select,
   SelectContent,
   SelectItem,
@@ -150,9 +151,11 @@ function PasswordFieldInner({ fp: props }: { fp: FieldRenderProps }) {
         }}
         onBlur={() => fireAction(props, "blur")}
       />
-      <button
+      <Button
         type="button"
-        className="px-3 border border-[var(--border)] bg-[var(--bg-hover)] text-[11px] text-[var(--muted)] cursor-pointer whitespace-nowrap min-w-[56px] text-center transition-colors hover:bg-[var(--surface)] hover:text-[var(--text)] h-[36px] font-medium rounded-r-sm"
+        variant="outline"
+        size="default"
+        className="px-3 border border-[var(--border)] bg-[var(--bg-hover)] text-[11px] text-[var(--muted)] whitespace-nowrap min-w-[56px] text-center transition-colors hover:bg-[var(--surface)] hover:text-[var(--text)] h-[36px] font-medium rounded-l-none rounded-r-sm"
         onClick={() => {
           void handleToggle();
           fireAction(props, "click");
@@ -160,7 +163,7 @@ function PasswordFieldInner({ fp: props }: { fp: FieldRenderProps }) {
         title={visible ? "Hide value" : "Reveal value"}
       >
         {busy ? "\u2026" : visible ? "\u{1F441} Hide" : "\u{1F441} Show"}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -206,13 +209,15 @@ function NumberFieldInner({ fp: props }: { fp: FieldRenderProps }) {
     <div>
       <div className="flex items-center gap-1.5">
         {!props.readonly && (
-          <button
+          <Button
             type="button"
-            className="px-2 py-1.5 border border-[var(--border)] bg-transparent text-sm text-[var(--muted)] cursor-pointer transition-colors hover:bg-[var(--surface)] hover:text-[var(--text)] h-[36px] rounded-sm font-mono select-none"
+            variant="outline"
+            size="default"
+            className="px-2 py-1.5 bg-transparent text-sm text-[var(--muted)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text)] h-[36px] rounded-sm font-mono select-none"
             onClick={() => step(-1)}
           >
             −
-          </button>
+          </Button>
         )}
         <input
           className={`${inputCls(!!props.errors?.length)} ${unit ? "flex-1" : "w-full"} text-center`}
@@ -234,13 +239,15 @@ function NumberFieldInner({ fp: props }: { fp: FieldRenderProps }) {
           onClick={() => fireAction(props, "click")}
         />
         {!props.readonly && (
-          <button
+          <Button
             type="button"
-            className="px-2 py-1.5 border border-[var(--border)] bg-transparent text-sm text-[var(--muted)] cursor-pointer transition-colors hover:bg-[var(--surface)] hover:text-[var(--text)] h-[36px] rounded-sm font-mono select-none"
+            variant="outline"
+            size="default"
+            className="px-2 py-1.5 bg-transparent text-sm text-[var(--muted)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--text)] h-[36px] rounded-sm font-mono select-none"
             onClick={() => step(1)}
           >
             +
-          </button>
+          </Button>
         )}
         {unit && (
           <span className="text-[11px] text-[var(--muted)] font-medium shrink-0 min-w-[20px]">
@@ -478,8 +485,9 @@ function SearchableSelectInner({
   return (
     <div className="relative" ref={containerRef}>
       {/* Trigger button that looks like a select */}
-      <button
+      <Button
         type="button"
+        variant="outline"
         className={`${inputCls(!!props.errors?.length)} text-left flex items-center justify-between gap-2 cursor-pointer`}
         disabled={props.readonly}
         onClick={() => {
@@ -495,7 +503,7 @@ function SearchableSelectInner({
         <span className="text-[var(--muted)] text-[10px] shrink-0">
           {open ? "\u25B2" : "\u25BC"}
         </span>
-      </button>
+      </Button>
 
       {/* Dropdown panel */}
       {open && (
@@ -522,9 +530,10 @@ function SearchableSelectInner({
           {/* Options list */}
           <div className="overflow-y-auto flex-1">
             {!props.required && (
-              <button
+              <Button
                 type="button"
-                className="w-full text-left px-3 py-1.5 text-[12px] text-[var(--muted)] hover:bg-[var(--bg-hover)] transition-colors italic"
+                variant="ghost"
+                className="w-full text-left px-3 py-1.5 text-[12px] text-[var(--muted)] hover:bg-[var(--bg-hover)] transition-colors italic rounded-none justify-start h-auto"
                 onClick={() => {
                   props.onChange("");
                   setInputVal("");
@@ -534,7 +543,7 @@ function SearchableSelectInner({
                 }}
               >
                 {t("config-field.None", { defaultValue: "None" })}
-              </button>
+              </Button>
             )}
             {filtered.length === 0 && (
               <div className="px-3 py-3 text-[12px] text-[var(--muted)] text-center">
@@ -544,10 +553,11 @@ function SearchableSelectInner({
               </div>
             )}
             {filtered.map((opt) => (
-              <button
+              <Button
                 key={opt.value}
                 type="button"
-                className={`w-full text-left px-3 py-1.5 text-[12px] hover:bg-[var(--bg-hover)] transition-colors ${
+                variant="ghost"
+                className={`w-full text-left px-3 py-1.5 text-[12px] hover:bg-[var(--bg-hover)] transition-colors rounded-none justify-start h-auto ${
                   opt.value === effectiveValue
                     ? "bg-[color-mix(in_srgb,var(--accent)_10%,var(--card))] text-[var(--accent)] font-medium"
                     : ""
@@ -560,7 +570,7 @@ function SearchableSelectInner({
                     {opt.description}
                   </span>
                 )}
-              </button>
+              </Button>
             ))}
           </div>
           <div className="px-3 py-1 border-t border-[var(--border)] text-[10px] text-[var(--muted)]">
@@ -822,13 +832,15 @@ function MultiselectFieldInner({ fp: props }: { fp: FieldRenderProps }) {
             >
               {opt.label}
               {!props.readonly && (
-                <button
+                <Button
                   type="button"
-                  className="inline-flex items-center justify-center w-3.5 h-3.5 text-[10px] rounded-full hover:bg-[var(--accent)] hover:text-[var(--accent-foreground,#1a1f26)] transition-colors cursor-pointer"
+                  variant="ghost"
+                  size="icon"
+                  className="inline-flex items-center justify-center w-3.5 h-3.5 text-[10px] rounded-full hover:bg-[var(--accent)] hover:text-[var(--accent-foreground,#1a1f26)] transition-colors"
                   onClick={() => remove(opt.value)}
                 >
                   ×
-                </button>
+                </Button>
               )}
             </span>
           ))}
@@ -1015,9 +1027,11 @@ function ArrayItem({
     <div className="flex items-center gap-1">
       {!readonly && (
         <div className="flex flex-col shrink-0">
-          <button
+          <Button
             type="button"
-            className="px-1 py-0 text-[10px] leading-tight text-[var(--muted)] cursor-pointer hover:text-[var(--text)] disabled:opacity-30 disabled:cursor-not-allowed"
+            variant="ghost"
+            size="icon"
+            className="px-1 py-0 h-auto w-auto text-[10px] leading-tight text-[var(--muted)] hover:text-[var(--text)] disabled:opacity-30 disabled:cursor-not-allowed"
             onClick={onMoveUp}
             disabled={index === 0}
             title={t("config-field.MoveUp", {
@@ -1025,10 +1039,12 @@ function ArrayItem({
             })}
           >
             ▲
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="px-1 py-0 text-[10px] leading-tight text-[var(--muted)] cursor-pointer hover:text-[var(--text)] disabled:opacity-30 disabled:cursor-not-allowed"
+            variant="ghost"
+            size="icon"
+            className="px-1 py-0 h-auto w-auto text-[10px] leading-tight text-[var(--muted)] hover:text-[var(--text)] disabled:opacity-30 disabled:cursor-not-allowed"
             onClick={onMoveDown}
             disabled={index === total - 1}
             title={t("config-field.MoveDown", {
@@ -1036,7 +1052,7 @@ function ArrayItem({
             })}
           >
             <ChevronDown className="w-3 h-3" />
-          </button>
+          </Button>
         </div>
       )}
       <input
@@ -1049,13 +1065,15 @@ function ArrayItem({
         onBlur={onBlur}
       />
       {!readonly && (
-        <button
+        <Button
           type="button"
-          className="px-2 py-1.5 border border-[var(--border)] bg-[var(--bg-hover)] text-xs text-[var(--muted)] cursor-pointer transition-colors hover:bg-[var(--surface)] hover:text-[var(--destructive)] h-[36px] rounded-sm"
+          variant="outline"
+          size="icon"
+          className="px-2 py-1.5 bg-[var(--bg-hover)] text-xs text-[var(--muted)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--destructive)] h-[36px] rounded-sm"
           onClick={onRemove}
         >
           <X className="w-3 h-3" />
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -1124,16 +1142,18 @@ function ArrayFieldInner({ fp: props }: { fp: FieldRenderProps }) {
         />
       ))}
       {!props.readonly && (
-        <button
+        <Button
           type="button"
-          className="self-start px-3 py-1.5 border border-dashed border-[var(--border)] bg-transparent text-[11px] text-[var(--muted)] cursor-pointer transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)] hover:border-[var(--accent)] rounded-sm"
+          variant="outline"
+          size="sm"
+          className="self-start px-3 py-1.5 border-dashed bg-transparent text-[11px] text-[var(--muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)] hover:border-[var(--accent)] rounded-sm"
           onClick={() => {
             addItem();
             fireAction(props, "click");
           }}
         >
           {t("config-field.AddItem", { defaultValue: "Add item" })}
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -1214,30 +1234,34 @@ function KeyValueFieldInner({ fp: props }: { fp: FieldRenderProps }) {
             onBlur={() => fireAction(props, "blur")}
           />
           {!props.readonly && (
-            <button
+            <Button
               type="button"
-              className="px-2 py-1.5 border border-[var(--border)] bg-[var(--bg-hover)] text-xs text-[var(--muted)] cursor-pointer transition-colors hover:bg-[var(--surface)] hover:text-[var(--destructive)] h-[36px] rounded-sm"
+              variant="outline"
+              size="icon"
+              className="px-2 py-1.5 bg-[var(--bg-hover)] text-xs text-[var(--muted)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--destructive)] h-[36px] rounded-sm"
               onClick={() => {
                 removeRow(index);
                 fireAction(props, "click");
               }}
             >
               <X className="w-3 h-3" />
-            </button>
+            </Button>
           )}
         </div>
       ))}
       {!props.readonly && (
-        <button
+        <Button
           type="button"
-          className="self-start px-3 py-1.5 border border-dashed border-[var(--border)] bg-transparent text-[11px] text-[var(--muted)] cursor-pointer transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)] hover:border-[var(--accent)] rounded-sm"
+          variant="outline"
+          size="sm"
+          className="self-start px-3 py-1.5 border-dashed bg-transparent text-[11px] text-[var(--muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)] hover:border-[var(--accent)] rounded-sm"
           onClick={() => {
             addRow();
             fireAction(props, "click");
           }}
         >
           {t("config-field.AddRow", { defaultValue: "Add row" })}
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -1499,28 +1523,32 @@ function MarkdownFieldInner(props: FieldRenderProps) {
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center gap-2 mb-1">
-        <button
+        <Button
           type="button"
-          className={`text-[11px] px-2 py-0.5 border transition-colors ${
+          variant={!preview ? "default" : "outline"}
+          size="sm"
+          className={`text-[11px] px-2 py-0.5 transition-colors h-auto ${
             !preview
               ? "bg-[var(--accent)] text-[var(--accent-fg)] border-[var(--accent)]"
-              : "bg-transparent text-[var(--muted)] border-[var(--border)] hover:text-[var(--txt)]"
+              : "bg-transparent text-[var(--muted)] hover:text-[var(--txt)]"
           }`}
           onClick={() => setPreview(false)}
         >
           {t("config-field.Edit", { defaultValue: "Edit" })}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
-          className={`text-[11px] px-2 py-0.5 border transition-colors ${
+          variant={preview ? "default" : "outline"}
+          size="sm"
+          className={`text-[11px] px-2 py-0.5 transition-colors h-auto ${
             preview
               ? "bg-[var(--accent)] text-[var(--accent-fg)] border-[var(--accent)]"
-              : "bg-transparent text-[var(--muted)] border-[var(--border)] hover:text-[var(--txt)]"
+              : "bg-transparent text-[var(--muted)] hover:text-[var(--txt)]"
           }`}
           onClick={() => setPreview(true)}
         >
           {t("config-field.Preview", { defaultValue: "Preview" })}
-        </button>
+        </Button>
       </div>
       {preview ? (
         <div
@@ -1753,16 +1781,18 @@ function TableFieldInner(props: FieldRenderProps) {
                 ))}
                 <td className="text-center">
                   {!props.readonly && rows.length > 1 && (
-                    <button
+                    <Button
                       type="button"
-                      className="text-[var(--muted)] hover:text-[var(--destructive)] text-[14px] px-1"
+                      variant="ghost"
+                      size="icon"
+                      className="text-[var(--muted)] hover:text-[var(--destructive)] text-[14px] px-1 h-auto w-auto"
                       onClick={() => removeRow(ri)}
                       title={t("config-field.RemoveRow", {
                         defaultValue: "Remove row",
                       })}
                     >
                       {t("config-field.Times")}
-                    </button>
+                    </Button>
                   )}
                 </td>
               </tr>
@@ -1771,13 +1801,15 @@ function TableFieldInner(props: FieldRenderProps) {
         </table>
       </div>
       {!props.readonly && rows.length < MAX_TABLE_ROWS && (
-        <button
+        <Button
           type="button"
-          className="self-start text-[11px] text-[var(--accent)] hover:underline"
+          variant="link"
+          size="sm"
+          className="self-start text-[11px] text-[var(--accent)] hover:underline p-0 h-auto"
           onClick={addRow}
         >
           {t("config-field.AddRow", { defaultValue: "Add row" })}
-        </button>
+        </Button>
       )}
     </div>
   );

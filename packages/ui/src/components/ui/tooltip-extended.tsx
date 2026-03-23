@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "./button";
 
 export interface HoverTooltipProps {
   children: React.ReactNode;
@@ -24,7 +25,7 @@ export function HoverTooltip({
 }: HoverTooltipProps) {
   const [isVisible, setIsVisible] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const containerRef = useRef<HTMLButtonElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const isVisibleState =
     controlledVisible !== undefined ? controlledVisible : isVisible;
 
@@ -61,10 +62,9 @@ export function HoverTooltip({
   };
 
   return (
-    <button
-      type="button"
+    <div
       ref={containerRef}
-      className="relative inline-flex bg-transparent border-0 p-0 cursor-default"
+      className="relative inline-flex cursor-default"
       onMouseEnter={show}
       onMouseLeave={hide}
       onFocus={show}
@@ -78,14 +78,15 @@ export function HoverTooltip({
         >
           <div className="relative bg-bg-elevated border border-border rounded-lg shadow-xl p-3 max-w-xs">
             {onDismiss && (
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={onDismiss}
-                className="absolute top-1 right-1 p-1 text-muted hover:text-txt rounded"
+                className="absolute top-1 right-1 h-6 w-6 text-muted hover:text-txt rounded"
                 aria-label="Dismiss tooltip"
               >
                 <X className="w-3 h-3" />
-              </button>
+              </Button>
             )}
             {content}
 
@@ -97,7 +98,7 @@ export function HoverTooltip({
           </div>
         </div>
       )}
-    </button>
+    </div>
   );
 }
 
@@ -218,27 +219,27 @@ export function Spotlight({
           <span className="text-xs text-muted font-medium">
             {labels.stepOf ?? "Step"} {step} of {totalSteps}
           </span>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={onSkip}
-            className="text-xs text-muted hover:text-txt"
+            className="h-auto px-1 py-0 text-xs text-muted hover:text-txt"
           >
             {labels.skipTour ?? "Skip Tour"}
-          </button>
+          </Button>
         </div>
 
         <h3 className="text-lg font-bold text-txt-strong mb-2">{title}</h3>
         <p className="text-sm text-muted mb-4">{description}</p>
 
         <div className="flex items-center justify-between">
-          <button
-            type="button"
+          <Button
+            variant="outline"
             onClick={onPrev}
             disabled={step === 1}
-            className="px-4 py-2 text-sm border border-border rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-bg-hover transition-colors"
           >
             {labels.previous ?? "Previous"}
-          </button>
+          </Button>
 
           <div className="flex gap-1">
             {Array.from({ length: totalSteps }, (_, idx) => idx).map(
@@ -253,15 +254,13 @@ export function Spotlight({
             )}
           </div>
 
-          <button
-            type="button"
+          <Button
             onClick={onNext}
-            className="px-4 py-2 text-sm bg-accent text-accent-fg rounded-lg hover:opacity-90 transition-opacity"
           >
             {step === totalSteps
               ? (labels.finish ?? "Finish")
               : (labels.next ?? "Next")}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

@@ -467,14 +467,14 @@ export function HeartbeatsView() {
               const isActive = selectedTriggerId === trigger.id;
 
               return (
-                <button
+                <Button
                   key={trigger.id}
-                  type="button"
+                  variant="ghost"
                   onClick={() => {
                     openEditEditor(trigger);
                     void loadTriggerRuns(trigger.id);
                   }}
-                  className={`w-full text-left px-3 py-2.5 transition-colors border-l-2 ${isActive ? "border-accent text-accent bg-transparent" : "border-transparent bg-transparent hover:bg-accent/5"}`}
+                  className={`w-full text-left px-3 py-2.5 h-auto border-l-2 rounded-none ${isActive ? "border-accent text-accent bg-transparent" : "border-transparent bg-transparent hover:bg-accent/5"}`}
                 >
                   <div className="flex flex-col gap-1.5 min-w-0">
                     <div className="flex items-center justify-between gap-1">
@@ -506,7 +506,7 @@ export function HeartbeatsView() {
                       )}
                     </div>
                   </div>
-                </button>
+                </Button>
               );
             })
           )}

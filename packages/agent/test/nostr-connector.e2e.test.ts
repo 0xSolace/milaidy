@@ -33,7 +33,7 @@ import {
 } from "@miladyai/app-core/src/test-support/test-helpers";
 import dotenv from "dotenv";
 import { describe, expect, it } from "vitest";
-import { sleep } from "./helpers/test-utils";
+import { sleep } from "../../../test/helpers/test-utils";
 
 // ---------------------------------------------------------------------------
 // Environment Setup

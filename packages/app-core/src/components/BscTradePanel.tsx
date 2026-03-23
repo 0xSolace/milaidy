@@ -444,11 +444,12 @@ export function TradePanel({
 
         <div className="flex items-center gap-1.5">
           {AMOUNT_PRESETS.map((amt) => (
-            <button
+            <Button
               key={amt}
-              type="button"
+              variant="outline"
+              size="sm"
               data-testid={`wallet-quick-amount-${amt}`}
-              className={`px-2 py-0.5 border text-[10px] font-mono cursor-pointer ${
+              className={`px-2 py-0.5 text-[10px] font-mono cursor-pointer ${
                 quickAmount === String(amt)
                   ? "border-accent text-txt"
                   : "border-border bg-bg hover:border-accent"
@@ -456,7 +457,7 @@ export function TradePanel({
               onClick={() => setQuickAmount(String(amt))}
             >
               {amt} {t("bsctradepanel.BNB1")}
-            </button>
+            </Button>
           ))}
         </div>
 

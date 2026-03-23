@@ -2692,9 +2692,11 @@ async function handleMiladyCompatRoute(
       const { isCloudMode, replayBody: replayBodyRecord } =
         _deriveCompatOnboardingReplayBody(body);
 
-      if (isCloudMode && body.runMode !== "cloud") {
-        replayBody = Buffer.from(JSON.stringify(replayBodyRecord), "utf8");
-      }
+      // Resolve the cloud API key so the upstream handler can write it
+      // into state.config before saving. Without this, the upstream uses
+      // its stale in-memory config (loaded at startup, before OAuth) and
+      // clobbers the apiKey that persistCloudLoginStatus wrote to disk.
+      let resolvedCloudApiKey: string | undefined;
 
       try {
         const config = loadElizaConfig();
@@ -2709,15 +2711,17 @@ async function handleMiladyCompatRoute(
           }
           (config.cloud as Record<string, unknown>).enabled = true;
 
-          const existingApiKey = (config.cloud as Record<string, unknown>)
-            .apiKey;
-          if (!existingApiKey) {
+          resolvedCloudApiKey = (config.cloud as Record<string, unknown>)
+            .apiKey as string | undefined;
+          if (!resolvedCloudApiKey) {
             const { getCloudSecret: getSecret } = await import(
               "./cloud-secrets"
             );
-            const sealedKey = getSecret("ELIZAOS_CLOUD_API_KEY");
-            if (sealedKey) {
-              (config.cloud as Record<string, unknown>).apiKey = sealedKey;
+            resolvedCloudApiKey =
+              getSecret("ELIZAOS_CLOUD_API_KEY") ?? undefined;
+            if (resolvedCloudApiKey) {
+              (config.cloud as Record<string, unknown>).apiKey =
+                resolvedCloudApiKey;
             }
           }
 
@@ -2736,6 +2740,29 @@ async function handleMiladyCompatRoute(
         logger.warn(
           `[milady-api] Failed to persist onboarding state: ${err instanceof Error ? err.message : String(err)}`,
         );
+      }
+
+      // Inject the cloud API key into the replay body so the upstream
+      // handler writes it into state.config. The upstream uses
+      // state.config (stale), not loadElizaConfig(), so without this
+      // the key is lost when it calls saveElizaConfig(state.config).
+      if (isCloudMode) {
+        const enriched = {
+          ...replayBodyRecord,
+          runMode: "cloud" as const,
+          ...(resolvedCloudApiKey
+            ? { providerApiKey: resolvedCloudApiKey }
+            : {}),
+        };
+        replayBody = Buffer.from(JSON.stringify(enriched), "utf8");
+      } else if (body.runMode !== "cloud") {
+        // Non-cloud: only rewrite if deriveCompat changed something
+        if (replayBodyRecord !== body) {
+          replayBody = Buffer.from(
+            JSON.stringify(replayBodyRecord),
+            "utf8",
+          );
+        }
       }
     } catch {
       // JSON parse failed — let upstream handle the error

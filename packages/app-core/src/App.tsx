@@ -11,6 +11,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { Button } from "@miladyai/ui";
 import type { AgentStartupDiagnostics } from "./api/client";
 import {
   AdvancedPageView,
@@ -291,9 +292,10 @@ export function App() {
   const unreadCount = unreadConversations?.size ?? 0;
   const mobileChatControls = isChatMobileLayout ? (
     <div className="flex items-center gap-2 w-max">
-      <button
-        type="button"
-        className={`inline-flex items-center gap-2 px-3 py-2 border rounded-md text-[12px] font-semibold transition-all cursor-pointer ${
+      <Button
+        variant="outline"
+        size="sm"
+        className={`inline-flex items-center gap-2 px-3 py-2 text-[12px] font-semibold transition-all cursor-pointer ${
           mobileConversationsOpen
             ? "border-accent bg-accent-subtle text-txt"
             : "border-border bg-card text-txt hover:border-accent hover:text-txt"
@@ -323,7 +325,7 @@ export function App() {
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
-      </button>
+      </Button>
     </div>
   ) : undefined;
 

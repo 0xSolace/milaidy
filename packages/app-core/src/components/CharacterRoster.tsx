@@ -5,6 +5,7 @@
 
 import type { MiladyStylePreset } from "@miladyai/app-core/onboarding-presets";
 import { getVrmPreviewUrl } from "@miladyai/app-core/state";
+import { Button } from "@miladyai/ui";
 
 /* ── Shared constants ─────────────────────────────────────────────────── */
 
@@ -87,10 +88,10 @@ export function CharacterRoster({
         const isSelected = selectedId === entry.id;
 
         return (
-          <button
+          <Button
             key={entry.id}
-            type="button"
-            className={`relative max-w-36 min-w-0 text-center transition-all duration-300 ease-out cursor-pointer appearance-none opacity-[0.85] hover:opacity-100 max-[600px]:!max-w-none max-[600px]:opacity-[0.65]${isSelected ? " opacity-100 z-10 max-[600px]:opacity-100" : ""}`}
+            variant="ghost"
+            className={`relative max-w-36 min-w-0 text-center transition-all duration-300 ease-out cursor-pointer appearance-none opacity-[0.85] hover:opacity-100 max-[600px]:!max-w-none max-[600px]:opacity-[0.65] h-auto rounded-none p-0${isSelected ? " opacity-100 z-10 max-[600px]:opacity-100" : ""}`}
             style={{
               flex: "1 1 0",
               border: "none",
@@ -149,7 +150,7 @@ export function CharacterRoster({
                 </div>
               </div>
             </div>
-          </button>
+          </Button>
         );
       })}
     </div>

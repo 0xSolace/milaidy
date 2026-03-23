@@ -6,6 +6,7 @@
  */
 
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -81,27 +82,22 @@ export function ConfirmModal({
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="flex items-center justify-end gap-3">
-          <button
-            type="button"
+          <Button
+            variant="outline"
             onClick={onCancel}
-            className="px-4 py-2 text-sm rounded-md transition-colors cursor-pointer"
-            style={{
-              border: "1px solid var(--border)",
-              color: "var(--muted)",
-              background: "transparent",
-            }}
+            className="px-4 py-2 text-sm"
           >
             {cancelLabel}
-          </button>
-          <button
+          </Button>
+          <Button
             ref={confirmRef}
-            type="button"
+            variant={tone === "danger" ? "destructive" : "default"}
             onClick={onConfirm}
-            className="px-4 py-2 text-sm rounded-md transition-opacity font-medium cursor-pointer border-0"
+            className="px-4 py-2 text-sm font-medium"
             style={confirmBtnStyle}
           >
             {confirmLabel}
-          </button>
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -171,26 +167,21 @@ export function PromptModal({
           }}
         />
         <DialogFooter className="flex items-center justify-end gap-3">
-          <button
-            type="button"
+          <Button
+            variant="outline"
             onClick={onCancel}
-            className="px-4 py-2 text-sm rounded-md transition-colors cursor-pointer"
-            style={{
-              border: "1px solid var(--border)",
-              color: "var(--muted)",
-              background: "transparent",
-            }}
+            className="px-4 py-2 text-sm"
           >
             {cancelLabel}
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="default"
             onClick={handleConfirm}
-            className="px-4 py-2 text-sm rounded-md transition-opacity font-medium cursor-pointer border-0"
+            className="px-4 py-2 text-sm font-medium"
             style={{ background: "#f0b232", color: "#000" }}
           >
             {confirmLabel}
-          </button>
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

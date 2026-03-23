@@ -1,4 +1,4 @@
-import { Dialog, DialogContent } from "@miladyai/ui";
+import { Button, Dialog, DialogContent } from "@miladyai/ui";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { isElectrobunRuntime } from "../bridge";
 import {
@@ -246,10 +246,10 @@ export function CommandPalette() {
             </div>
           ) : (
             filteredCommands.map((cmd, idx) => (
-              <button
-                type="button"
+              <Button
+                variant="ghost"
                 key={cmd.id}
-                className="w-full px-4 py-2.5 cursor-pointer flex justify-between items-center text-left text-sm font-body border-0"
+                className="w-full px-4 py-2.5 cursor-pointer flex justify-between items-center text-left text-sm font-body border-0 rounded-none h-auto"
                 style={{
                   background:
                     idx === commandActiveIndex
@@ -269,7 +269,7 @@ export function CommandPalette() {
                     {cmd.hint}
                   </span>
                 )}
-              </button>
+              </Button>
             ))
           )}
         </div>

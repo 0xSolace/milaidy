@@ -1,5 +1,6 @@
 import { ONBOARDING_PROVIDER_CATALOG } from "@miladyai/agent/contracts/onboarding";
 import {
+  Button,
   Select,
   SelectContent,
   SelectItem,
@@ -283,7 +284,8 @@ export function ConnectionProviderDetailScreen({
               marginBottom: "1rem",
             }}
           >
-            <button
+            <Button
+              variant="ghost"
               type="button"
               style={{
                 fontSize: "0.875rem",
@@ -305,8 +307,9 @@ export function ConnectionProviderDetailScreen({
               }
             >
               {t("onboarding.login")}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
               type="button"
               style={{
                 fontSize: "0.875rem",
@@ -328,7 +331,7 @@ export function ConnectionProviderDetailScreen({
               }
             >
               {t("onboarding.apiKey")}
-            </button>
+            </Button>
           </div>
 
           {onboardingElizaCloudTab === "login" ? (
@@ -364,7 +367,7 @@ export function ConnectionProviderDetailScreen({
                   {t("onboarding.connected")}
                 </div>
               ) : (
-                <button
+                <Button
                   type="button"
                   className="group relative inline-flex items-center justify-center gap-[8px] px-[32px] py-[12px] min-h-[44px] bg-[rgba(240,185,11,0.18)] border border-[rgba(240,185,11,0.35)] rounded-[6px] text-[rgba(240,238,250,0.94)] text-[11px] font-semibold tracking-[0.18em] uppercase cursor-pointer transition-all duration-300 font-inherit overflow-hidden hover:bg-[rgba(240,185,11,0.28)] hover:border-[rgba(240,185,11,0.6)] disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{ textShadow: "0 1px 6px rgba(3,5,10,0.55)" }}
@@ -374,7 +377,7 @@ export function ConnectionProviderDetailScreen({
                   {elizaCloudLoginBusy
                     ? t("onboarding.connecting")
                     : t("onboarding.connectAccount")}
-                </button>
+                </Button>
               )}
               {elizaCloudLoginError &&
                 (() => {
@@ -468,7 +471,8 @@ export function ConnectionProviderDetailScreen({
               marginBottom: "0.75rem",
             }}
           >
-            <button
+            <Button
+              variant="ghost"
               type="button"
               style={{
                 fontSize: "0.875rem",
@@ -490,8 +494,9 @@ export function ConnectionProviderDetailScreen({
               }
             >
               {t("onboarding.setupToken")}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
               type="button"
               style={{
                 fontSize: "0.875rem",
@@ -513,7 +518,7 @@ export function ConnectionProviderDetailScreen({
               }
             >
               {t("onboarding.oauthLogin")}
-            </button>
+            </Button>
           </div>
 
           {onboardingSubscriptionTab === "token" ? (
@@ -599,7 +604,7 @@ export function ConnectionProviderDetailScreen({
                 gap: "0.75rem",
               }}
             >
-              <button
+              <Button
                 type="button"
                 className="group relative inline-flex items-center justify-center gap-[8px] px-[32px] py-[12px] min-h-[44px] bg-[rgba(240,185,11,0.18)] border border-[rgba(240,185,11,0.35)] rounded-[6px] text-[rgba(240,238,250,0.94)] text-[11px] font-semibold tracking-[0.18em] uppercase cursor-pointer transition-all duration-300 font-inherit overflow-hidden hover:bg-[rgba(240,185,11,0.28)] hover:border-[rgba(240,185,11,0.6)] disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ textShadow: "0 1px 6px rgba(3,5,10,0.55)" }}
@@ -618,7 +623,7 @@ export function ConnectionProviderDetailScreen({
                 }}
               >
                 {t("onboarding.loginWithAnthropic")}
-              </button>
+              </Button>
               <p
                 className="text-sm text-[rgba(240,238,250,0.62)] text-center leading-relaxed mt-3"
                 style={{ textAlign: "center" }}
@@ -669,7 +674,7 @@ export function ConnectionProviderDetailScreen({
                   {anthropicError}
                 </p>
               )}
-              <button
+              <Button
                 type="button"
                 className="group relative inline-flex items-center justify-center gap-[8px] px-[32px] py-[12px] min-h-[44px] bg-[rgba(240,185,11,0.18)] border border-[rgba(240,185,11,0.35)] rounded-[6px] text-[rgba(240,238,250,0.94)] text-[11px] font-semibold tracking-[0.18em] uppercase cursor-pointer transition-all duration-300 font-inherit overflow-hidden hover:bg-[rgba(240,185,11,0.28)] hover:border-[rgba(240,185,11,0.6)] disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ textShadow: "0 1px 6px rgba(3,5,10,0.55)" }}
@@ -689,7 +694,7 @@ export function ConnectionProviderDetailScreen({
                 }}
               >
                 {t("onboarding.connect")}
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -753,7 +758,7 @@ export function ConnectionProviderDetailScreen({
                 gap: "0.75rem",
               }}
             >
-              <button
+              <Button
                 type="button"
                 className="group relative inline-flex items-center justify-center gap-[8px] px-[32px] py-[12px] min-h-[44px] bg-[rgba(240,185,11,0.18)] border border-[rgba(240,185,11,0.35)] rounded-[6px] text-[rgba(240,238,250,0.94)] text-[11px] font-semibold tracking-[0.18em] uppercase cursor-pointer transition-all duration-300 font-inherit overflow-hidden hover:bg-[rgba(240,185,11,0.28)] hover:border-[rgba(240,185,11,0.6)] disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ textShadow: "0 1px 6px rgba(3,5,10,0.55)" }}
@@ -772,7 +777,7 @@ export function ConnectionProviderDetailScreen({
                 }}
               >
                 {t("onboarding.loginWithOpenAI")}
-              </button>
+              </Button>
               <p
                 className="text-sm text-[rgba(240,238,250,0.62)] text-center leading-relaxed mt-3"
                 style={{ textAlign: "center" }}
@@ -845,7 +850,7 @@ export function ConnectionProviderDetailScreen({
                   justifyContent: "center",
                 }}
               >
-                <button
+                <Button
                   type="button"
                   className="group relative inline-flex items-center justify-center gap-[8px] px-[32px] py-[12px] min-h-[44px] bg-[rgba(240,185,11,0.18)] border border-[rgba(240,185,11,0.35)] rounded-[6px] text-[rgba(240,238,250,0.94)] text-[11px] font-semibold tracking-[0.18em] uppercase cursor-pointer transition-all duration-300 font-inherit overflow-hidden hover:bg-[rgba(240,185,11,0.28)] hover:border-[rgba(240,185,11,0.6)] disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{ textShadow: "0 1px 6px rgba(3,5,10,0.55)" }}
@@ -865,8 +870,9 @@ export function ConnectionProviderDetailScreen({
                   }}
                 >
                   {t("onboarding.completeLogin")}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="ghost"
                   type="button"
                   className="text-[10px] text-[rgba(240,238,250,0.62)] tracking-[0.15em] uppercase cursor-pointer no-underline bg-none border-none font-inherit transition-colors duration-300 p-0 hover:text-[rgba(240,238,250,0.9)]"
                   style={{ textShadow: "0 1px 8px rgba(3,5,10,0.45)" }}
@@ -876,7 +882,7 @@ export function ConnectionProviderDetailScreen({
                   }}
                 >
                   {t("onboarding.startOver")}
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -1036,7 +1042,7 @@ export function ConnectionProviderDetailScreen({
             >
               {onboardingOptions?.openrouterModels?.map(
                 (model: OpenRouterModelOption) => (
-                  <button
+                  <Button
                     type="button"
                     key={model.id}
                     className={`flex items-center justify-between gap-[8px] px-[14px] py-[10px] min-h-[52px] bg-[rgba(10,14,20,0.24)] backdrop-blur-[18px] backdrop-saturate-[1.2] border border-[rgba(255,255,255,0.1)] rounded-[8px] cursor-pointer transition-all duration-300 text-left hover:bg-[rgba(10,14,20,0.34)] hover:border-[rgba(255,255,255,0.16)]${onboardingOpenRouterModel === model.id ? " bg-[rgba(240,185,11,0.12)] border-[rgba(240,185,11,0.32)]" : ""}`}
@@ -1059,7 +1065,7 @@ export function ConnectionProviderDetailScreen({
                         </div>
                       )}
                     </div>
-                  </button>
+                  </Button>
                 ),
               )}
             </div>
@@ -1067,15 +1073,16 @@ export function ConnectionProviderDetailScreen({
         )}
 
       <div className="flex justify-between items-center gap-6 mt-[18px] pt-3.5 border-t border-white/[0.08]">
-        <button
+        <Button
+          variant="ghost"
           className="text-[10px] text-[rgba(240,238,250,0.62)] tracking-[0.15em] uppercase cursor-pointer no-underline bg-none border-none font-inherit transition-colors duration-300 p-0 hover:text-[rgba(240,238,250,0.9)]"
           style={{ textShadow: "0 1px 8px rgba(3,5,10,0.45)" }}
           onClick={clearProvider}
           type="button"
         >
           {t("onboarding.back")}
-        </button>
-        <button
+        </Button>
+        <Button
           className="group relative inline-flex items-center justify-center gap-[8px] px-[32px] py-[12px] min-h-[44px] bg-[rgba(240,185,11,0.18)] border border-[rgba(240,185,11,0.35)] rounded-[6px] text-[rgba(240,238,250,0.94)] text-[11px] font-semibold tracking-[0.18em] uppercase cursor-pointer transition-all duration-300 font-inherit overflow-hidden hover:bg-[rgba(240,185,11,0.28)] hover:border-[rgba(240,185,11,0.6)] disabled:opacity-40 disabled:cursor-not-allowed"
           style={{ textShadow: "0 1px 6px rgba(3,5,10,0.55)" }}
           disabled={isConfirmDisabled}
@@ -1095,7 +1102,7 @@ export function ConnectionProviderDetailScreen({
           type="button"
         >
           {t("onboarding.confirm")}
-        </button>
+        </Button>
       </div>
     </>
   );
