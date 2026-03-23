@@ -1672,18 +1672,21 @@ async function sendLocalWalletTransaction(
  * to the sealed secret store (via login) but a subsequent config save
  * (e.g. onboarding) overwrote the file without the key.
  */
-function resolveCloudConfig(): ElizaConfig {
+function resolveCloudConfig(runtime?: unknown): ElizaConfig {
   const config = loadElizaConfig();
-  if (config.cloud?.enabled && !config.cloud?.apiKey) {
-    // Try sealed secret store first, then raw process.env
+  if (!config.cloud?.apiKey) {
+    // Try multiple sources: sealed secrets → process.env → runtime character secrets
     const backfillKey =
       getCloudSecret("ELIZAOS_CLOUD_API_KEY") ||
-      process.env.ELIZAOS_CLOUD_API_KEY;
+      process.env.ELIZAOS_CLOUD_API_KEY ||
+      (runtime as { character?: { secrets?: Record<string, string> } } | null)
+        ?.character?.secrets?.ELIZAOS_CLOUD_API_KEY;
     if (backfillKey) {
       if (!config.cloud) {
         (config as Record<string, unknown>).cloud = {};
       }
       (config.cloud as Record<string, unknown>).apiKey = backfillKey;
+      (config.cloud as Record<string, unknown>).enabled = true;
       // Persist the backfilled key so future reads find it on disk
       try {
         saveElizaConfig(config);
@@ -1711,7 +1714,7 @@ async function handleMiladyCompatRoute(
       return true;
     }
     return handleCloudCompatRoute(req, res, url.pathname, method, {
-      config: resolveCloudConfig(),
+      config: resolveCloudConfig(state.current),
     });
   }
 
@@ -1723,7 +1726,7 @@ async function handleMiladyCompatRoute(
       return true;
     }
     return handleCloudBillingRoute(req, res, url.pathname, method, {
-      config: resolveCloudConfig(),
+      config: resolveCloudConfig(state.current),
     });
   }
 
@@ -1963,7 +1966,7 @@ async function handleMiladyCompatRoute(
       return true;
     }
 
-    const config = resolveCloudConfig();
+    const config = resolveCloudConfig(state.current);
 
     if (
       url.pathname === "/api/cloud/status" ||
