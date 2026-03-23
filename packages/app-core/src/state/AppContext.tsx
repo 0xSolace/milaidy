@@ -132,7 +132,6 @@ import {
   type AppState,
   applyUiTheme,
   asApiLikeError,
-  type ChatTurnUsage,
   type CompanionHalfFramerateMode,
   type CompanionVrmPowerMode,
   clearPersistedConnectionMode,
@@ -152,10 +151,7 @@ import {
   loadCompanionVrmPowerMode,
   loadLastNativeTab,
   loadPersistedConnectionMode,
-  loadPersistedOnboardingComplete,
   loadPersistedOnboardingStep,
-  savePersistedOnboardingComplete,
-  loadUiLanguage,
   loadUiTheme,
   mergeStreamingText,
   normalizeAvatarIndex,
@@ -1428,7 +1424,7 @@ function AppProviderInner({
   const pendingPostTabCommitRef = useRef<(() => void)[]>([]);
   const prevTabCommittedRef = useRef<Tab | null>(null);
   const prevUiShellCommittedRef = useRef<UiShellMode | null>(null);
-  const [tabCommitFlushNonce, setTabCommitFlushNonce] = useState(0);
+  const [_tabCommitFlushNonce, setTabCommitFlushNonce] = useState(0);
 
   const scheduleAfterTabCommit = useCallback((fn: () => void) => {
     pendingPostTabCommitRef.current.push(fn);
@@ -1472,7 +1468,7 @@ function AppProviderInner({
         );
       }
     }
-  }, [tab, uiShellMode, tabCommitFlushNonce]);
+  }, [tab, uiShellMode]);
 
   const sortTriggersByNextRun = useCallback(
     (items: TriggerSummary[]): TriggerSummary[] => {
@@ -2670,16 +2666,6 @@ function AppProviderInner({
     },
     [
       setAgentStatus,
-      setElizaCloudCredits,
-      setElizaCloudCreditsCritical,
-      setElizaCloudCreditsLow,
-      setElizaCloudAuthRejected,
-      setElizaCloudCreditsError,
-      setElizaCloudConnected,
-      setElizaCloudEnabled,
-      setElizaCloudLoginError,
-      setElizaCloudTopUpUrl,
-      setElizaCloudUserId,
       setOnboardingComplete,
       setOnboardingLoading,
       setOnboardingOptions,
@@ -4198,7 +4184,7 @@ function AppProviderInner({
         return null;
       }
     },
-    [loadConversations, setActionNotice],
+    [loadConversations, setActionNotice, setConversations],
   );
 
   // ── Pairing ────────────────────────────────────────────────────────
@@ -7160,7 +7146,7 @@ function AppProviderInner({
     } else {
       elizaCloudAuthNoticeSentRef.current = false;
     }
-  }, [elizaCloudAuthRejected, setActionNotice, uiLanguage]);
+  }, [elizaCloudAuthRejected, setActionNotice, t]);
 
   const value: AppContextValue = {
     // Translations
