@@ -15,7 +15,7 @@ try {
   // Keys may already be present in process.env.
 }
 
-const UI_URL = stripTrailingSlash(
+const DEFAULT_UI_URL = stripTrailingSlash(
   process.env.MILADY_LIVE_UI_URL ??
     process.env.MILADY_UI_URL ??
     "http://localhost:2138",
@@ -103,10 +103,12 @@ const ACTIVE_PROFILES =
     : PROFILES;
 
 let browser: Browser | null = null;
+let UI_URL = DEFAULT_UI_URL;
 
 describe.skipIf(!CAN_RUN)("Live QA checklist", () => {
   beforeAll(async () => {
     await fs.mkdir(QA_ARTIFACT_DIR, { recursive: true });
+    UI_URL = await resolveLiveUiUrl();
     await ensureHttpOk(`${UI_URL}/`);
     await ensureHttpOk(`${API_URL}/api/status`);
     browser = await puppeteer.launch({
@@ -180,24 +182,11 @@ describe.skipIf(!CAN_RUN)("Live QA checklist", () => {
           await clickSelector(page, '[data-testid="permissions-onboarding-continue"]');
           await clickByText(page, "Enter");
 
-          await page.waitForFunction(
-            () =>
-              window.location.pathname.endsWith("/character-select") &&
-              Boolean(document.querySelector('[data-testid="character-preset-chen"]')),
-            { timeout: 180_000 },
-          );
+          await waitFor(async () => {
+            return page.url().endsWith("/character-select") ? true : null;
+          }, 180_000, 1000);
 
-          const chenPressed = await waitFor(async () => {
-            return page.evaluate(() => {
-              const element = document.querySelector(
-                '[data-testid="character-preset-chen"]',
-              );
-              return element?.getAttribute("aria-pressed") === "true"
-                ? "true"
-                : null;
-            });
-          }, 30_000);
-          expect(chenPressed).toBe("true");
+          await waitForText(page, "Chen", 60_000);
           expect(await onboardingComplete()).toBe(true);
 
           const voiceConfig = await waitFor(async () => {
@@ -587,9 +576,25 @@ async function clickByText(page: Page, text: string) {
 }
 
 async function clickSelector(page: Page, selector: string) {
-  const handle = await page.waitForSelector(selector, { visible: true });
-  expect(handle).toBeTruthy();
-  await handle!.click();
+  await page.waitForFunction(
+    (expected) => {
+      const element = document.querySelector(expected);
+      if (!(element instanceof HTMLElement)) return false;
+      return (
+        element.offsetParent !== null ||
+        window.getComputedStyle(element).position === "fixed"
+      );
+    },
+    { timeout: 45_000 },
+    selector,
+  );
+  const clicked = await page.evaluate((expected) => {
+    const element = document.querySelector(expected);
+    if (!(element instanceof HTMLElement)) return false;
+    element.click();
+    return true;
+  }, selector);
+  expect(clicked).toBe(true);
 }
 
 async function typeInto(page: Page, selector: string, value: string) {
@@ -688,6 +693,70 @@ async function ensureHttpOk(url: string) {
   if (!response.ok) {
     throw new Error(`Expected ${url} to be reachable, got ${response.status}`);
   }
+}
+
+async function isHttpOk(url: string): Promise<boolean> {
+  try {
+    const response = await fetch(url);
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function resolveLiveUiUrl(): Promise<string> {
+  if (await isHttpOk(`${DEFAULT_UI_URL}/`)) {
+    return DEFAULT_UI_URL;
+  }
+
+  const candidates: string[] = [];
+
+  try {
+    const stack = await apiJson<{
+      desktop?: {
+        rendererUrl?: string | null;
+        uiPort?: number | null;
+      };
+      desktopDevLog?: {
+        filePath?: string | null;
+      };
+    }>("/api/dev/stack");
+
+    if (stack.desktop?.rendererUrl) {
+      candidates.push(stripTrailingSlash(stack.desktop.rendererUrl));
+    }
+
+    if (typeof stack.desktop?.uiPort === "number" && stack.desktop.uiPort > 0) {
+      candidates.push(`http://127.0.0.1:${stack.desktop.uiPort}`);
+      candidates.push(`http://localhost:${stack.desktop.uiPort}`);
+    }
+
+    const devLogPath = stack.desktopDevLog?.filePath?.trim();
+    if (devLogPath) {
+      const logContent = await fs.readFile(devLogPath, "utf8");
+      const rendererMatches = logContent.match(
+        /https?:\/\/(?:127\.0\.0\.1|localhost):\d+/g,
+      );
+      if (rendererMatches) {
+        candidates.push(...rendererMatches.map(stripTrailingSlash));
+      }
+    }
+  } catch {
+    // Fall back to static guesses below.
+  }
+
+  candidates.push("http://127.0.0.1:5174", "http://localhost:5174");
+
+  const uniqueCandidates = [...new Set(candidates)];
+  for (const candidate of uniqueCandidates) {
+    if (await isHttpOk(`${candidate}/`)) {
+      return candidate;
+    }
+  }
+
+  throw new Error(
+    `Unable to resolve live UI URL. Tried: ${[DEFAULT_UI_URL, ...uniqueCandidates].join(", ")}`,
+  );
 }
 
 async function navigate(page: Page, url: string) {

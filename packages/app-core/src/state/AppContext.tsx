@@ -2763,8 +2763,23 @@ function AppProviderInner({
           setOnboardingComplete(false);
           onboardingResumeConnectionRef.current = null;
           setOnboardingStep("welcome");
+          setOnboardingMode("basic");
+          setOnboardingActiveGuide(null);
+          setOnboardingDeferredTasks([]);
+          setPostOnboardingChecklistDismissed(false);
           setOnboardingName("Chen");
           setOnboardingStyle("chen");
+          setOnboardingRunMode("");
+          setOnboardingCloudProvider("");
+          setOnboardingProvider("");
+          setOnboardingApiKey("");
+          setOnboardingPrimaryModel("");
+          setOnboardingOpenRouterModel("");
+          setOnboardingRemoteConnected(false);
+          setOnboardingRemoteApiBase("");
+          setOnboardingRemoteToken("");
+          setOnboardingSmallModel("");
+          setOnboardingLargeModel("");
         },
         resetAvatarSelection: () => {
           setSelectedVrmIndex(1);
@@ -2792,8 +2807,23 @@ function AppProviderInner({
       setOnboardingLoading,
       setOnboardingOptions,
       setOnboardingStep,
+      setOnboardingMode,
+      setOnboardingActiveGuide,
+      setOnboardingDeferredTasks,
+      setPostOnboardingChecklistDismissed,
       setOnboardingName,
       setOnboardingStyle,
+      setOnboardingRunMode,
+      setOnboardingCloudProvider,
+      setOnboardingProvider,
+      setOnboardingApiKey,
+      setOnboardingPrimaryModel,
+      setOnboardingOpenRouterModel,
+      setOnboardingRemoteConnected,
+      setOnboardingRemoteApiBase,
+      setOnboardingRemoteToken,
+      setOnboardingSmallModel,
+      setOnboardingLargeModel,
       setOnboardingUiRevealNonce,
       setConversationMessages,
       setActiveConversationId,

@@ -27,18 +27,23 @@ vi.mock("@miladyai/agent/config/paths", () => ({
 }));
 
 vi.mock("./plugin-installer", async () => {
-  const actual =
-    await vi.importActual<typeof import("./plugin-installer")>(
-      "./plugin-installer",
-    );
+  const VALID_PACKAGE_NAME =
+    /^(@[a-zA-Z0-9][\w.-]*\/)?[a-zA-Z0-9][\w.-]*$/;
+  const VALID_GIT_URL = /^https:\/\/[a-zA-Z0-9][\w./-]*\.git$/;
   return {
-    ...actual,
     detectPackageManager: vi.fn(async () => "npm"),
     resolveGitBranch: vi.fn(async () => "main"),
     sanitisePackageName: vi.fn((name: string) =>
-      actual.sanitisePackageName(name),
+      name.replace(/[^a-zA-Z0-9._-]/g, "_"),
     ),
-    assertValidGitUrl: vi.fn((url: string) => actual.assertValidGitUrl(url)),
+    assertValidGitUrl: vi.fn((url: string) => {
+      if (!VALID_GIT_URL.test(url)) {
+        throw new Error(`Invalid git URL: "${url}"`);
+      }
+    }),
+    VALID_BRANCH: /^[a-zA-Z0-9][\w./-]*$/,
+    VALID_GIT_URL,
+    VALID_PACKAGE_NAME,
   };
 });
 

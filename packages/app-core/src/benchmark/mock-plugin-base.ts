@@ -73,5 +73,3 @@ export const mockPlugin: Plugin = {
     },
   },
 };
-
-export default mockPlugin;
