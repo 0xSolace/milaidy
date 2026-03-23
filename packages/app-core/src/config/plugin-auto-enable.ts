@@ -4,7 +4,18 @@ import {
   CONNECTOR_PLUGINS as _upstreamConnectorPlugins,
   type ApplyPluginAutoEnableParams,
   type ApplyPluginAutoEnableResult,
+  AUTH_PROVIDER_PLUGINS,
+  isConnectorConfigured,
+  isStreamingDestinationConfigured,
+  STREAMING_PLUGINS,
 } from "@miladyai/agent/config/plugin-auto-enable";
+
+export {
+  AUTH_PROVIDER_PLUGINS,
+  isConnectorConfigured,
+  isStreamingDestinationConfigured,
+  STREAMING_PLUGINS,
+};
 
 // Extend upstream CONNECTOR_PLUGINS with Milady-local connectors.
 export const CONNECTOR_PLUGINS: Record<string, string> = {

@@ -1,15 +1,15 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 // Mock dependencies
-vi.mock("./anthropic", () => ({
-  refreshAnthropicToken: vi.fn(),
-}));
-vi.mock("./openai-codex", () => ({
-  refreshCodexToken: vi.fn(),
-}));
-vi.mock("./apply-stealth", () => ({
-  applyClaudeCodeStealth: vi.fn(),
-}));
+vi.mock("@miladyai/agent/auth", async (importOriginal) => {
+  const orig = (await importOriginal()) as Record<string, unknown>;
+  return {
+    ...orig,
+    refreshAnthropicToken: vi.fn(),
+    refreshCodexToken: vi.fn(),
+    applyClaudeCodeStealth: vi.fn(),
+  };
+});
 
 // Mock fs to simulate credential files.
 // Note: Bun's vi.mock does not support `importOriginal`, so we provide the
@@ -154,7 +154,7 @@ describe("applySubscriptionCredentials", () => {
     });
 
     const { applySubscriptionCredentials } = await import("./credentials");
-    const { applyClaudeCodeStealth } = await import("./apply-stealth");
+    const { applyClaudeCodeStealth } = await import("@miladyai/agent/auth");
 
     await applySubscriptionCredentials();
 

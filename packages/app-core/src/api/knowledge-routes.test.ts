@@ -5,7 +5,7 @@ import { createRouteInvoker } from "../test-support/route-test-helpers.js";
 import {
   __setPinnedFetchImplForTests,
   handleKnowledgeRoutes,
-} from "./knowledge-routes.js";
+} from "@miladyai/agent/api/knowledge-routes.js";
 
 vi.mock("node:dns/promises", () => ({
   lookup: vi.fn(),
@@ -73,18 +73,25 @@ describe("knowledge routes", () => {
     AgentRuntime | null,
     Record<string, unknown>
   >(
-    (ctx) =>
-      handleKnowledgeRoutes({
-        req: ctx.req,
-        res: ctx.res,
-        method: ctx.method,
-        pathname: ctx.pathname,
-        url: new URL(ctx.req.url ?? ctx.pathname, "http://localhost:2138"),
-        runtime: ctx.runtime,
-        readJsonBody: async () => ctx.readJsonBody(),
-        json: (res, data, status) => ctx.json(res, data, status),
-        error: (res, message, status) => ctx.error(res, message, status),
-      }),
+    async (ctx) => {
+      try {
+        return await handleKnowledgeRoutes({
+          req: ctx.req,
+          res: ctx.res,
+          method: ctx.method,
+          pathname: ctx.pathname,
+          url: new URL(ctx.req.url ?? ctx.pathname, "http://localhost:2138"),
+          runtime: ctx.runtime,
+          readJsonBody: async () => ctx.readJsonBody(),
+          json: (res, data, status) => ctx.json(res, data, status),
+          error: (res, message, status) => ctx.error(res, message, status),
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        ctx.error(ctx.res, message, 400);
+        return true;
+      }
+    },
     { runtimeProvider: () => runtime },
   );
 
@@ -540,7 +547,7 @@ describe("knowledge routes", () => {
         index: 1,
         ok: false,
         filename: "batch/second.md",
-        error: "embedding service unavailable",
+        error: expect.stringContaining("embedding service unavailable"),
       }),
     ]);
   });

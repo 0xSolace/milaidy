@@ -229,6 +229,10 @@ export default defineConfig({
         "src/index.ts",
         "src/cli/**",
         "src/hooks/**",
+        // Large files with inline TypeScript `type` imports that rolldown
+        // (used by @vitest/coverage-v8) cannot parse. Covered by e2e tests.
+        "packages/agent/src/api/server.ts",
+        "packages/agent/src/runtime/eliza.ts",
       ],
     },
     server: {

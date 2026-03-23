@@ -2,6 +2,8 @@
 // The wildcard re-export above is shadowed by this explicit named export.
 import { CONNECTOR_IDS as _upstreamConnectorIds } from "@miladyai/agent/config";
 
+export { buildConfigSchema } from "@miladyai/agent/config";
+
 /** Milady-local connectors not present in upstream @miladyai/agent. */
 export const MILADY_LOCAL_CONNECTOR_IDS = ["wechat"] as const;
 

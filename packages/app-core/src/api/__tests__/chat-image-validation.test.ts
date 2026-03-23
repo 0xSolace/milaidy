@@ -6,7 +6,7 @@ import {
   IMAGE_ONLY_CHAT_FALLBACK_PROMPT,
   normalizeIncomingChatPrompt,
   validateChatImages,
-} from "../server";
+} from "@miladyai/agent/api/server";
 
 type UUID = `${string}-${string}-${string}-${string}-${string}`;
 

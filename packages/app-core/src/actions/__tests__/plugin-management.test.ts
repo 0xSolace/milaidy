@@ -1,4 +1,4 @@
-import { requestRestart } from "@miladyai/agent/runtime/restart";
+import { requestRestart } from "@miladyai/shared/restart";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ejectPluginAction } from "../../actions/eject-plugin";
 import { listEjectedAction } from "../../actions/list-ejected";
@@ -15,7 +15,7 @@ vi.mock("../../services/plugin-eject", () => ({
   listEjectedPlugins: vi.fn(),
 }));
 
-vi.mock("@miladyai/agent/runtime/restart", () => ({
+vi.mock("@miladyai/shared/restart", () => ({
   requestRestart: vi.fn(),
 }));
 
