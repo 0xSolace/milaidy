@@ -12,7 +12,7 @@ import {
   Textarea,
 } from "@miladyai/ui";
 import { Clock3, Plus } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   CreateTriggerRequest,
   TriggerSummary,
@@ -107,6 +107,60 @@ const emptyForm: TriggerFormState = {
   durationValue: "1",
   durationUnit: "hours",
 };
+
+// ── User-saved templates (localStorage) ─────────────────────────────
+
+interface HeartbeatTemplate {
+  id: string;
+  name: string;
+  instructions: string;
+  interval: string;
+  unit: DurationUnit;
+}
+
+const TEMPLATES_STORAGE_KEY = "milady:heartbeat-templates";
+
+const BUILT_IN_TEMPLATES: HeartbeatTemplate[] = [
+  {
+    id: "__builtin_crypto",
+    name: "Check crypto prices",
+    instructions: "Check the current prices of BTC, ETH, and SOL. Summarize any significant moves in the last hour.",
+    interval: "30",
+    unit: "minutes",
+  },
+  {
+    id: "__builtin_journal",
+    name: "Daily journal prompt",
+    instructions: "Write a brief, thoughtful journal prompt for the user based on current events or seasonal themes. Keep it under 2 sentences.",
+    interval: "24",
+    unit: "hours",
+  },
+  {
+    id: "__builtin_trending",
+    name: "Trending topics digest",
+    instructions: "Scan for trending topics on crypto Twitter and tech news. Give a 3-bullet summary of what's worth paying attention to.",
+    interval: "4",
+    unit: "hours",
+  },
+];
+
+function loadUserTemplates(): HeartbeatTemplate[] {
+  try {
+    const raw = localStorage.getItem(TEMPLATES_STORAGE_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as HeartbeatTemplate[];
+  } catch {
+    return [];
+  }
+}
+
+function saveUserTemplates(templates: HeartbeatTemplate[]): void {
+  try {
+    localStorage.setItem(TEMPLATES_STORAGE_KEY, JSON.stringify(templates));
+  } catch {
+    // localStorage full or unavailable
+  }
+}
 
 function parsePositiveInteger(value: string): number | undefined {
   const trimmed = value.trim();
@@ -291,6 +345,33 @@ export function HeartbeatsView() {
   );
   const [formError, setFormError] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [userTemplates, setUserTemplates] = useState<HeartbeatTemplate[]>(loadUserTemplates);
+  const [templateNotice, setTemplateNotice] = useState<string | null>(null);
+
+  const saveFormAsTemplate = useCallback(() => {
+    const name = form.displayName.trim();
+    if (!name) return;
+    const template: HeartbeatTemplate = {
+      id: `user_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      name,
+      instructions: form.instructions.trim(),
+      interval: form.durationValue || "1",
+      unit: form.durationUnit,
+    };
+    setUserTemplates((prev) => {
+      const next = [...prev, template];
+      saveUserTemplates(next);
+      return next;
+    });
+  }, [form]);
+
+  const deleteUserTemplate = useCallback((id: string) => {
+    setUserTemplates((prev) => {
+      const next = prev.filter((t) => t.id !== id);
+      saveUserTemplates(next);
+      return next;
+    });
+  }, []);
 
   const _selectedRuns = useMemo(() => {
     if (!selectedTriggerId) return [];
@@ -459,12 +540,7 @@ export function HeartbeatsView() {
               {triggerError}
             </div>
           )}
-          {triggers.length === 0 && !triggersLoading ? (
-            <div className="p-4 text-center text-sm text-muted">
-              {t("triggersview.NoTriggersConfigur")}
-            </div>
-          ) : (
-            triggers.map((trigger) => {
+          {triggers.map((trigger) => {
               const isActive = selectedTriggerId === trigger.id;
 
               return (
@@ -472,6 +548,12 @@ export function HeartbeatsView() {
                   key={trigger.id}
                   variant="ghost"
                   onClick={() => {
+                    setSelectedTriggerId(trigger.id);
+                    setEditorOpen(false);
+                    setEditingId(null);
+                    void loadTriggerRuns(trigger.id);
+                  }}
+                  onDoubleClick={() => {
                     openEditEditor(trigger);
                     void loadTriggerRuns(trigger.id);
                   }}
@@ -509,8 +591,63 @@ export function HeartbeatsView() {
                   </div>
                 </Button>
               );
-            })
-          )}
+            })}
+
+          {/* Templates */}
+          <div className="px-3 pt-4 pb-2 border-t border-border/30 mt-2">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted/60 mb-2">
+              Templates
+            </div>
+            {[...userTemplates, ...BUILT_IN_TEMPLATES].map((template) => {
+              const isUserTemplate = !template.id.startsWith("__builtin_");
+              return (
+                <div
+                  key={template.id}
+                  className="relative group mb-1.5"
+                >
+                  <button
+                    type="button"
+                    className={`w-full text-left px-3 py-2 rounded-lg border transition-colors ${
+                      isUserTemplate
+                        ? "border-accent/20 bg-accent/5 hover:bg-accent/10 hover:border-accent/30"
+                        : "border-dashed border-border/40 hover:bg-bg-hover hover:border-border"
+                    }`}
+                    onClick={() => {
+                      setForm({
+                        ...emptyForm,
+                        displayName: template.name,
+                        instructions: template.instructions,
+                        durationValue: template.interval,
+                        durationUnit: template.unit,
+                      });
+                      setEditorOpen(true);
+                      setEditingId(null);
+                      setSelectedTriggerId(null);
+                      setTemplateNotice(`Template "${template.name}" loaded — customize and create.`);
+                      setTimeout(() => setTemplateNotice(null), 3000);
+                    }}
+                  >
+                    <div className="text-xs font-medium text-txt">{template.name}</div>
+                    <div className="text-[10px] text-muted/60 mt-0.5">
+                      Every {template.interval} {template.unit}
+                    </div>
+                  </button>
+                  {isUserTemplate && (
+                    <button
+                      type="button"
+                      className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity text-muted hover:text-danger text-[10px] px-1.5 py-0.5 rounded bg-bg/80"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteUserTemplate(template.id);
+                      }}
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </aside>
 
@@ -518,6 +655,11 @@ export function HeartbeatsView() {
       <main className="flex-1 min-w-0 overflow-y-auto bg-card relative custom-scrollbar">
         {editorOpen || editingId ? (
           <div className="max-w-3xl mx-auto p-6 lg:p-10 pb-20">
+            {templateNotice && (
+              <div className="mb-4 px-4 py-2.5 rounded-lg border border-accent/30 bg-accent/5 text-xs text-accent font-medium animate-[fadeIn_0.2s_ease]">
+                {templateNotice}
+              </div>
+            )}
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-8">
               <div className="space-y-1">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
@@ -757,6 +899,18 @@ export function HeartbeatsView() {
                 </div>
               </div>
 
+              {form.displayName.trim() && (
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    className="text-xs text-muted hover:text-accent transition-colors underline underline-offset-2"
+                    onClick={saveFormAsTemplate}
+                  >
+                    💾 Save as template
+                  </button>
+                </div>
+              )}
+
               <div className="flex items-center gap-3 pt-2">
                 <Button
                   variant="default"
@@ -933,7 +1087,132 @@ export function HeartbeatsView() {
               )}
             </div>
           </div>
-        ) : (
+        ) : selectedTriggerId && (() => {
+          const trigger = triggers.find((tr) => tr.id === selectedTriggerId);
+          if (!trigger) return null;
+          const runs = triggerRunsById[selectedTriggerId] ?? [];
+          const hasLoadedRuns = Object.hasOwn(triggerRunsById, selectedTriggerId);
+          const successCount = runs.filter((r) => r.status === "success").length;
+          const failureCount = runs.filter((r) => r.status !== "success" && r.status !== "skipped").length;
+          const totalRuns = runs.length;
+          return (
+            <div className="max-w-3xl mx-auto p-6 lg:p-10">
+              <div className="flex items-start justify-between gap-4 mb-6">
+                <div>
+                  <h2 className="text-2xl font-semibold text-txt">{trigger.displayName}</h2>
+                  <p className="text-sm text-muted mt-1">{trigger.instructions}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* Pause / Resume toggle */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={`h-8 px-3 text-xs ${trigger.enabled ? "text-warning border-warning/30 hover:bg-warning/10" : "text-ok border-ok/30 hover:bg-ok/10"}`}
+                    onClick={() => void onToggleTriggerEnabled(selectedTriggerId, trigger.enabled)}
+                  >
+                    {trigger.enabled ? "Pause" : "Resume"}
+                  </Button>
+                  <Button variant="outline" size="sm" className="h-8 px-3 text-xs" onClick={() => openEditEditor(trigger)}>
+                    Edit
+                  </Button>
+                  {/* Duplicate */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-3 text-xs"
+                    onClick={() => {
+                      setForm({
+                        ...formFromTrigger(trigger),
+                        displayName: `${trigger.displayName} (copy)`,
+                      });
+                      setEditorOpen(true);
+                      setEditingId(null);
+                      setSelectedTriggerId(null);
+                    }}
+                  >
+                    Duplicate
+                  </Button>
+                  <Button variant="outline" size="sm" className="h-8 px-3 text-xs" onClick={() => void onRunSelectedTrigger(selectedTriggerId)}>
+                    {t("triggersview.RunNow")}
+                  </Button>
+                </div>
+              </div>
+
+              <dl className="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-3 lg:grid-cols-4 mb-8 border-b border-border/30 pb-6">
+                <div>
+                  <dt className="text-[11px] font-semibold uppercase tracking-wider text-muted">Schedule</dt>
+                  <dd className="mt-1 text-txt font-medium">{scheduleLabel(trigger, t)}</dd>
+                </div>
+                <div>
+                  <dt className="text-[11px] font-semibold uppercase tracking-wider text-muted">{t("triggersview.LastRun")}</dt>
+                  <dd className="mt-1 text-txt font-medium">{formatDateTime(trigger.lastRunAtIso, { fallback: t("heartbeatsview.notYetRun") })}</dd>
+                </div>
+                <div>
+                  <dt className="text-[11px] font-semibold uppercase tracking-wider text-muted">{t("heartbeatsview.nextRun")}</dt>
+                  <dd className="mt-1 text-txt font-medium">{formatDateTime(trigger.nextRunAtMs, { fallback: t("heartbeatsview.notScheduled") })}</dd>
+                </div>
+                {/* Success/failure counts */}
+                {hasLoadedRuns && totalRuns > 0 && (
+                  <div>
+                    <dt className="text-[11px] font-semibold uppercase tracking-wider text-muted">Run Stats</dt>
+                    <dd className="mt-1 flex items-center gap-2 text-sm font-medium">
+                      <span className="text-txt">{totalRuns} runs</span>
+                      {successCount > 0 && <span className="text-ok">{successCount} ✓</span>}
+                      {failureCount > 0 && <span className="text-danger">{failureCount} ✗</span>}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-[12px] font-semibold uppercase tracking-wider text-muted">
+                    {t("triggersview.RunHistory")}
+                  </h3>
+                  <Button variant="outline" size="sm" className="h-7 px-3 text-[11px]" onClick={() => void loadTriggerRuns(selectedTriggerId)}>
+                    {t("common.refresh")}
+                  </Button>
+                </div>
+
+                {!hasLoadedRuns ? (
+                  <div className="py-6 text-sm text-muted/70 flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-muted/30 border-t-muted/80 rounded-full animate-spin" />
+                    {t("databaseview.Loading")}
+                  </div>
+                ) : runs.length === 0 ? (
+                  <div className="py-8 text-center text-sm text-muted/60">
+                    No runs yet. Click "Run Now" to trigger manually.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {runs.map((run) => (
+                      <div key={run.triggerRunId} className="border border-border/30 rounded-lg px-4 py-3 bg-bg/30">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <StatusBadge
+                            label={localizedExecutionStatus(run.status, t)}
+                            tone={toneForLastStatus(run.status)}
+                          />
+                          <span className="text-[11px] text-muted/70 font-mono">
+                            {formatDateTime(run.startedAt)}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-muted/80">
+                          {formatDurationMs(run.latencyMs)} &middot;{" "}
+                          <span className="font-mono text-muted/60 bg-bg/40 px-1 py-0.5 rounded">{run.source}</span>
+                        </div>
+                        {run.error && (
+                          <div className="mt-2 text-xs text-danger/90 bg-danger/10 border border-danger/20 p-2 rounded-lg whitespace-pre-wrap font-mono">
+                            {run.error}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })() || (
           <div className="flex h-full flex-col items-center justify-center p-8 text-center bg-bg/5">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-card border border-border/30 shadow-sm mb-6 rotate-3">
               <Clock3 className="h-7 w-7 text-muted/80" />
