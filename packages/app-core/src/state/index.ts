@@ -1,5 +1,6 @@
 export * from "./AppContext";
 export * from "./ChatContext";
+export * from "./LifecycleContext";
 export * from "./NavigationContext";
 export * from "./parsers";
 export * from "./persistence";
