@@ -1,12 +1,11 @@
 /**
  * ProviderSwitcher — Provider grid, cloud settings, and switching logic.
+ *
+ * Extracted from SettingsView.tsx for decomposition (P2 §10).
+ * Composes SubscriptionStatus and ApiKeyConfig sub-components.
  */
 
-<<<<<<< Updated upstream
 import { Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@miladyai/ui";
-=======
-import { Button, Input } from "@miladyai/ui";
->>>>>>> Stashed changes
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { client, type OnboardingOptions, type PluginParamDef } from "../api";
 import {
@@ -541,7 +540,7 @@ export function ProviderSwitcher(props: ProviderSwitcherProps = {}) {
   );
   const piAiModelSelectValue =
     normalizedPiAiModelSpec.length === 0
-      ? "__default__"
+      ? ""
       : hasKnownPiAiModel
         ? normalizedPiAiModelSpec
         : "__custom__";
@@ -873,7 +872,7 @@ export function ProviderSwitcher(props: ProviderSwitcherProps = {}) {
                     }
                     return;
                   }
-                  setPiAiModelSpec(next === "__default__" ? "" : next);
+                  setPiAiModelSpec(next);
                 }}
               >
                 <SelectTrigger
@@ -883,7 +882,7 @@ export function ProviderSwitcher(props: ProviderSwitcherProps = {}) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__default__">
+                  <SelectItem value="">
                     {t("providerswitcher.usePiDefaultModel")}
                     {piAiDefaultModelSpec ? ` (${piAiDefaultModelSpec})` : ""}
                   </SelectItem>

@@ -8,11 +8,7 @@
  *   - Test functionality
  */
 
-<<<<<<< Updated upstream
-import { Button, Input, Switch } from "@miladyai/ui";
-=======
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from "@miladyai/ui";
->>>>>>> Stashed changes
+import { Button, Input } from "@miladyai/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   client,
@@ -181,28 +177,25 @@ export function DesktopTalkModePanel() {
 
   if (!desktopRuntime) {
     return (
-      <Card className="bg-bg-muted">
-        <CardContent className="px-3 py-3 text-xs text-muted">
-          Desktop talk mode controls are only available inside the Electrobun
-          runtime.
-        </CardContent>
-      </Card>
+      <div className="rounded-xl border border-border bg-bg-muted px-3 py-3 text-xs text-muted">
+        Desktop talk mode controls are only available inside the Electrobun
+        runtime.
+      </div>
     );
   }
 
   return (
-    <Card className="bg-bg-muted">
-      <CardHeader className="px-3 py-3 pb-0">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <CardTitle className="text-xs">
-              Desktop Talk Mode
-            </CardTitle>
-            <CardDescription className="text-[10px]">
-              Native voice loop controls, speech output, and whisper diagnostics.
-            </CardDescription>
+    <div className="flex flex-col gap-3 rounded-xl border border-border bg-bg-muted px-3 py-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-xs font-semibold text-txt">
+            Desktop Talk Mode
           </div>
-          <Button
+          <div className="text-[10px] text-muted">
+            Native voice loop controls, speech output, and whisper diagnostics.
+          </div>
+        </div>
+        <Button
           variant="outline"
           size="sm"
           onClick={() =>
@@ -216,10 +209,8 @@ export function DesktopTalkModePanel() {
         >
           Refresh
         </Button>
-        </div>
-      </CardHeader>
+      </div>
 
-      <CardContent className="flex flex-col gap-3 px-3 pb-3">
       {(error || message) && (
         <div
           className={`rounded-lg border px-2.5 py-2 text-[11px] ${
@@ -233,38 +224,30 @@ export function DesktopTalkModePanel() {
       )}
 
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="shadow-none">
-          <CardContent className="px-2.5 py-2 text-[11px]">
-            <div className="text-[10px] text-muted">State</div>
-            <div className="font-semibold text-txt">{panelState.state}</div>
-          </CardContent>
-        </Card>
-        <Card className="shadow-none">
-          <CardContent className="px-2.5 py-2 text-[11px]">
-            <div className="text-[10px] text-muted">Enabled</div>
-            <div className="font-semibold text-txt">
-              {panelState.enabled ? "Yes" : "No"}
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="shadow-none">
-          <CardContent className="px-2.5 py-2 text-[11px]">
-            <div className="text-[10px] text-muted">Speaking</div>
-            <div className="font-semibold text-txt">
-              {panelState.speaking ? "Yes" : "No"}
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="shadow-none">
-          <CardContent className="px-2.5 py-2 text-[11px]">
-            <div className="text-[10px] text-muted">Whisper</div>
-            <div className="font-semibold text-txt">
-              {panelState.whisperAvailable
-                ? panelState.whisperModel || "Available"
-                : "Unavailable"}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border border-border bg-card px-2.5 py-2 text-[11px]">
+          <div className="text-[10px] text-muted">State</div>
+          <div className="font-semibold text-txt">{panelState.state}</div>
+        </div>
+        <div className="rounded-lg border border-border bg-card px-2.5 py-2 text-[11px]">
+          <div className="text-[10px] text-muted">Enabled</div>
+          <div className="font-semibold text-txt">
+            {panelState.enabled ? "Yes" : "No"}
+          </div>
+        </div>
+        <div className="rounded-lg border border-border bg-card px-2.5 py-2 text-[11px]">
+          <div className="text-[10px] text-muted">Speaking</div>
+          <div className="font-semibold text-txt">
+            {panelState.speaking ? "Yes" : "No"}
+          </div>
+        </div>
+        <div className="rounded-lg border border-border bg-card px-2.5 py-2 text-[11px]">
+          <div className="text-[10px] text-muted">Whisper</div>
+          <div className="font-semibold text-txt">
+            {panelState.whisperAvailable
+              ? panelState.whisperModel || "Available"
+              : "Unavailable"}
+          </div>
+        </div>
       </div>
 
       <Input
@@ -350,8 +333,7 @@ export function DesktopTalkModePanel() {
           Stop Speaking
         </Button>
       </div>
-      </CardContent>
-    </Card>
+    </div>
   );
 }
 
@@ -494,12 +476,20 @@ function WakeWordSection({
         <div className="text-xs font-semibold text-muted">
           {t("voiceconfigview.WakeWord")}
         </div>
-        <Switch
-          checked={enabled}
-          onCheckedChange={() => void handleToggle()}
-          className="data-[state=checked]:bg-accent"
+        <button
+          type="button"
+          onClick={() => void handleToggle()}
+          className={`relative inline-flex h-5 w-9 cursor-pointer items-center rounded-full transition-colors ${
+            enabled ? "bg-accent" : "bg-border"
+          }`}
           aria-label={enabled ? "Disable wake word" : "Enable wake word"}
-        />
+        >
+          <span
+            className={`inline-block h-3.5 w-3.5 rounded-full bg-bg shadow transition-transform ${
+              enabled ? "translate-x-4" : "translate-x-0.5"
+            }`}
+          />
+        </button>
       </div>
 
       {/* Trigger tag input */}
@@ -897,10 +887,10 @@ export function VoiceConfigView() {
               {PREMADE_VOICES.map((preset) => {
                 const active = selectedVoiceId === preset.voiceId;
                 return (
-                  <Button
+                  <button
                     key={preset.id}
-                    variant={active ? "default" : "outline"}
-                    className={`h-auto flex-col items-start py-2.5 px-3 text-left rounded-lg ${
+                    type="button"
+                    className={`h-auto flex flex-col items-start py-2.5 px-3 text-left rounded-lg border transition-all cursor-pointer ${
                       active
                         ? "border-accent bg-accent/8 text-txt"
                         : "border-border bg-bg-accent text-txt hover:border-border hover:bg-bg-hover"
@@ -913,7 +903,7 @@ export function VoiceConfigView() {
                     <div className="text-[10px] text-muted truncate w-full">
                       {preset.hint}
                     </div>
-                  </Button>
+                  </button>
                 );
               })}
             </div>

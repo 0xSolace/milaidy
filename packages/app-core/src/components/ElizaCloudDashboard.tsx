@@ -5,16 +5,14 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
-  Label,
   SectionCard,
-  Spinner,
-  StatusBadge,
 } from "@miladyai/ui";
 import {
   AlertCircle,
   CircleDollarSign,
   CreditCard,
   ExternalLink,
+  Loader2,
   Plus,
   RefreshCw,
   Server,
@@ -148,7 +146,7 @@ function CloudAgentCard({
           disabled={launching}
         >
           {launching ? (
-            <Spinner size={12} className="mr-1" />
+            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
           ) : (
             <ExternalLink className="w-3 h-3 mr-1" />
           )}
@@ -166,7 +164,7 @@ function CloudAgentCard({
           disabled={deleting || launching}
         >
           {deleting ? (
-            <Spinner size={12} />
+            <Loader2 className="w-3 h-3 animate-spin" />
           ) : (
             <Trash2 className="w-3 h-3" />
           )}
@@ -1037,14 +1035,20 @@ export function CloudDashboard() {
               </span>
               <span className="text-sm text-muted">credits</span>
               {billingLoading && (
-                <Spinner size={16} className="text-muted" />
+                <Loader2 className="h-4 w-4 animate-spin text-muted" />
               )}
             </div>
-            <StatusBadge
-              label={creditStatusTone}
-              tone={summaryCritical ? "danger" : summaryLow ? "warning" : "success"}
-              className="rounded-full px-2.5 py-0.5 tracking-wider"
-            />
+            <span
+              className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
+                summaryCritical
+                  ? "border-danger/30 bg-danger/10 text-danger"
+                  : summaryLow
+                    ? "border-warn/30 bg-warn/10 text-warn"
+                    : "border-ok/30 bg-ok/10 text-ok"
+              }`}
+            >
+              {creditStatusTone}
+            </span>
           </div>
 
           {billingError && (
@@ -1117,7 +1121,7 @@ export function CloudDashboard() {
                     onClick={() => void handleStartCheckout()}
                   >
                     {checkoutBusy ? (
-                      <Spinner size={16} />
+                      <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       "Pay"
                     )}
@@ -1188,7 +1192,7 @@ export function CloudDashboard() {
                         onClick={() => void handlePayCryptoFromAgentWallet()}
                       >
                         {cryptoPayBusy ? (
-                          <Spinner size={12} />
+                          <Loader2 className="h-3 w-3 animate-spin" />
                         ) : (
                           "Pay from wallet"
                         )}
@@ -1203,7 +1207,7 @@ export function CloudDashboard() {
                     onClick={() => void handleCreateCryptoQuote()}
                   >
                     {cryptoBusy ? (
-                      <Spinner size={16} className="mr-2" />
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : null}
                     {t("elizaclouddashboard.PayWithCrypto")}
                   </Button>
@@ -1242,12 +1246,12 @@ export function CloudDashboard() {
             </div>
             <div className="flex items-end gap-3">
               <div className="flex-1 space-y-1">
-                <Label
+                <label
                   htmlFor="cloud-auto-topup-threshold"
-                  className="text-[11px] text-muted font-normal"
+                  className="text-[11px] text-muted"
                 >
                   Refill when below
-                </Label>
+                </label>
                 <Input
                   id="cloud-auto-topup-threshold"
                   type="number"
@@ -1265,12 +1269,12 @@ export function CloudDashboard() {
                 />
               </div>
               <div className="flex-1 space-y-1">
-                <Label
+                <label
                   htmlFor="cloud-auto-topup-amount"
-                  className="text-[11px] text-muted font-normal"
+                  className="text-[11px] text-muted"
                 >
                   Top-up amount
-                </Label>
+                </label>
                 <Input
                   id="cloud-auto-topup-amount"
                   type="number"
@@ -1296,7 +1300,7 @@ export function CloudDashboard() {
                 onClick={() => void handleSaveBillingSettings()}
               >
                 {billingSettingsBusy ? (
-                  <Spinner size={12} className="mr-1" />
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
                 ) : null}
                 Save
               </Button>
@@ -1374,7 +1378,7 @@ export function CloudDashboard() {
           <div className="py-4">
             {agentsLoading && cloudAgents.length === 0 ? (
               <div className="flex items-center justify-center py-8">
-                <Spinner size={20} className="text-muted" />
+                <Loader2 className="w-5 h-5 text-muted animate-spin" />
               </div>
             ) : (
               <div className="space-y-2">
@@ -1410,7 +1414,7 @@ export function CloudDashboard() {
                       disabled={deploying || !deployAgentName.trim()}
                     >
                       {deploying ? (
-                        <Spinner size={12} />
+                        <Loader2 className="w-3 h-3 animate-spin" />
                       ) : (
                         t("elizaclouddashboard.Deploy")
                       )}
@@ -1428,11 +1432,7 @@ export function CloudDashboard() {
                 ) : (
                   <Button
                     variant="ghost"
-<<<<<<< Updated upstream
                     className="flex items-center gap-2 w-full py-3 text-xs text-muted hover:text-txt h-auto justify-start"
-=======
-                    className="flex items-center gap-2 w-full py-3 h-auto text-xs text-muted hover:text-txt"
->>>>>>> Stashed changes
                     onClick={() => setShowDeployForm(true)}
                   >
                     <Plus className="w-4 h-4" />
@@ -1557,11 +1557,7 @@ function AgentDetailSidebar({
         <Button
           variant="ghost"
           size="icon"
-<<<<<<< Updated upstream
           className="absolute top-4 right-4 p-1 rounded-full text-muted hover:text-txt-strong"
-=======
-          className="absolute top-4 right-4 h-7 w-7 rounded-full text-muted hover:text-txt-strong"
->>>>>>> Stashed changes
           onClick={onClose}
         >
           <X className="w-5 h-5" />

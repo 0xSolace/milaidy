@@ -17,16 +17,13 @@ import type {
 } from "@miladyai/app-core/api";
 import { client } from "@miladyai/app-core/api";
 import {
+  ConfirmDeleteControl,
   formatByteSize,
   formatShortDate,
 } from "@miladyai/app-core/components";
 import { useApp } from "@miladyai/app-core/state";
 import { confirmDesktopAction } from "@miladyai/app-core/utils";
-<<<<<<< Updated upstream
-import { Button, Checkbox, ConfirmDelete, EmptyState, Input, Spinner } from "@miladyai/ui";
-=======
-import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input } from "@miladyai/ui";
->>>>>>> Stashed changes
+import { Button, Checkbox, Input } from "@miladyai/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   isKnowledgeImageFile,
@@ -374,7 +371,7 @@ function DocumentCard({
         </div>
       </button>
       <div className="flex items-center gap-2 ml-4 opacity-0 group-hover:opacity-100 transition-opacity focus-within:opacity-100">
-        <ConfirmDelete
+        <ConfirmDeleteControl
           triggerClassName="h-8 px-3 text-xs font-bold text-danger hover:bg-danger/10 hover:text-danger rounded-lg transition-all"
           confirmClassName="h-8 px-3 text-xs font-bold bg-danger/20 text-danger hover:bg-danger/30 rounded-lg transition-all"
           cancelClassName="h-8 px-3 text-xs font-bold text-muted hover:text-txt rounded-lg transition-all"
@@ -436,20 +433,28 @@ function DocumentDetailModal({
   }, [documentId]);
 
   return (
-    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-4xl max-h-[85vh] p-0 flex flex-col overflow-hidden rounded-2xl">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-6 animate-in fade-in duration-200">
+      <div className="bg-card/90 border border-border/50 rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden backdrop-blur-xl">
         {/* Header */}
-        <DialogHeader className="p-5 border-b border-border/30 bg-bg/20">
-          <DialogTitle className="text-lg font-bold text-txt tracking-wide">
+        <div className="flex items-center justify-between p-5 border-b border-border/30 bg-bg/20">
+          <h2 className="text-lg font-bold text-txt tracking-wide">
             {loading ? "Loading..." : doc?.filename || "Document"}
-          </DialogTitle>
-        </DialogHeader>
+          </h2>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="h-8 w-8 text-muted hover:bg-white/10 hover:text-txt rounded-full transition-all"
+          >
+            ✕
+          </Button>
+        </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
           {loading && (
             <div className="text-center py-12 text-muted font-bold tracking-wide animate-pulse">
-              <Spinner size={16} className="inline-block mr-3 align-middle text-accent" />
+              <span className="inline-block w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin mr-3 align-middle" />
               {t("databaseview.Loading")}
             </div>
           )}
@@ -554,8 +559,8 @@ function DocumentDetailModal({
             </>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }
 
@@ -1013,7 +1018,7 @@ export function KnowledgeView({ inModal }: { inModal?: boolean } = {}) {
     <div className={inModal ? "h-full w-full overflow-y-auto pb-8" : "w-full"}>
       {isServiceLoading && (
         <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded border border-[var(--border)] bg-[var(--card)] text-sm text-[var(--muted)]">
-          <Spinner size={16} className="text-accent" />
+          <span className="w-4 h-4 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
 
           {t("knowledgeview.KnowledgeServiceIs")}
         </div>
@@ -1114,11 +1119,14 @@ export function KnowledgeView({ inModal }: { inModal?: boolean } = {}) {
         )}
 
         {!loading && documents.length === 0 && (
-          <EmptyState
-            title={t("knowledgeview.NoDocumentsYet")}
-            description={t("knowledgeview.UploadFilesOrImpo")}
-            className="border-2 border-dashed border-border/40 rounded-2xl bg-card/20 backdrop-blur-sm shadow-inner"
-          />
+          <div className="text-center py-16 border-2 border-dashed border-border/40 rounded-2xl bg-card/20 backdrop-blur-sm shadow-inner">
+            <div className="text-muted/80 font-bold mb-2 tracking-wide text-[15px]">
+              {t("knowledgeview.NoDocumentsYet")}
+            </div>
+            <div className="text-xs text-muted/60 font-medium">
+              {t("knowledgeview.UploadFilesOrImpo")}
+            </div>
+          </div>
         )}
 
         <div className="space-y-2">

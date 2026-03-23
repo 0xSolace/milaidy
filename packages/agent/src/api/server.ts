@@ -85,6 +85,7 @@ import {
   importAgent,
 } from "../services/agent-export.js";
 import { AppManager } from "../services/app-manager.js";
+import { FallbackTrainingService } from "../services/fallback-training-service.js";
 import {
   getMcpServerDetails,
   searchMcpMarketplace,
@@ -195,10 +196,7 @@ import { buildWhitelistTree, generateProof } from "./merkle-tree.js";
 import { handleModelsRoutes } from "./models-routes.js";
 import { handleNfaRoutes } from "./nfa-routes.js";
 
-import type {
-  CoordinationLLMResponse,
-  PTYService,
-} from "./parse-action-block.js";
+import type { PTYService } from "./parse-action-block.js";
 import { handlePermissionRoutes } from "./permissions-routes.js";
 import {
   type PluginParamInfo,
@@ -240,11 +238,31 @@ import {
   handleWhatsAppRoute,
 } from "./whatsapp-routes.js";
 
-import type {
-  SwarmEvent,
-  TaskCompletionSummary,
-  TaskContext,
-} from "./coordinator-types.js";
+/**
+ * Local stubs for types removed from @elizaos/plugin-agent-orchestrator 2.x.
+ * These are only used as structural types for the SwarmCoordinator callbacks;
+ * no runtime import is needed.
+ */
+// biome-ignore lint/suspicious/noExplicitAny: legacy coordinator event payload
+type SwarmEvent = Record<string, any>;
+// biome-ignore lint/suspicious/noExplicitAny: legacy coordinator task context
+type TaskContext = Record<string, any>;
+interface CoordinationLLMResponse {
+  action: string;
+  reasoning: string;
+  response?: string;
+  useKeys?: boolean;
+  keys?: string[];
+}
+interface TaskCompletionSummary {
+  sessionId: string;
+  label: string;
+  agentType: string;
+  originalTask: string;
+  status: string;
+  completionSummary: string;
+  [key: string]: unknown;
+}
 
 type PiAiPluginModule = typeof import("@elizaos/plugin-pi-ai");
 let _piAiPluginModule: PiAiPluginModule | null = null;
@@ -319,7 +337,7 @@ function readDeletedConversationIdsFromState(): Set<string> {
     );
   } catch (err) {
     logger.warn(
-      `[eliza-api] Failed to read deleted conversations state: ${String(err)}`,
+      `[eliza-api] Failed to read deleted conversations state: ${err instanceof Error ? err.message : String(err)}`,
     );
     return new Set();
   }
@@ -824,7 +842,7 @@ function getReleaseBundledPluginIds(): Set<string> {
     );
   } catch (err) {
     logger.warn(
-      `[eliza-api] Failed to resolve bundled release plugins from package.json: ${String(err)}`,
+      `[eliza-api] Failed to resolve bundled release plugins from package.json: ${err instanceof Error ? err.message : err}`,
     );
     return new Set();
   }
@@ -1551,7 +1569,7 @@ export function discoverPluginsFromManifest(): PluginEntry[] {
       return entries;
     } catch (err) {
       logger.debug(
-        `[eliza-api] Failed to read plugins.json: ${String(err)}`,
+        `[eliza-api] Failed to read plugins.json: ${err instanceof Error ? err.message : err}`,
       );
     }
   }
@@ -1970,7 +1988,7 @@ async function saveSkillPreferences(
     await runtime.setCache(SKILL_PREFS_CACHE_KEY, prefs);
   } catch (err) {
     logger.debug(
-      `[eliza-api] Failed to save skill preferences: ${String(err)}`,
+      `[eliza-api] Failed to save skill preferences: ${err instanceof Error ? err.message : err}`,
     );
   }
 }
@@ -2007,7 +2025,7 @@ async function saveSkillAcknowledgments(
     await runtime.setCache(SKILL_ACK_CACHE_KEY, acks);
   } catch (err) {
     logger.debug(
-      `[eliza-api] Failed to save skill acknowledgments: ${String(err)}`,
+      `[eliza-api] Failed to save skill acknowledgments: ${err instanceof Error ? err.message : err}`,
     );
   }
 }
@@ -3401,7 +3419,7 @@ Title:`;
     return cleanTitle;
   } catch (err) {
     logger.warn(
-      `[eliza] Failed to generate conversation title: ${String(err)}`,
+      `[eliza] Failed to generate conversation title: ${err instanceof Error ? err.message : String(err)}`,
     );
     return null;
   }
@@ -4680,7 +4698,7 @@ function writeProviderCache(cache: ProviderCache): void {
     );
   } catch (e) {
     logger.warn(
-      `[model-catalog] Failed to write cache for ${cache.providerId}: ${String(e)}`,
+      `[model-catalog] Failed to write cache for ${cache.providerId}: ${e instanceof Error ? e.message : e}`,
     );
   }
 }
@@ -4711,7 +4729,7 @@ async function fetchModelsREST(
       .sort((a, b) => a.id.localeCompare(b.id));
   } catch (e) {
     logger.warn(
-      `[model-catalog] Failed to fetch models for ${providerId}: ${String(e)}`,
+      `[model-catalog] Failed to fetch models for ${providerId}: ${e instanceof Error ? e.message : e}`,
     );
     return [];
   }
@@ -4750,7 +4768,7 @@ async function fetchAnthropicModels(apiKey: string): Promise<CachedModel[]> {
       .sort((a, b) => a.id.localeCompare(b.id));
   } catch (e) {
     logger.warn(
-      `[model-catalog] Failed to fetch Anthropic models: ${String(e)}`,
+      `[model-catalog] Failed to fetch Anthropic models: ${e instanceof Error ? e.message : e}`,
     );
     return [];
   }
@@ -4776,7 +4794,7 @@ async function fetchGoogleModels(apiKey: string): Promise<CachedModel[]> {
     });
   } catch (e) {
     logger.warn(
-      `[model-catalog] Failed to fetch Google models: ${String(e)}`,
+      `[model-catalog] Failed to fetch Google models: ${e instanceof Error ? e.message : e}`,
     );
     return [];
   }
@@ -4798,7 +4816,7 @@ async function fetchOllamaModels(baseUrl: string): Promise<CachedModel[]> {
     }));
   } catch (e) {
     logger.warn(
-      `[model-catalog] Failed to fetch Ollama models: ${String(e)}`,
+      `[model-catalog] Failed to fetch Ollama models: ${e instanceof Error ? e.message : e}`,
     );
     return [];
   }
@@ -4877,7 +4895,7 @@ async function fetchVercelGatewayModels(
       .sort((a, b) => a.id.localeCompare(b.id));
   } catch (e) {
     logger.warn(
-      `[model-catalog] Failed to fetch Vercel AI Gateway models: ${String(e)}`,
+      `[model-catalog] Failed to fetch Vercel AI Gateway models: ${e instanceof Error ? e.message : e}`,
     );
     return [];
   }
@@ -5138,7 +5156,7 @@ function ensureWalletKeysInEnvAndConfig(config: ElizaConfig): boolean {
     return true;
   } catch (err) {
     logger.warn(
-      `[eliza-api] Failed to generate wallet keys: ${String(err)}`,
+      `[eliza-api] Failed to generate wallet keys: ${err instanceof Error ? err.message : String(err)}`,
     );
     return false;
   }
@@ -6872,7 +6890,7 @@ function wireCoordinatorEventRouting(st: ServerState): boolean {
           resolveOuter(parseActionBlock(result.text ?? ""));
         } catch (err) {
           logger.error(
-            `Coordinator event routing failed: ${String(err)}`,
+            `Coordinator event routing failed: ${err instanceof Error ? err.message : String(err)}`,
           );
           resolveOuter(null);
         }
@@ -7399,7 +7417,7 @@ async function handleRequest(
       } catch (err) {
         error(
           res,
-          `Failed to read request body: ${String(err)}`,
+          `Failed to read request body: ${err instanceof Error ? err.message : String(err)}`,
           400,
         );
         return;
@@ -7431,7 +7449,7 @@ async function handleRequest(
     } catch (err) {
       error(
         res,
-        `Failed to reach Hyperscape API: ${String(err)}`,
+        `Failed to reach Hyperscape API: ${err instanceof Error ? err.message : String(err)}`,
         502,
       );
       return;
@@ -7592,7 +7610,7 @@ async function handleRequest(
         deleteCredentials("openai-codex");
       } catch (err) {
         logger.warn(
-          `[api] Failed to clear subscriptions: ${String(err)}`,
+          `[api] Failed to clear subscriptions: ${err instanceof Error ? err.message : err}`,
         );
       }
       // Don't clear the env keys here — applySubscriptionCredentials on
@@ -7706,7 +7724,7 @@ async function handleRequest(
           deleteCredentials("anthropic-subscription");
         } catch (err) {
           logger.warn(
-            `[api] Failed to clear Anthropic subscription: ${String(err)}`,
+            `[api] Failed to clear Anthropic subscription: ${err instanceof Error ? err.message : err}`,
           );
         }
         // Apply the OpenAI subscription credentials to env + install stealth
@@ -7717,7 +7735,7 @@ async function handleRequest(
           await applySubscriptionCredentials(config);
         } catch (err) {
           logger.warn(
-            `[api] Failed to apply OpenAI subscription creds: ${String(err)}`,
+            `[api] Failed to apply OpenAI subscription creds: ${err instanceof Error ? err.message : err}`,
           );
         }
       } else if (normalizedProvider === "anthropic-subscription") {
@@ -7732,7 +7750,7 @@ async function handleRequest(
           deleteCredentials("openai-codex");
         } catch (err) {
           logger.warn(
-            `[api] Failed to clear OpenAI subscription: ${String(err)}`,
+            `[api] Failed to clear OpenAI subscription: ${err instanceof Error ? err.message : err}`,
           );
         }
         // Apply the Anthropic subscription credentials to env + install stealth
@@ -7743,7 +7761,7 @@ async function handleRequest(
           await applySubscriptionCredentials(config);
         } catch (err) {
           logger.warn(
-            `[api] Failed to apply Anthropic subscription creds: ${String(err)}`,
+            `[api] Failed to apply Anthropic subscription creds: ${err instanceof Error ? err.message : err}`,
           );
         }
       } else if (PROVIDER_ENV_KEYS[normalizedProvider]) {
@@ -8046,7 +8064,7 @@ async function handleRequest(
     } catch (err) {
       error(
         res,
-        `Failed to build runtime debug snapshot: ${String(err)}`,
+        `Failed to build runtime debug snapshot: ${err instanceof Error ? err.message : String(err)}`,
         500,
       );
     }
@@ -8070,7 +8088,7 @@ async function handleRequest(
         }
       } catch (err) {
         logger.warn(
-          `[eliza-api] Failed to refresh config for onboarding status: ${String(err)}`,
+          `[eliza-api] Failed to refresh config for onboarding status: ${err instanceof Error ? err.message : err}`,
         );
       }
     }
@@ -8129,7 +8147,7 @@ async function handleRequest(
       piAiDefaultModel = piAi.defaultModelSpec ?? null;
     } catch (err) {
       logger.warn(
-        `[api] Failed to load pi-ai model options: ${String(err)}`,
+        `[api] Failed to load pi-ai model options: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
 
@@ -8223,7 +8241,8 @@ async function handleRequest(
             content: m.content,
           })),
         };
-      }) as unknown as typeof agent.messageExamples;
+        // biome-ignore lint/suspicious/noExplicitAny: mixed legacy/new formats
+      }) as any;
     }
 
     // ── Theme preference ──────────────────────────────────────────────────
@@ -8977,7 +8996,7 @@ async function handleRequest(
           saveElizaConfig(state.config);
         } catch (err) {
           logger.warn(
-            `[eliza-api] Failed to save config: ${String(err)}`,
+            `[eliza-api] Failed to save config: ${err instanceof Error ? err.message : err}`,
           );
         }
       }
@@ -9042,7 +9061,7 @@ async function handleRequest(
         saveElizaConfig(state.config);
       } catch (err) {
         logger.warn(
-          `[eliza-api] Failed to save config: ${String(err)}`,
+          `[eliza-api] Failed to save config: ${err instanceof Error ? err.message : err}`,
         );
       }
 
@@ -9201,7 +9220,7 @@ async function handleRequest(
         {
           success: false,
           pluginId,
-          error: String(err),
+          error: err instanceof Error ? err.message : String(err),
           durationMs: Date.now() - startMs,
         },
         500,
@@ -9270,7 +9289,7 @@ async function handleRequest(
         saveElizaConfig(state.config);
       } catch (err) {
         logger.warn(
-          `[eliza-api] Failed to save config after install: ${String(err)}`,
+          `[eliza-api] Failed to save config after install: ${err instanceof Error ? err.message : err}`,
         );
       }
 
@@ -9294,7 +9313,7 @@ async function handleRequest(
     } catch (err) {
       error(
         res,
-        `Install failed: ${String(err)}`,
+        `Install failed: ${err instanceof Error ? err.message : String(err)}`,
         500,
       );
     }
@@ -9339,7 +9358,7 @@ async function handleRequest(
     } catch (err) {
       error(
         res,
-        `Uninstall failed: ${String(err)}`,
+        `Uninstall failed: ${err instanceof Error ? err.message : String(err)}`,
         500,
       );
     }
@@ -9374,7 +9393,7 @@ async function handleRequest(
     } catch (err) {
       error(
         res,
-        `Eject failed: ${String(err)}`,
+        `Eject failed: ${err instanceof Error ? err.message : String(err)}`,
         500,
       );
     }
@@ -9408,7 +9427,7 @@ async function handleRequest(
     } catch (err) {
       error(
         res,
-        `Sync failed: ${String(err)}`,
+        `Sync failed: ${err instanceof Error ? err.message : String(err)}`,
         500,
       );
     }
@@ -9448,7 +9467,7 @@ async function handleRequest(
     } catch (err) {
       error(
         res,
-        `Reinject failed: ${String(err)}`,
+        `Reinject failed: ${err instanceof Error ? err.message : String(err)}`,
         500,
       );
     }
@@ -9465,7 +9484,7 @@ async function handleRequest(
     } catch (err) {
       error(
         res,
-        `Failed to list installed plugins: ${String(err)}`,
+        `Failed to list installed plugins: ${err instanceof Error ? err.message : String(err)}`,
         500,
       );
     }
@@ -9487,7 +9506,7 @@ async function handleRequest(
     } catch (err) {
       error(
         res,
-        `Failed to list ejected plugins: ${String(err)}`,
+        `Failed to list ejected plugins: ${err instanceof Error ? err.message : String(err)}`,
         500,
       );
     }
@@ -9504,7 +9523,7 @@ async function handleRequest(
     } catch (err) {
       error(
         res,
-        `Failed to get core status: ${String(err)}`,
+        `Failed to get core status: ${err instanceof Error ? err.message : String(err)}`,
         500,
       );
     }
@@ -9609,7 +9628,7 @@ async function handleRequest(
       saveElizaConfig(state.config);
     } catch (err) {
       logger.warn(
-        `[api] Config save failed: ${String(err)}`,
+        `[api] Config save failed: ${err instanceof Error ? err.message : err}`,
       );
     }
 
@@ -9673,7 +9692,7 @@ async function handleRequest(
           }
         } catch (err) {
           logger.debug(
-            `[api] Service not available: ${String(err)}`,
+            `[api] Service not available: ${err instanceof Error ? err.message : err}`,
           );
         }
       }
@@ -9698,7 +9717,7 @@ async function handleRequest(
     } catch (err) {
       error(
         res,
-        `Failed to load skill catalog: ${String(err)}`,
+        `Failed to load skill catalog: ${err instanceof Error ? err.message : String(err)}`,
         500,
       );
     }
@@ -9725,7 +9744,7 @@ async function handleRequest(
     } catch (err) {
       error(
         res,
-        `Skill catalog search failed: ${String(err)}`,
+        `Skill catalog search failed: ${err instanceof Error ? err.message : String(err)}`,
         500,
       );
     }
@@ -9752,7 +9771,7 @@ async function handleRequest(
       } catch (err) {
         error(
           res,
-          `Failed to fetch skill: ${String(err)}`,
+          `Failed to fetch skill: ${err instanceof Error ? err.message : String(err)}`,
           500,
         );
       }
@@ -9771,7 +9790,7 @@ async function handleRequest(
     } catch (err) {
       error(
         res,
-        `Catalog refresh failed: ${String(err)}`,
+        `Catalog refresh failed: ${err instanceof Error ? err.message : String(err)}`,
         500,
       );
     }
@@ -9856,7 +9875,7 @@ async function handleRequest(
     } catch (err) {
       error(
         res,
-        `Skill install failed: ${String(err)}`,
+        `Skill install failed: ${err instanceof Error ? err.message : String(err)}`,
         500,
       );
     }
@@ -9921,7 +9940,7 @@ async function handleRequest(
     } catch (err) {
       error(
         res,
-        `Skill uninstall failed: ${String(err)}`,
+        `Skill uninstall failed: ${err instanceof Error ? err.message : String(err)}`,
         500,
       );
     }
@@ -9949,7 +9968,7 @@ async function handleRequest(
     } catch (err) {
       error(
         res,
-        `Failed to refresh skills: ${String(err)}`,
+        `Failed to refresh skills: ${err instanceof Error ? err.message : err}`,
         500,
       );
     }
@@ -10170,7 +10189,7 @@ async function handleRequest(
         }
       } catch (err) {
         logger.debug(
-          `[api] Service not available: ${String(err)}`,
+          `[api] Service not available: ${err instanceof Error ? err.message : err}`,
         );
       }
     }
@@ -10407,7 +10426,7 @@ async function handleRequest(
       } catch (err) {
         error(
           res,
-          `Failed to uninstall: ${String(err)}`,
+          `Failed to uninstall: ${err instanceof Error ? err.message : String(err)}`,
           500,
         );
         return;
@@ -10423,7 +10442,7 @@ async function handleRequest(
         }
       } catch (err) {
         logger.debug(
-          `[api] Service not available: ${String(err)}`,
+          `[api] Service not available: ${err instanceof Error ? err.message : err}`,
         );
       }
     }
@@ -10469,7 +10488,7 @@ async function handleRequest(
       const results = await searchSkillsMarketplace(query, { limit });
       json(res, { ok: true, results });
     } catch (err) {
-      const msg = String(err);
+      const msg = err instanceof Error ? err.message : String(err);
       error(res, msg, 502);
     }
     return;
@@ -10486,7 +10505,7 @@ async function handleRequest(
     } catch (err) {
       error(
         res,
-        `Failed to list installed skills: ${String(err)}`,
+        `Failed to list installed skills: ${err instanceof Error ? err.message : err}`,
         500,
       );
     }
@@ -10614,7 +10633,7 @@ async function handleRequest(
     } catch (err) {
       error(
         res,
-        `Install failed: ${String(err)}`,
+        `Install failed: ${err instanceof Error ? err.message : err}`,
         500,
       );
     }
@@ -10650,7 +10669,7 @@ async function handleRequest(
     } catch (err) {
       error(
         res,
-        `Uninstall failed: ${String(err)}`,
+        `Uninstall failed: ${err instanceof Error ? err.message : err}`,
         500,
       );
     }
@@ -11164,7 +11183,7 @@ async function handleRequest(
 
   // ── GET /api/connectors ──────────────────────────────────────────────────
   if (method === "GET" && pathname === "/api/connectors") {
-    const connectors = state.config.connectors ?? ((state.config as Record<string, unknown>).channels as Record<string, unknown>) ?? {};
+    const connectors = state.config.connectors ?? state.config.channels ?? {};
     json(res, {
       connectors: redactConfigSecrets(connectors as Record<string, unknown>),
     });
@@ -11226,9 +11245,8 @@ async function handleRequest(
       delete state.config.connectors[name];
     }
     // Also remove from legacy channels key
-    const legacyChannels = (state.config as Record<string, unknown>).channels as Record<string, unknown> | undefined;
-    if (legacyChannels && Object.hasOwn(legacyChannels, name)) {
-      delete legacyChannels[name];
+    if (state.config.channels && Object.hasOwn(state.config.channels, name)) {
+      delete state.config.channels[name];
     }
     try {
       saveElizaConfig(state.config);
@@ -11527,7 +11545,7 @@ async function handleRequest(
       }
       error(
         res,
-        `ElevenLabs proxy error: ${String(err)}`,
+        `ElevenLabs proxy error: ${err instanceof Error ? err.message : String(err)}`,
         isAbortError(err) ? 504 : 502,
       );
       return;
@@ -11923,7 +11941,7 @@ async function handleRequest(
       saveElizaConfig(state.config);
     } catch (err) {
       logger.warn(
-        `[api] Config save failed: ${String(err)}`,
+        `[api] Config save failed: ${err instanceof Error ? err.message : err}`,
       );
     }
     json(res, redactConfigSecrets(state.config));
@@ -12004,7 +12022,7 @@ async function handleRequest(
       saveElizaConfig(state.config);
     } catch (err) {
       logger.warn(
-        `[api] Trade-mode config save failed: ${String(err)}`,
+        `[api] Trade-mode config save failed: ${err instanceof Error ? err.message : err}`,
       );
     }
 
@@ -12205,7 +12223,7 @@ async function handleRequest(
       json(res, { ok: true, ...result });
     } catch (err) {
       logger.error(
-        `[api] Privy login failed: ${String(err)}`,
+        `[api] Privy login failed: ${err instanceof Error ? err.message : err}`,
       );
       error(
         res,
@@ -12254,7 +12272,7 @@ async function handleRequest(
       json(res, result);
     } catch (err) {
       logger.error(
-        `[api] BSC trade preflight failed: ${String(err)}`,
+        `[api] BSC trade preflight failed: ${err instanceof Error ? err.message : err}`,
       );
       error(
         res,
@@ -12298,7 +12316,7 @@ async function handleRequest(
       json(res, result);
     } catch (err) {
       logger.error(
-        `[api] BSC trade quote failed: ${String(err)}`,
+        `[api] BSC trade quote failed: ${err instanceof Error ? err.message : err}`,
       );
       error(
         res,
@@ -12503,7 +12521,7 @@ async function handleRequest(
       });
     } catch (err) {
       logger.error(
-        `[api] BSC trade execute failed: ${String(err)}`,
+        `[api] BSC trade execute failed: ${err instanceof Error ? err.message : err}`,
       );
       error(
         res,
@@ -12597,7 +12615,7 @@ async function handleRequest(
       });
     } catch (err) {
       logger.error(
-        `[api] BSC tx-status failed: ${String(err)}`,
+        `[api] BSC tx-status failed: ${err instanceof Error ? err.message : err}`,
       );
       error(
         res,
@@ -12630,7 +12648,7 @@ async function handleRequest(
       json(res, profile);
     } catch (err) {
       logger.error(
-        `[api] Wallet trading profile failed: ${String(err)}`,
+        `[api] Wallet trading profile failed: ${err instanceof Error ? err.message : err}`,
       );
       error(
         res,
@@ -12793,7 +12811,7 @@ async function handleRequest(
       });
     } catch (err) {
       logger.error(
-        `[api] Transfer execute failed: ${String(err)}`,
+        `[api] Transfer execute failed: ${err instanceof Error ? err.message : err}`,
       );
       error(
         res,
@@ -12827,7 +12845,7 @@ async function handleRequest(
         saveElizaConfig(state.config);
       } catch (err) {
         logger.warn(
-          `[api] production-defaults config save failed: ${String(err)}`,
+          `[api] production-defaults config save failed: ${err instanceof Error ? err.message : err}`,
         );
       }
     }
@@ -12960,7 +12978,7 @@ async function handleRequest(
       persistDeletedConversationIdsToState(state.deletedConversationIds);
     } catch (err) {
       logger.warn(
-        `[conversations] Failed to persist deleted conversation tombstones: ${String(err)}`,
+        `[conversations] Failed to persist deleted conversation tombstones: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
   };
@@ -13085,7 +13103,7 @@ async function handleRequest(
       await persistConversationRoomTitle(state.runtime, conv);
     } catch (err) {
       logger.debug(
-        `[conversations] Failed to persist room title for ${conv.id}: ${String(err)}`,
+        `[conversations] Failed to persist room title for ${conv.id}: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
   };
@@ -14026,7 +14044,7 @@ async function handleRequest(
       json(res, { messages });
     } catch (err) {
       logger.warn(
-        `[conversations] Failed to fetch messages: ${String(err)}`,
+        `[conversations] Failed to fetch messages: ${err instanceof Error ? err.message : String(err)}`,
       );
       json(res, { messages: [], error: "Failed to fetch messages" }, 500);
     }
@@ -14321,7 +14339,7 @@ async function handleRequest(
       });
     } catch (err) {
       logger.warn(
-        `[conversations] POST /messages failed: ${String(err)}`,
+        `[conversations] POST /messages failed: ${err instanceof Error ? err.message : String(err)}`,
       );
       const creditReply = getInsufficientCreditsReplyFromError(err);
       if (creditReply) {
@@ -14434,7 +14452,7 @@ async function handleRequest(
         }
       } catch (err) {
         logger.warn(
-          `[conversations] Failed to fetch context for title generation: ${String(err)}`,
+          `[conversations] Failed to fetch context for title generation: ${err instanceof Error ? err.message : String(err)}`,
         );
       }
 
@@ -14471,7 +14489,7 @@ async function handleRequest(
         await deleteConversationRoomData(state.runtime, conv.roomId);
       } catch (err) {
         logger.debug(
-          `[conversations] Failed to delete room data for ${convId}: ${String(err)}`,
+          `[conversations] Failed to delete room data for ${convId}: ${err instanceof Error ? err.message : String(err)}`,
         );
       }
     }
@@ -14782,7 +14800,7 @@ async function handleRequest(
     if (!handled) {
       try {
         // biome-ignore lint/suspicious/noExplicitAny: legacy route handler may not exist in 2.x
-        const orchestratorPlugin: Record<string, unknown> = await import(
+        const orchestratorPlugin: any = await import(
           "@elizaos/plugin-agent-orchestrator"
         );
         if (orchestratorPlugin.createCodingAgentRouteHandler) {
@@ -15548,7 +15566,7 @@ async function handleRequest(
     } catch (err) {
       error(
         res,
-        `MCP marketplace search failed: ${String(err)}`,
+        `MCP marketplace search failed: ${err instanceof Error ? err.message : err}`,
         502,
       );
     }
@@ -15580,7 +15598,7 @@ async function handleRequest(
     } catch (err) {
       error(
         res,
-        `Failed to fetch server details: ${String(err)}`,
+        `Failed to fetch server details: ${err instanceof Error ? err.message : err}`,
         502,
       );
     }
@@ -15660,7 +15678,7 @@ async function handleRequest(
       saveElizaConfig(state.config);
     } catch (err) {
       logger.warn(
-        `[api] Config save failed: ${String(err)}`,
+        `[api] Config save failed: ${err instanceof Error ? err.message : err}`,
       );
     }
 
@@ -15691,7 +15709,7 @@ async function handleRequest(
         saveElizaConfig(state.config);
       } catch (err) {
         logger.warn(
-          `[api] Config save failed: ${String(err)}`,
+          `[api] Config save failed: ${err instanceof Error ? err.message : err}`,
         );
       }
     }
@@ -15748,7 +15766,7 @@ async function handleRequest(
       saveElizaConfig(state.config);
     } catch (err) {
       logger.warn(
-        `[api] Config save failed: ${String(err)}`,
+        `[api] Config save failed: ${err instanceof Error ? err.message : err}`,
       );
     }
 
@@ -15794,7 +15812,7 @@ async function handleRequest(
         }
       } catch (err) {
         logger.debug(
-          `[api] Service not available: ${String(err)}`,
+          `[api] Service not available: ${err instanceof Error ? err.message : err}`,
         );
       }
     }
@@ -16203,7 +16221,7 @@ async function handleRequest(
     } catch (err) {
       error(
         res,
-        `Generation failed: ${String(err)}`,
+        `Generation failed: ${err instanceof Error ? err.message : String(err)}`,
         500,
       );
     }
@@ -16260,7 +16278,7 @@ async function handleRequest(
       json(res, {
         ok: false,
         output: "",
-        error: String(err),
+        error: err instanceof Error ? err.message : String(err),
         durationMs: Date.now() - start,
       });
     }
@@ -16408,7 +16426,7 @@ async function handleRequest(
       }
     } catch (err) {
       logger.error(
-        `[ltcg-autonomy] ${String(err)}`,
+        `[ltcg-autonomy] ${err instanceof Error ? err.message : err}`,
       );
       error(res, err instanceof Error ? err.message : "Autonomy error", 500);
       return;
@@ -16481,7 +16499,7 @@ export async function startApiServer(opts?: {
     config = loadElizaConfig();
   } catch (err) {
     logger.warn(
-      `[eliza-api] Failed to load config, starting with defaults: ${String(err)}`,
+      `[eliza-api] Failed to load config, starting with defaults: ${err instanceof Error ? err.message : err}`,
     );
     config = {} as ElizaConfig;
   }
@@ -16514,7 +16532,7 @@ export async function startApiServer(opts?: {
       saveElizaConfig(config);
     } catch (err) {
       logger.warn(
-        `[eliza-api] Failed to persist generated wallet keys: ${String(err)}`,
+        `[eliza-api] Failed to persist generated wallet keys: ${err instanceof Error ? err.message : err}`,
       );
     }
   }
@@ -16612,8 +16630,9 @@ export async function startApiServer(opts?: {
     state.trainingService = new trainingServiceCtor(trainingServiceOptions);
   } else {
     logger.warn(
-      "[eliza-api] Training service package unavailable; training routes will return 503",
+      "[eliza-api] Training service package unavailable; using fallback in-memory implementation",
     );
+    state.trainingService = new FallbackTrainingService(trainingServiceOptions);
   }
   // Register immediately so /api/training routes are available without a startup race.
   const configuredAdminEntityId = config.agents?.defaults?.adminEntityId;
@@ -16816,7 +16835,7 @@ export async function startApiServer(opts?: {
           client.send(message);
         } catch (err) {
           logger.error(
-            `[eliza-api] WebSocket broadcast error: ${String(err)}`,
+            `[eliza-api] WebSocket broadcast error: ${err instanceof Error ? err.message : err}`,
           );
         }
       }
@@ -16871,7 +16890,7 @@ export async function startApiServer(opts?: {
 
       void maybeRouteAutonomyEventToConversation(state, event).catch((err) => {
         logger.warn(
-          `[autonomy-route] Failed to route proactive event: ${String(err)}`,
+          `[autonomy-route] Failed to route proactive event: ${err instanceof Error ? err.message : String(err)}`,
         );
       });
 
@@ -16888,7 +16907,7 @@ export async function startApiServer(opts?: {
         if (text) {
           void ttsHandler(text, srs).catch((err) => {
             logger.warn(
-              `[stream-voice] Auto-TTS trigger failed: ${String(err)}`,
+              `[stream-voice] Auto-TTS trigger failed: ${err instanceof Error ? err.message : String(err)}`,
             );
           });
         }
@@ -16945,7 +16964,7 @@ export async function startApiServer(opts?: {
         );
       } catch (err) {
         logger.warn(
-          `[eliza-api] Skill discovery failed during startup: ${String(err)}`,
+          `[eliza-api] Skill discovery failed during startup: ${err instanceof Error ? err.message : String(err)}`,
         );
       }
     })();
@@ -16962,7 +16981,7 @@ export async function startApiServer(opts?: {
         ]);
       } catch (err) {
         logger.error(
-          `[eliza-api] Training service init failed: ${String(err)}`,
+          `[eliza-api] Training service init failed: ${err instanceof Error ? err.message : String(err)}`,
         );
       }
     })();
@@ -17008,7 +17027,7 @@ export async function startApiServer(opts?: {
           ["system"],
         );
       } catch (err) {
-        const msg = String(err);
+        const msg = err instanceof Error ? err.message : String(err);
         addLog("warn", `ERC-8004 registry service disabled: ${msg}`, "system", [
           "system",
         ]);
@@ -17073,7 +17092,7 @@ export async function startApiServer(opts?: {
             );
           } catch (err) {
             logger.warn(
-              `[eliza-api] Failed to load retake destination: ${String(err)}`,
+              `[eliza-api] Failed to load retake destination: ${err instanceof Error ? err.message : String(err)}`,
             );
           }
         }
@@ -17097,7 +17116,7 @@ export async function startApiServer(opts?: {
             );
           } catch (err) {
             logger.warn(
-              `[eliza-api] Failed to load custom-rtmp destination: ${String(err)}`,
+              `[eliza-api] Failed to load custom-rtmp destination: ${err instanceof Error ? err.message : String(err)}`,
             );
           }
         }
@@ -17115,7 +17134,7 @@ export async function startApiServer(opts?: {
             );
           } catch (err) {
             logger.warn(
-              `[eliza-api] Failed to load twitch destination: ${String(err)}`,
+              `[eliza-api] Failed to load twitch destination: ${err instanceof Error ? err.message : String(err)}`,
             );
           }
         }
@@ -17133,7 +17152,7 @@ export async function startApiServer(opts?: {
             );
           } catch (err) {
             logger.warn(
-              `[eliza-api] Failed to load youtube destination: ${String(err)}`,
+              `[eliza-api] Failed to load youtube destination: ${err instanceof Error ? err.message : String(err)}`,
             );
           }
         }
@@ -17151,7 +17170,7 @@ export async function startApiServer(opts?: {
             );
           } catch (err) {
             logger.warn(
-              `[eliza-api] Failed to load pumpfun destination: ${String(err)}`,
+              `[eliza-api] Failed to load pumpfun destination: ${err instanceof Error ? err.message : String(err)}`,
             );
           }
         }
@@ -17169,7 +17188,7 @@ export async function startApiServer(opts?: {
             );
           } catch (err) {
             logger.warn(
-              `[eliza-api] Failed to load x destination: ${String(err)}`,
+              `[eliza-api] Failed to load x destination: ${err instanceof Error ? err.message : String(err)}`,
             );
           }
         }
@@ -17223,7 +17242,7 @@ export async function startApiServer(opts?: {
         ]);
       } catch (err) {
         logger.warn(
-          `[eliza-api] Failed to load stream routes: ${String(err)}`,
+          `[eliza-api] Failed to load stream routes: ${err instanceof Error ? err.message : String(err)}`,
         );
       }
     })();
@@ -17270,7 +17289,7 @@ export async function startApiServer(opts?: {
       });
     } catch (err) {
       logger.error(
-        `[eliza-api] WebSocket upgrade error: ${String(err)}`,
+        `[eliza-api] WebSocket upgrade error: ${err instanceof Error ? err.message : err}`,
       );
       rejectWebSocketUpgrade(socket, 404, "Not found");
     }
@@ -17315,7 +17334,7 @@ export async function startApiServer(opts?: {
       }
     } catch (err) {
       logger.error(
-        `[eliza-api] WebSocket send error: ${String(err)}`,
+        `[eliza-api] WebSocket send error: ${err instanceof Error ? err.message : err}`,
       );
     }
 
@@ -17434,7 +17453,7 @@ export async function startApiServer(opts?: {
         }
       } catch (err) {
         logger.error(
-          `[eliza-api] WebSocket message error: ${String(err)}`,
+          `[eliza-api] WebSocket message error: ${err instanceof Error ? err.message : err}`,
         );
       }
     });
@@ -17455,7 +17474,7 @@ export async function startApiServer(opts?: {
 
     ws.on("error", (err) => {
       logger.error(
-        `[eliza-api] WebSocket error: ${String(err)}`,
+        `[eliza-api] WebSocket error: ${err instanceof Error ? err.message : err}`,
       );
       wsClients.delete(ws);
       // Clean up PTY subscriptions on error too
@@ -17493,7 +17512,7 @@ export async function startApiServer(opts?: {
           client.send(message);
         } catch (err) {
           logger.error(
-            `[eliza-api] WebSocket broadcast error: ${String(err)}`,
+            `[eliza-api] WebSocket broadcast error: ${err instanceof Error ? err.message : err}`,
           );
         }
       }
@@ -17514,7 +17533,7 @@ export async function startApiServer(opts?: {
         delivered += 1;
       } catch (err) {
         logger.error(
-          `[eliza-api] WebSocket targeted send error: ${String(err)}`,
+          `[eliza-api] WebSocket targeted send error: ${err instanceof Error ? err.message : err}`,
         );
       }
     }
@@ -17584,7 +17603,7 @@ export async function startApiServer(opts?: {
       }
     } catch (err) {
       logger.warn(
-        `[eliza-api] Failed to restore conversations from DB: ${String(err)}`,
+        `[eliza-api] Failed to restore conversations from DB: ${err instanceof Error ? err.message : err}`,
       );
     }
   };
@@ -17649,7 +17668,7 @@ export async function startApiServer(opts?: {
       );
     } catch (err) {
       logger.warn(
-        `[character-db] Failed to load character from DB: ${String(err)}`,
+        `[character-db] Failed to load character from DB: ${err instanceof Error ? err.message : err}`,
       );
     }
   };

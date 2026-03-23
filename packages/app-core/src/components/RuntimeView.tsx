@@ -7,11 +7,6 @@
  * - Explicit load order metadata
  */
 
-<<<<<<< Updated upstream
-import { Button, Input, Label } from "@miladyai/ui";
-=======
-import { Button } from "@miladyai/ui";
->>>>>>> Stashed changes
 import { useCallback, useEffect, useState } from "react";
 import {
   client,
@@ -138,14 +133,14 @@ function TreeNode(props: {
         style={{ paddingLeft: `${depth * 14}px` }}
       >
         {canExpand ? (
-          <Button
-            variant="ghost"
-            className="w-4 h-auto p-0 text-left text-muted hover:text-txt"
+          <button
+            type="button"
             onClick={() => onToggle(path)}
+            className="w-4 text-left text-muted hover:text-txt"
             title={open ? "Collapse" : "Expand"}
           >
             {open ? "▾" : "▸"}
-          </Button>
+          </button>
         ) : (
           <span className="inline-block w-4 text-muted">·</span>
         )}
@@ -288,9 +283,9 @@ export function RuntimeView() {
   return (
     <div data-testid="runtime-view" className="flex flex-col gap-4 h-full">
       <div className="flex flex-wrap items-center gap-3 px-4 py-2.5 bg-card/60 backdrop-blur-xl border border-border/40 rounded-2xl">
-        <Label className="text-[11px] text-muted font-normal flex items-center gap-1">
+        <label className="text-[11px] text-muted flex items-center gap-1">
           {t("runtimeview.depth")}
-          <Input
+          <input
             type="number"
             min={1}
             max={24}
@@ -298,12 +293,12 @@ export function RuntimeView() {
             onChange={(e) =>
               setDepth(Math.max(1, Math.min(24, Number(e.target.value) || 1)))
             }
-            className="w-16 px-1.5 py-0.5 h-auto rounded-lg"
+            className="w-16 px-1.5 py-0.5 border border-border bg-bg text-txt rounded-lg"
           />
-        </Label>
-        <Label className="text-[11px] text-muted font-normal flex items-center gap-1">
+        </label>
+        <label className="text-[11px] text-muted flex items-center gap-1">
           {t("runtimeview.arrayCap")}
-          <Input
+          <input
             type="number"
             min={1}
             max={5000}
@@ -313,12 +308,12 @@ export function RuntimeView() {
                 Math.max(1, Math.min(5000, Number(e.target.value) || 1)),
               )
             }
-            className="w-20 px-1.5 py-0.5 h-auto rounded-lg"
+            className="w-20 px-1.5 py-0.5 border border-border bg-bg text-txt rounded-lg"
           />
-        </Label>
-        <Label className="text-[11px] text-muted font-normal flex items-center gap-1">
+        </label>
+        <label className="text-[11px] text-muted flex items-center gap-1">
           {t("runtimeview.objectCap")}
-          <Input
+          <input
             type="number"
             min={1}
             max={5000}
@@ -328,53 +323,33 @@ export function RuntimeView() {
                 Math.max(1, Math.min(5000, Number(e.target.value) || 1)),
               )
             }
-            className="w-20 px-1.5 py-0.5 h-auto rounded-lg"
+            className="w-20 px-1.5 py-0.5 border border-border bg-bg text-txt rounded-lg"
           />
-<<<<<<< Updated upstream
-        </Label>
-        <Button
-          variant="outline"
-          size="sm"
+        </label>
+        <button
+          type="button"
           onClick={() => void loadSnapshot()}
           disabled={loading}
+          className="px-3 py-1.5 text-xs rounded-lg border border-border bg-bg hover:bg-card disabled:opacity-60"
         >
           {loading ? t("runtimeview.Refreshing") : t("common.refresh")}
-=======
-        </label>
-        <Button
-          variant="outline"
-          size="sm"
-          className="text-xs rounded-lg"
-          onClick={() => void loadSnapshot()}
-          disabled={loading}
-        >
-          {loading ? "Refreshing..." : "Refresh"}
->>>>>>> Stashed changes
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-<<<<<<< Updated upstream
-=======
-          className="text-xs rounded-lg"
->>>>>>> Stashed changes
+        </button>
+        <button
+          type="button"
           onClick={() => setExpandedPaths(new Set([rootPath]))}
+          className="px-3 py-1.5 text-xs rounded-lg border border-border bg-bg hover:bg-card"
         >
           {t("runtimeview.Collapse")}
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-<<<<<<< Updated upstream
-=======
-          className="text-xs rounded-lg"
->>>>>>> Stashed changes
+        </button>
+        <button
+          type="button"
           onClick={() =>
             setExpandedPaths(buildInitialExpanded(rootPath, sectionData))
           }
+          className="px-3 py-1.5 text-xs rounded-lg border border-border bg-bg hover:bg-card"
         >
           {t("runtimeview.ExpandTop")}
-        </Button>
+        </button>
         <div className="text-[11px] text-muted ml-auto">
           {snapshot
             ? `${t("runtimeview.lastUpdated")} ${formatDateTime(snapshot.generatedAt, { fallback: "n/a" })}`

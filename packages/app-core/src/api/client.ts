@@ -420,9 +420,8 @@ export interface RuntimeDebugSnapshot {
   };
 }
 
-export type TriggerType = "interval" | "once" | "cron";
-export type TriggerWakeMode = "inject_now" | "next_autonomy_cycle";
-export type TriggerLastStatus = "success" | "error" | "skipped";
+export type { TriggerType, TriggerWakeMode, TriggerLastStatus } from "@miladyai/agent/triggers/types";
+import type { TriggerType, TriggerWakeMode, TriggerLastStatus } from "@miladyai/agent/triggers/types";
 
 export interface TriggerSummary {
   id: string;
@@ -4643,13 +4642,7 @@ export class MiladyClient {
       method: "POST",
       body: JSON.stringify({
         title,
-<<<<<<< Updated upstream
         ...(options?.includeGreeting === true ? { includeGreeting: true } : {}),
-=======
-        ...(options?.includeGreeting === true
-          ? { includeGreeting: true }
-          : {}),
->>>>>>> Stashed changes
         ...(typeof options?.lang === "string" && options.lang.trim()
           ? { lang: options.lang.trim() }
           : {}),
@@ -5764,9 +5757,6 @@ export class MiladyClient {
     throw new Error("Provisioning timed out after 2 minutes");
   }
 }
-
-/** @deprecated Use MiladyClient instead. */
-export { MiladyClient as ElizaClient };
 
 // Singleton
 export const client = new MiladyClient();

@@ -8,7 +8,6 @@
  *   - Status badges (Configured / Needs Setup)
  */
 
-<<<<<<< Updated upstream
 import {
   Button,
   Input,
@@ -19,11 +18,7 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-  StatusBadge,
 } from "@miladyai/ui";
-=======
-import { Button, Input, Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@miladyai/ui";
->>>>>>> Stashed changes
 import { useCallback, useEffect, useState } from "react";
 import {
   type AudioGenProvider,
@@ -528,25 +523,16 @@ export function DesktopMediaControlPanel() {
             {cameraRecording ? "on" : "off"} · Duration:{" "}
             {cameraRecordingDuration}s
           </div>
-<<<<<<< Updated upstream
           <Select
             value={selectedCameraId}
             onValueChange={(value) => setSelectedCameraId(value)}
           >
             <SelectTrigger className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs">
-=======
-          <Select value={selectedCameraId} onValueChange={setSelectedCameraId}>
-            <SelectTrigger className="w-full">
->>>>>>> Stashed changes
               <SelectValue placeholder="No camera devices" />
             </SelectTrigger>
             <SelectContent>
               {cameraDevices.length === 0 ? (
-<<<<<<< Updated upstream
-                <SelectItem value="__none__">No camera devices</SelectItem>
-=======
                 <SelectItem value="">No camera devices</SelectItem>
->>>>>>> Stashed changes
               ) : (
                 cameraDevices.map((device) => (
                   <SelectItem key={device.deviceId} value={device.deviceId}>
@@ -726,25 +712,16 @@ export function DesktopMediaControlPanel() {
             {screenRecording ? "on" : "off"} · Duration:{" "}
             {screenRecordingDuration}s{screenPaused ? " · paused" : ""}
           </div>
-<<<<<<< Updated upstream
           <Select
             value={selectedSourceId}
             onValueChange={(value) => setSelectedSourceId(value)}
           >
             <SelectTrigger className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs">
-=======
-          <Select value={selectedSourceId} onValueChange={setSelectedSourceId}>
-            <SelectTrigger className="w-full">
->>>>>>> Stashed changes
               <SelectValue placeholder="No screen sources" />
             </SelectTrigger>
             <SelectContent>
               {screenSources.length === 0 ? (
-<<<<<<< Updated upstream
-                <SelectItem value="__none__">No screen sources</SelectItem>
-=======
                 <SelectItem value="">No screen sources</SelectItem>
->>>>>>> Stashed changes
               ) : (
                 screenSources.map((source) => (
                   <SelectItem key={source.id} value={source.id}>
@@ -1130,7 +1107,6 @@ export function MediaSettingsSection() {
               <div className="text-[10px] text-muted mt-1 leading-snug">
                 {t("settings.companionHalfFramerate.desc")}
               </div>
-<<<<<<< Updated upstream
             </div>
             <div className="flex flex-wrap gap-1 rounded-lg border border-border bg-card/50 p-1">
               {COMPANION_HALF_FRAMERATE_OPTIONS.map((mode) => {
@@ -1176,106 +1152,6 @@ export function MediaSettingsSection() {
           </div>
         </div>
       )}
-=======
-
-              {/* API Key input */}
-              {apiKeyField && (
-                <div className="flex flex-col gap-2">
-                  <span className="text-xs font-semibold">
-                    {t(apiKeyField.labelKey)}
-                  </span>
-                  <Input
-                    type="password"
-                    className="h-9 px-3 py-2 bg-card border-border text-xs rounded-lg shadow-sm focus-visible:ring-1 focus-visible:ring-accent"
-                    placeholder={
-                      getNestedValue(
-                        mediaConfig as Record<string, unknown>,
-                        apiKeyField.path,
-                      )
-                        ? t("mediasettingssection.ApiKeySetLeaveBlank")
-                        : t("mediasettingssection.EnterApiKey")
-                    }
-                    onChange={(e) =>
-                      updateNestedValue(
-                        apiKeyField.path,
-                        e.target.value || undefined,
-                      )
-                    }
-                  />
-                </div>
-              )}
-
-              {/* Provider-specific model selection for image generation */}
-              {activeTab === "image" && currentProvider === "fal" && (
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-semibold">
-                    {t("mediasettingssection.Model")}
-                  </span>
-                  <Select
-                    value={
-                      (getNestedValue(
-                        mediaConfig as Record<string, unknown>,
-                        "image.fal.model",
-                      ) as string) ?? "fal-ai/flux-pro"
-                    }
-                    onValueChange={(val) =>
-                      updateNestedValue("image.fal.model", val)
-                    }
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={t("mediasettingssection.Model")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectLabel>{t("mediasettingssection.Flux")}</SelectLabel>
-                        <SelectItem value="fal-ai/flux-pro">
-                          {t("mediasettingssection.FluxPro")}
-                        </SelectItem>
-                        <SelectItem value="fal-ai/flux-pro/v1.1">
-                          {t("mediasettingssection.FluxProV11")}
-                        </SelectItem>
-                        <SelectItem value="fal-ai/flux-pro/kontext">
-                          {t("mediasettingssection.FluxKontextPro")}
-                        </SelectItem>
-                        <SelectItem value="fal-ai/flux-2-flex">
-                          {t("mediasettingssection.Flux2Flex")}
-                        </SelectItem>
-                        <SelectItem value="fal-ai/flux/dev">
-                          {t("mediasettingssection.FluxDev")}
-                        </SelectItem>
-                        <SelectItem value="fal-ai/flux/schnell">
-                          {t("mediasettingssection.FluxSchnell")}
-                        </SelectItem>
-                        <SelectItem value="fal-ai/fast-flux">
-                          {t("mediasettingssection.FastFlux")}
-                        </SelectItem>
-                      </SelectGroup>
-                      <SelectGroup>
-                        <SelectLabel>{t("mediasettingssection.OtherModels")}</SelectLabel>
-                        <SelectItem value="fal-ai/nano-banana-pro">
-                          {t("mediasettingssection.NanoBananaProGoo")}
-                        </SelectItem>
-                        <SelectItem value="fal-ai/recraft/v3/text-to-image">
-                          {t("mediasettingssection.RecraftV3")}
-                        </SelectItem>
-                        <SelectItem value="fal-ai/kling-image/v3/text-to-image">
-                          {t("mediasettingssection.KlingImageV3")}
-                        </SelectItem>
-                        <SelectItem value="fal-ai/kling-image/o3/text-to-image">
-                          {t("mediasettingssection.KlingImageO3")}
-                        </SelectItem>
-                        <SelectItem value="xai/grok-imagine-image">
-                          {t("mediasettingssection.GrokImagineXAI")}
-                        </SelectItem>
-                        <SelectItem value="fal-ai/stable-diffusion-3">
-                          {t("mediasettingssection.StableDiffusion3")}
-                        </SelectItem>
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
->>>>>>> Stashed changes
 
       <div
         className="rounded-xl border border-border border-l-[3px] border-l-accent bg-card/70 px-3 py-3 flex flex-col gap-4 shadow-[0_12px_40px_rgba(0,0,0,0.12)]"
@@ -1360,11 +1236,17 @@ export function MediaSettingsSection() {
               />
 
               {/* Status badge */}
-              <StatusBadge
-                label={configured ? t("config-field.Configured") : t("mediasettingssection.NeedsSetup")}
-                tone={configured ? "success" : "warning"}
-                className="ml-auto rounded-full normal-case"
-              />
+              <span
+                className={`ml-auto rounded-full border px-2 py-0.5 text-[10px] ${
+                  configured
+                    ? "border-ok bg-ok/10 text-txt"
+                    : "border-warn bg-warn-subtle text-txt"
+                }`}
+              >
+                {configured
+                  ? t("config-field.Configured")
+                  : t("mediasettingssection.NeedsSetup")}
+              </span>
             </div>
 
             {/* Cloud mode status */}
@@ -1434,7 +1316,6 @@ export function MediaSettingsSection() {
                     <span className="text-xs font-semibold">
                       {t(apiKeyField.labelKey)}
                     </span>
-<<<<<<< Updated upstream
                     <Input
                       type="password"
                       className="h-9 px-3 py-2 bg-card border-border text-xs rounded-lg shadow-sm focus-visible:ring-1 focus-visible:ring-accent"
@@ -1445,68 +1326,14 @@ export function MediaSettingsSection() {
                         )
                           ? t("mediasettingssection.ApiKeySetLeaveBlank")
                           : t("mediasettingssection.EnterApiKey")
-=======
-                    <Select
-                      value={
-                        (getNestedValue(
-                          mediaConfig as Record<string, unknown>,
-                          "image.openai.model",
-                        ) as string) ?? "dall-e-3"
                       }
-                      onValueChange={(val) =>
-                        updateNestedValue("image.openai.model", val)
-                      }
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder={t("mediasettingssection.Model")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="dall-e-3">
-                          {t("mediasettingssection.DALLE3")}
-                        </SelectItem>
-                        <SelectItem value="dall-e-2">
-                          {t("mediasettingssection.DALLE2")}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex-1 flex flex-col gap-1.5">
-                    <span className="text-xs font-semibold">
-                      {t("mediasettingssection.Quality")}
-                    </span>
-                    <Select
-                      value={
-                        (getNestedValue(
-                          mediaConfig as Record<string, unknown>,
-                          "image.openai.quality",
-                        ) as string) ?? "standard"
->>>>>>> Stashed changes
-                      }
-                      onValueChange={(val) =>
+                      onChange={(e) =>
                         updateNestedValue(
-<<<<<<< Updated upstream
                           apiKeyField.path,
                           e.target.value || undefined,
                         )
                       }
                     />
-=======
-                          "image.openai.quality",
-                          val,
-                        )
-                      }
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder={t("mediasettingssection.Quality")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="standard">
-                          {t("mediasettingssection.Standard")}
-                        </SelectItem>
-                        <SelectItem value="hd">HD</SelectItem>
-                      </SelectContent>
-                    </Select>
->>>>>>> Stashed changes
                   </div>
                 )}
 
@@ -1660,21 +1487,12 @@ export function MediaSettingsSection() {
                         "video.fal.model",
                       ) as string) ?? "fal-ai/kling-video/v3/pro/text-to-video"
                     }
-<<<<<<< Updated upstream
                     onValueChange={(value) =>
                       updateNestedValue("video.fal.model", value)
                     }
                   >
                     <SelectTrigger className="px-2.5 py-1.5 border border-border bg-card text-xs focus:border-accent focus:outline-none rounded-lg">
                       <SelectValue />
-=======
-                    onValueChange={(val) =>
-                      updateNestedValue("video.fal.model", val)
-                    }
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={t("mediasettingssection.Model")} />
->>>>>>> Stashed changes
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
@@ -1773,21 +1591,12 @@ export function MediaSettingsSection() {
                         "audio.suno.model",
                       ) as string) ?? "chirp-v3.5"
                     }
-<<<<<<< Updated upstream
                     onValueChange={(value) =>
                       updateNestedValue("audio.suno.model", value)
                     }
                   >
                     <SelectTrigger className="px-2.5 py-1.5 border border-border bg-card text-xs focus:border-accent focus:outline-none rounded-lg">
                       <SelectValue />
-=======
-                    onValueChange={(val) =>
-                      updateNestedValue("audio.suno.model", val)
-                    }
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={t("mediasettingssection.Model")} />
->>>>>>> Stashed changes
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="chirp-v3.5">
@@ -1842,21 +1651,12 @@ export function MediaSettingsSection() {
                         "vision.openai.model",
                       ) as string) ?? "gpt-4o"
                     }
-<<<<<<< Updated upstream
                     onValueChange={(value) =>
                       updateNestedValue("vision.openai.model", value)
                     }
                   >
                     <SelectTrigger className="px-2.5 py-1.5 border border-border bg-card text-xs focus:border-accent focus:outline-none rounded-lg">
                       <SelectValue />
-=======
-                    onValueChange={(val) =>
-                      updateNestedValue("vision.openai.model", val)
-                    }
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={t("mediasettingssection.Model")} />
->>>>>>> Stashed changes
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="gpt-4o">
@@ -1885,21 +1685,12 @@ export function MediaSettingsSection() {
                         "vision.google.model",
                       ) as string) ?? "gemini-2.0-flash"
                     }
-<<<<<<< Updated upstream
                     onValueChange={(value) =>
                       updateNestedValue("vision.google.model", value)
                     }
                   >
                     <SelectTrigger className="px-2.5 py-1.5 border border-border bg-card text-xs focus:border-accent focus:outline-none rounded-lg">
                       <SelectValue />
-=======
-                    onValueChange={(val) =>
-                      updateNestedValue("vision.google.model", val)
-                    }
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={t("mediasettingssection.Model")} />
->>>>>>> Stashed changes
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="gemini-2.0-flash">
@@ -1928,7 +1719,6 @@ export function MediaSettingsSection() {
                         "vision.anthropic.model",
                       ) as string) ?? "claude-sonnet-4-20250514"
                     }
-<<<<<<< Updated upstream
                     onValueChange={(value) =>
                       updateNestedValue(
                         "vision.anthropic.model",
@@ -1938,17 +1728,6 @@ export function MediaSettingsSection() {
                   >
                     <SelectTrigger className="px-2.5 py-1.5 border border-border bg-card text-xs focus:border-accent focus:outline-none rounded-lg">
                       <SelectValue />
-=======
-                    onValueChange={(val) =>
-                      updateNestedValue(
-                        "vision.anthropic.model",
-                        val,
-                      )
-                    }
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={t("mediasettingssection.Model")} />
->>>>>>> Stashed changes
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="claude-sonnet-4-20250514">

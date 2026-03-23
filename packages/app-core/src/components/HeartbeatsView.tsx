@@ -1,4 +1,3 @@
-<<<<<<< Updated upstream
 import {
   Button,
   Input,
@@ -8,13 +7,9 @@ import {
   SelectTrigger,
   SelectValue,
   StatusBadge,
-  Spinner,
   StatusDot,
   Switch,
 } from "@miladyai/ui";
-=======
-import { Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@miladyai/ui";
->>>>>>> Stashed changes
 import { ChevronDown, Clock3, PencilLine, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type {
@@ -23,12 +18,15 @@ import type {
   UpdateTriggerRequest,
 } from "../api/client";
 import { useApp } from "../state";
-import type { TranslateFn } from "../types";
 import { confirmDesktopAction } from "../utils";
 import { formatDateTime, formatDurationMs } from "./format";
 
 type TriggerType = "interval" | "once" | "cron";
 type TriggerWakeMode = "inject_now" | "next_autonomy_cycle";
+type TranslateFn = (
+  key: string,
+  vars?: Record<string, string | number | boolean | null | undefined>,
+) => string;
 
 const DURATION_UNITS = [
   {
@@ -875,7 +873,7 @@ export function HeartbeatsView() {
                       if (!hasLoadedRuns) {
                         return (
                           <div className="py-6 text-sm text-muted/70 flex items-center gap-2">
-                            <Spinner size={16} />{" "}
+                            <div className="w-4 h-4 border-2 border-muted/30 border-t-muted/80 rounded-full animate-spin" />{" "}
                             {t("databaseview.Loading")}
                           </div>
                         );

@@ -612,7 +612,6 @@ function AppProviderInner({
   const [pairingError, setPairingError] = useState<string | null>(null);
   const [pairingBusy, setPairingBusy] = useState(false);
 
-<<<<<<< Updated upstream
   // ── Chat state (consolidated from 18+ useState + 10 useEffect hooks) ──
   const chatState = useChatState();
   const {
@@ -684,15 +683,6 @@ function AppProviderInner({
       }
     },
     [chatState],
-=======
-  // --- Chat ---
-  const [chatInput, setChatInput] = useState("");
-  const [chatSending, setChatSending] = useState(false);
-  const [chatFirstTokenReceived, setChatFirstTokenReceived] = useState(false);
-  const [chatAwaitingGreeting, setChatAwaitingGreeting] = useState(false);
-  const [chatLastUsage, setChatLastUsage] = useState<ChatTurnUsage | null>(
-    null,
->>>>>>> Stashed changes
   );
 
   // --- Triggers ---
@@ -799,9 +789,14 @@ function AppProviderInner({
   const [mintError, setMintError] = useState<string | null>(null);
   const [mintShiny, setMintShiny] = useState(false);
 
+  // --- Whitelist ---
   const [whitelistStatus, setWhitelistStatus] =
     useState<WhitelistStatus | null>(null);
   const [whitelistLoading, setWhitelistLoading] = useState(false);
+  // Dead state — setters were never destructured. These never change.
+  const twitterVerifyMessage: string | null = null;
+  const twitterVerifyUrl = "";
+  const twitterVerifying = false;
 
   // --- Character ---
   const [characterData, setCharacterData] = useState<CharacterData | null>(
@@ -2097,7 +2092,6 @@ function AppProviderInner({
       setElizaCloudAuthRejected(false);
       setElizaCloudCreditsError(null);
     }
-<<<<<<< Updated upstream
     lastElizaCloudPollConnectedRef.current = isConnected;
     // Ensure the recurring poll interval is running whenever cloud is connected.
     // This covers the case where cloud login happens after the initial mount poll
@@ -2112,19 +2106,6 @@ function AppProviderInner({
         }
         void pollCloudCredits();
       }, 60_000);
-=======
-    // Self-manage the recurring poll interval: start when connected, stop when not.
-    // This covers login during onboarding (interval wasn't started at mount) and
-    // disconnect (interval should stop to avoid useless API calls).
-    if (isConnected && !elizaCloudPollInterval.current) {
-      elizaCloudPollInterval.current = window.setInterval(
-        () => pollCloudCredits(),
-        60_000,
-      );
-    } else if (!isConnected && elizaCloudPollInterval.current) {
-      clearInterval(elizaCloudPollInterval.current);
-      elizaCloudPollInterval.current = null;
->>>>>>> Stashed changes
     }
     return isConnected;
   }, []);
@@ -2147,7 +2128,6 @@ function AppProviderInner({
         return false;
       }
       greetingInFlightConversationRef.current = convId;
-      setChatAwaitingGreeting(true);
       try {
         const data = await client.requestGreeting(convId, uiLanguage);
         if (data.text) {
@@ -2186,7 +2166,6 @@ function AppProviderInner({
         greetingFiredRef.current = false;
         /* greeting failed silently — user can still chat */
       } finally {
-        setChatAwaitingGreeting(false);
         if (greetingInFlightConversationRef.current === convId) {
           greetingInFlightConversationRef.current = null;
         }
@@ -2526,7 +2505,7 @@ function AppProviderInner({
   const notifyHeartbeatEvent = useCallback(
     (event: StreamEventEnvelope) => {
       // biome-ignore lint/suspicious/noExplicitAny: heartbeat payloads are loosely typed
-      const payload = event.payload as Record<string, unknown>;
+      const payload = event.payload as any;
       const status =
         typeof payload.status === "string"
           ? payload.status.trim().toLowerCase()
@@ -2992,10 +2971,6 @@ function AppProviderInner({
     [
       companionMessageCutoffTs,
       fetchGreeting,
-<<<<<<< Updated upstream
-=======
-      requestGreetingWhenRunning,
->>>>>>> Stashed changes
       resetConversationDraftState,
       scheduleGreetingWaveForCompanion,
       uiLanguage,
@@ -4896,10 +4871,10 @@ function AppProviderInner({
             `You are ${onboardingName || defaultName}, an autonomous AI agent powered by elizaOS.`,
           style: style?.style,
           adjectives: style?.adjectives,
-          postExamples: (style as unknown as Record<string, unknown>)?.postExamples,
-          postExamples_zhCN: (style as unknown as Record<string, unknown>)?.postExamples_zhCN,
-          messageExamples: (style as unknown as Record<string, unknown>)?.messageExamples,
-          topics: (style as unknown as Record<string, unknown>)?.topics,
+          postExamples: (style as any)?.postExamples,
+          postExamples_zhCN: (style as any)?.postExamples_zhCN,
+          messageExamples: (style as any)?.messageExamples,
+          topics: (style as any)?.topics,
           // Cloud onboarding: the API key was already persisted server-side
           // by handleCloudLogin → persistCloudLoginStatus. We just need to
           // tell the backend to enable cloud mode with default models.
@@ -5025,8 +5000,8 @@ function AppProviderInner({
           getBootConfig().cloudApiBase ?? "https://www.elizacloud.ai";
 
         // Get the auth token from the cloud login state
-        const authToken = (((window as { __ELIZA_CLOUD_AUTH_TOKEN__?: string })
-          .__ELIZA_CLOUD_AUTH_TOKEN__) ?? "") as string;
+        const authToken = ((window as unknown as Record<string, unknown>)
+          .__ELIZA_CLOUD_AUTH_TOKEN__ ?? "") as string;
 
         if (!authToken) {
           throw new Error(
@@ -5107,13 +5082,9 @@ function AppProviderInner({
         systemPrompt,
         style: style?.style,
         adjectives: style?.adjectives,
-<<<<<<< Updated upstream
         topics: (style as Record<string, unknown> | undefined)?.topics as
           | string[]
           | undefined,
-=======
-        topics: style?.topics,
->>>>>>> Stashed changes
         postExamples: style?.postExamples,
         messageExamples: style?.messageExamples,
         connection,
@@ -7297,7 +7268,9 @@ function AppProviderInner({
     mintShiny,
     whitelistStatus,
     whitelistLoading,
-
+    twitterVerifyMessage,
+    twitterVerifyUrl,
+    twitterVerifying,
     characterData,
     characterLoading,
     characterSaving,

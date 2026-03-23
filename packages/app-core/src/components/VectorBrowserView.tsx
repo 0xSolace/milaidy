@@ -7,11 +7,7 @@
  * Toggle to a 2D scatter-plot graph view of embeddings.
  */
 
-<<<<<<< Updated upstream
-import { Button, EmptyState, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@miladyai/ui";
-=======
-import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input } from "@miladyai/ui";
->>>>>>> Stashed changes
+import { Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@miladyai/ui";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { client, type QueryResult, type TableInfo } from "../api";
@@ -509,10 +505,14 @@ function VectorGraph({
   if (!graph) {
     const withEmbeddings = memories.filter(hasEmbedding);
     return (
-      <EmptyState
-        title={t("vectorbrowserview.NotEnoughEmbedding")}
-        description={`${t("vectorbrowserview.NeedAtLeast2Memo")} ${withEmbeddings.length}.`}
-      />
+      <div className="text-center py-16">
+        <div className="text-[var(--muted)] text-sm mb-2">
+          {t("vectorbrowserview.NotEnoughEmbedding")}
+        </div>
+        <div className="text-[var(--muted)] text-xs">
+          {t("vectorbrowserview.NeedAtLeast2Memo")} {withEmbeddings.length}.
+        </div>
+      </div>
     );
   }
 
@@ -965,10 +965,14 @@ function VectorGraph3D({
 
   if (withEmbeddings.length < 2) {
     return (
-      <EmptyState
-        title={t("vectorbrowserview.NotEnoughEmbedding1")}
-        description={`${t("vectorbrowserview.NeedAtLeast2Memo")} ${withEmbeddings.length}.`}
-      />
+      <div className="text-center py-16">
+        <div className="text-[var(--muted)] text-sm mb-2">
+          {t("vectorbrowserview.NotEnoughEmbedding1")}
+        </div>
+        <div className="text-[var(--muted)] text-xs">
+          {t("vectorbrowserview.NeedAtLeast2Memo")} {withEmbeddings.length}.
+        </div>
+      </div>
     );
   }
 
@@ -1054,14 +1058,35 @@ function MemoryDetailModal({
 }) {
   const { t } = useApp();
   return (
-    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-[700px] rounded-2xl p-0 max-h-[90vh] overflow-auto">
+    <div
+      className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-8"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Escape" || e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClose();
+        }
+      }}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-2xl backdrop-blur-xl max-w-[700px] w-full max-h-[90vh] overflow-auto">
         {/* Header */}
-        <DialogHeader className="p-3 border-b border-[var(--border)]">
-          <DialogTitle className="text-xs font-medium">
+        <div className="flex items-center justify-between p-3 border-b border-[var(--border)]">
+          <div className="text-xs font-medium text-[var(--txt)]">
             {t("vectorbrowserview.MemoryDetail")}
-          </DialogTitle>
-        </DialogHeader>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-[var(--muted)] hover:text-[var(--txt)] hover:bg-transparent h-6 w-6 text-lg"
+            onClick={onClose}
+          >
+            ×
+          </Button>
+        </div>
 
         {/* Content */}
         <div className="p-4">
@@ -1134,8 +1159,8 @@ function MemoryDetailModal({
             </div>
           </details>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }
 
@@ -1527,22 +1552,24 @@ export function VectorBrowserView({ leftNav }: { leftNav?: ReactNode }) {
 
         {error &&
           (error.includes("agent is running") ? (
-            <EmptyState
-              title={t("databaseview.DatabaseNotAvailab")}
-              description={t("vectorbrowserview.StartTheAgentToB")}
-              action={
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={() => {
-                    setError("");
-                    loadTables();
-                  }}
-                >
-                  {t("vectorbrowserview.RetryConnection")}
-                </Button>
-              }
-            />
+            <div className="text-center py-16">
+              <div className="text-[var(--muted)] text-sm mb-2">
+                {t("databaseview.DatabaseNotAvailab")}
+              </div>
+              <div className="text-[var(--muted)] text-xs mb-4">
+                {t("vectorbrowserview.StartTheAgentToB")}
+              </div>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => {
+                  setError("");
+                  loadTables();
+                }}
+              >
+                {t("vectorbrowserview.RetryConnection")}
+              </Button>
+            </div>
           ) : (
             <div className="p-2.5 border border-[var(--danger)] text-[var(--danger)] text-xs mb-3">
               {error}
@@ -1582,19 +1609,21 @@ export function VectorBrowserView({ leftNav }: { leftNav?: ReactNode }) {
               {t("vectorbrowserview.LoadingMemories")}
             </div>
           ) : memories.length === 0 ? (
-            <EmptyState
-              title={t("vectorbrowserview.NoMemoriesFound")}
-              description={
-                search
+            <div className="text-center py-16">
+              <div className="text-[var(--muted)] text-sm mb-2">
+                {t("vectorbrowserview.NoMemoriesFound")}
+              </div>
+              <div className="text-[var(--muted)] text-xs">
+                {search
                   ? t("vectorbrowserview.NoRecordsMatchSearchQuery", {
                       defaultValue: "No records match your search query.",
                     })
                   : t("vectorbrowserview.NoMemoryRecordsDetected", {
                       defaultValue:
                         "No memory records detected in the database.",
-                    })
-              }
-            />
+                    })}
+              </div>
+            </div>
           ) : (
             <div className="flex flex-col gap-2">
               {memories.map((mem) => (

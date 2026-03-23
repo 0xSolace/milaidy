@@ -869,10 +869,10 @@
   "codingagentsettingssection.PresetPermissiveDesc": "File ops auto-approved, asks for shell",
   "codingagentsettingssection.PresetAutonomous": "Autonomous",
   "codingagentsettingssection.PresetAutonomousDesc": "All tools auto-approved",
-  "mediasettingssection.ImageGeneration": "Image",
-  "mediasettingssection.VideoGeneration": "Video",
-  "mediasettingssection.AudioMusic": "Audio",
-  "mediasettingssection.VisionAnalysis": "Vision",
+  "mediasettingssection.ImageGeneration": "Image Generation",
+  "mediasettingssection.VideoGeneration": "Video Generation",
+  "mediasettingssection.AudioMusic": "Audio / Music",
+  "mediasettingssection.VisionAnalysis": "Vision (Analysis)",
   "mediasettingssection.ProviderHintFalImage": "Flux 2, Kling, Recraft, Grok",
   "mediasettingssection.ProviderHintGoogleImage": "Imagen 3",
   "mediasettingssection.ProviderHintXAIAurora": "Aurora",
@@ -1085,6 +1085,7 @@
   "skillsview.NewSkill": "New Skill",
   "skillsview.BrowseMarketplace": "Browse Marketplace",
   "skillsview.RefreshSkillsList": "Refresh Skills List",
+  "skillsview.Refresh": "Refresh",
   "trajectorydetailview.Collapse": "Collapse",
   "trajectorydetailview.Expand": "Expand",
   "trajectorydetailview.DecisionType": "Decision Type:",
@@ -1114,7 +1115,6 @@
   "elizaclouddashboard.agentDetails": "Agent Details",
   "skillsview.filterSkills": "Filter skills...",
   "skillsview.searchByKeyword": "Search skills by keyword...",
-<<<<<<< Updated upstream
   "bugreportmodal.descriptionRequired": "Description is required.",
   "bugreportmodal.stepsPlaceholder": "1. Go to...\n2. Click on...\n3. See error...",
   "bugreportmodal.copied": "Copied!",
@@ -1133,39 +1133,6 @@
   "game.noActiveSession": "No active session",
   "game.agentActivity": "Agent Activity",
   "game.chatPlaceholder": "Type a message...",
-=======
-  "charactereditor.UploadVRM": "Upload",
-  "codingagentsettingssection.InstallWith": "Install with",
-  "common.running": "Running...",
-  "config-field.None": "None",
-  "config-field.NoMatches": "No matches",
-  "config-field.models": "models",
-  "config-field.KeyValue": "Key-value JSON",
-  "config-field.MoveUp": "Move up",
-  "config-field.MoveDown": "Move down",
-  "config-field.AddItem": "Add item",
-  "config-field.Key": "Key",
-  "config-field.Value": "Value",
-  "config-field.AddRow": "Add row",
-  "config-field.EnterAFilePathOr": "Enter a file path or paste one here.",
-  "config-field.CustomComponent": "Custom component:",
-  "config-field.Edit": "Edit",
-  "config-field.Preview": "Preview",
-  "config-field.NothingToPreview": "Nothing to preview",
-  "config-field.NoOptionsDefined": "No options defined",
-  "config-field.RemoveRow": "Remove row",
-  "config-field.Default": "Default",
-  "config-renderer.attention": "attention",
-  "config-renderer.Rarr": "→",
-  "config-renderer.requiredFieldsConf": "required fields configured",
-  "config-renderer.total": "total",
-  "config-renderer.Advanced": "Advanced",
-  "game.noActiveSession": "No active session",
-  "game.agentActivity": "Agent Activity",
-  "common.hide": "Hide",
-  "game.chatPlaceholder": "Type a message...",
-  "common.send": "Send",
->>>>>>> Stashed changes
   "game.noAgentActivity": "No agent activity",
   "game.connected": "Connected",
   "game.connecting": "Connecting...",
@@ -1229,7 +1196,6 @@
   "pluginsview.EnterThePathToA": "Enter the path to a local plugin package or paste a GitHub URL.",
   "pluginsview.PathToPluginOrP": "Path to plugin or package URL...",
   "pluginsview.Cancel": "Cancel",
-<<<<<<< Updated upstream
   "runtimeview.Refreshing": "Refreshing...",
   "runtimeview.lastUpdated": "Last updated:",
   "runtimeview.noSnapshotLoaded": "No snapshot loaded",
@@ -1245,9 +1211,6 @@
   "skillsview.statusActive": "Active",
   "skillsview.statusInactive": "Inactive",
   "skillsview.noDescription": "No description",
-=======
-  "settingsview.ChooseAnExportedBack": "Choose an exported backup file...",
->>>>>>> Stashed changes
   "streamview.MiladyCouldNotRea": "Could not reach the",
   "vectorbrowserview.NotEnoughEmbedding1": "Not enough embeddings for visualization",
   "vectorbrowserview.vectorsProjectedTo1": "vectors projected to 2D",
@@ -1277,7 +1240,6 @@
   "appsview.ActiveOnly": "Active Only",
   "streamsettings.ActiveGame": "Active game:",
   "customhtmlwidget.CustomWidgetExter": "Custom widget (external)",
-<<<<<<< Updated upstream
   "customhtmlwidget.CustomWidgetInlin": "Custom widget (inline)",
   "config-field.None": "None",
   "config-field.NoMatches": "No matches",
@@ -1338,7 +1300,3 @@
   "aria.close": "Close",
   "aria.closeDialog": "Close dialog"
 }
-=======
-  "customhtmlwidget.CustomWidgetInlin": "Custom widget (inline)"
-}
->>>>>>> Stashed changes

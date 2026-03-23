@@ -6,14 +6,7 @@
  * available secrets from plugins and pick which ones to manage here.
  */
 
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  Input,
-} from "@miladyai/ui";
+import { Button, Input } from "@miladyai/ui";
 import { ChevronDown } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SecretInfo } from "../api";
@@ -371,12 +364,24 @@ function SecretPicker({
   }, [available]);
 
   return (
-    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="w-[560px] max-w-[560px] max-h-[480px] p-0 flex flex-col">
-        <DialogHeader className="px-4 py-3 border-b border-[var(--border)]">
-          <DialogTitle className="text-[14px] font-semibold text-[var(--txt)]">
+    <div
+      className="fixed inset-0 bg-black/40 z-[9999] flex items-start justify-center pt-20"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          onClose();
+        }
+      }}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="bg-[var(--bg)] border border-[var(--border)] w-[560px] max-h-[480px] flex flex-col shadow-2xl">
+        <div className="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between">
+          <span className="text-[14px] font-semibold text-[var(--txt)]">
             {t("secretsview.AddSecretsToVault")}
-<<<<<<< Updated upstream
           </span>
           <Button
             variant="ghost"
@@ -387,10 +392,6 @@ function SecretPicker({
             x
           </Button>
         </div>
-=======
-          </DialogTitle>
-        </DialogHeader>
->>>>>>> Stashed changes
         <Input
           type="text"
           className="w-full px-4 py-2.5 h-12 border-0 border-b border-[var(--border)] bg-transparent text-[13px] text-[var(--txt)] shadow-none rounded-none focus-visible:ring-0 font-body"
@@ -455,8 +456,8 @@ function SecretPicker({
             ))
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }
 

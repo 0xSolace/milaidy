@@ -6,19 +6,9 @@
  * throughout the app (--bg, --card, --border, --accent, --muted, --txt, etc.).
  */
 
-<<<<<<< Updated upstream
-import { Button, ConfirmDelete, Dialog, DialogPortal, EmptyState, Input, StatusBadge, Switch } from "@miladyai/ui";
-=======
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  Input,
-} from "@miladyai/ui";
->>>>>>> Stashed changes
+import { Button, Input, StatusBadge, Switch } from "@miladyai/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import type {
   SkillInfo,
   SkillMarketplaceResult,
@@ -27,7 +17,7 @@ import type {
 import { client } from "../api";
 import { useTimeout } from "../hooks";
 import { useApp } from "../state";
-
+import { ConfirmDeleteControl } from "./confirm-delete-control";
 
 /* ── Skill Card ─────────────────────────────────────────────────────── */
 
@@ -139,7 +129,7 @@ function SkillCard({
         >
           {t("triggersview.Edit")}
         </Button>
-        <ConfirmDelete
+        <ConfirmDeleteControl
           triggerClassName="h-7 px-3 text-[11px] font-bold text-danger hover:bg-danger/10 hover:text-danger-foreground transition-colors rounded-md"
           confirmClassName="px-3 py-1 text-[11px] font-bold bg-danger text-danger-foreground hover:bg-danger/90 transition-colors rounded-md shadow-sm"
           cancelClassName="px-3 py-1 text-[11px] font-bold text-muted border border-border/40 hover:text-txt transition-colors rounded-md"
@@ -351,14 +341,36 @@ function InstallModal({
   const [tab, setTab] = useState<InstallTab>("search");
 
   return (
-    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-2xl max-h-[80vh] p-0 flex flex-col overflow-hidden rounded-2xl">
+    <div
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Escape" || e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClose();
+        }
+      }}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden mx-4"
+        style={{
+          background: "var(--card)",
+          border: "1px solid var(--border)",
+          borderRadius: 16,
+          backdropFilter: "blur(20px) saturate(115%)",
+          boxShadow: "var(--shadow-lg)",
+          color: "var(--text)",
+        }}
+      >
         {/* Header */}
-        <DialogHeader
-          className="px-5 py-4"
+        <div
+          className="flex items-center justify-between px-5 py-4"
           style={{ borderBottom: "1px solid var(--border)" }}
         >
-<<<<<<< Updated upstream
           <div>
             <div
               style={{
@@ -390,28 +402,6 @@ function InstallModal({
             ×
           </Button>
         </div>
-=======
-          <DialogTitle
-            style={{
-              fontSize: 13,
-              fontWeight: 800,
-              letterSpacing: "0.14em",
-              textTransform: "uppercase",
-            }}
-          >
-            Install Skill
-          </DialogTitle>
-          <div
-            style={{
-              fontSize: 11,
-              color: "var(--muted)",
-              marginTop: 2,
-            }}
-          >
-            Add skills from the marketplace or a GitHub repository.
-          </div>
-        </DialogHeader>
->>>>>>> Stashed changes
 
         {/* Tabs */}
         <div
@@ -582,8 +572,8 @@ function InstallModal({
             </div>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }
 
@@ -738,17 +728,42 @@ function EditSkillModal({
   };
 
   return (
-    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-4xl h-[85vh] p-0 flex flex-col overflow-hidden rounded-xl">
+    <div
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Escape" || e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClose();
+        }
+      }}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden mx-4 rounded-xl"
+        style={{
+          background: "color-mix(in srgb, var(--bg) 96%, transparent)",
+          border:
+            "1px solid color-mix(in srgb, var(--accent) 18%, transparent)",
+          backdropFilter: "blur(24px)",
+          boxShadow: "var(--shadow-lg)",
+        }}
+      >
         {/* Header */}
-        <DialogHeader
-          className="flex items-center justify-between px-5 py-3 shrink-0 flex-row"
+        <div
+          className="flex items-center justify-between px-5 py-3 shrink-0"
           style={{ borderBottom: "1px solid var(--border)" }}
         >
           <div className="flex items-center gap-3 min-w-0">
-            <DialogTitle className="font-semibold text-sm truncate">
+            <div
+              className="font-semibold text-sm truncate"
+              style={{ color: "var(--text)" }}
+            >
               {skillName}
-            </DialogTitle>
+            </div>
             <span
               className="text-[10px] font-mono px-1.5 py-0.5"
               style={{
@@ -777,17 +792,13 @@ function EditSkillModal({
             <Button
               variant="ghost"
               size="icon"
-<<<<<<< Updated upstream
               className="text-lg px-2 text-muted hover:text-txt"
-=======
-              className="h-6 w-6 text-lg text-muted hover:text-txt"
->>>>>>> Stashed changes
               onClick={onClose}
             >
               ×
             </Button>
           </div>
-        </DialogHeader>
+        </div>
 
         {/* Editor body */}
         <div className="flex-1 overflow-hidden">
@@ -806,10 +817,6 @@ function EditSkillModal({
               <Button
                 variant="outline"
                 size="sm"
-<<<<<<< Updated upstream
-=======
-                className="text-xs"
->>>>>>> Stashed changes
                 onClick={() => loadSource()}
               >
                 {t("common.retry")}
@@ -847,10 +854,6 @@ function EditSkillModal({
             <Button
               variant="outline"
               size="sm"
-<<<<<<< Updated upstream
-=======
-              className="text-xs"
->>>>>>> Stashed changes
               onClick={onClose}
             >
               {hasChanges ? "Discard" : "Close"}
@@ -858,14 +861,6 @@ function EditSkillModal({
             <Button
               variant="default"
               size="sm"
-<<<<<<< Updated upstream
-=======
-              className="text-xs font-medium"
-              style={{
-                background: saveSuccess ? "#22c55e" : "#f0b232",
-                color: saveSuccess ? "#fff" : "#000",
-              }}
->>>>>>> Stashed changes
               onClick={() => handleSave()}
               disabled={saving || !hasChanges}
             >
@@ -873,8 +868,8 @@ function EditSkillModal({
             </Button>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }
 
@@ -1100,41 +1095,37 @@ function SkillsModalView() {
         )}
       </div>
 
-      {/* Dialog portals modals to body so they escape the 3D transform stacking context */}
-      <Dialog open={!!editingSkill} onOpenChange={(open) => { if (!open) setEditingSkill(null); }}>
-        <DialogPortal>
-          {editingSkill && (
-            <EditSkillModal
-              skillId={editingSkill.id}
-              skillName={editingSkill.name}
-              onClose={() => setEditingSkill(null)}
-              onSaved={() => void refreshSkills()}
-            />
-          )}
-        </DialogPortal>
-      </Dialog>
+      {/* Portal modals to body so they escape the 3D transform stacking context */}
+      {editingSkill &&
+        createPortal(
+          <EditSkillModal
+            skillId={editingSkill.id}
+            skillName={editingSkill.name}
+            onClose={() => setEditingSkill(null)}
+            onSaved={() => void refreshSkills()}
+          />,
+          document.body,
+        )}
 
-      <Dialog open={installModalOpen} onOpenChange={(open) => { if (!open) setInstallModalOpen(false); }}>
-        <DialogPortal>
-          {installModalOpen && (
-            <InstallModal
-              skills={skills}
-              skillsMarketplaceQuery={skillsMarketplaceQuery}
-              skillsMarketplaceResults={skillsMarketplaceResults}
-              skillsMarketplaceError={skillsMarketplaceError}
-              skillsMarketplaceLoading={skillsMarketplaceLoading}
-              skillsMarketplaceAction={skillsMarketplaceAction}
-              skillsMarketplaceManualGithubUrl={skillsMarketplaceManualGithubUrl}
-              searchSkillsMarketplace={searchSkillsMarketplace}
-              installSkillFromMarketplace={installSkillFromMarketplace}
-              uninstallMarketplaceSkill={uninstallMarketplaceSkill}
-              installSkillFromGithubUrl={installSkillFromGithubUrl}
-              setState={setState}
-              onClose={() => setInstallModalOpen(false)}
-            />
-          )}
-        </DialogPortal>
-      </Dialog>
+      {installModalOpen &&
+        createPortal(
+          <InstallModal
+            skills={skills}
+            skillsMarketplaceQuery={skillsMarketplaceQuery}
+            skillsMarketplaceResults={skillsMarketplaceResults}
+            skillsMarketplaceError={skillsMarketplaceError}
+            skillsMarketplaceLoading={skillsMarketplaceLoading}
+            skillsMarketplaceAction={skillsMarketplaceAction}
+            skillsMarketplaceManualGithubUrl={skillsMarketplaceManualGithubUrl}
+            searchSkillsMarketplace={searchSkillsMarketplace}
+            installSkillFromMarketplace={installSkillFromMarketplace}
+            uninstallMarketplaceSkill={uninstallMarketplaceSkill}
+            installSkillFromGithubUrl={installSkillFromGithubUrl}
+            setState={setState}
+            onClose={() => setInstallModalOpen(false)}
+          />,
+          document.body,
+        )}
     </div>
   );
 }
@@ -1322,7 +1313,7 @@ function SkillsFullView() {
             defaultValue: "Refresh Skills List",
           })}
         >
-          {t("common.refresh")}
+          {t("skillsview.Refresh", { defaultValue: "Refresh" })}
         </Button>
       </div>
 
@@ -1340,30 +1331,32 @@ function SkillsFullView() {
 
       {/* Skill grid — grouped by status */}
       {skills.length === 0 ? (
-        <EmptyState
-          title={t("skillsview.NoSkillsInstalled", { defaultValue: "No Skills Installed" })}
-          description={t("skillsview.InstallSkillsFromThe", { defaultValue: "Install skills from the marketplace or create your own." })}
-          action={
-            <div className="flex gap-3">
-              <Button
-                variant="default"
-                size="sm"
-                className="h-10 px-6 font-bold tracking-wide shadow-sm"
-                onClick={() => setInstallModalOpen(true)}
-              >
-                Browse Marketplace
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-10 px-6 font-bold text-muted hover:text-txt"
-                onClick={() => setState("skillCreateFormOpen", true)}
-              >
-                Create Skill
-              </Button>
-            </div>
-          }
-        />
+        <div className="text-center py-16">
+          <div className="text-[var(--muted)] text-sm mb-2">
+            No Skills Installed
+          </div>
+          <div className="text-[var(--muted)] text-[11px] mb-4">
+            Install skills from the marketplace or create your own.
+          </div>
+          <div className="flex justify-center gap-3">
+            <Button
+              variant="default"
+              size="sm"
+              className="h-10 px-6 font-bold tracking-wide shadow-sm"
+              onClick={() => setInstallModalOpen(true)}
+            >
+              Browse Marketplace
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-10 px-6 font-bold text-muted hover:text-txt"
+              onClick={() => setState("skillCreateFormOpen", true)}
+            >
+              Create Skill
+            </Button>
+          </div>
+        </div>
       ) : allVisible.length === 0 ? (
         <div className="text-center py-12 text-[var(--muted)] text-xs">
           No skills match filtering "{filterText}"

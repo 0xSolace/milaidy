@@ -18,19 +18,22 @@ import {
   type JsonSchemaObject,
 } from "../config";
 import { useApp } from "../state";
-import type { ConfigUiHint, TranslateFn } from "../types";
+import type { ConfigUiHint } from "../types";
 import {
   buildWalletRpcUpdateRequest,
   resolveInitialWalletRpcSelections,
 } from "../wallet-rpc";
-import { Button, Dialog, DialogContent, DialogHeader, DialogTitle } from "@miladyai/ui";
 import { SecretsView } from "./SecretsView";
-import { Button, Switch } from "@miladyai/ui";
+import { Switch } from "@miladyai/ui";
 
 type RpcProviderOption<T extends string> = {
   id: T;
   label: string;
 };
+
+type TranslateOptions = Record<string, unknown>;
+
+type TranslateFn = (key: string, options?: TranslateOptions) => string;
 
 type RpcFieldDefinition = {
   configKey: string;
@@ -88,21 +91,16 @@ function CloudRpcStatus({
             >
               ${credits.toFixed(2)}
             </span>
-            <Button
-              variant="link"
-<<<<<<< Updated upstream
-              size="sm"
-              className="ml-1.5 text-[10px] h-auto p-0 decoration-accent underline-offset-2"
-=======
-              className="ml-1.5 h-auto p-0 text-[10px] text-txt decoration-accent"
->>>>>>> Stashed changes
+            <button
+              type="button"
               onClick={() => {
                 setState("cloudDashboardView", "billing");
                 setTab("settings");
               }}
+              className="ml-1.5 text-[10px] text-txt underline decoration-accent underline-offset-2 hover:opacity-80 bg-transparent border-0 p-0 cursor-pointer"
             >
               {t("configpageview.TopUp")}
-            </Button>
+            </button>
           </span>
         )}
       </div>
@@ -119,21 +117,16 @@ function CloudRpcStatus({
           })}
         </span>
       </div>
-      <Button
-        variant="default"
-        size="sm"
-<<<<<<< Updated upstream
-        className="font-bold"
-=======
-        className="text-xs font-bold"
->>>>>>> Stashed changes
+      <button
+        type="button"
+        className="inline-flex items-center justify-center border border-accent bg-accent text-accent-fg cursor-pointer text-[13px] font-[inherit] no-underline whitespace-nowrap rounded-lg transition-opacity duration-100 hover:opacity-85 disabled:opacity-50 disabled:cursor-not-allowed text-xs py-[3px] px-3 !mt-0 font-bold"
         onClick={() => void onLogin()}
         disabled={loginBusy}
       >
         {loginBusy
           ? t("configpageview.Connecting", { defaultValue: "Connecting..." })
           : t("configpageview.LogIn", { defaultValue: "Log in" })}
-      </Button>
+      </button>
     </div>
   );
 }
@@ -238,7 +231,7 @@ function RpcConfigSection<T extends string>({
         onSelect,
         containerClassName,
         (key: string) => {
-          // Translate provider label outside the render function
+          // hack to get t function without breaking hook rules
           return key === "providerswitcher.elizaCloud"
             ? t("providerswitcher.elizaCloud", { defaultValue: "Eliza Cloud" })
             : key;
@@ -377,10 +370,7 @@ function CloudServicesSection() {
         }
         setLoaded(true);
       })
-      .catch((err) => {
-        console.warn("[config] Failed to load cloud services config:", err);
-        setLoaded(true);
-      });
+      .catch(() => setLoaded(true));
     return () => {
       cancelled = true;
     };
@@ -825,37 +815,28 @@ export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
                   keys required.
                 </p>
               </div>
-              <Button
-                variant="default"
-<<<<<<< Updated upstream
-                className="font-bold px-5"
-=======
-                size="sm"
-                className="text-xs py-2 px-5 font-bold"
->>>>>>> Stashed changes
+              <button
+                type="button"
+                className="inline-flex items-center justify-center border border-accent bg-accent text-accent-fg cursor-pointer text-[13px] font-[inherit] no-underline whitespace-nowrap rounded-lg transition-opacity duration-100 hover:opacity-85 disabled:opacity-50 disabled:cursor-not-allowed text-xs py-2 px-5 font-bold"
                 onClick={() => void handleCloudLogin()}
                 disabled={elizaCloudLoginBusy}
               >
                 {elizaCloudLoginBusy
                   ? "Connecting..."
                   : "Log in to Eliza Cloud"}
-              </Button>
+              </button>
             </div>
           )}
 
           <div className="flex justify-end mt-4">
-            <Button
-              variant="default"
-              size="sm"
-<<<<<<< Updated upstream
-=======
-              className="text-[11px]"
->>>>>>> Stashed changes
+            <button
+              type="button"
+              className="inline-flex items-center justify-center border border-accent bg-accent text-accent-fg cursor-pointer text-[13px] font-[inherit] no-underline whitespace-nowrap rounded-lg transition-opacity duration-100 hover:opacity-85 disabled:opacity-50 disabled:cursor-not-allowed text-[11px] py-1 px-3.5 !mt-0"
               onClick={handleWalletSaveAll}
               disabled={walletApiKeySaving}
             >
               {walletApiKeySaving ? "Saving..." : "Save"}
-            </Button>
+            </button>
           </div>
         </div>
       )}
@@ -867,14 +848,9 @@ export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
         <div>
           <div className="flex items-center justify-between mb-4">
             <div className="font-bold text-sm">Custom RPC Providers</div>
-            <Button
-              variant="outline"
-<<<<<<< Updated upstream
-              className="min-h-[2.625rem] gap-1.5 text-[12px] text-muted hover:text-txt"
-=======
-              size="sm"
-              className="flex items-center gap-1.5 text-[12px] text-muted hover:text-txt rounded-lg"
->>>>>>> Stashed changes
+            <button
+              type="button"
+              className="min-h-[2.625rem] px-4 rounded-[calc(var(--radius-lg)+2px)] flex items-center gap-1.5 text-[12px] text-muted hover:text-txt bg-transparent border border-border cursor-pointer transition-colors hover:border-accent"
               onClick={() => setSecretsOpen(true)}
             >
               <svg
@@ -892,7 +868,7 @@ export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
                 <path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>
               Secrets
-            </Button>
+            </button>
           </div>
 
           <div className="space-y-5">
@@ -961,24 +937,19 @@ export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
           )}
 
           <div className="flex justify-end mt-4">
-            <Button
-              variant="default"
-              size="sm"
-<<<<<<< Updated upstream
-=======
-              className="text-[11px]"
->>>>>>> Stashed changes
+            <button
+              type="button"
+              className="inline-flex items-center justify-center border border-accent bg-accent text-accent-fg cursor-pointer text-[13px] font-[inherit] no-underline whitespace-nowrap rounded-lg transition-opacity duration-100 hover:opacity-85 disabled:opacity-50 disabled:cursor-not-allowed text-[11px] py-1 px-3.5 !mt-0"
               onClick={handleWalletSaveAll}
               disabled={walletApiKeySaving}
             >
               {walletApiKeySaving ? "Saving..." : "Save"}
-            </Button>
+            </button>
           </div>
         </div>
       )}
 
       {/* ── Secrets modal ── */}
-<<<<<<< Updated upstream
       {secretsOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80"
@@ -1016,49 +987,20 @@ export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
                   {t("configpageview.SecretsVault1")}
                 </span>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-muted hover:text-txt text-lg leading-none"
+              <button
+                type="button"
+                className="text-muted hover:text-txt text-lg leading-none px-1 bg-transparent border-0 cursor-pointer"
                 onClick={() => setSecretsOpen(false)}
               >
                 {t("bugreportmodal.Times")}
-              </Button>
+              </button>
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto">
               <SecretsView />
             </div>
-=======
-      <Dialog open={secretsOpen} onOpenChange={setSecretsOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] p-5 flex flex-col rounded-xl">
-          <DialogHeader className="mb-4 flex-shrink-0">
-            <DialogTitle className="flex items-center gap-2">
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="text-accent"
-              >
-                <title>{t("configpageview.SecretsVault")}</title>
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-              </svg>
-              <span className="font-bold text-sm">
-                {t("configpageview.SecretsVault1")}
-              </span>
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex-1 min-h-0 overflow-y-auto">
-            <SecretsView />
->>>>>>> Stashed changes
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
     </div>
   );
 }

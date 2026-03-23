@@ -6,7 +6,7 @@
  * APIs (getDatabaseTables, executeDatabaseQuery).
  */
 
-import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input } from "@miladyai/ui";
+import { Button, Input } from "@miladyai/ui";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { client, type QueryResult } from "../api";
@@ -360,43 +360,27 @@ export function MediaGalleryView({ leftNav }: { leftNav?: ReactNode }) {
         )}
 
         {/* Lightbox modal */}
-        <Dialog open={!!lightboxItem} onOpenChange={(v) => { if (!v) setLightboxItem(null); }}>
-          <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 overflow-auto">
-            {lightboxItem && (
-              <>
-                {/* Header */}
-                <DialogHeader className="p-3 border-b border-[var(--border)]">
-                  <DialogTitle className="text-xs font-medium truncate">
-                    {lightboxItem.filename}
-                  </DialogTitle>
-                </DialogHeader>
-                {/* Content */}
-                <div className="p-4 flex items-center justify-center min-h-[200px]">
-                  {lightboxItem.type === "image" ? (
-                    <img
-                      src={normalizeMediaUrl(lightboxItem.url)}
-                      alt={lightboxItem.filename}
-                      className="max-w-full max-h-[70vh] object-contain"
-                    />
-                  ) : lightboxItem.type === "video" ? (
-                    <video
-                      src={normalizeMediaUrl(lightboxItem.url)}
-                      controls
-                      className="max-w-full max-h-[70vh]"
-                    >
-                      <track kind="captions" />
-                    </video>
-                  ) : (
-                    <audio
-                      src={normalizeMediaUrl(lightboxItem.url)}
-                      controls
-                      className="w-full max-w-[400px]"
-                    >
-                      <track kind="captions" />
-                    </audio>
-                  )}
+        {lightboxItem && (
+          <div
+            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-8"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setLightboxItem(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape" || e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setLightboxItem(null);
+              }
+            }}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="bg-[var(--card)] border border-[var(--border)] max-w-[90vw] max-h-[90vh] overflow-auto">
+              {/* Header */}
+              <div className="flex items-center justify-between p-3 border-b border-[var(--border)]">
+                <div className="text-xs text-[var(--txt)] font-medium truncate mr-4">
+                  {lightboxItem.filename}
                 </div>
-<<<<<<< Updated upstream
                 <Button
                   variant="ghost"
                   size="sm"
@@ -441,26 +425,14 @@ export function MediaGalleryView({ leftNav }: { leftNav?: ReactNode }) {
                   {t("mediagalleryview.Source")} {lightboxItem.source}
                 </span>
                 {lightboxItem.createdAt && (
-=======
-                {/* Footer info */}
-                <div className="p-3 border-t border-[var(--border)] text-[11px] text-[var(--muted)] flex gap-4">
->>>>>>> Stashed changes
                   <span>
-                    {t("mediagalleryview.Type")} {lightboxItem.type}
+                    {t("mediagalleryview.Date")} {lightboxItem.createdAt}
                   </span>
-                  <span>
-                    {t("mediagalleryview.Source")} {lightboxItem.source}
-                  </span>
-                  {lightboxItem.createdAt && (
-                    <span>
-                      {t("mediagalleryview.Date")} {lightboxItem.createdAt}
-                    </span>
-                  )}
-                </div>
-              </>
-            )}
-          </DialogContent>
-        </Dialog>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
