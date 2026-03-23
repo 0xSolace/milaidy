@@ -188,11 +188,9 @@ function ViewRouter({
         );
       case "triggers":
         return (
-          <TabScrollView>
-            <section className="w-full px-4 py-4 lg:px-6">
-              <HeartbeatsView />
-            </section>
-          </TabScrollView>
+          <TabContentView>
+            <HeartbeatsView />
+          </TabContentView>
         );
       case "voice":
         return (

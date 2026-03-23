@@ -11,20 +11,12 @@ import { req } from "../../../test/helpers/http";
 
 interface TriggerRuntimeHarness {
   runtime: AgentRuntime;
-  injectAutonomousInstruction: ReturnType<typeof vi.fn>;
+  createMemoryMock: ReturnType<typeof vi.fn>;
 }
 
 function createTriggerRuntimeHarness(): TriggerRuntimeHarness {
   let tasks: Task[] = [];
-  const injectAutonomousInstruction = vi.fn(
-    async (_params: {
-      instructions: string;
-      source: string;
-      wakeMode: "inject_now" | "next_autonomy_cycle";
-      triggerId: UUID;
-      triggerTaskId: UUID;
-    }) => undefined,
-  );
+  const createMemoryMock = vi.fn(async () => undefined);
 
   const runtimePartial: Partial<AgentRuntime> = {
     agentId: "00000000-0000-0000-0000-000000000001" as UUID,
@@ -35,16 +27,11 @@ function createTriggerRuntimeHarness(): TriggerRuntimeHarness {
       return {
         getAutonomousRoomId: () =>
           "00000000-0000-0000-0000-000000000201" as UUID,
-        injectAutonomousInstruction,
+        getTargetRoomId: () =>
+          "00000000-0000-0000-0000-000000000201" as UUID,
       } as {
         getAutonomousRoomId: () => UUID;
-        injectAutonomousInstruction: (params: {
-          instructions: string;
-          source: string;
-          wakeMode: "inject_now" | "next_autonomy_cycle";
-          triggerId: UUID;
-          triggerTaskId: UUID;
-        }) => Promise<void>;
+        getTargetRoomId: () => UUID;
       };
     },
     getTasks: async (query?: { tags?: string[] }) => {
@@ -82,7 +69,7 @@ function createTriggerRuntimeHarness(): TriggerRuntimeHarness {
     deleteTask: async (taskId: UUID) => {
       tasks = tasks.filter((task) => task.id !== taskId);
     },
-    createMemory: vi.fn(async () => undefined),
+    createMemory: createMemoryMock,
     getTaskWorker: vi.fn(),
     registerTaskWorker: vi.fn(),
     logger: {
@@ -95,7 +82,7 @@ function createTriggerRuntimeHarness(): TriggerRuntimeHarness {
 
   return {
     runtime: runtimePartial as AgentRuntime,
-    injectAutonomousInstruction,
+    createMemoryMock,
   };
 }
 
@@ -150,7 +137,12 @@ describe("Trigger runtime E2E", () => {
     const executeBody = executeResponse.data as Record<string, unknown>;
     const executeResult = (executeBody.result ?? {}) as Record<string, unknown>;
     expect(executeResult.status).toBe("success");
-    expect(harness.injectAutonomousInstruction).toHaveBeenCalledTimes(1);
+    expect(harness.createMemoryMock).toHaveBeenCalledTimes(1);
+    // Verify the memory payload contains the trigger instruction
+    const memoryCall = harness.createMemoryMock.mock.calls[0];
+    expect(memoryCall[0].content.text).toContain("Send a runtime heartbeat update");
+    expect(memoryCall[0].content.source).toBe("trigger-runtime");
+    expect(memoryCall[0].content.metadata.isAutonomousInstruction).toBe(true);
 
     const runsResponse = await req(
       server.port,

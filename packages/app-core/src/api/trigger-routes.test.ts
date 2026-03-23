@@ -16,8 +16,9 @@ describe("trigger routes", () => {
         ({
           getAutonomousRoomId: () =>
             "00000000-0000-0000-0000-000000000201" as UUID,
-          injectAutonomousInstruction: async () => undefined,
-        }) as { getAutonomousRoomId: () => UUID },
+          getTargetRoomId: () => "00000000-0000-0000-0000-000000000201" as UUID,
+        }) as { getAutonomousRoomId: () => UUID; getTargetRoomId: () => UUID },
+      createMemory: async () => undefined,
       getTasks: async () => tasks,
       getTask: async (taskId: UUID) =>
         tasks.find((task) => task.id === taskId) ?? null,

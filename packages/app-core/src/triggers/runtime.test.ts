@@ -52,6 +52,7 @@ describe("trigger runtime", () => {
   let updateTaskMock: ReturnType<typeof vi.fn>;
   let deleteTaskMock: ReturnType<typeof vi.fn>;
   let injectInstructionMock: ReturnType<typeof vi.fn>;
+  let createMemoryMock: ReturnType<typeof vi.fn>;
   let tasks: Task[];
 
   beforeEach(() => {
@@ -64,19 +65,20 @@ describe("trigger runtime", () => {
       makeTask("00000000-0000-0000-0000-000000000100" as UUID, "interval"),
     ];
 
+    createMemoryMock = vi.fn(async () => undefined);
     const runtimePartial: Partial<IAgentRuntime> = {
       agentId: "00000000-0000-0000-0000-000000000001" as UUID,
       getSetting: () => undefined,
       getService: () =>
         ({
-          injectAutonomousInstruction: injectInstructionMock,
-        }) as { injectAutonomousInstruction: () => Promise<void> },
+          getTargetRoomId: () => "00000000-0000-0000-0000-000000000099" as UUID,
+        }) as { getTargetRoomId: () => UUID },
       getTasks: async () => tasks,
       getTask: async (taskId: UUID) =>
         tasks.find((task) => task.id === taskId) ?? null,
       updateTask: updateTaskMock,
       deleteTask: deleteTaskMock,
-      createMemory: vi.fn(async () => undefined),
+      createMemory: createMemoryMock,
       registerTaskWorker: vi.fn(),
       getTaskWorker: vi.fn(),
       logger: {
@@ -87,6 +89,8 @@ describe("trigger runtime", () => {
     runtime = runtimePartial as IAgentRuntime;
   });
 
+  // Verifies dispatch happened (createMemory called) and task updated.
+  // Payload-level assertions are in trigger-runtime.e2e.test.ts.
   test("executes interval trigger and persists updates", async () => {
     const task = tasks[0];
     const result = await executeTriggerTask(runtime, task, {
@@ -95,7 +99,7 @@ describe("trigger runtime", () => {
 
     expect(result.status).toBe("success");
     expect(result.taskDeleted).toBe(false);
-    expect(injectInstructionMock).toHaveBeenCalledTimes(1);
+    expect(createMemoryMock).toHaveBeenCalledTimes(1);
     expect(updateTaskMock).toHaveBeenCalledTimes(1);
   });
 
@@ -158,7 +162,7 @@ describe("trigger runtime", () => {
 
     expect(result.status).toBe("success");
     expect(result.taskDeleted).toBe(false);
-    expect(injectInstructionMock).toHaveBeenCalledTimes(1);
+    expect(createMemoryMock).toHaveBeenCalledTimes(1);
     expect(updateTaskMock).toHaveBeenCalledTimes(1);
 
     // Verify the persisted metadata has a valid next cron run time
@@ -196,7 +200,7 @@ describe("trigger runtime", () => {
     expect(result.status).toBe("skipped");
     expect(result.taskDeleted).toBe(false);
     expect(updateTaskMock).not.toHaveBeenCalled();
-    expect(injectInstructionMock).not.toHaveBeenCalled();
+    expect(createMemoryMock).not.toHaveBeenCalled();
   });
 
   test("manual trigger bypasses autonomy guard and attempts dispatch", async () => {
@@ -215,7 +219,7 @@ describe("trigger runtime", () => {
     // Manual triggers bypass the guard, so dispatch is attempted.
     // Since autonomy is unavailable, dispatchInstruction will throw → error status.
     expect(result.status).toBe("error");
-    expect(injectInstructionMock).not.toHaveBeenCalled();
+    expect(createMemoryMock).not.toHaveBeenCalled();
   });
 
   test("normal execution unaffected by autonomy guard", async () => {
@@ -226,7 +230,7 @@ describe("trigger runtime", () => {
 
     expect(result.status).toBe("success");
     expect(result.taskDeleted).toBe(false);
-    expect(injectInstructionMock).toHaveBeenCalledTimes(1);
+    expect(createMemoryMock).toHaveBeenCalledTimes(1);
     expect(updateTaskMock).toHaveBeenCalledTimes(1);
   });
 });
