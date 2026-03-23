@@ -17,13 +17,6 @@ const mockedExports = vi.hoisted(() => {
   };
 });
 
-vi.mock("../services/agent-export", () => ({
-  AgentExportError: mockedExports.AgentExportError,
-  estimateExportSize: mockedExports.estimateExportSize,
-  exportAgent: mockedExports.exportAgent,
-  importAgent: mockedExports.importAgent,
-}));
-
 function createRuntimeStub(): AgentRuntime {
   return {
     character: { name: "Eliza" },
@@ -85,6 +78,10 @@ async function invokeRoute(options: InvokeOptions) {
       status = code;
       payload = { error: message };
     },
+    exportAgent: mockedExports.exportAgent,
+    estimateExportSize: mockedExports.estimateExportSize,
+    importAgent: mockedExports.importAgent,
+    isAgentExportError: (err: unknown) => err instanceof mockedExports.AgentExportError,
   });
 
   return {
