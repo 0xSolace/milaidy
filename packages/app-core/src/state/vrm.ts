@@ -82,3 +82,13 @@ export function getVrmTitle(index: number): string {
   return assets[safe - 1]?.title ?? assets[0].title;
 }
 
+/** @deprecated Stub — always returns false. Retained for API compatibility. */
+export function isOfficialVrmIndex(_index: number): boolean {
+  return false;
+}
+
+/** @deprecated Stub — always returns false. Retained for API compatibility. */
+export function getVrmNeedsFlip(_index: number): boolean {
+  return false;
+}
+

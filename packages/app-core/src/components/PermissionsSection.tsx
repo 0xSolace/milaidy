@@ -12,7 +12,7 @@
  *   - Web: Informational message only (no OS-level access)
  */
 
-import { Button } from "@miladyai/ui";
+import { Button, StatusBadge, Switch } from "@miladyai/ui";
 import { Check } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -39,8 +39,6 @@ import {
   StreamingPermissionsOnboardingView,
   StreamingPermissionsSettingsView,
 } from "./permissions/StreamingPermissions";
-import { StatusBadge } from "./ui-badges";
-import { Switch } from "./ui-switch";
 
 /** Permission definition for UI rendering. */
 interface PermissionDef {
@@ -426,12 +424,10 @@ function PermissionRow({
         {isShell && onToggleShell && status !== "not-applicable" && (
           <Switch
             checked={shellEnabled}
-            onChange={onToggleShell}
+            onCheckedChange={onToggleShell}
             title={
               shellEnabled ? "Disable shell access" : "Enable shell access"
             }
-            trackOnClass="bg-[var(--accent)]"
-            trackOffClass="bg-[var(--border)]"
           />
         )}
         {!isShell && action && (
@@ -488,11 +484,8 @@ function CapabilityToggle({
       </div>
       <Switch
         checked={enabled}
-        onChange={onToggle}
+        onCheckedChange={onToggle}
         disabled={!canEnable}
-        disabledClassName="opacity-50 cursor-not-allowed"
-        trackOnClass="bg-[var(--accent)]"
-        trackOffClass="bg-[var(--border)]"
         title={
           !available
             ? "Plugin not available"

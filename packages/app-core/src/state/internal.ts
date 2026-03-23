@@ -115,7 +115,6 @@ export {
   getVrmPreviewUrl,
   getVrmTitle,
   getVrmUrl,
-  isOfficialVrmIndex,
   normalizeAvatarIndex,
   VRM_COUNT,
 } from "./vrm";

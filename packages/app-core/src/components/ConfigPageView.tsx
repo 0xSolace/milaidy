@@ -24,7 +24,7 @@ import {
   resolveInitialWalletRpcSelections,
 } from "../wallet-rpc";
 import { SecretsView } from "./SecretsView";
-import { Switch } from "./ui-switch";
+import { Switch } from "@miladyai/ui";
 
 type RpcProviderOption<T extends string> = {
   id: T;
@@ -442,7 +442,7 @@ function CloudServicesSection() {
             <Switch
               checked={services[key]}
               disabled={saving}
-              onChange={() => void handleToggle(key)}
+              onCheckedChange={() => void handleToggle(key)}
               aria-labelledby={`cloud-service-${key}`}
             />
           </div>

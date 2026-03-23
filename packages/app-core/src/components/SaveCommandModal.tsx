@@ -2,7 +2,16 @@
  * Modal for naming and saving a custom /command from selected text.
  */
 
-import { Button, Input } from "@miladyai/ui";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Input,
+} from "@miladyai/ui";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useApp } from "../state";
 
@@ -25,7 +34,6 @@ export function SaveCommandModal({
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
-  const dialogTitleId = useId();
   const inputId = useId();
   const inputLabelId = useId();
   const inputErrorId = useId();
@@ -59,79 +67,34 @@ export function SaveCommandModal({
     (e: React.KeyboardEvent) => {
       if (e.nativeEvent.isComposing) return;
       if (e.key === "Enter") handleSubmit();
-      if (e.key === "Escape") onClose();
     },
-    [handleSubmit, onClose],
+    [handleSubmit],
   );
-
-  if (!open) return null;
 
   const preview = text.length > 120 ? `${text.slice(0, 120)}...` : text;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{
-        background: "color-mix(in srgb, var(--bg) 50%, transparent)",
-        backdropFilter: "blur(4px)",
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Escape") {
-          e.preventDefault();
-          onClose();
-        }
-      }}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={dialogTitleId}
-    >
-      <div
-        className="w-full max-w-md shadow-lg flex flex-col overflow-hidden rounded-xl"
-        style={{
-          background: "color-mix(in srgb, var(--bg) 96%, transparent)",
-          border:
-            "1px solid color-mix(in srgb, var(--accent) 18%, transparent)",
-          backdropFilter: "blur(24px)",
-          boxShadow: "var(--shadow-lg)",
-        }}
-      >
-        <div
-          className="flex items-center px-5 py-3 shrink-0"
-          style={{ borderBottom: "1px solid var(--border)" }}
-        >
-          <span
-            id={dialogTitleId}
-            className="font-bold text-sm flex-1"
-            style={{ color: "var(--text)" }}
-          >
+    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
+      <DialogContent className="w-full max-w-md p-0 overflow-hidden rounded-xl">
+        <DialogHeader className="px-5 py-3 shrink-0 border-b border-border">
+          <DialogTitle className="font-bold text-sm">
             {t("savecommandmodal.SaveAsCommand")}
-          </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-lg h-6 w-6"
-            style={{ color: "var(--muted)" }}
-            onClick={onClose}
-            aria-label={t("aria.closeDialog")}
-          >
-            {t("bugreportmodal.Times")}
-          </Button>
-        </div>
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            {t("savecommandmodal.CommandName")}
+          </DialogDescription>
+        </DialogHeader>
 
         <div className="px-5 py-4 flex flex-col gap-3">
           <label
             id={inputLabelId}
             htmlFor={inputId}
-            className="text-xs"
-            style={{ color: "var(--muted)" }}
+            className="text-xs text-muted"
           >
             {t("savecommandmodal.CommandName")}
           </label>
           <div className="flex items-center gap-1">
-            <span className="text-sm" style={{ color: "var(--muted)" }}>
+            <span className="text-sm text-muted">
               /
             </span>
             <Input
@@ -166,11 +129,11 @@ export function SaveCommandModal({
             </p>
           )}
 
-          <span className="text-xs mt-1" style={{ color: "var(--muted)" }}>
+          <span className="text-xs mt-1 text-muted">
             {t("savecommandmodal.Preview")}
           </span>
           <pre
-            className="text-xs px-3 py-2 whitespace-pre-wrap break-words max-h-24 overflow-y-auto"
+            className="text-xs px-3 py-2 whitespace-pre-wrap break-words max-h-24 overflow-y-auto rounded-lg"
             style={{
               color: "var(--muted)",
               background: "var(--bg-hover)",
@@ -181,10 +144,7 @@ export function SaveCommandModal({
           </pre>
         </div>
 
-        <div
-          className="flex justify-end gap-2 px-5 py-3"
-          style={{ borderTop: "1px solid var(--border)" }}
-        >
+        <DialogFooter className="px-5 py-3 border-t border-border">
           <Button
             variant="outline"
             size="sm"
@@ -199,8 +159,8 @@ export function SaveCommandModal({
           >
             {t("apikeyconfig.save")}
           </Button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

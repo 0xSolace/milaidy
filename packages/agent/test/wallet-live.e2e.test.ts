@@ -12,9 +12,9 @@
  *
  * Run: ELIZA_LIVE_TEST=1 npx vitest run -c vitest.e2e.config.ts test/wallet-live.e2e.test.ts
  */
-import http from "node:http";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { req } from "../../../test/helpers/http";
 
 // Load .env from the eliza workspace root
 const envPath = path.resolve(import.meta.dirname, "..", "..", "..", ".env");

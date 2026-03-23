@@ -11,7 +11,7 @@ import type { AgentPreflightResult } from "../api";
 import { client } from "../api";
 import { useTimeout } from "../hooks";
 import { useApp } from "../state";
-import { ConfigSaveFooter } from "./ConfigSaveFooter";
+import { SaveFooter } from "@miladyai/ui";
 
 type AgentTab = "claude" | "gemini" | "codex" | "aider";
 type AiderProvider = "anthropic" | "openai" | "google";
@@ -558,7 +558,7 @@ export function CodingAgentSettingsSection() {
           : t("codingagentsettingssection.UsingFallback")}
       </div>
 
-      <ConfigSaveFooter
+      <SaveFooter
         dirty={dirty}
         saving={saving}
         saveError={saveError}

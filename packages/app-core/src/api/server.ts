@@ -2347,10 +2347,6 @@ async function handleMiladyCompatRoute(
             value: unsignedApprovalTx.valueWei,
             chainId: unsignedApprovalTx.chainId,
           },
-          fallback: async () => await sendLocalWalletTransaction(
-             rpcUrl ?? "https://bsc-dataseed1.binance.org/",
-             { to: unsignedApprovalTx.to, data: unsignedApprovalTx.data, value: BigInt(unsignedApprovalTx.valueWei), chainId: unsignedApprovalTx.chainId }
-          )
         });
 
         if (
@@ -2395,10 +2391,6 @@ async function handleMiladyCompatRoute(
           value: unsignedTx.valueWei,
           chainId: unsignedTx.chainId,
         },
-        fallback: async () => await sendLocalWalletTransaction(
-          rpcUrl ?? "https://bsc-dataseed1.binance.org/",
-          { to: unsignedTx.to, data: unsignedTx.data, value: BigInt(unsignedTx.valueWei), chainId: unsignedTx.chainId }
-        )
       });
 
       if (
@@ -2562,25 +2554,21 @@ async function handleMiladyCompatRoute(
     const isBnb = assetSymbol.toUpperCase() === "BNB";
     let decimals = 18;
     if (typeof body.tokenAddress === "string" && body.tokenAddress.trim()) {
+      const provider = new ethers.JsonRpcProvider(
+        resolvePrimaryBscRpcUrl({
+          rpcUrls: rpcReadiness.bscRpcUrls,
+          cloudManagedAccess: rpcReadiness.cloudManagedAccess,
+        }) ?? "https://bsc-dataseed1.binance.org/",
+      );
       try {
-        const provider = new ethers.JsonRpcProvider(
-          resolvePrimaryBscRpcUrl({
-            rpcUrls: rpcReadiness.bscRpcUrls,
-            cloudManagedAccess: rpcReadiness.cloudManagedAccess,
-          }) ?? "https://bsc-dataseed1.binance.org/",
+        const tokenContract = new ethers.Contract(
+          body.tokenAddress,
+          ["function decimals() view returns (uint8)"],
+          provider,
         );
-        try {
-          const tokenContract = new ethers.Contract(
-            body.tokenAddress,
-            ["function decimals() view returns (uint8)"],
-            provider,
-          );
-          decimals = Number(await tokenContract.decimals());
-        } finally {
-          provider.destroy();
-        }
-      } catch {
-        // Fall back to 18 decimals.
+        decimals = Number(await tokenContract.decimals());
+      } finally {
+        provider.destroy();
       }
     }
 
@@ -2636,10 +2624,6 @@ async function handleMiladyCompatRoute(
           value: unsignedTx.valueWei,
           chainId: unsignedTx.chainId,
         },
-        fallback: async () => await sendLocalWalletTransaction(
-          rpcUrl ?? "https://bsc-dataseed1.binance.org/",
-          { to: unsignedTx.to, data: unsignedTx.data, value: BigInt(unsignedTx.valueWei), chainId: unsignedTx.chainId }
-        )
       });
 
       if (

@@ -1,5 +1,24 @@
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { cn } from "../../lib/utils";
+
+/* ── Helpers ─────────────────────────────────────────────────────────── */
+
+function canPortalToBody(): boolean {
+  return (
+    typeof document !== "undefined" &&
+    !!document.body &&
+    typeof document.body.appendChild === "function" &&
+    !(globalThis as Record<string, unknown>).__TEST_RENDERER__
+  );
+}
+
+function renderModalPortal(content: React.ReactNode) {
+  if (canPortalToBody()) {
+    return createPortal(content, document.body);
+  }
+  return content;
+}
 
 /* ── ConfirmDialog ───────────────────────────────────────────────────── */
 
@@ -53,7 +72,7 @@ export function ConfirmDialog({
 
   if (!open) return null;
 
-  return (
+  const content = (
     <div
       className="fixed inset-0 flex items-center justify-center bg-black/40"
       style={{ zIndex: 10001 }}
@@ -92,6 +111,111 @@ export function ConfirmDialog({
       </div>
     </div>
   );
+
+  return renderModalPortal(content);
+}
+
+/* ── PromptDialog ────────────────────────────────────────────────────── */
+
+export interface PromptDialogProps {
+  open: boolean;
+  title?: string;
+  message: string;
+  placeholder?: string;
+  defaultValue?: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  onConfirm: (value: string) => void;
+  onCancel: () => void;
+}
+
+export function PromptDialog({
+  open,
+  title = "Enter Value",
+  message,
+  placeholder,
+  defaultValue = "",
+  confirmLabel = "Confirm",
+  cancelLabel = "Cancel",
+  onConfirm,
+  onCancel,
+}: PromptDialogProps) {
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const [value, setValue] = React.useState(defaultValue);
+
+  React.useEffect(() => {
+    if (!open) return;
+    setValue(defaultValue);
+    const t = setTimeout(() => inputRef.current?.focus(), 50);
+    return () => clearTimeout(t);
+  }, [defaultValue, open]);
+
+  const handleConfirm = React.useCallback(() => {
+    onConfirm(value);
+  }, [onConfirm, value]);
+
+  const handleKeyDown = React.useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onCancel();
+        return;
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handleConfirm();
+      }
+    },
+    [handleConfirm, onCancel],
+  );
+
+  if (!open) return null;
+
+  const content = (
+    <div
+      className="fixed inset-0 flex items-center justify-center bg-black/40"
+      style={{ zIndex: 10001 }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onCancel();
+      }}
+      onKeyDown={handleKeyDown}
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      tabIndex={-1}
+    >
+      <div className="mx-4 w-full max-w-md rounded-lg border border-border bg-bg p-6 shadow-2xl">
+        <h2 className="mb-3 text-base font-bold">{title}</h2>
+        <p className="mb-4 whitespace-pre-line text-sm text-muted">{message}</p>
+        <input
+          ref={inputRef}
+          type="text"
+          value={value}
+          placeholder={placeholder}
+          onChange={(e) => setValue(e.target.value)}
+          className="mb-6 w-full rounded-md border border-border bg-bg-hover px-3 py-2 text-sm"
+        />
+        <div className="flex items-center justify-end gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-md border border-border px-4 py-2 text-sm transition-colors hover:bg-bg-hover"
+          >
+            {cancelLabel}
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-fg transition-opacity hover:opacity-90"
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return renderModalPortal(content);
 }
 
 /* ── useConfirm hook ─────────────────────────────────────────────────── */
@@ -139,4 +263,52 @@ export function useConfirm() {
       };
 
   return { confirm, modalProps };
+}
+
+/* ── usePrompt hook ──────────────────────────────────────────────────── */
+
+export interface PromptOptions {
+  title?: string;
+  message: string;
+  placeholder?: string;
+  defaultValue?: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+}
+
+export function usePrompt() {
+  const [state, setState] = React.useState<{
+    opts: PromptOptions;
+    resolve: (value: string | null) => void;
+  } | null>(null);
+
+  const prompt = React.useCallback(
+    (opts: PromptOptions): Promise<string | null> =>
+      new Promise((resolve) => {
+        setState({ opts, resolve });
+      }),
+    [],
+  );
+
+  const modalProps: PromptDialogProps = state
+    ? {
+        open: true,
+        ...state.opts,
+        onConfirm: (value) => {
+          state.resolve(value);
+          setState(null);
+        },
+        onCancel: () => {
+          state.resolve(null);
+          setState(null);
+        },
+      }
+    : {
+        open: false,
+        message: "",
+        onConfirm: () => {},
+        onCancel: () => {},
+      };
+
+  return { prompt, modalProps };
 }

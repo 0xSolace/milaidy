@@ -6,7 +6,7 @@
  * throughout the app (--bg, --card, --border, --accent, --muted, --txt, etc.).
  */
 
-import { Button, Input } from "@miladyai/ui";
+import { Button, Input, StatusBadge, Switch } from "@miladyai/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import type {
@@ -18,8 +18,6 @@ import { client } from "../api";
 import { useTimeout } from "../hooks";
 import { useApp } from "../state";
 import { ConfirmDeleteControl } from "./confirm-delete-control";
-import { StatusBadge } from "./ui-badges";
-import { Switch } from "./ui-switch";
 
 /* ── Skill Card ─────────────────────────────────────────────────────── */
 
@@ -94,11 +92,7 @@ function SkillCard({
             <Switch
               checked={skill.enabled}
               disabled={skillToggleAction === skill.id}
-              onChange={(val) => onToggle(skill.id, val)}
-              size="compact"
-              trackOnClass="bg-[var(--accent)]"
-              trackOffClass="bg-[var(--border)]"
-              knobClass="bg-white shadow-sm"
+              onCheckedChange={(val) => onToggle(skill.id, val)}
             />
           )}
           {isQuarantined && !isReviewing && (

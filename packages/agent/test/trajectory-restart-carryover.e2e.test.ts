@@ -1,7 +1,7 @@
-import http from "node:http";
 import type { AgentRuntime } from "@elizaos/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { startApiServer } from "../src/api/server";
+import { req } from "../../../test/helpers/http";
 
 type JsonValue =
   | string
@@ -114,39 +114,6 @@ class InMemoryTrajectoryDb {
 
     return { rows: [] };
   }
-}
-
-function req(
-  port: number,
-  method: string,
-  p: string,
-): Promise<{ status: number; data: JsonObject }> {
-  return new Promise((resolve, reject) => {
-    const request = http.request(
-      {
-        hostname: "127.0.0.1",
-        port,
-        path: p,
-        method,
-      },
-      (res) => {
-        const chunks: Buffer[] = [];
-        res.on("data", (chunk: Buffer) => chunks.push(chunk));
-        res.on("end", () => {
-          const raw = Buffer.concat(chunks).toString("utf-8");
-          let data: JsonObject = {};
-          try {
-            data = JSON.parse(raw) as JsonObject;
-          } catch {
-            data = { _raw: raw };
-          }
-          resolve({ status: res.statusCode ?? 0, data });
-        });
-      },
-    );
-    request.on("error", reject);
-    request.end();
-  });
 }
 
 type InMemoryTrajectoryLogger = {

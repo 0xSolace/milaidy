@@ -6,6 +6,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  StatusBadge,
+  StatusDot,
   Switch,
 } from "@miladyai/ui";
 import { ChevronDown, Clock3, PencilLine, Plus } from "lucide-react";
@@ -18,7 +20,6 @@ import type {
 import { useApp } from "../state";
 import { confirmDesktopAction } from "../utils";
 import { formatDateTime, formatDurationMs } from "./format";
-import { StatusBadge, StatusDot } from "./ui-badges";
 
 type TriggerType = "interval" | "once" | "cron";
 type TriggerWakeMode = "inject_now" | "next_autonomy_cycle";

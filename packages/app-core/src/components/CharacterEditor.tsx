@@ -5,23 +5,24 @@
  * right panel has style rules + examples. Footer has voice + save + reset.
  */
 
-import { client, type StylePreset } from "@miladyai/app-core/src/api/client";
+import { client } from "../api/client";
 import {
   APP_EMOTE_EVENT,
   dispatchWindowEvent,
   VOICE_CONFIG_UPDATED_EVENT,
-} from "@miladyai/app-core/src/events/index";
+} from "../events/index";
 import {
   type MiladyStylePreset,
   STYLE_PRESETS,
-} from "@miladyai/app-core/src/onboarding-presets";
-import { useApp } from "@miladyai/app-core/src/state/useApp";
-import { normalizeCharacterMessageExamples } from "@miladyai/app-core/src/utils/character-message-examples";
+} from "../onboarding-presets";
+import { useApp } from "../state/useApp";
+import { normalizeCharacterMessageExamples } from "../utils/character-message-examples";
 import {
   EDGE_BACKUP_VOICES,
   PREMADE_VOICES,
   sanitizeApiKey,
-} from "@miladyai/app-core/src/voice/types";
+  type VoicePreset,
+} from "../voice/types";
 import { Button, Input, Textarea, ThemedSelect } from "@miladyai/ui";
 import { useChatAvatarVoiceBridge, useVoiceChat } from "../hooks";
 import { AvatarSelector } from "./AvatarSelector";

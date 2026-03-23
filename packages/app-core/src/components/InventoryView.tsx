@@ -87,6 +87,7 @@ export function InventoryView({ inModal }: { inModal?: boolean } = {}) {
     visibleRows,
     totalUsd,
     visibleChainErrors,
+    focusedNativeBalance,
   } = useInventoryData({
     walletBalances,
     walletAddresses,
@@ -151,6 +152,7 @@ export function InventoryView({ inModal }: { inModal?: boolean } = {}) {
         cloudManagedAccess),
   );
   const tradeReady = true;
+  const bnbBalance = Number.parseFloat(focusedNativeBalance ?? "0") || 0;
   const addresses = [
     evmAddr ? { label: "EVM", address: evmAddr } : null,
     solAddr ? { label: "Solana", address: solAddr } : null,

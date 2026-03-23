@@ -12,7 +12,7 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@miladyai/ui";
 import { ChevronDown, X } from "lucide-react";
 import React, { useCallback, useRef, useState } from "react";
-import { Switch } from "../components/ui-switch";
+import { Switch } from "@miladyai/ui";
 import { useApp } from "../state";
 import type { DynamicValue } from "../types";
 import type { FieldRenderer, FieldRenderProps } from "./config-catalog";
@@ -287,7 +287,7 @@ function BooleanFieldInner({ fp: props }: { fp: FieldRenderProps }) {
       <Switch
         checked={localVal}
         disabled={props.readonly}
-        onChange={() => {
+        onCheckedChange={() => {
           handleToggle();
           fireAction(props, "click");
         }}

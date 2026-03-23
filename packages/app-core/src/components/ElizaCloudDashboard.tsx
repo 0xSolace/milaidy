@@ -35,7 +35,7 @@ import { useIntervalWhenDocumentVisible } from "../hooks/useDocumentVisibility";
 import { useApp } from "../state";
 import { openDesktopInAppBrowser, openExternalUrl } from "../utils";
 import { StripeEmbeddedCheckout } from "./StripeEmbeddedCheckout";
-import { Switch } from "./ui-switch";
+import { Switch } from "@miladyai/ui";
 
 const ELIZA_CLOUD_LOGIN_URL =
   "https://www.elizacloud.ai/login?returnTo=%2Fdashboard%2Feliza";
@@ -1238,7 +1238,7 @@ export function CloudDashboard() {
               </div>
               <Switch
                 checked={autoTopUpEnabled}
-                onChange={(v) =>
+                onCheckedChange={(v) =>
                   dispatchAutoTopUpForm({ type: "setEnabled", value: v })
                 }
                 aria-label={t("elizaclouddashboard.ToggleAutoTopUp")}

@@ -1,8 +1,7 @@
-import { Button } from "@miladyai/ui";
+import { Button, StatusBadge } from "@miladyai/ui";
 import { Check, Cloud } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useApp } from "../../state";
-import { StatusBadge } from "../ui-badges";
 import { PermissionIcon } from "./PermissionIcon";
 
 type MediaPermissionState = "granted" | "denied" | "prompt" | "unknown";

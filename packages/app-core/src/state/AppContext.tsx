@@ -222,7 +222,6 @@ export {
   getVrmPreviewUrl,
   getVrmTitle,
   getVrmUrl,
-  isOfficialVrmIndex,
   LIFECYCLE_MESSAGES,
   type LifecycleAction,
   type LoadConversationMessagesResult,
@@ -283,11 +282,11 @@ export {
 export { AGENT_READY_TIMEOUT_MS } from "./types";
 
 import {
-  ConfirmModal,
-  PromptModal,
+  ConfirmDialog,
+  PromptDialog,
   useConfirm,
   usePrompt,
-} from "../components/ConfirmModal";
+} from "@miladyai/ui";
 import { buildWalletRpcUpdateRequest } from "../wallet-rpc";
 
 const GREETING_EMOTE_DELAY_MS = 1400;
@@ -3601,7 +3600,7 @@ function AppProviderInner({
             const actionTitle =
               trimmed.length > 50 ? `${trimmed.slice(0, 47)}...` : trimmed;
             const { conversation } = await client.createConversation(
-              actionTitle || translateText(uiLanguage, "companion.newChat"),
+              actionTitle || t("companion.newChat"),
             );
             const nextCutoffTs = Date.now();
             setConversations((prev) => [conversation, ...prev]);
@@ -7147,7 +7146,7 @@ function AppProviderInner({
       if (!elizaCloudAuthNoticeSentRef.current) {
         elizaCloudAuthNoticeSentRef.current = true;
         setActionNotice(
-          translateText(uiLanguage, "notice.elizaCloudAuthRejected"),
+          t("notice.elizaCloudAuthRejected"),
           "error",
           14_000,
         );
@@ -7524,8 +7523,8 @@ function AppProviderInner({
     <BrandingContext.Provider value={mergedBranding}>
       <AppContext.Provider value={value}>
         {children}
-        <ConfirmModal {...modalProps} />
-        <PromptModal {...promptModalProps} />
+        <ConfirmDialog {...modalProps} />
+        <PromptDialog {...promptModalProps} />
       </AppContext.Provider>
     </BrandingContext.Provider>
   );

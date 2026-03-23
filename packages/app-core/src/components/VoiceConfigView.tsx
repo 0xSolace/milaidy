@@ -27,7 +27,7 @@ import {
   CloudConnectionStatus,
   CloudSourceModeToggle,
 } from "./CloudSourceControls";
-import { ConfigSaveFooter } from "./ConfigSaveFooter";
+import { SaveFooter } from "@miladyai/ui";
 
 const DEFAULT_ELEVEN_FAST_MODEL = "eleven_flash_v2_5";
 
@@ -963,7 +963,7 @@ export function VoiceConfigView() {
 
       <DesktopTalkModePanel />
 
-      <ConfigSaveFooter
+      <SaveFooter
         dirty={dirty}
         saving={saving}
         saveError={saveError}
