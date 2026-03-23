@@ -166,13 +166,23 @@ async function dispatchInstruction(
       roomId?: UUID;
     }) => Promise<void> | void;
   };
-  const autonomyService =
-    (runtime.getService("autonomy") as TriggerAutonomyService | null) ??
-    (runtime.getService("AUTONOMY") as TriggerAutonomyService | null);
+  // The autonomy service may still be wiring up after a runtime restart
+  // or SQL compatibility repair. Retry a few times with a short delay
+  // before giving up.
+  let autonomyService: TriggerAutonomyService | null = null;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    autonomyService =
+      (runtime.getService("autonomy") as TriggerAutonomyService | null) ??
+      (runtime.getService("AUTONOMY") as TriggerAutonomyService | null);
+    if (autonomyService?.injectAutonomousInstruction) break;
+    if (attempt < 4) {
+      await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+    }
+  }
 
   if (!autonomyService?.injectAutonomousInstruction) {
     runtime.logger.warn?.(
-      `Autonomy service missing injectAutonomousInstruction (taskId=${taskId}, triggerId=${trigger.triggerId})`,
+      `Autonomy service missing injectAutonomousInstruction after retries (taskId=${taskId}, triggerId=${trigger.triggerId})`,
     );
     throw new Error("Autonomy service unavailable for trigger dispatch");
   }
