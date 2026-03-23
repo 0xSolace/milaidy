@@ -1045,6 +1045,14 @@ const PTY_MANAGER_ESM_CREATE_REQUIRE_MARKER =
   "const __require = createRequire(import.meta.url);";
 const PTY_MANAGER_ESM_DIRNAME_MARKER =
   "const __dirname = dirname(fileURLToPath(import.meta.url));";
+const CODEX_TRUST_PROMPT_PATTERN_FROM =
+  "do.?you.?trust.?the.?contents|trust.?this.?directory|yes,?.?continue|prompt.?injection";
+const CODEX_TRUST_PROMPT_PATTERN_TO =
+  "do.?you.?trust.?the.?contents|trust.?this.?directory|allow.?codex.?to.?work.?in.?this.?folder|without.?asking.?for.?approval|yes,?.?continue|prompt.?injection";
+const CODEX_BLOCKING_PROMPT_CONDITION_FROM =
+  "/would.?you.?like.?to.?run.?the.?following.?command/i.test(stripped) || /do.?you.?want.?to.?approve.?access/i.test(stripped) || /would.?you.?like.?to.?make.?the.?following.?edits/i.test(stripped) || /press.?enter.?to.?confirm/i.test(stripped) && /esc.?to.?cancel/i.test(stripped)";
+const CODEX_BLOCKING_PROMPT_CONDITION_TO =
+  "/would.?you.?like.?to.?run.?the.?following.?command/i.test(stripped) || /do.?you.?want.?to.?approve.?access/i.test(stripped) || /would.?you.?like.?to.?make.?the.?following.?edits/i.test(stripped) || /allow.?codex.?to.?work.?in.?this.?folder/i.test(stripped) || /without.?asking.?for.?approval/i.test(stripped) || /press.?enter.?to.?confirm/i.test(stripped) && /esc.?to.?cancel/i.test(stripped)";
 const PTY_MANAGER_ESM_REQUIRE_PROLOGUE = `var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
   get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
 }) : x)(function(x) {
@@ -1217,6 +1225,59 @@ export function patchPtyManagerCursorPositionCompat(root, log = console.log) {
       patched = true;
       log(
         `[patch-deps] Patched pty-manager cursor position compatibility: ${filePath}`,
+      );
+    }
+  }
+  return patched;
+}
+
+/**
+ * Codex added a repo trust prompt that offers "allow Codex to work in this
+ * folder without asking for approval". Older adapter builds only recognize the
+ * legacy trust-directory copy, so sessions block before the initial task runs.
+ */
+export function applyCodexFolderApprovalPromptCompat(filePath) {
+  if (!existsSync(filePath)) return false;
+
+  const compatSource = readFileSync(filePath, "utf8");
+  if (compatSource.includes("allow.?codex.?to.?work.?in.?this.?folder")) {
+    return false;
+  }
+  if (
+    !compatSource.includes(CODEX_TRUST_PROMPT_PATTERN_FROM) ||
+    !compatSource.includes(CODEX_BLOCKING_PROMPT_CONDITION_FROM)
+  ) {
+    return false;
+  }
+
+  const next = compatSource
+    .replace(CODEX_TRUST_PROMPT_PATTERN_FROM, CODEX_TRUST_PROMPT_PATTERN_TO)
+    .replace(
+      CODEX_BLOCKING_PROMPT_CONDITION_FROM,
+      CODEX_BLOCKING_PROMPT_CONDITION_TO,
+    );
+
+  if (next === compatSource) return false;
+
+  writeFileSync(filePath, next, "utf8");
+  return true;
+}
+
+/**
+ * Patch installed coding-agent-adapters bundles so Codex auto-accepts the
+ * current repo trust prompt in PTY-driven sessions.
+ */
+export function patchCodexFolderApprovalPromptCompat(root, log = console.log) {
+  const candidates = [
+    ...findPackageFilePaths(root, "coding-agent-adapters", "dist/index.js"),
+    ...findPackageFilePaths(root, "coding-agent-adapters", "dist/index.cjs"),
+  ];
+  let patched = false;
+  for (const filePath of candidates) {
+    if (applyCodexFolderApprovalPromptCompat(filePath)) {
+      patched = true;
+      log(
+        `[patch-deps] Patched coding-agent-adapters Codex approval prompt compatibility: ${filePath}`,
       );
     }
   }

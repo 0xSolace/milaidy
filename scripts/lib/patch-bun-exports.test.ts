@@ -13,6 +13,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyAgentSkillsCatalogFetchPatch,
   applyAutonomousMiladyOnboardingPresetsPatch,
+  applyCodexFolderApprovalPromptCompat,
   applyExtensionlessJsExportAliases,
   applyMissingLifecycleScriptPatch,
   applyNobleHashesCompat,
@@ -27,6 +28,7 @@ import {
   patchAutonomousMiladyOnboardingPresets,
   patchBrokenElizaCoreRuntimeDists,
   patchBunExports,
+  patchCodexFolderApprovalPromptCompat,
   patchElizaCoreStreamingRetryPlaceholder,
   patchElizaCoreStreamingTtsHandlerGuard,
   patchExtensionlessJsExports,
@@ -1377,6 +1379,95 @@ describe("patch-bun-exports", () => {
       );
       expect(logs).toHaveLength(3);
       expect(logs.every((line) => line.includes("pty-manager"))).toBe(true);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("applyCodexFolderApprovalPromptCompat expands Codex trust prompt matching", () => {
+    const tmp = mkdtempSync(join(tmpdir(), "patch-bun-exports-test-"));
+    try {
+      const target = join(tmp, "dist", "index.js");
+      mkdirSync(join(tmp, "dist"), { recursive: true });
+      writeFileSync(
+        target,
+        [
+          "const adapter = {",
+          "  autoResponseRules: [",
+          "    {",
+          "      pattern: /do.?you.?trust.?the.?contents|trust.?this.?directory|yes,?.?continue|prompt.?injection/i,",
+          "    },",
+          "  ],",
+          "};",
+          "function detectBlockingPrompt(stripped) {",
+          "    if (/would.?you.?like.?to.?run.?the.?following.?command/i.test(stripped) || /do.?you.?want.?to.?approve.?access/i.test(stripped) || /would.?you.?like.?to.?make.?the.?following.?edits/i.test(stripped) || /press.?enter.?to.?confirm/i.test(stripped) && /esc.?to.?cancel/i.test(stripped)) {",
+          "    return true;",
+          "  }",
+          "  return false;",
+          "}",
+        ].join("\n"),
+        "utf8",
+      );
+
+      const patched = applyCodexFolderApprovalPromptCompat(target);
+      expect(patched).toBe(true);
+
+      const updated = readFileSync(target, "utf8");
+      expect(updated).toContain("allow.?codex.?to.?work.?in.?this.?folder");
+      expect(updated).toContain("without.?asking.?for.?approval");
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("patchCodexFolderApprovalPromptCompat patches installed ESM and CJS adapter bundles", () => {
+    const tmp = mkdtempSync(join(tmpdir(), "patch-bun-exports-test-"));
+    try {
+      const pkgDir = join(tmp, "node_modules", "coding-agent-adapters", "dist");
+      const esmPath = join(pkgDir, "index.js");
+      const cjsPath = join(pkgDir, "index.cjs");
+      mkdirSync(pkgDir, { recursive: true });
+
+      const source = [
+        "const adapter = {",
+        "  autoResponseRules: [",
+        "    {",
+        "      pattern: /do.?you.?trust.?the.?contents|trust.?this.?directory|yes,?.?continue|prompt.?injection/i,",
+        "    },",
+        "  ],",
+        "};",
+        "function detectBlockingPrompt(stripped) {",
+        "    if (/would.?you.?like.?to.?run.?the.?following.?command/i.test(stripped) || /do.?you.?want.?to.?approve.?access/i.test(stripped) || /would.?you.?like.?to.?make.?the.?following.?edits/i.test(stripped) || /press.?enter.?to.?confirm/i.test(stripped) && /esc.?to.?cancel/i.test(stripped)) {",
+        "    return true;",
+        "  }",
+        "  return false;",
+        "}",
+      ].join("\n");
+
+      writeFileSync(esmPath, source, "utf8");
+      writeFileSync(cjsPath, source, "utf8");
+      writeFileSync(
+        join(tmp, "node_modules", "coding-agent-adapters", "package.json"),
+        JSON.stringify({ name: "coding-agent-adapters" }, null, 2),
+        "utf8",
+      );
+
+      const logs: string[] = [];
+      const patched = patchCodexFolderApprovalPromptCompat(tmp, (msg) =>
+        logs.push(msg),
+      );
+
+      expect(patched).toBe(true);
+      expect(readFileSync(esmPath, "utf8")).toContain(
+        "allow.?codex.?to.?work.?in.?this.?folder",
+      );
+      expect(readFileSync(cjsPath, "utf8")).toContain(
+        "allow.?codex.?to.?work.?in.?this.?folder",
+      );
+      expect(logs).toHaveLength(2);
+      expect(logs.every((line) => line.includes("coding-agent-adapters"))).toBe(
+        true,
+      );
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }

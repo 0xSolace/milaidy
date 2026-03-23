@@ -30,6 +30,7 @@ import {
   patchAutonomousTypeError,
   patchBrokenElizaCoreRuntimeDists,
   patchBunExports,
+  patchCodexFolderApprovalPromptCompat,
   patchExtensionlessJsExports,
   patchMissingLifecycleScript,
   patchNobleHashesCompat,
@@ -81,6 +82,7 @@ patchNobleHashesCompat(root);
 patchProperLockfileSignalExitCompat(root);
 patchPtyManagerEsmDirnameCompat(root);
 patchPtyManagerCursorPositionCompat(root);
+patchCodexFolderApprovalPromptCompat(root);
 patchBrokenElizaCoreRuntimeDists(root);
 try {
   patchAutonomousMiladyOnboardingPresets(root);
