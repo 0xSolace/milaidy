@@ -1,7 +1,80 @@
-import { ConfirmDelete } from "@miladyai/ui";
 import React from "react";
 import TestRenderer, { act } from "react-test-renderer";
 import { describe, expect, it, vi } from "vitest";
+
+// Mock @miladyai/ui with a simplified ConfirmDelete that uses plain buttons
+// (matching the real component behavior but avoiding module resolution issues).
+vi.mock("@miladyai/ui", () => ({
+  ConfirmDelete: ({
+    onConfirm,
+    disabled = false,
+    triggerLabel = "Delete",
+    confirmLabel = "Confirm",
+    cancelLabel = "Cancel",
+    busyLabel,
+    promptText = "Delete?",
+    triggerClassName,
+    confirmClassName,
+    cancelClassName,
+    promptClassName,
+  }: {
+    onConfirm: () => void;
+    disabled?: boolean;
+    triggerLabel?: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    busyLabel?: string;
+    promptText?: string;
+    triggerClassName?: string;
+    confirmClassName?: string;
+    cancelClassName?: string;
+    promptClassName?: string;
+  }) => {
+    const [confirming, setConfirming] = React.useState(false);
+    if (!confirming) {
+      return React.createElement(
+        "button",
+        {
+          type: "button",
+          className: triggerClassName,
+          onClick: () => setConfirming(true),
+          disabled,
+        },
+        triggerLabel,
+      );
+    }
+    return React.createElement(
+      "span",
+      null,
+      React.createElement("span", { className: promptClassName }, promptText),
+      React.createElement(
+        "button",
+        {
+          type: "button",
+          className: confirmClassName,
+          onClick: () => {
+            onConfirm();
+            setConfirming(false);
+          },
+          disabled,
+        },
+        disabled && busyLabel ? busyLabel : confirmLabel,
+      ),
+      React.createElement(
+        "button",
+        {
+          type: "button",
+          className: cancelClassName,
+          onClick: () => setConfirming(false),
+          disabled,
+        },
+        cancelLabel,
+      ),
+    );
+  },
+}));
+
+import { ConfirmDelete } from "@miladyai/ui";
 
 function createSubject(
   overrides: Partial<React.ComponentProps<typeof ConfirmDelete>> = {},

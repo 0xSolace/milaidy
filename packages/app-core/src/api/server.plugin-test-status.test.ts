@@ -78,7 +78,7 @@ describe("POST /api/plugins/:id/test — HTTP status codes (P4-01)", () => {
     // A non-Telegram plugin that is loaded falls through to the generic success
     // path. We use a plugin id that won't be registered — it returns 200 with
     // success:true and the fallback message.
-    const { status, data } = await req(
+    const { status, data } = await postReq(
       port,
       "/api/plugins/unknown-plugin/test",
     );

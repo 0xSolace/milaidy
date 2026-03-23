@@ -14,6 +14,13 @@ vi.mock("@miladyai/app-core/state", () => ({
   getVrmPreviewUrl: () => "/vrms/previews/milady-1.png",
   getVrmUrl: () => "/vrms/milady-1.vrm.gz",
   useApp: () => mockUseApp(),
+  useCompanionSceneConfig: () => ({
+    zoom: 1,
+    setZoom: vi.fn(),
+    position: { x: 0, y: 0 },
+    setPosition: vi.fn(),
+  }),
+  useTranslation: () => ({ t: (k: string) => k }),
   VRM_COUNT: 24,
 }));
 

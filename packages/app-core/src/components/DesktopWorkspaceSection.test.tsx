@@ -61,6 +61,8 @@ vi.mock("@miladyai/ui", () => {
     CardTitle: passthrough,
     CardDescription: passthrough,
     Switch: passthrough,
+    Textarea: (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) =>
+      React.createElement("textarea", props),
   };
 });
 

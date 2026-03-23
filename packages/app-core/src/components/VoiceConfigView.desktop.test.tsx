@@ -88,7 +88,7 @@ describe("DesktopTalkModePanel", () => {
     expect(invokeDesktopBridgeRequestMock).toHaveBeenCalledWith(
       expect.objectContaining({
         rpcMethod: "talkmodeSpeak",
-        params: { text: "Hello from Milady desktop talk mode." },
+        params: { text: "voiceconfigview.testPhrase" },
       }),
     );
   });

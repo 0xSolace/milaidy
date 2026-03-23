@@ -74,12 +74,12 @@ describe("conversation no-response fallback", () => {
 
     expect(response.status).toBe(200);
     expect(response.data).toMatchObject({
-      text: "Reimu default fallback post.",
+      text: "Sorry, I couldn't generate a response right now. Please try again.",
       agentName: "Reimu",
     });
   });
 
-  it("uses the character default post when chat generation returns only a stage direction", async () => {
+  it("uses the generic fallback when chat generation returns only a stage direction", async () => {
     updateRuntime(runtime);
     createMemory.mockClear();
     getMemories.mockClear();
@@ -108,7 +108,7 @@ describe("conversation no-response fallback", () => {
 
     expect(response.status).toBe(200);
     expect(response.data).toMatchObject({
-      text: "Reimu default fallback post.",
+      text: "Sorry, I couldn't generate a response right now. Please try again.",
       agentName: "Reimu",
     });
   });

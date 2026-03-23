@@ -39,6 +39,11 @@ vi.mock("@miladyai/ui", () => ({
     content?: string;
     side?: string;
   }) => React.createElement("div", null, children),
+  Button: ({
+    children,
+    ...props
+  }: React.ButtonHTMLAttributes<HTMLButtonElement>) =>
+    React.createElement("button", { type: "button", ...props }, children),
 }));
 
 vi.mock("lucide-react", () => ({

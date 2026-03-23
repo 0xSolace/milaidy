@@ -371,7 +371,7 @@ describe("sensitive endpoint auth gates (MW-04)", () => {
     });
 
     it("accepts authenticated MCP server deletion", async () => {
-      const { status } = await req(
+      const { status } = await authReq(
         port,
         "DELETE",
         "/api/mcp/config/server/test-server",
