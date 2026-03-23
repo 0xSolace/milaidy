@@ -17,7 +17,7 @@ const mockSession = vi.hoisted(() => ({
 const signalAuthExists = vi.hoisted(() => vi.fn().mockReturnValue(false));
 const signalLogout = vi.hoisted(() => vi.fn());
 
-vi.mock("../../services/signal-pairing", () => ({
+vi.mock("@miladyai/agent/services/signal-pairing", () => ({
   sanitizeAccountId: (id: string) => {
     const cleaned = id.replace(/[^a-zA-Z0-9_-]/g, "");
     if (!cleaned || cleaned !== id) throw new Error("Invalid accountId");

@@ -130,18 +130,21 @@ vi.mock("@miladyai/app-core/components/TrajectoryDetailView", () => {
   };
 });
 
-// Mock @miladyai/ui to avoid Radix DOM issues
+// Mock @miladyai/ui to avoid Radix DOM issues.
+// Vitest ESM mocks require explicit named exports (Proxy won't work).
 vi.mock("@miladyai/ui", () => {
   const R = require("react");
-  const passthrough = (props: { children?: React.ReactNode }) =>
-    R.createElement("div", { "data-testid": "ui-mock" }, props.children);
-  return new Proxy(
-    {},
-    {
-      get: (_target, prop) =>
-        typeof prop === "string" ? passthrough : undefined,
-    },
-  );
+  const passthrough = (props: { children?: React.ReactNode; [k: string]: unknown }) =>
+    R.createElement("button", { "data-testid": "ui-mock", ...props }, props.children);
+  return {
+    Button: passthrough,
+    Card: passthrough,
+    CardContent: passthrough,
+    CardDescription: passthrough,
+    CardHeader: passthrough,
+    CardTitle: passthrough,
+    Textarea: passthrough,
+  };
 });
 
 import { flush } from "../../../../test/helpers/react-test";
