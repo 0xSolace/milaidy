@@ -2,6 +2,8 @@ import { Button, Input } from "@miladyai/ui";
 import type { ChangeEvent } from "react";
 import type { ConnectionEvent } from "../../../onboarding/connection-flow";
 import { useApp } from "../../../state";
+import { openExternalUrl } from "../../../utils";
+import { OnboardingTabs } from "../OnboardingTabs";
 import { useAdvanceOnboardingWhenElizaCloudOAuthConnected } from "./useAdvanceOnboardingWhenElizaCloudOAuthConnected";
 
 export function ConnectionElizaCloudPreProviderScreen({
@@ -53,64 +55,17 @@ export function ConnectionElizaCloudPreProviderScreen({
       </div>
 
       <div style={{ width: "100%", textAlign: "left" }}>
-        <div
-          style={{
-            display: "flex",
-            gap: "1rem",
-            borderBottom: "1px solid var(--border)",
-            marginBottom: "1rem",
-          }}
-        >
-          <Button
-            variant="ghost"
-            type="button"
-            style={{
-              fontSize: "0.875rem",
-              paddingBottom: "0.5rem",
-              color:
-                onboardingElizaCloudTab === "login"
-                  ? "#f0b90b"
-                  : "var(--muted)",
-              background: "none",
-              border: "none",
-              borderBottom:
-                onboardingElizaCloudTab === "login"
-                  ? "2px solid #f0b90b"
-                  : "2px solid transparent",
-              cursor: "pointer",
-            }}
-            onClick={() => dispatch({ type: "setElizaCloudTab", tab: "login" })}
-          >
-            {t("onboarding.login")}
-          </Button>
-          <Button
-            variant="ghost"
-            type="button"
-            style={{
-              fontSize: "0.875rem",
-              paddingBottom: "0.5rem",
-              borderBottom:
-                onboardingElizaCloudTab === "apikey"
-                  ? "2px solid #f0b90b"
-                  : "2px solid transparent",
-              color:
-                onboardingElizaCloudTab === "apikey"
-                  ? "#f0b90b"
-                  : "var(--muted)",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-            }}
-            onClick={() =>
-              dispatch({ type: "setElizaCloudTab", tab: "apikey" })
-            }
-          >
-            {t("onboarding.apiKey")}
-          </Button>
-        </div>
+        <OnboardingTabs
+          tabs={[
+            { id: "login" as const, label: t("onboarding.login") },
+            { id: "apikey" as const, label: t("onboarding.apiKey") },
+          ]}
+          active={onboardingElizaCloudTab}
+          onChange={(tab) => dispatch({ type: "setElizaCloudTab", tab })}
+        />
 
         {onboardingElizaCloudTab === "login" ? (
-          <div style={{ textAlign: "center" }}>
+          <div className="flex flex-col items-center gap-3 text-center">
             {elizaCloudConnected ? (
               <div
                 style={{
@@ -144,7 +99,7 @@ export function ConnectionElizaCloudPreProviderScreen({
             ) : (
               <Button
                 type="button"
-                className="group relative inline-flex items-center justify-center gap-[8px] px-[32px] py-[12px] min-h-[44px] bg-[rgba(240,185,11,0.18)] border border-[rgba(240,185,11,0.35)] rounded-[6px] text-[rgba(240,238,250,0.94)] text-[11px] font-semibold tracking-[0.18em] uppercase cursor-pointer transition-all duration-300 font-inherit overflow-hidden hover:bg-[rgba(240,185,11,0.28)] hover:border-[rgba(240,185,11,0.6)] disabled:opacity-40 disabled:cursor-not-allowed"
+                className="group relative inline-flex items-center justify-center gap-[8px] px-[32px] py-[12px] min-h-[44px] bg-[rgba(240,185,11,0.18)] border border-[rgba(240,185,11,0.35)] rounded-[6px] text-white text-[11px] font-semibold tracking-[0.18em] uppercase cursor-pointer transition-all duration-300 font-inherit overflow-hidden hover:bg-[rgba(240,185,11,0.28)] hover:border-[rgba(240,185,11,0.6)] disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ textShadow: "0 1px 6px rgba(3,5,10,0.55)" }}
                 onClick={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
@@ -173,26 +128,13 @@ export function ConnectionElizaCloudPreProviderScreen({
                 );
                 if (urlMatch) {
                   return (
-                    <p
-                      style={{
-                        fontSize: "0.8125rem",
-                        marginTop: "0.5rem",
-                        color: "var(--text)",
-                      }}
+                    <button
+                      type="button"
+                      className="text-sm text-[rgba(240,238,250,0.7)] underline mt-2 cursor-pointer bg-transparent border-none font-inherit hover:text-[rgba(240,238,250,0.95)] transition-colors duration-200"
+                      onClick={() => openExternalUrl(urlMatch[1])}
                     >
-                      Open this link to log in:{" "}
-                      <a
-                        href={urlMatch[1]}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          color: "var(--text)",
-                          textDecoration: "underline",
-                        }}
-                      >
-                        Click here
-                      </a>
-                    </p>
+                      Open login page in browser
+                    </button>
                   );
                 }
                 return (
@@ -258,7 +200,7 @@ export function ConnectionElizaCloudPreProviderScreen({
           {t("onboarding.back")}
         </Button>
         <Button
-          className="group relative inline-flex items-center justify-center gap-[8px] px-[32px] py-[12px] min-h-[44px] bg-[rgba(240,185,11,0.18)] border border-[rgba(240,185,11,0.35)] rounded-[6px] text-[rgba(240,238,250,0.94)] text-[11px] font-semibold tracking-[0.18em] uppercase cursor-pointer transition-all duration-300 font-inherit overflow-hidden hover:bg-[rgba(240,185,11,0.28)] hover:border-[rgba(240,185,11,0.6)] disabled:opacity-40 disabled:cursor-not-allowed"
+          className="group relative inline-flex items-center justify-center gap-[8px] px-[32px] py-[12px] min-h-[44px] bg-[rgba(240,185,11,0.18)] border border-[rgba(240,185,11,0.35)] rounded-[6px] text-white text-[11px] font-semibold tracking-[0.18em] uppercase cursor-pointer transition-all duration-300 font-inherit overflow-hidden hover:bg-[rgba(240,185,11,0.28)] hover:border-[rgba(240,185,11,0.6)] disabled:opacity-40 disabled:cursor-not-allowed"
           style={{ textShadow: "0 1px 6px rgba(3,5,10,0.55)" }}
           onClick={(e) => {
             const rect = e.currentTarget.getBoundingClientRect();

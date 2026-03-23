@@ -87,20 +87,20 @@ export function ConnectionProviderGridScreen({
               }
             >
               <img
-                src={getProviderLogo(p.id, false, getCustomLogo(p.id))}
+                src={getProviderLogo(p.id, true, getCustomLogo(p.id))}
                 alt={display.name}
                 className="w-6 h-6 rounded-md object-contain shrink-0"
               />
-              <div>
+              <div className="flex-1 min-w-0">
                 <div
-                  className="text-xs text-[rgba(240,238,250,0.88)] leading-[1.3]"
+                  className="text-xs text-[rgba(240,238,250,0.88)] leading-[1.3] truncate"
                   style={{ textShadow: "0 1px 8px rgba(3,5,10,0.6)" }}
                 >
                   {display.name}
                 </div>
                 {display.description && (
                   <div
-                    className="text-[10px] text-[rgba(240,238,250,0.58)] leading-[1.3] line-clamp-2"
+                    className="text-[10px] text-[rgba(240,238,250,0.58)] leading-[1.3] truncate"
                     style={{ textShadow: "0 1px 8px rgba(3,5,10,0.5)" }}
                   >
                     {display.description}
@@ -116,10 +116,7 @@ export function ConnectionProviderGridScreen({
                 </span>
               )}
               {isRecommended && !detectedLabel && (
-                <span
-                  className="text-[9px] tracking-[0.08em] uppercase text-[rgba(240,238,250,0.94)] bg-[rgba(240,185,11,0.18)] px-2 py-0.5 rounded-full font-semibold ml-auto shrink-0 whitespace-nowrap"
-                  style={{ textShadow: "0 1px 6px rgba(3,5,10,0.45)" }}
-                >
+                <span className="text-[8px] tracking-[0.12em] uppercase text-[rgba(240,185,11,0.9)] ml-auto shrink-0 whitespace-nowrap font-medium">
                   {t("onboarding.recommended") ?? "Recommended"}
                 </span>
               )}
@@ -127,10 +124,10 @@ export function ConnectionProviderGridScreen({
           );
         })}
       </div>
-      <div className="flex justify-between items-center gap-6 mt-[18px] pt-3.5 border-t border-white/[0.08]">
+      <div className="flex justify-between items-center gap-6 mt-[18px] pt-3.5 pb-1 border-t border-white/[0.08]">
         <Button
           variant="ghost"
-          className="text-[10px] text-[rgba(240,238,250,0.62)] tracking-[0.15em] uppercase cursor-pointer no-underline bg-none border-none font-inherit transition-colors duration-300 p-0 hover:text-[rgba(240,238,250,0.9)]"
+          className="text-[10px] text-[rgba(240,238,250,0.62)] tracking-[0.15em] uppercase cursor-pointer bg-transparent border-none font-inherit transition-colors duration-300 p-0 hover:text-[rgba(240,238,250,0.9)]"
           style={{ textShadow: "0 1px 8px rgba(3,5,10,0.45)" }}
           onClick={() => {
             if (onboardingRemoteConnected) {

@@ -27,11 +27,7 @@ const buttonVariants = cva("inline-flex items-center justify-center gap-2 whites
 });
 const Button = React.forwardRef(({ className, variant, size, asChild = false, style, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
-    const isDefault = variant === "default" || variant === undefined;
-    const resolvedStyle = isDefault && !style?.color
-        ? { ...style, color: "var(--primary-foreground)" }
-        : style;
-    return (_jsx(Comp, { className: cn(buttonVariants({ variant, size, className })), ref: ref, style: resolvedStyle, ...props }));
+    return (_jsx(Comp, { className: cn(buttonVariants({ variant, size, className })), ref: ref, style: style, ...props }));
 });
 Button.displayName = "Button";
 export { Button, buttonVariants };

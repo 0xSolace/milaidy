@@ -52,7 +52,7 @@ export function ConnectionHostingScreen({
               </div>
             </div>
             <span
-              className="text-[9px] tracking-[0.08em] uppercase text-[rgba(240,238,250,0.94)] bg-[rgba(240,185,11,0.18)] px-2 py-0.5 rounded-full font-semibold ml-auto shrink-0 whitespace-nowrap"
+              className="text-[9px] tracking-[0.08em] uppercase text-white bg-[rgba(240,185,11,0.18)] px-2 py-0.5 rounded-full font-semibold ml-auto shrink-0 whitespace-nowrap"
               style={{ textShadow: "0 1px 6px rgba(3,5,10,0.45)" }}
             >
               {t("onboarding.recommended") ?? "Recommended"}
