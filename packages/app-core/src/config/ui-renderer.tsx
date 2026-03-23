@@ -585,7 +585,9 @@ const SelectComponent: ComponentFn = (props, _children, ctx, el) => {
               {String(props.placeholder)}
             </SelectItem>
           ) : null}
-          {options.map((o) => (
+          {options
+            .filter((o) => o.value !== "")
+            .map((o) => (
             <SelectItem key={o.value} value={o.value}>
               {o.label}
             </SelectItem>

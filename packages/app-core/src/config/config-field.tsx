@@ -408,7 +408,9 @@ export function RenderSelectField(props: FieldRenderProps) {
             {t("config-field.None", { defaultValue: "None" })}
           </SelectItem>
         )}
-        {allOptions.map((opt) => (
+        {allOptions
+          .filter((opt) => opt.value !== "")
+          .map((opt) => (
           <SelectItem key={opt.value} value={opt.value}>
             {opt.label}
             {opt.description ? ` — ${opt.description}` : ""}

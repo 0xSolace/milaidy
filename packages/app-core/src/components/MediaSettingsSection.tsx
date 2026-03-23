@@ -534,7 +534,9 @@ export function DesktopMediaControlPanel() {
               {cameraDevices.length === 0 ? (
                 <SelectItem value="__none__" disabled>No camera devices</SelectItem>
               ) : (
-                cameraDevices.map((device) => (
+                cameraDevices
+                  .filter((device) => device.deviceId)
+                  .map((device) => (
                   <SelectItem key={device.deviceId} value={device.deviceId}>
                     {device.label || device.deviceId}
                   </SelectItem>
@@ -723,7 +725,9 @@ export function DesktopMediaControlPanel() {
               {screenSources.length === 0 ? (
                 <SelectItem value="__none__" disabled>No screen sources</SelectItem>
               ) : (
-                screenSources.map((source) => (
+                screenSources
+                  .filter((source) => source.id)
+                  .map((source) => (
                   <SelectItem key={source.id} value={source.id}>
                     {source.name}
                   </SelectItem>

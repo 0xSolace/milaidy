@@ -750,7 +750,9 @@ export function FineTuningView() {
               <SelectItem value="__auto__">
                 {t("finetuningview.AutoBuildDatasetF")}
               </SelectItem>
-              {datasets.map((dataset) => (
+              {datasets
+                .filter((dataset) => dataset.id)
+                .map((dataset) => (
                 <SelectItem key={dataset.id} value={dataset.id}>
                   {dataset.id}
                 </SelectItem>
