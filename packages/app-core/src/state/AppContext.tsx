@@ -6597,7 +6597,8 @@ export function AppProvider({
 
   const t = useMemo(() => createTranslator(uiLanguage), [uiLanguage]);
 
-  const value: AppContextValue = {
+  // biome-ignore lint/correctness/useExhaustiveDependencies: callbacks are stable via useCallback; only state vars trigger re-creation
+  const value: AppContextValue = useMemo(() => ({
     // Translations
     t,
     // State
@@ -6942,7 +6943,63 @@ export function AppProvider({
     setActionNotice,
     setState,
     copyToClipboard,
-  };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: state vars listed; callbacks stable via useCallback
+  }), [
+    t, tab, uiShellMode, uiLanguage, uiTheme,
+    connected, agentStatus, onboardingComplete, onboardingUiRevealNonce,
+    onboardingLoading, startupPhase, startupStatus, startupError,
+    authRequired, actionNotice, lifecycleBusy, lifecycleAction,
+    pendingRestart, pendingRestartReasons, restartBannerDismissed,
+    backendConnection, backendDisconnectedBannerDismissed,
+    pairingEnabled, pairingExpiresAt, pairingCodeInput, pairingError, pairingBusy,
+    chatInput, chatSending, chatFirstTokenReceived, chatLastUsage,
+    chatAvatarVisible, chatAgentVoiceMuted, chatMode, chatAvatarSpeaking,
+    conversations, activeConversationId, companionMessageCutoffTs,
+    conversationMessages, autonomousEvents, autonomousLatestEventId,
+    autonomousRunHealthByRunId, ptySessions, unreadConversations,
+    triggers, triggersLoading, triggersSaving, triggerRunsById, triggerHealth, triggerError,
+    plugins, pluginFilter, pluginStatusFilter, pluginSearch, pluginSettingsOpen,
+    pluginAdvancedOpen, pluginSaving, pluginSaveSuccess,
+    skills, skillsSubTab, skillCreateFormOpen, skillCreateName, skillCreateDescription,
+    skillCreating, skillReviewReport, skillReviewId, skillReviewLoading, skillToggleAction,
+    skillsMarketplaceQuery, skillsMarketplaceResults, skillsMarketplaceError,
+    skillsMarketplaceLoading, skillsMarketplaceAction, skillsMarketplaceManualGithubUrl,
+    logs, logSources, logTags, logTagFilter, logLevelFilter, logSourceFilter,
+    walletAddresses, walletConfig, walletBalances, walletNfts, walletLoading, walletNftsLoading,
+    inventoryView, walletExportData, walletExportVisible, walletApiKeySaving,
+    inventorySort, inventoryChainFocus, walletError,
+    registryStatus, registryLoading, registryRegistering, registryError,
+    dropStatus, dropLoading, mintInProgress, mintResult, mintError, mintShiny,
+    whitelistStatus, whitelistLoading,
+    characterData, characterLoading, characterSaving, characterSaveSuccess,
+    characterSaveError, characterDraft, selectedVrmIndex, customVrmUrl, customBackgroundUrl,
+    elizaCloudEnabled, elizaCloudConnected, elizaCloudCredits, elizaCloudCreditsLow,
+    elizaCloudCreditsCritical, elizaCloudTopUpUrl, elizaCloudUserId,
+    cloudDashboardView, elizaCloudLoginBusy, elizaCloudLoginError, elizaCloudDisconnecting,
+    updateStatus, updateLoading, updateChannelSaving,
+    extensionStatus, extensionChecking,
+    storePlugins, storeSearch, storeFilter, storeLoading, storeInstalling, storeUninstalling,
+    storeError, storeDetailPlugin, storeSubTab,
+    catalogSkills, catalogTotal, catalogPage, catalogTotalPages, catalogSort,
+    catalogSearch, catalogLoading, catalogError, catalogDetailSkill,
+    catalogInstalling, catalogUninstalling,
+    workbenchLoading, workbench, workbenchTasksAvailable, workbenchTriggersAvailable, workbenchTodosAvailable,
+    exportBusy, exportPassword, exportIncludeLogs, exportError, exportSuccess,
+    importBusy, importPassword, importFile, importError, importSuccess,
+    droppedFiles, shareIngestNotice, chatPendingImages,
+    activeGameApp, activeGameDisplayName, activeGameViewerUrl, activeGameSandbox,
+    activeGamePostMessageAuth, activeGamePostMessagePayload, gameOverlayEnabled,
+    appsSubTab, agentSubTab, pluginsSubTab, databaseSubTab,
+    configRaw, configText,
+    commandPaletteOpen, commandQuery, commandActiveIndex,
+    emotePickerOpen,
+    mcpConfiguredServers, mcpServerStatuses, mcpMarketplaceQuery, mcpMarketplaceResults,
+    mcpMarketplaceLoading, mcpAction, mcpAddingServer, mcpAddingResult, mcpEnvInputs, mcpHeaderInputs,
+    onboardingStep, onboardingMode, onboardingActiveGuide, onboardingDeferredTasks,
+    postOnboardingChecklistDismissed, onboardingOptions, onboardingName, onboardingOwnerName,
+    onboardingStyle, onboardingRunMode, onboardingCloudProvider,
+    systemWarnings,
+  ]);
 
   const mergedBranding = useMemo(
     () => ({ ...DEFAULT_BRANDING, ...brandingOverride }),
