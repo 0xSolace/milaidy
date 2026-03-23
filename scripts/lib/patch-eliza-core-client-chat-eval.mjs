@@ -12,10 +12,11 @@
  * Remove when upstream makes evaluate non-blocking for streaming API or fails
  * fast on auth errors.
  */
-import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-export const EVAL_PATCH_MARKER = "[milady-patch] defer evaluate for client_chat";
+export const EVAL_PATCH_MARKER =
+  "[milady-patch] defer evaluate for client_chat";
 
 const SEARCH_BLOCK = `    await runtime2.evaluate(message2, state2, shouldRespondToMessage, async (content) => {
       runtime2.logger.debug({ src: "service:message", content }, "Evaluate callback");
@@ -112,7 +113,10 @@ export function patchElizaCoreClientChatEvaluate(repoRoot) {
       repoRoot,
       "node_modules/@elizaos/core/dist/node/index.node.js",
     );
-    if (existsSync(primary) && readFileSync(primary, "utf8").includes(EVAL_PATCH_MARKER)) {
+    if (
+      existsSync(primary) &&
+      readFileSync(primary, "utf8").includes(EVAL_PATCH_MARKER)
+    ) {
       console.log(
         "[patch-deps] @elizaos/core client_chat evaluate patch already applied.",
       );

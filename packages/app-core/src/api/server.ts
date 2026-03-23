@@ -3974,7 +3974,7 @@ export async function startApiServer(
       void (async () => {
         try {
           await ensureRuntimeSqlCompatibility(runtime);
-          await ensureMiladyTextToSpeechHandler(runtime);
+          await (await lazyEnsureTTS())(runtime);
         } finally {
           originalUpdateRuntime(runtime);
         }

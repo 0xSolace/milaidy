@@ -56,7 +56,11 @@ if (apiHealth.ok) {
   );
 }
 
-if (apiStatus.ok && apiStatus.json && typeof apiStatus.json.state === "string") {
+if (
+  apiStatus.ok &&
+  apiStatus.json &&
+  typeof apiStatus.json.state === "string"
+) {
   console.log(
     `[desktop-stack-status] GET /api/status state=${apiStatus.json.state}`,
   );

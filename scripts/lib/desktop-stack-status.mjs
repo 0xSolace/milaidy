@@ -66,7 +66,8 @@ export async function fetchJsonOk(url, fetchImpl = globalThis.fetch) {
       status: 0,
       json: null,
       bodyPreview: "",
-      error: err?.name === "AbortError" ? "timeout" : String(err?.message ?? err),
+      error:
+        err?.name === "AbortError" ? "timeout" : String(err?.message ?? err),
     };
   } finally {
     clearTimeout(timer);
@@ -79,7 +80,11 @@ export async function fetchJsonOk(url, fetchImpl = globalThis.fetch) {
  * @param {{ isPortOpen?: (port: number, host?: string) => Promise<boolean> }} [deps]
  *     `isPortOpen` override for tests (same-module lexical calls ignore vi.spyOn).
  */
-export async function gatherDesktopStackStatus(env = process.env, fetchImpl, deps) {
+export async function gatherDesktopStackStatus(
+  env = process.env,
+  fetchImpl,
+  deps,
+) {
   const checkPort = deps?.isPortOpen ?? isPortOpen;
   const apiPort = Number(env.MILADY_API_PORT) || DEFAULT_API_PORT;
   const fetchFn = fetchImpl ?? globalThis.fetch;

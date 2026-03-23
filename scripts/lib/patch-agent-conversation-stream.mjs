@@ -12,7 +12,8 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const PATCH_MARKER = "[milady-patch] conversation stream: emit done before persist";
+const PATCH_MARKER =
+  "[milady-patch] conversation stream: emit done before persist";
 
 /**
  * @param {string} src
@@ -28,7 +29,7 @@ export function applyConversationStreamSseDoneOrderPatch(src) {
     "                await persistAssistantConversationMemory(runtime, conv.roomId, result.text, channelType, turnStartedAt);\n" +
     "                conv.updatedAt = new Date().toISOString();\n" +
     "                writeSseJson(res, {\n" +
-    "                    type: \"done\",\n" +
+    '                    type: "done",\n' +
     "                    fullText: result.text,\n" +
     "                    agentName: result.agentName,\n" +
     "                    ...(result.usage ? { estimatedUsage: result.usage } : {}),\n" +
@@ -41,7 +42,7 @@ export function applyConversationStreamSseDoneOrderPatch(src) {
     "\n" +
     "                conv.updatedAt = new Date().toISOString();\n" +
     "                writeSseJson(res, {\n" +
-    "                    type: \"done\",\n" +
+    '                    type: "done",\n' +
     "                    fullText: result.text,\n" +
     "                    agentName: result.agentName,\n" +
     "                    ...(result.usage ? { estimatedUsage: result.usage } : {}),\n" +
@@ -50,7 +51,8 @@ export function applyConversationStreamSseDoneOrderPatch(src) {
     "                    await persistAssistantConversationMemory(runtime, conv.roomId, result.text, channelType, turnStartedAt);\n" +
     "                }\n" +
     "                catch (persistErr) {\n" +
-    "                    logger.warn(`[conversations] Assistant persist after SSE done failed: ${getErrorMessage(persistErr)}`);\n" +
+    "                    logger.warn(`[conversations] Assistant persist after SSE done failed: $" +
+    "{getErrorMessage(persistErr)}`);\n" +
     "                }";
 
   const creditBlock =
@@ -59,14 +61,14 @@ export function applyConversationStreamSseDoneOrderPatch(src) {
     "                        await persistAssistantConversationMemory(runtime, conv.roomId, creditReply, channelType);\n" +
     "                        conv.updatedAt = new Date().toISOString();\n" +
     "                        writeSse(res, {\n" +
-    "                            type: \"done\",\n" +
+    '                            type: "done",\n' +
     "                            fullText: creditReply,\n" +
     "                            agentName: state.agentName,\n" +
     "                        });\n" +
     "                    }\n" +
     "                    catch (persistErr) {\n" +
     "                        writeSse(res, {\n" +
-    "                            type: \"error\",\n" +
+    '                            type: "error",\n' +
     "                            message: getErrorMessage(persistErr),\n" +
     "                        });\n" +
     "                    }\n" +
@@ -76,7 +78,7 @@ export function applyConversationStreamSseDoneOrderPatch(src) {
     "                if (creditReply) {\n" +
     "                    conv.updatedAt = new Date().toISOString();\n" +
     "                    writeSse(res, {\n" +
-    "                        type: \"done\",\n" +
+    '                        type: "done",\n' +
     "                        fullText: creditReply,\n" +
     "                        agentName: state.agentName,\n" +
     "                    });\n" +
@@ -84,7 +86,8 @@ export function applyConversationStreamSseDoneOrderPatch(src) {
     "                        await persistAssistantConversationMemory(runtime, conv.roomId, creditReply, channelType);\n" +
     "                    }\n" +
     "                    catch (persistErr) {\n" +
-    "                        logger.warn(`[conversations] Assistant persist after SSE done failed: ${getErrorMessage(persistErr)}`);\n" +
+    "                        logger.warn(`[conversations] Assistant persist after SSE done failed: $" +
+    "{getErrorMessage(persistErr)}`);\n" +
     "                    }\n" +
     "                }";
 

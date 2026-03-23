@@ -23,9 +23,9 @@ import {
   patchAgentSkillsCatalogFetch,
   patchAutonomousMiladyOnboardingPresets,
   patchBrokenElizaCoreRuntimeDists,
-  patchElizaCoreStreamingTtsHandlerGuard,
-  patchElizaCoreStreamingRetryPlaceholder,
   patchBunExports,
+  patchElizaCoreStreamingRetryPlaceholder,
+  patchElizaCoreStreamingTtsHandlerGuard,
   patchExtensionlessJsExports,
   patchMissingLifecycleScript,
   patchNobleHashesCompat,
@@ -495,9 +495,9 @@ describe("patch-bun-exports", () => {
       writeFileSync(
         nodePath,
         [
-          'const result2 = await runtime2.useModel(ModelType.TEXT_TO_SPEECH, params);',
-          'other();',
-          'const result2 = await runtime2.useModel(ModelType.TEXT_TO_SPEECH, params);',
+          "const result2 = await runtime2.useModel(ModelType.TEXT_TO_SPEECH, params);",
+          "other();",
+          "const result2 = await runtime2.useModel(ModelType.TEXT_TO_SPEECH, params);",
           'runtime2.logger.error({ error }, "Error generating voice for remaining text")',
         ].join("\n"),
         "utf8",
@@ -516,9 +516,9 @@ describe("patch-bun-exports", () => {
       expect(out).toContain(
         "runtime2.getModel(ModelType.TEXT_TO_SPEECH) ? await runtime2.useModel(ModelType.TEXT_TO_SPEECH, params) : void 0",
       );
-      expect(
-        logs.some((line) => line.includes("streaming TTS guard")),
-      ).toBe(true);
+      expect(logs.some((line) => line.includes("streaming TTS guard"))).toBe(
+        true,
+      );
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }
@@ -543,7 +543,7 @@ describe("patch-bun-exports", () => {
           "-- that's not right, let me start again:",
           "`);",
           "    }",
-          "    this.emitEvent({ eventType: \"retry_start\" });",
+          '    this.emitEvent({ eventType: "retry_start" });',
           "  }",
         ].join("\n"),
         "utf8",

@@ -86,7 +86,10 @@ describe("postCloudDisconnectFromMain", () => {
                 (init.headers as Record<string, string>).Authorization ?? "",
               )
             : "";
-        if (input.includes("127.0.0.1:31337") && input.endsWith("/api/status")) {
+        if (
+          input.includes("127.0.0.1:31337") &&
+          input.endsWith("/api/status")
+        ) {
           return new Response("", { status: 401 });
         }
         if (input.includes("127.0.0.1:2138") && input.endsWith("/api/status")) {

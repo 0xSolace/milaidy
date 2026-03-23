@@ -40,9 +40,13 @@ describe("patch-agent-conversation-stream", () => {
     const { src: once, changed: c1 } =
       applyConversationStreamSseDoneOrderPatch(UPSTREAM_SNIPPET);
     expect(c1).toBe(true);
-    expect(once).toContain("[milady-patch] conversation stream: emit done before persist");
+    expect(once).toContain(
+      "[milady-patch] conversation stream: emit done before persist",
+    );
     expect(once.indexOf("writeSseJson")).toBeLessThan(
-      once.indexOf("persistAssistantConversationMemory(runtime, conv.roomId, result.text"),
+      once.indexOf(
+        "persistAssistantConversationMemory(runtime, conv.roomId, result.text",
+      ),
     );
     expect(once).toContain("Assistant persist after SSE done failed");
 

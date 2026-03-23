@@ -284,11 +284,13 @@ export function buildCharacterFromConfig(
     // fields so character data is complete even when the Bun body replay
     // drops fields during onboarding.
     if (!agentEntry?.style && !character.style && bundledPreset.style) {
+      // Plain style arrays match runtime usage; upstream `StyleGuides` is a protobuf
+      // shape with `$typeName` that we do not construct here.
       character.style = {
         all: [...bundledPreset.style.all],
         chat: [...bundledPreset.style.chat],
         post: [...bundledPreset.style.post],
-      } as typeof character.style;
+      } as unknown as NonNullable<(typeof character)["style"]>;
     }
     if (
       !agentEntry?.adjectives &&

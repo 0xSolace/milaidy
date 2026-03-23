@@ -143,7 +143,10 @@ const ELIZA_CORE_BROWSER_TTS_REPLACEMENTS = [
  *
  * Guard both `useModel` sites so we only call TTS when `getModel` finds a handler.
  */
-export function patchElizaCoreStreamingTtsHandlerGuard(root, log = console.log) {
+export function patchElizaCoreStreamingTtsHandlerGuard(
+  root,
+  log = console.log,
+) {
   const pkgJsonPaths = findPackageJsonPaths(root, "@elizaos/core");
   let patchedAny = false;
 
@@ -157,13 +160,14 @@ export function patchElizaCoreStreamingTtsHandlerGuard(root, log = console.log) 
 
     for (const filePath of files) {
       if (!existsSync(filePath)) continue;
-      let src = readFileSync(filePath, "utf8");
+      const src = readFileSync(filePath, "utf8");
       if (!src.includes("Error generating voice for remaining text")) continue;
       if (src.includes(ELIZA_CORE_STREAMING_TTS_PATCH_MARKER)) continue;
 
       let next = src;
       const isNodeOrEdge =
-        filePath.endsWith("index.node.js") || filePath.endsWith("index.edge.js");
+        filePath.endsWith("index.node.js") ||
+        filePath.endsWith("index.edge.js");
 
       if (isNodeOrEdge) {
         if (!next.includes(ELIZA_CORE_NODE_EDGE_TTS_FROM)) continue;
@@ -173,7 +177,11 @@ export function patchElizaCoreStreamingTtsHandlerGuard(root, log = console.log) 
         );
       } else {
         // Newer core builds may already ship this guard in the browser bundle.
-        if (next.includes("getModel(b$.TEXT_TO_SPEECH)?await $.useModel(b$.TEXT_TO_SPEECH"))
+        if (
+          next.includes(
+            "getModel(b$.TEXT_TO_SPEECH)?await $.useModel(b$.TEXT_TO_SPEECH",
+          )
+        )
           continue;
         const allPresent = ELIZA_CORE_BROWSER_TTS_REPLACEMENTS.every(([from]) =>
           next.includes(from),
@@ -218,7 +226,10 @@ const ELIZA_CORE_STREAM_RETRY_PLACEHOLDER_BROWSER_TO = `this.state="retrying";`;
  * retry. That duplicates in the saved message (e.g. 3× with maxRetries 3).
  * Remove the placeholder; `emitEvent({ eventType: "retry_start" })` is unchanged.
  */
-export function patchElizaCoreStreamingRetryPlaceholder(root, log = console.log) {
+export function patchElizaCoreStreamingRetryPlaceholder(
+  root,
+  log = console.log,
+) {
   const pkgJsonPaths = findPackageJsonPaths(root, "@elizaos/core");
   let patchedAny = false;
 
@@ -232,7 +243,7 @@ export function patchElizaCoreStreamingRetryPlaceholder(root, log = console.log)
 
     for (const filePath of files) {
       if (!existsSync(filePath)) continue;
-      let src = readFileSync(filePath, "utf8");
+      const src = readFileSync(filePath, "utf8");
       if (!src.includes("that's not right, let me start again")) continue;
 
       let next = src;
@@ -241,10 +252,7 @@ export function patchElizaCoreStreamingRetryPlaceholder(root, log = console.log)
         filePath.endsWith("index.edge.js")
       ) {
         if (!next.includes(ELIZA_CORE_STREAM_RETRY_PLACEHOLDER_NODE)) continue;
-        next = next.replace(
-          ELIZA_CORE_STREAM_RETRY_PLACEHOLDER_NODE,
-          "",
-        );
+        next = next.replace(ELIZA_CORE_STREAM_RETRY_PLACEHOLDER_NODE, "");
       } else {
         if (!next.includes(ELIZA_CORE_STREAM_RETRY_PLACEHOLDER_BROWSER_FROM))
           continue;

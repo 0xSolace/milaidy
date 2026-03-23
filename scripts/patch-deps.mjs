@@ -25,14 +25,15 @@ import {
 } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { patchElizaAgentConversationStreamSse } from "./lib/patch-agent-conversation-stream.mjs";
 import {
   patchAgentSkillsCatalogFetch,
   patchAutonomousMiladyOnboardingPresets,
   patchAutonomousTypeError,
   patchBrokenElizaCoreRuntimeDists,
-  patchElizaCoreStreamingTtsHandlerGuard,
-  patchElizaCoreStreamingRetryPlaceholder,
   patchBunExports,
+  patchElizaCoreStreamingRetryPlaceholder,
+  patchElizaCoreStreamingTtsHandlerGuard,
   patchExtensionlessJsExports,
   patchMissingLifecycleScript,
   patchNobleHashesCompat,
@@ -40,7 +41,6 @@ import {
   patchProperLockfileSignalExitCompat,
   warnStaleBunCache,
 } from "./lib/patch-bun-exports.mjs";
-import { patchElizaAgentConversationStreamSse } from "./lib/patch-agent-conversation-stream.mjs";
 import { patchElizaCoreClientChatEvaluate } from "./lib/patch-eliza-core-client-chat-eval.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

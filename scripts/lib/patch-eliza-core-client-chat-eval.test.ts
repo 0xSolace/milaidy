@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  EVAL_PATCH_MARKER,
   applyClientChatEvaluateDeferPatch,
+  EVAL_PATCH_MARKER,
 } from "./patch-eliza-core-client-chat-eval.mjs";
 
 describe("patch-eliza-core-client-chat-eval", () => {
@@ -22,7 +22,8 @@ describe("patch-eliza-core-client-chat-eval", () => {
     }, responseMessages);
     let entityName = "noname";
 `;
-    const { src: once, changed: c1 } = applyClientChatEvaluateDeferPatch(before);
+    const { src: once, changed: c1 } =
+      applyClientChatEvaluateDeferPatch(before);
     expect(c1).toBe(true);
     expect(once).toContain(EVAL_PATCH_MARKER);
     expect(once).toContain('message2.content?.source === "client_chat"');
