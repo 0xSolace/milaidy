@@ -7078,7 +7078,10 @@ function wireCoordinatorEventRouting(st: ServerState): boolean {
           // We inline the setup here because ensureLegacyChatConnection is
           // closure-scoped in the route handler and not accessible at module level.
           const agentName = runtime.character.name ?? "Eliza";
-          if (!st.chatUserId || !st.chatRoomId) {
+          const existingLegacyChatRoom = st.chatRoomId
+            ? await runtime.getRoom(st.chatRoomId).catch(() => null)
+            : null;
+          if (!st.chatUserId || !st.chatRoomId || !existingLegacyChatRoom) {
             const adminId =
               st.adminEntityId ??
               (stringToUuid(`${st.agentName}-admin-entity`) as UUID);
@@ -13630,7 +13633,15 @@ async function handleRequest(
         ready.roomId === target.roomId &&
         ready.worldId === target.worldId
       ) {
-        return;
+        try {
+          const existingRoom = await runtime.getRoom(target.roomId);
+          if (existingRoom) {
+            return;
+          }
+        } catch {
+          // Fall through and recreate the room below.
+        }
+        state.chatConnectionReady = null;
       }
 
       if (!state.chatConnectionPromise) {
@@ -14841,6 +14852,26 @@ async function handleRequest(
     const convId = decodeURIComponent(pathname.split("/")[3]);
     const conv = await getConversationWithRestore(convId);
     if (conv?.roomId && state.runtime) {
+      try {
+        const memories = await state.runtime.getMemories({
+          roomId: conv.roomId,
+          tableName: "messages",
+          count: 1000,
+        });
+        const memoryIds = memories
+          .map((memory) => memory.id)
+          .filter(
+            (memoryId): memoryId is UUID =>
+              typeof memoryId === "string" && memoryId.trim().length > 0,
+          );
+        if (memoryIds.length > 0) {
+          await deleteConversationMemories(state.runtime, memoryIds);
+        }
+      } catch (err) {
+        logger.debug(
+          `[conversations] Failed to delete messages for ${convId}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
       try {
         await deleteConversationRoomData(state.runtime, conv.roomId);
       } catch (err) {

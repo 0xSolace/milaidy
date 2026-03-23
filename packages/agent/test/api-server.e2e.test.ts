@@ -476,6 +476,10 @@ function createRuntimeForChatSseTests(options?: {
       text?: string;
     };
   }>;
+  deleteManyMemories?: (memoryIds: UUID[]) => void | Promise<void>;
+  deleteRoom?: (roomId: UUID) => void | Promise<void>;
+  ensureConnection?: (args: unknown) => void | Promise<void>;
+  getRoom?: (roomId: UUID) => unknown | Promise<unknown>;
 }): AgentRuntime {
   const memoriesByRoom = new Map<string, Array<Record<string, unknown>>>();
 
@@ -510,8 +514,12 @@ function createRuntimeForChatSseTests(options?: {
           };
         })()),
     } as AgentRuntime["messageService"],
-    ensureConnection: async () => {},
+    ensureConnection: async (args: unknown) => {
+      await options?.ensureConnection?.(args);
+    },
     getWorld: async () => null,
+    getRoom: async (roomId: UUID) =>
+      (await options?.getRoom?.(roomId)) ?? ({ id: roomId } as { id: UUID }),
     updateWorld: async () => {},
     createMemory: async (memory: Record<string, unknown>) => {
       const roomId = String(memory.roomId ?? "");
@@ -560,6 +568,26 @@ function createRuntimeForChatSseTests(options?: {
       return current.slice(-count) as unknown as Awaited<
         ReturnType<AgentRuntime["getMemories"]>
       >;
+    },
+    deleteManyMemories: async (memoryIds: UUID[]) => {
+      await options?.deleteManyMemories?.(memoryIds);
+      if (memoryIds.length === 0) return;
+      const toDelete = new Set(memoryIds.map((memoryId) => String(memoryId)));
+      for (const [roomId, memories] of memoriesByRoom.entries()) {
+        const filtered = memories.filter(
+          (memory) => !toDelete.has(String(memory.id ?? "")),
+        );
+        if (filtered.length === memories.length) continue;
+        if (filtered.length === 0) {
+          memoriesByRoom.delete(roomId);
+        } else {
+          memoriesByRoom.set(roomId, filtered);
+        }
+      }
+    },
+    deleteRoom: async (roomId: UUID) => {
+      await options?.deleteRoom?.(roomId);
+      memoriesByRoom.delete(String(roomId));
     },
     getCache: async () => null,
     setCache: async () => {},
@@ -2013,6 +2041,54 @@ describe("API Server E2E (no runtime)", () => {
       }
     });
 
+    it("DELETE /api/conversations/:id removes stored message memories before deleting the room", async () => {
+      const deletedMemoryBatches: UUID[][] = [];
+      const deletedRooms: UUID[] = [];
+      const runtime = createRuntimeForChatSseTests({
+        deleteManyMemories: async (memoryIds) => {
+          deletedMemoryBatches.push([...memoryIds]);
+        },
+        deleteRoom: async (roomId) => {
+          deletedRooms.push(roomId);
+        },
+      });
+      const streamServer = await startApiServer({ port: 0, runtime });
+      try {
+        const create = await req(
+          streamServer.port,
+          "POST",
+          "/api/conversations",
+          {
+            title: "Delete cleanup test",
+            includeGreeting: true,
+            lang: "en",
+          },
+        );
+        expect(create.status).toBe(200);
+        const conversation = create.data.conversation as {
+          id?: string;
+          roomId?: string;
+        };
+        const conversationId = conversation.id ?? "";
+        const conversationRoomId = conversation.roomId as UUID | undefined;
+        expect(conversationId.length).toBeGreaterThan(0);
+        expect(conversationRoomId).toBeTruthy();
+
+        const remove = await req(
+          streamServer.port,
+          "DELETE",
+          `/api/conversations/${conversationId}`,
+        );
+        expect(remove.status).toBe(200);
+        expect(
+          deletedMemoryBatches.some((batch) => batch.length > 0),
+        ).toBe(true);
+        expect(deletedRooms).toContain(conversationRoomId);
+      } finally {
+        await streamServer.close();
+      }
+    });
+
     it("uses the configured preset catchphrase for intro greetings", async () => {
       const runtime = createRuntimeForChatSseTests();
       const streamServer = await startApiServer({ port: 0, runtime });
@@ -2392,6 +2468,18 @@ describe("API Server E2E (no runtime)", () => {
 
       const streamServer = await startApiServer({ port: 0, runtime });
       try {
+        const list = await req(
+          streamServer.port,
+          "GET",
+          `/api/trajectories?search=${encodeURIComponent(userPrompt)}`,
+        );
+        expect(list.status).toBe(200);
+        const listRows = list.data.trajectories as Array<
+          Record<string, unknown>
+        >;
+        expect(Array.isArray(listRows)).toBe(true);
+        expect(listRows.some((row) => row.id === trajectoryId)).toBe(true);
+
         const detail = await req(
           streamServer.port,
           "GET",
