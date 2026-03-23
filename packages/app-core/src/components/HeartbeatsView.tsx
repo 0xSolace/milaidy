@@ -147,11 +147,25 @@ const BUILT_IN_TEMPLATES: HeartbeatTemplate[] = [
   },
 ];
 
+function isValidTemplate(v: unknown): v is HeartbeatTemplate {
+  if (typeof v !== "object" || v == null) return false;
+  const t = v as Record<string, unknown>;
+  return (
+    typeof t.id === "string" &&
+    typeof t.name === "string" &&
+    typeof t.instructions === "string" &&
+    typeof t.interval === "string" &&
+    typeof t.unit === "string"
+  );
+}
+
 function loadUserTemplates(): HeartbeatTemplate[] {
   try {
     const raw = localStorage.getItem(TEMPLATES_STORAGE_KEY);
     if (!raw) return [];
-    return JSON.parse(raw) as HeartbeatTemplate[];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(isValidTemplate);
   } catch {
     return [];
   }
@@ -1102,10 +1116,10 @@ export function HeartbeatsView() {
                 selectedTriggerId,
               );
               const successCount = runs.filter(
-                (r) => r.status === "success",
+                (r) => toneForLastStatus(r.status) === "success",
               ).length;
               const failureCount = runs.filter(
-                (r) => r.status !== "success" && r.status !== "skipped",
+                (r) => toneForLastStatus(r.status) === "danger",
               ).length;
               const totalRuns = runs.length;
               return (

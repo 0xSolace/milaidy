@@ -128,79 +128,109 @@ export function getTriggerLimit(runtime?: IAgentRuntime): number {
   return DEFAULT_MAX_ACTIVE_TRIGGERS;
 }
 
-type AutonomyServiceLike = {
-  injectAutonomousInstruction?: (payload: {
-    instructions: string;
-    source: string;
-    wakeMode: TriggerConfig["wakeMode"];
-    triggerId: UUID;
-    triggerTaskId: UUID;
-    taskId?: UUID;
-    roomId?: UUID;
-  }) => Promise<void> | void;
+type AutonomyServiceLike = Service & {
+  getAutonomousRoomId?: () => UUID;
+  getTargetRoomId?: () => UUID;
 };
 
 async function isAutonomyServiceAvailable(
   runtime: IAgentRuntime,
 ): Promise<boolean> {
   const svc =
-    runtime.getService<Service & AutonomyServiceLike>("autonomy") ??
-    runtime.getService<Service & AutonomyServiceLike>("AUTONOMY");
-  return typeof svc?.injectAutonomousInstruction === "function";
+    runtime.getService<AutonomyServiceLike>("AUTONOMY") ??
+    runtime.getService<AutonomyServiceLike>("autonomy");
+  return svc != null;
 }
 
+/**
+ * Dispatch a trigger instruction by creating a memory in the autonomy
+ * room. The AutonomyService's internal loop picks up new memories and
+ * processes them as autonomous actions.
+ *
+ * This replaces the previous approach of calling a non-existent
+ * `injectAutonomousInstruction` method on the service.
+ */
 async function dispatchInstruction(
   runtime: IAgentRuntime,
   taskId: UUID,
   trigger: TriggerConfig,
 ): Promise<void> {
-  type TriggerAutonomyService = {
-    getAutonomousRoomId?: () => UUID;
-    injectAutonomousInstruction?: (payload: {
-      instructions: string;
-      source: string;
-      wakeMode: TriggerConfig["wakeMode"];
-      triggerId: UUID;
-      triggerTaskId: UUID;
-      taskId?: UUID;
-      roomId?: UUID;
-    }) => Promise<void> | void;
-  };
-  // The autonomy service may still be wiring up after a runtime restart
-  // or SQL compatibility repair. Retry a few times with a short delay
-  // before giving up.
-  let autonomyService: TriggerAutonomyService | null = null;
+  // Resolve the autonomy service to find the target room
+  let autonomyService: AutonomyServiceLike | null = null;
   for (let attempt = 0; attempt < 5; attempt++) {
     autonomyService =
-      (runtime.getService("autonomy") as TriggerAutonomyService | null) ??
-      (runtime.getService("AUTONOMY") as TriggerAutonomyService | null);
-    if (autonomyService?.injectAutonomousInstruction) break;
+      runtime.getService<AutonomyServiceLike>("AUTONOMY") ??
+      runtime.getService<AutonomyServiceLike>("autonomy");
+    if (autonomyService) break;
     if (attempt < 4) {
       await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
     }
   }
 
-  if (!autonomyService?.injectAutonomousInstruction) {
+  if (!autonomyService) {
     runtime.logger.warn?.(
-      `Autonomy service missing injectAutonomousInstruction after retries (taskId=${taskId}, triggerId=${trigger.triggerId})`,
+      `Autonomy service not found after retries (taskId=${taskId}, triggerId=${trigger.triggerId})`,
     );
     throw new Error("Autonomy service unavailable for trigger dispatch");
   }
 
+  // Resolve the room to inject the instruction into
   const roomId =
-    typeof autonomyService.getAutonomousRoomId === "function"
+    (typeof autonomyService.getAutonomousRoomId === "function"
       ? autonomyService.getAutonomousRoomId()
-      : undefined;
+      : undefined) ??
+    (typeof autonomyService.getTargetRoomId === "function"
+      ? autonomyService.getTargetRoomId()
+      : undefined);
 
-  await autonomyService.injectAutonomousInstruction({
-    instructions: trigger.instructions,
-    source: "trigger-runtime",
-    wakeMode: trigger.wakeMode,
-    triggerId: trigger.triggerId,
-    triggerTaskId: taskId,
-    taskId,
-    roomId,
-  });
+  // Create a memory in the autonomy room with the trigger instruction.
+  // The AutonomyService loop picks this up as an autonomous action.
+  const instructionText = `[Heartbeat: ${trigger.displayName}]\n${trigger.instructions}`;
+
+  await runtime.createMemory(
+    {
+      entityId: runtime.agentId,
+      roomId: roomId ?? (trigger.triggerId as UUID),
+      content: {
+        text: instructionText,
+        source: "trigger-runtime",
+        metadata: {
+          triggerId: trigger.triggerId,
+          triggerTaskId: taskId,
+          wakeMode: trigger.wakeMode,
+          isAutonomousInstruction: true,
+        },
+      },
+    },
+    "messages",
+  );
+
+  // If wakeMode is inject_now, also nudge the runtime to process
+  if (trigger.wakeMode === "inject_now") {
+    try {
+      await runtime.processActions(
+        {
+          entityId: runtime.agentId,
+          roomId: roomId ?? (trigger.triggerId as UUID),
+          content: {
+            text: instructionText,
+            source: "trigger-runtime",
+          },
+        },
+        [],
+        await runtime.composeState({
+          entityId: runtime.agentId,
+          roomId: roomId ?? (trigger.triggerId as UUID),
+          content: { text: instructionText },
+        }),
+      );
+    } catch (err) {
+      runtime.logger.warn?.(
+        `[trigger-runtime] processActions failed for trigger ${trigger.triggerId}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      // Non-fatal — the memory was created, the autonomy loop will pick it up
+    }
+  }
 }
 
 export async function executeTriggerTask(
