@@ -56,12 +56,16 @@ warnStaleBunCache(root);
 // Logic lives in scripts/lib/patch-bun-exports.mjs (testable).
 // ---------------------------------------------------------------------------
 patchBunExports(root, "@elizaos/plugin-coding-agent");
-patchMissingLifecycleScript(
-  root,
-  "@elizaos/plugin-agent-orchestrator",
-  "postinstall",
-  "./scripts/ensure-node-pty.mjs",
-);
+try {
+  patchMissingLifecycleScript(
+    root,
+    "@elizaos/plugin-agent-orchestrator",
+    "postinstall",
+    "./scripts/ensure-node-pty.mjs",
+  );
+} catch {
+  // May fail if the version already has the script or JSON is already patched.
+}
 patchAgentSkillsCatalogFetch(root);
 
 // @noble/curves and @noble/hashes publish ".js" subpath exports, while ethers
@@ -78,7 +82,11 @@ patchProperLockfileSignalExitCompat(root);
 patchBrokenElizaCoreRuntimeDists(root);
 patchElizaCoreStreamingTtsHandlerGuard(root);
 patchElizaCoreStreamingRetryPlaceholder(root);
-patchAutonomousMiladyOnboardingPresets(root);
+try {
+  patchAutonomousMiladyOnboardingPresets(root);
+} catch {
+  // Source file may not exist (moved to @miladyai/shared).
+}
 patchAutonomousTypeError(root);
 patchPluginVisionPermissionHandling(root);
 
