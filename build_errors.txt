@@ -1,0 +1,128 @@
+$ node scripts/run-production-build.mjs
+[plugin:gateway] building...
+[plugin:swabble] building...
+[plugin:camera] building...
+[plugin:screencapture] building...
+[plugin:canvas] building...
+[plugin:desktop] building...
+[plugin:location] building...
+[plugin:talkmode] building...
+[plugin:agent] building...
+$ bun run clean && tsc && rollup -c rollup.config.mjs
+$ bun run clean && tsc && rollup -c rollup.config.mjs
+[34mℹ[39m tsdown [2mv0.20.3[22m powered by rolldown [2mv1.0.0-rc.3[22m
+$ bun run clean && tsc && rollup -c rollup.config.mjs
+$ bun run clean && tsc && rollup -c rollup.config.mjs
+$ bun run clean && tsc && rollup -c rollup.config.mjs
+[34mℹ[39m config file: [4m/Users/shawwalters/eliza-workspace/milady/tsdown.config.ts[24m 
+[34mℹ[39m entry: [34mpackages/app-core/src/index.ts[39m
+[34mℹ[39m target: [34mnode22.0.0[39m
+[34mℹ[39m tsconfig: [34mtsconfig.json[39m
+[34mℹ[39m entry: [34mpackages/app-core/src/entry.ts[39m
+[34mℹ[39m target: [34mnode22.0.0[39m
+[34mℹ[39m tsconfig: [34mtsconfig.json[39m
+[34mℹ[39m entry: [34mpackages/app-core/src/runtime/eliza.ts[39m
+[34mℹ[39m target: [34mnode22.0.0[39m
+[34mℹ[39m tsconfig: [34mtsconfig.json[39m
+[34mℹ[39m entry: [34mpackages/app-core/src/api/server.ts[39m
+[34mℹ[39m target: [34mnode22.0.0[39m
+[34mℹ[39m tsconfig: [34mtsconfig.json[39m
+[34mℹ[39m Build start
+$ bun run clean && tsc && rollup -c rollup.config.mjs
+$ bun run clean && tsc && rollup -c rollup.config.mjs
+
+[41m ERROR [49m Error: Build failed with 2 errors:
+
+[31m[PARSE_ERROR] Error:[0m Identifier `TradePermissionMode` has already been declared
+      [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m packages/app-core/src/api/server.ts:1655:6 [38;5;246m][0m
+      [38;5;246m│[0m
+ [38;5;246m1655 │[0m [38;5;249mt[0m[38;5;249my[0m[38;5;249mp[0m[38;5;249me[0m[38;5;249m [0mTradePermissionMode[38;5;249m [0m[38;5;249m=[0m[38;5;249m [0m[38;5;249m"[0m[38;5;249mu[0m[38;5;249ms[0m[38;5;249me[0m[38;5;249mr[0m[38;5;249m-[0m[38;5;249ms[0m[38;5;249mi[0m[38;5;249mg[0m[38;5;249mn[0m[38;5;249m-[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249ml[0m[38;5;249my[0m[38;5;249m"[0m[38;5;249m [0m[38;5;249m|[0m[38;5;249m [0m[38;5;249m"[0m[38;5;249mm[0m[38;5;249ma[0m[38;5;249mn[0m[38;5;249mu[0m[38;5;249ma[0m[38;5;249ml[0m[38;5;249m-[0m[38;5;249ml[0m[38;5;249mo[0m[38;5;249mc[0m[38;5;249ma[0m[38;5;249ml[0m[38;5;249m-[0m[38;5;249mk[0m[38;5;249me[0m[38;5;249my[0m[38;5;249m"[0m[38;5;249m [0m[38;5;249m|[0m[38;5;249m [0m[38;5;249m"[0m[38;5;249ma[0m[38;5;249mg[0m[38;5;249me[0m[38;5;249mn[0m[38;5;249mt[0m[38;5;249m-[0m[38;5;249ma[0m[38;5;249mu[0m[38;5;249mt[0m[38;5;249mo[0m[38;5;249m"[0m[38;5;249m;[0m
+ [38;5;240m     │[0m      ─────────┬─────────  
+ [38;5;240m     │[0m               ╰─────────── `TradePermissionMode` has already been declared here
+ [38;5;240m     │[0m 
+ [38;5;246m1701 │[0m [38;5;249mt[0m[38;5;249my[0m[38;5;249mp[0m[38;5;249me[0m[38;5;249m [0mTradePermissionMode[38;5;249m [0m[38;5;249m=[0m[38;5;249m [0m[38;5;249m"[0m[38;5;249mu[0m[38;5;249ms[0m[38;5;249me[0m[38;5;249mr[0m[38;5;249m-[0m[38;5;249ms[0m[38;5;249mi[0m[38;5;249mg[0m[38;5;249mn[0m[38;5;249m-[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249ml[0m[38;5;249my[0m[38;5;249m"[0m[38;5;249m [0m[38;5;249m|[0m[38;5;249m [0m[38;5;249m"[0m[38;5;249mm[0m[38;5;249ma[0m[38;5;249mn[0m[38;5;249mu[0m[38;5;249ma[0m[38;5;249ml[0m[38;5;249m-[0m[38;5;249ml[0m[38;5;249mo[0m[38;5;249mc[0m[38;5;249ma[0m[38;5;249ml[0m[38;5;249m-[0m[38;5;249mk[0m[38;5;249me[0m[38;5;249my[0m[38;5;249m"[0m[38;5;249m [0m[38;5;249m|[0m[38;5;249m [0m[38;5;249m"[0m[38;5;249ma[0m[38;5;249mg[0m[38;5;249me[0m[38;5;249mn[0m[38;5;249mt[0m[38;5;249m-[0m[38;5;249ma[0m[38;5;249mu[0m[38;5;249mt[0m[38;5;249mo[0m[38;5;249m"[0m[38;5;249m;[0m
+ [38;5;240m     │[0m      ─────────┬─────────  
+ [38;5;240m     │[0m               ╰─────────── It can not be redeclared here
+[38;5;246m──────╯[0m
+
+[31m[PARSE_ERROR] Error:[0m Identifier `AGENT_AUTOMATION_HEADER` has already been declared
+      [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m packages/app-core/src/api/server.ts:1657:7 [38;5;246m][0m
+      [38;5;246m│[0m
+ [38;5;246m1657 │[0m [38;5;249mc[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249ms[0m[38;5;249mt[0m[38;5;249m [0mAGENT_AUTOMATION_HEADER[38;5;249m [0m[38;5;249m=[0m[38;5;249m [0m[38;5;249m"[0m[38;5;249mx[0m[38;5;249m-[0m[38;5;249mm[0m[38;5;249mi[0m[38;5;249ml[0m[38;5;249ma[0m[38;5;249md[0m[38;5;249my[0m[38;5;249m-[0m[38;5;249ma[0m[38;5;249mg[0m[38;5;249me[0m[38;5;249mn[0m[38;5;249mt[0m[38;5;249m-[0m[38;5;249ma[0m[38;5;249mc[0m[38;5;249mt[0m[38;5;249mi[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249m"[0m[38;5;249m;[0m
+ [38;5;240m     │[0m       ───────────┬───────────  
+ [38;5;240m     │[0m                  ╰───────────── `AGENT_AUTOMATION_HEADER` has already been declared here
+ [38;5;240m     │[0m 
+ [38;5;246m1703 │[0m [38;5;249mc[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249ms[0m[38;5;249mt[0m[38;5;249m [0mAGENT_AUTOMATION_HEADER[38;5;249m [0m[38;5;249m=[0m[38;5;249m [0m[38;5;249m"[0m[38;5;249mx[0m[38;5;249m-[0m[38;5;249mm[0m[38;5;249mi[0m[38;5;249ml[0m[38;5;249ma[0m[38;5;249md[0m[38;5;249my[0m[38;5;249m-[0m[38;5;249ma[0m[38;5;249mg[0m[38;5;249me[0m[38;5;249mn[0m[38;5;249mt[0m[38;5;249m-[0m[38;5;249ma[0m[38;5;249mc[0m[38;5;249mt[0m[38;5;249mi[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249m"[0m[38;5;249m;[0m
+ [38;5;240m     │[0m       ───────────┬───────────  
+ [38;5;240m     │[0m                  ╰───────────── It can not be redeclared here
+[38;5;246m──────╯[0m
+
+    at aggregateBindingErrorsIntoJsError (file:///Users/shawwalters/eliza-workspace/milady/node_modules/.bun/rolldown@1.0.0-rc.3/node_modules/rolldown/dist/shared/bindingify-input-options-CorDub0q.mjs:628:18)
+    at unwrapBindingResult (file:///Users/shawwalters/eliza-workspace/milady/node_modules/.bun/rolldown@1.0.0-rc.3/node_modules/rolldown/dist/shared/bindingify-input-options-CorDub0q.mjs:598:128)
+    at #build (file:///Users/shawwalters/eliza-workspace/milady/node_modules/.bun/rolldown@1.0.0-rc.3/node_modules/rolldown/dist/shared/rolldown-build-CGNuOAoF.mjs:3345:34)
+    at async build (file:///Users/shawwalters/eliza-workspace/milady/node_modules/.bun/rolldown@1.0.0-rc.3/node_modules/rolldown/dist/index.mjs:47:22)
+    at async Promise.all (index 0)
+    at async buildSingle (file:///Users/shawwalters/eliza-workspace/milady/node_modules/.bun/tsdown@0.20.3+1fb4c65d43e298b9/node_modules/tsdown/dist/build-C5RQkVSf.mjs:852:19)
+    at async Promise.all (index 3)
+    at async buildWithConfigs (file:///Users/shawwalters/eliza-workspace/milady/node_modules/.bun/tsdown@0.20.3+1fb4c65d43e298b9/node_modules/tsdown/dist/build-C5RQkVSf.mjs:813:18)
+    at async CAC.<anonymous> (file:///Users/shawwalters/eliza-workspace/milady/node_modules/.bun/tsdown@0.20.3+1fb4c65d43e298b9/node_modules/tsdown/dist/run.mjs:23:2)
+    at async runCLI (file:///Users/shawwalters/eliza-workspace/milady/node_modules/.bun/tsdown@0.20.3+1fb4c65d43e298b9/node_modules/tsdown/dist/run.mjs:47:3)
+
+file:///Users/shawwalters/eliza-workspace/milady/scripts/run-production-build.mjs:65
+        reject(new Error(`process exited with code ${code ?? 1}`));
+               ^
+
+Error: process exited with code 1
+    at ChildProcess.<anonymous> (file:///Users/shawwalters/eliza-workspace/milady/scripts/run-production-build.mjs:65:16)
+    at ChildProcess.emit (node:events:519:28)
+    at ChildProcess._handle.onexit (node:internal/child_process:293:12)
+
+Node.js v22.20.0
+error: script "build" exited with code 1
+$ bun run clean && tsc && rollup -c rollup.config.mjs
+$ rimraf ./dist
+$ rimraf ./dist
+$ rimraf ./dist
+$ rimraf ./dist
+$ rimraf ./dist
+$ bun run clean && tsc && rollup -c rollup.config.mjs
+$ rimraf ./dist
+$ rimraf ./dist
+$ rimraf ./dist
+$ rimraf ./dist
+[36m
+[1mdist/esm/index.js[22m → [1mdist/plugin.js, dist/plugin.cjs.js[22m...[39m
+[36m
+[1mdist/esm/index.js[22m → [1mdist/plugin.js, dist/plugin.cjs.js[22m...[39m
+[36m
+[1mdist/esm/index.js[22m → [1mdist/plugin.js, dist/plugin.cjs.js[22m...[39m
+[36m
+[1mdist/esm/index.js[22m → [1mdist/plugin.js, dist/plugin.cjs.js[22m...[39m
+[36m
+[1mdist/esm/index.js[22m → [1mdist/plugin.js, dist/plugin.cjs.js[22m...[39m
+[36m
+[1mdist/esm/index.js[22m → [1mdist/plugin.js, dist/plugin.cjs.js[22m...[39m
+[32mcreated [1mdist/plugin.js, dist/plugin.cjs.js[22m in [1m39ms[22m[39m
+[plugin:agent] done
+[36m
+[1mdist/esm/index.js[22m → [1mdist/plugin.js, dist/plugin.cjs.js[22m...[39m
+[32mcreated [1mdist/plugin.js, dist/plugin.cjs.js[22m in [1m56ms[22m[39m
+[plugin:talkmode] done
+[32mcreated [1mdist/plugin.js, dist/plugin.cjs.js[22m in [1m45ms[22m[39m
+[32mcreated [1mdist/plugin.js, dist/plugin.cjs.js[22m in [1m51ms[22m[39m
+[32mcreated [1mdist/plugin.js, dist/plugin.cjs.js[22m in [1m62ms[22m[39m
+[plugin:gateway] done
+[plugin:desktop] done
+[plugin:location] done
+[32mcreated [1mdist/plugin.js, dist/plugin.cjs.js[22m in [1m56ms[22m[39m
+[plugin:screencapture] done
+[32mcreated [1mdist/plugin.js, dist/plugin.cjs.js[22m in [1m54ms[22m[39m
+[36m
+[1mdist/esm/index.js[22m → [1mdist/plugin.js, dist/plugin.cjs.js[22m...[39m
+[plugin:swabble] done
+[36m
+[1mdist/esm/index.js[22m → [1mdist/plugin.js, dist/plugin.cjs.js[22m...[39m
+[32mcreated [1mdist/plugin.js, dist/plugin.cjs.js[22m in [1m44ms[22m[39m
+[plugin:camera] done
+[32mcreated [1mdist/plugin.js, dist/plugin.cjs.js[22m in [1m62ms[22m[39m
+[plugin:canvas] done

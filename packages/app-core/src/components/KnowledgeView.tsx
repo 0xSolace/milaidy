@@ -23,7 +23,7 @@ import {
 } from "@miladyai/app-core/components";
 import { useApp } from "@miladyai/app-core/state";
 import { confirmDesktopAction } from "@miladyai/app-core/utils";
-import { Button, Input } from "@miladyai/ui";
+import { Button, Checkbox, Input } from "@miladyai/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   isKnowledgeImageFile,
@@ -188,12 +188,10 @@ function UploadZone({
           {t("knowledgeview.AddFromURL")}
         </Button>
         <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border border-border/30 bg-bg/40 px-3 text-[11px] text-muted/80 transition-colors hover:text-muted">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={includeImageDescriptions}
-            onChange={(e) => setIncludeImageDescriptions(e.target.checked)}
+            onCheckedChange={(checked) => setIncludeImageDescriptions(!!checked)}
             disabled={uploading}
-            className="accent-accent h-3.5 w-3.5 rounded border-border/50 bg-bg/50"
           />
           {t("knowledgeview.IncludeAIImageDes")}
         </label>

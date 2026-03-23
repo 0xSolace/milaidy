@@ -520,8 +520,7 @@ function CompanionSceneSurface({
 
 export const CompanionSceneHost = memo(CompanionSceneSurface);
 
-// Re-export the hook so existing imports from this module keep working.
-export { useSharedCompanionScene } from "./shared-companion-scene-context";
+
 
 export function SharedCompanionScene({
   active,

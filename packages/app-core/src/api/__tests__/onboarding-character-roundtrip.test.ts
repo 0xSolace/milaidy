@@ -2,11 +2,17 @@
  * Integration test: Onboarding → Config Persistence → Character Build round-trip.
  *
  * Proves that when a user completes onboarding with a preset character (Chen),
- * ALL personality fields survive the full pipeline:
- *   1. persistCompatOnboardingDefaults() writes to config
- *   2. Config is reloaded
- *   3. buildCharacterFromConfig() produces a complete character
- *   4. The character has all preset fields populated
+ * ALL personality fields (style, adjectives, topics, postExamples,
+ * messageExamples) survive the full pipeline:
+ *
+ *   1. Client sends submitOnboarding() with preset data
+ *   2. persistCompatOnboardingDefaults() writes to config
+ *   3. Config is reloaded
+ *   4. buildCharacterFromConfig() produces a complete character
+ *   5. The character has all preset fields populated
+ *
+ * This catches the bug where only name/bio/system were persisted while
+ * style/adjectives/topics/examples were silently dropped.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -69,8 +75,7 @@ describe("Onboarding → Character round-trip", () => {
 
   it("Chen preset: all personality fields survive persist → build round-trip", () => {
     const systemPrompt = chenPreset.system.replace(/\{\{name\}\}/g, "Chen");
-
-    persistCompatOnboardingDefaults({
+    const onboardingBody = {
       name: "Chen",
       bio: chenPreset.bio,
       systemPrompt,
@@ -79,13 +84,20 @@ describe("Onboarding → Character round-trip", () => {
       topics: chenPreset.topics,
       postExamples: chenPreset.postExamples,
       messageExamples: chenPreset.messageExamples,
-    });
+    };
 
-    // Verify config has ALL fields
+    const adminEntityId = persistCompatOnboardingDefaults(onboardingBody);
+    expect(adminEntityId).toBeTruthy();
+
     const agents = savedConfig.agents as Record<string, unknown>;
+    expect(agents).toBeTruthy();
     const list = agents.list as Record<string, unknown>[];
+    expect(list).toHaveLength(1);
     const agentEntry = list[0];
+
     expect(agentEntry.name).toBe("Chen");
+    expect(agentEntry.bio).toEqual(chenPreset.bio);
+    expect(agentEntry.system).toBe(systemPrompt);
     expect(agentEntry.style).toEqual(chenPreset.style);
     expect(agentEntry.adjectives).toEqual(chenPreset.adjectives);
     expect(agentEntry.topics).toEqual(chenPreset.topics);
@@ -96,16 +108,25 @@ describe("Onboarding → Character round-trip", () => {
     const character = buildCharacterFromConfig(savedConfig as ElizaConfig);
 
     expect(character.name).toBe("Chen");
+    expect(Array.isArray(character.bio)).toBe(true);
+    expect((character.bio as string[]).length).toBe(chenPreset.bio.length);
+    expect(character.system).toBe(systemPrompt);
     expect(character.style).toBeTruthy();
     expect(character.style?.all?.length).toBeGreaterThan(0);
     expect(character.style?.chat?.length).toBeGreaterThan(0);
     expect(character.style?.post?.length).toBeGreaterThan(0);
+    expect(character.adjectives).toBeTruthy();
     expect(character.adjectives?.length).toBe(chenPreset.adjectives.length);
     expect(character.adjectives).toContain("warm");
+    expect(character.adjectives).toContain("gentle");
+
     expect(Array.isArray(character.topics)).toBe(true);
     expect((character.topics as string[]).length).toBe(chenPreset.topics!.length);
     expect(character.topics).toContain("emotional intelligence");
+    expect(character.topics).toContain("design thinking");
+
     expect(character.postExamples.length).toBeGreaterThan(0);
+    expect(character.postExamples).toContain("you've got this");
     expect(character.messageExamples.length).toBeGreaterThan(0);
   });
 
@@ -127,6 +148,34 @@ describe("Onboarding → Character round-trip", () => {
     expect(character.messageExamples.length).toBeGreaterThan(0);
   });
 
+  it("non-preset character: custom fields persist without preset fallback", () => {
+    const customBody = {
+      name: "MyCustomBot",
+      bio: ["A custom bot for testing."],
+      systemPrompt: "You are MyCustomBot, a test agent.",
+      style: { all: ["be concise"], chat: ["be friendly"], post: ["be witty"] },
+      adjectives: ["helpful", "fast"],
+      topics: ["testing", "automation"],
+      postExamples: ["hello world"],
+      messageExamples: [
+        [
+          { user: "{{user1}}", content: { text: "hi" } },
+          { user: "MyCustomBot", content: { text: "hello!" } },
+        ],
+      ],
+    };
+
+    persistCompatOnboardingDefaults(customBody);
+    const character = buildCharacterFromConfig(savedConfig as ElizaConfig);
+
+    expect(character.name).toBe("MyCustomBot");
+    expect(character.style?.all).toContain("be concise");
+    expect(character.adjectives).toContain("helpful");
+    expect(character.topics).toContain("testing");
+    expect(character.postExamples).toContain("hello world");
+    expect(character.messageExamples.length).toBeGreaterThan(0);
+  });
+
   it("all preset characters have complete data after round-trip", () => {
     for (const preset of STYLE_PRESETS) {
       savedConfig = {};
@@ -142,11 +191,18 @@ describe("Onboarding → Character round-trip", () => {
       });
 
       const character = buildCharacterFromConfig(savedConfig as ElizaConfig);
+
       expect(character.name).toBe(preset.name);
       expect(character.style?.all?.length).toBeGreaterThan(0);
       expect(character.adjectives?.length).toBeGreaterThan(0);
       expect(character.postExamples.length).toBeGreaterThan(0);
       expect(character.messageExamples.length).toBeGreaterThan(0);
+
+      if (preset.topics && preset.topics.length > 0) {
+        expect(
+          Array.isArray(character.topics) && character.topics.length > 0,
+        ).toBe(true);
+      }
     }
   });
 });

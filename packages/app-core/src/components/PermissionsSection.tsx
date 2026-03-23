@@ -1243,7 +1243,7 @@ function DesktopOnboardingPermissions({
         </div>
       )}
 
-      <div className="onboarding-panel-footer">
+      <div className="flex justify-between items-center gap-6 mt-[18px] pt-3.5 border-t border-white/[0.08]">
         {onBack ? (
           <button
             className="onboarding-back-link"

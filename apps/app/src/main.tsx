@@ -36,7 +36,7 @@ import {
   APP_RESUME_EVENT,
   COMMAND_PALETTE_EVENT,
   CONNECT_EVENT,
-  dispatchElizaEvent as dispatchMiladyEvent,
+  dispatchMiladyEvent,
   SHARE_TARGET_EVENT,
   TRAY_ACTION_EVENT,
 } from "@miladyai/app-core/events";

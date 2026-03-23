@@ -6,6 +6,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Switch,
 } from "@miladyai/ui";
 import { ChevronDown, Clock3, PencilLine, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -748,13 +749,11 @@ export function HeartbeatsView() {
 
                   <div className="flex items-end">
                     <label className="inline-flex cursor-pointer select-none flex-1 items-center gap-3 rounded-xl bg-bg/50 px-4 py-2 border border-border/50 hover:border-accent/50 text-sm text-txt transition-colors h-10">
-                      <input
-                        type="checkbox"
+                      <Switch
                         checked={form.enabled}
-                        onChange={(event) =>
-                          setField("enabled", event.target.checked)
+                        onCheckedChange={(checked) =>
+                          setField("enabled", !!checked)
                         }
-                        className="accent-accent w-4 h-4 rounded-sm border-border/60"
                       />
                       {t("triggersview.StartEnabled")}
                     </label>

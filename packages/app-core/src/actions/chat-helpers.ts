@@ -38,6 +38,8 @@ export function shouldApplyFinalStreamText(
 
 /**
  * Format a search result section with a label and bullet items.
+ * NOTE: A plain-text variant exists in `../state/parsers.ts` (uses `- ` bullets,
+ * no bold). This version uses markdown bold + `•` bullets for chat display.
  */
 export function formatSearchBullet(label: string, items: string[]): string {
   if (items.length === 0) return `**${label}**: (none)`;

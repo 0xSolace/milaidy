@@ -321,3 +321,8 @@ Please don't restore files I've deleted. If the entire file is `describe.skip`, 
 - Removed CSS-only test from `header-status.test.tsx` (accent class checking)
 - Re-deleted 5 fully-skipped files restored by other agent (milady-bar trio, triggers-view, character-save-journey)
 - Removed 4 broken it.skip tests from `onboarding-step-resume.test.tsx`
+
+### Fifth pass — connector larps and format validation:
+- Cleaned 7 connector unit test files in `packages/app-core/src/connectors/` — removed "Configuration", "Message Handling", "Environment Variables" sections (all create objects and assert own values). Kept real plugin import/validation sections.
+- Cleaned 6 connector e2e test files in `test/` — removed format/regex validation sections (E.164, group IDs, room IDs, relay URLs, MIME types, JSON round-trips, message length constants, rate limit constants). Kept real plugin loading and live API tests.
+- Removed 7 describe.skip blocks from `kitchen-sink.test.ts` (~800 lines of skipped schema/channel mapping tests)

@@ -8,9 +8,20 @@
 import type http from "node:http";
 import { resolveWalletExportRejection as upstreamResolveWalletExportRejection } from "@elizaos/agent/api/server";
 import {
-  syncElizaEnvToMilady,
-  syncMiladyEnvToEliza,
-} from "../config/brand-env.js";
+  getBootConfig,
+  syncBrandEnvToEliza,
+  syncElizaEnvToBrand,
+} from "../config/boot-config.js";
+
+function syncMiladyEnvToEliza(): void {
+  const aliases = getBootConfig().envAliases;
+  if (aliases) syncBrandEnvToEliza(aliases);
+}
+
+function syncElizaEnvToMilady(): void {
+  const aliases = getBootConfig().envAliases;
+  if (aliases) syncElizaEnvToBrand(aliases);
+}
 import { mirrorCompatHeaders } from "./server-cloud-tts";
 import {
   type WalletExportRejection as CompatWalletExportRejection,
@@ -29,7 +40,7 @@ function normalizeCompatReason(reason: string): string {
     .replaceAll("X-Milady-Terminal-Token", "X-Eliza-Terminal-Token");
 }
 
-function normalizeCompatRejection<
+export function normalizeCompatRejection<
   T extends { status: number; reason: string } | null,
 >(rejection: T): T {
   if (!rejection) {
@@ -42,7 +53,7 @@ function normalizeCompatRejection<
   } as T;
 }
 
-function runWithCompatAuthContext<T>(
+export function runWithCompatAuthContext<T>(
   req: Pick<http.IncomingMessage, "headers">,
   operation: () => T,
 ): T {
@@ -123,5 +134,3 @@ export function resolveWalletExportRejection(
   );
 }
 
-// Re-export internal helpers needed by server-security.ts
-export { normalizeCompatRejection, runWithCompatAuthContext };

@@ -76,8 +76,6 @@ export type WgpuTagElement = HTMLElement & {
   off?: (event: "ready", listener: (event: CustomEvent) => void) => void;
 };
 
-/** @deprecated Use `useBranding().appUrl + "/releases/"` instead. */
-export const DEFAULT_RELEASE_NOTES_URL = "https://milady.ai/releases/";
 export const RELEASE_NOTES_PARTITION = "persist:app-release-notes";
 export const SESSION_PARTITIONS = [
   { partition: "persist:default", label: "Default app session" },

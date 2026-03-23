@@ -7,8 +7,6 @@ import { fileURLToPath } from "node:url";
 import { type AgentRuntime, logger } from "@elizaos/core";
 import { StewardApiError, type PolicyResult } from "@stwd/sdk";
 
-// Re-export the full upstream server API.
-export * from "@elizaos/agent/api/server";
 
 // Override the wallet export rejection function with the hardened version
 // that adds rate limiting, audit logging, and a forced confirmation delay.
@@ -45,63 +43,26 @@ import { recordWalletTradeLedgerEntry } from "./wallet-trading-profile";
 const require = createRequire(import.meta.url);
 
 import {
-  syncElizaEnvToMilady,
-  syncMiladyEnvToEliza,
-} from "../config/brand-env.js";
+  getBootConfig,
+  syncBrandEnvToEliza,
+  syncElizaEnvToBrand,
+} from "../config/boot-config.js";
+
+function syncMiladyEnvToEliza(): void {
+  const aliases = getBootConfig().envAliases;
+  if (aliases) syncBrandEnvToEliza(aliases);
+}
+
+function syncElizaEnvToMilady(): void {
+  const aliases = getBootConfig().envAliases;
+  if (aliases) syncElizaEnvToBrand(aliases);
+}
 // Lazy-imported to avoid circular dependency with runtime/eliza.ts
 const lazyEnsureTTS = () =>
   import("../runtime/eliza.js").then((m) => m.ensureMiladyTextToSpeechHandler);
 import { getMiladyStartupEmbeddingAugmentation } from "../runtime/milady-startup-overlay.js";
 import { getCloudSecret } from "./cloud-secrets";
 
-// ---------------------------------------------------------------------------
-// Re-export extracted modules — every function previously exported from this
-// file is still importable via `from "./server"`.
-// ---------------------------------------------------------------------------
-
-export {
-  resolveElevenLabsApiKeyForCloudMode,
-  ensureCloudTtsApiKeyAlias,
-  resolveCloudTtsBaseUrl,
-  resolveCloudTtsCandidateUrls,
-  handleCloudTtsPreviewRoute,
-  mirrorCompatHeaders,
-} from "./server-cloud-tts";
-
-export {
-  SENSITIVE_ENV_RESPONSE_KEYS,
-  filterConfigEnvForResponse,
-} from "./server-config-filter";
-
-export {
-  extractAndPersistOnboardingApiKey,
-  persistCompatOnboardingDefaults,
-  deriveCompatOnboardingReplayBody,
-  isCloudProvisioned,
-} from "./server-onboarding-compat";
-
-export {
-  resolveTradePermissionMode,
-  canUseLocalTradeExecution,
-  resolveWalletExportRejection,
-} from "./server-wallet-trade";
-
-export {
-  resolveMcpTerminalAuthorizationRejection,
-  resolveTerminalRunRejection,
-  resolveWebSocketUpgradeRejection,
-  resolveTerminalRunClientId,
-  ensureApiTokenForBindHost,
-  resolveHyperscapeAuthorizationHeader,
-} from "./server-security";
-
-export { injectApiBaseIntoHtml } from "./server-html";
-
-export {
-  isSafeResetStateDir,
-  findOwnPackageRoot,
-  resolveCorsOrigin,
-} from "./server-startup";
 
 // ---------------------------------------------------------------------------
 // Import from extracted modules for use within this file
@@ -1748,6 +1709,79 @@ async function sendLocalWalletTransaction(
   }
 }
 
+type TradePermissionMode = "user-sign-only" | "manual-local-key" | "agent-auto";
+
+const AGENT_AUTOMATION_HEADER = "x-milady-agent-action";
+
+export function resolveTradePermissionMode(config: {
+  features?: { tradePermissionMode?: unknown } | null;
+}): TradePermissionMode {
+  const raw = config.features?.tradePermissionMode;
+  if (
+    raw === "user-sign-only" ||
+    raw === "manual-local-key" ||
+    raw === "agent-auto"
+  ) {
+    return raw;
+  }
+  return "user-sign-only";
+}
+
+export function canUseLocalTradeExecution(
+  mode: TradePermissionMode,
+  isAgent: boolean,
+): boolean {
+  if (mode === "agent-auto") {
+    return true;
+  }
+  if (mode === "manual-local-key") {
+    return !isAgent;
+  }
+  return false;
+}
+
+function isAgentAutomationRequest(
+  req: Pick<http.IncomingMessage, "headers">,
+): boolean {
+  const raw = req.headers[AGENT_AUTOMATION_HEADER];
+  return typeof raw === "string" && /^(1|true|yes|agent)$/i.test(raw.trim());
+}
+
+interface LocalSignedTransactionResult {
+  hash: string;
+  nonce: number;
+  gasLimit: string;
+}
+
+async function sendLocalWalletTransaction(
+  rpcUrl: string,
+  tx: {
+    to: string;
+    data?: string;
+    value: bigint;
+    chainId: number;
+    nonce?: number;
+  },
+): Promise<LocalSignedTransactionResult> {
+  const evmKey = process.env.EVM_PRIVATE_KEY ?? "";
+  const provider = new ethers.JsonRpcProvider(rpcUrl);
+
+  try {
+    const wallet = new ethers.Wallet(
+      evmKey.startsWith("0x") ? evmKey : `0x${evmKey}`,
+      provider,
+    );
+    const txResponse = await wallet.sendTransaction(tx);
+    return {
+      hash: txResponse.hash,
+      nonce: txResponse.nonce,
+      gasLimit: txResponse.gasLimit?.toString() ?? "0",
+    };
+  } finally {
+    provider.destroy();
+  }
+}
+
 async function handleMiladyCompatRoute(
   req: http.IncomingMessage,
   res: http.ServerResponse,
@@ -2342,21 +2376,25 @@ async function handleMiladyCompatRoute(
     const isBnb = assetSymbol.toUpperCase() === "BNB";
     let decimals = 18;
     if (typeof body.tokenAddress === "string" && body.tokenAddress.trim()) {
-      const provider = new ethers.JsonRpcProvider(
-        resolvePrimaryBscRpcUrl({
-          rpcUrls: rpcReadiness.bscRpcUrls,
-          cloudManagedAccess: rpcReadiness.cloudManagedAccess,
-        }) ?? "https://bsc-dataseed1.binance.org/",
-      );
       try {
-        const tokenContract = new ethers.Contract(
-          body.tokenAddress,
-          ["function decimals() view returns (uint8)"],
-          provider,
+        const provider = new ethers.JsonRpcProvider(
+          resolvePrimaryBscRpcUrl({
+            rpcUrls: rpcReadiness.bscRpcUrls,
+            cloudManagedAccess: rpcReadiness.cloudManagedAccess,
+          }) ?? "https://bsc-dataseed1.binance.org/",
         );
-        decimals = Number(await tokenContract.decimals());
-      } finally {
-        provider.destroy();
+        try {
+          const tokenContract = new ethers.Contract(
+            body.tokenAddress,
+            ["function decimals() view returns (uint8)"],
+            provider,
+          );
+          decimals = Number(await tokenContract.decimals());
+        } finally {
+          provider.destroy();
+        }
+      } catch {
+        // Fall back to 18 decimals.
       }
     }
 

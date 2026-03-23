@@ -7,6 +7,10 @@
 
 import { useCallback, useMemo, useReducer, useRef } from "react";
 import type { AgentStatus } from "../api";
+import {
+  loadPersistedOnboardingComplete,
+  savePersistedOnboardingComplete,
+} from "./persistence";
 import type {
   ActionNotice,
   AppState,
@@ -41,7 +45,7 @@ export interface LifecycleState {
 const INITIAL_LIFECYCLE_STATE: LifecycleState = {
   connected: false,
   agentStatus: null,
-  onboardingComplete: false,
+  onboardingComplete: loadPersistedOnboardingComplete(),
   onboardingUiRevealNonce: 0,
   onboardingLoading: true,
   startupPhase: "starting-backend",
@@ -273,10 +277,10 @@ export function useLifecycleState(): LifecycleStateHook {
     dispatch({ type: "SET_AGENT_STATUS", value: next });
   }, []);
 
-  const setOnboardingComplete = useCallback(
-    (v: boolean) => dispatch({ type: "SET_ONBOARDING_COMPLETE", value: v }),
-    [],
-  );
+  const setOnboardingComplete = useCallback((v: boolean) => {
+    savePersistedOnboardingComplete(v);
+    dispatch({ type: "SET_ONBOARDING_COMPLETE", value: v });
+  }, []);
   const incrementOnboardingRevealNonce = useCallback(
     () => dispatch({ type: "INCREMENT_ONBOARDING_REVEAL_NONCE" }),
     [],

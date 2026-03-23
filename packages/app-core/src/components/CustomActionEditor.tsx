@@ -4,7 +4,7 @@ import {
   client,
 } from "@miladyai/app-core/api";
 import { useApp } from "@miladyai/app-core/state";
-import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@miladyai/ui";
+import { Button, Checkbox, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@miladyai/ui";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -904,13 +904,14 @@ export function CustomActionEditor({
                   <span className="text-xs text-muted">
                     {t("customactioneditor.HeadersOptional")}
                   </span>
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs h-auto p-0"
                     onClick={addHeader}
-                    className="text-xs text-txt hover:opacity-80 cursor-pointer"
                   >
                     {t("customactioneditor.Add")}
-                  </button>
+                  </Button>
                 </div>
                 {httpHeaders.map((header, i) => (
                   <div
@@ -931,13 +932,14 @@ export function CustomActionEditor({
                       placeholder={t("customactioneditor.valueOrParam")}
                       className="flex-1 bg-surface border border-border px-2 py-1.5 text-sm text-txt placeholder:text-muted/50 outline-none focus:border-accent"
                     />
-                    <button
-                      type="button"
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="px-2 text-muted hover:text-txt h-auto"
                       onClick={() => removeHeader(i)}
-                      className="px-2 text-muted hover:text-txt cursor-pointer"
                     >
                       {t("bugreportmodal.Times")}
-                    </button>
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -1006,13 +1008,14 @@ export function CustomActionEditor({
               <span className="text-xs text-muted">
                 {t("customactioneditor.Parameters")}
               </span>
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs h-auto p-0"
                 onClick={addParameter}
-                className="text-xs text-txt hover:opacity-80 cursor-pointer"
               >
                 {t("customactioneditor.AddParameter")}
-              </button>
+              </Button>
             </div>
             {parameters.map((param, paramIdx) => (
               <div
@@ -1038,34 +1041,33 @@ export function CustomActionEditor({
                   className="flex-1 bg-surface border border-border px-2 py-1.5 text-sm text-txt placeholder:text-muted/50 outline-none focus:border-accent"
                 />
                 <span className="flex items-center gap-1 text-xs text-muted cursor-pointer">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={param.required}
-                    onChange={(e) =>
-                      updateParameter(paramIdx, "required", e.target.checked)
+                    onCheckedChange={(checked) =>
+                      updateParameter(paramIdx, "required", !!checked)
                     }
-                    className="cursor-pointer"
                   />
 
                   {t("secretsview.Required")}
                 </span>
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="px-2 text-muted hover:text-txt h-auto"
                   onClick={() => removeParameter(paramIdx)}
-                  className="px-2 text-muted hover:text-txt cursor-pointer"
                 >
                   {t("bugreportmodal.Times")}
-                </button>
+                </Button>
               </div>
             ))}
           </div>
 
           {/* Test Section */}
           <div className="flex flex-col gap-2 border-t border-border pt-3">
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              className="flex items-center justify-between text-xs text-muted hover:text-txt h-auto p-0 w-full"
               onClick={() => setTestExpanded((expanded) => !expanded)}
-              className="flex items-center justify-between text-xs text-muted hover:text-txt cursor-pointer"
             >
               <span>{t("customactioneditor.TestAction")}</span>
               <span>
@@ -1075,7 +1077,7 @@ export function CustomActionEditor({
                   <ChevronRight className="w-3 h-3" />
                 )}
               </span>
-            </button>
+            </Button>
             {testExpanded && (
               <div className="flex flex-col gap-2 pl-2 border-l-2 border-border">
                 {parameters

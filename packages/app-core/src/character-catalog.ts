@@ -11,9 +11,7 @@ import {
   type ResolvedInjectedCharacter,
 } from "./config/boot-config";
 
-// Re-export types with legacy names for backward compatibility.
-export type MiladyCharacterAsset = ResolvedCharacterAsset;
-export type MiladyInjectedCharacter = ResolvedInjectedCharacter;
+
 
 function getResolved() {
   const catalog = getBootConfig().characterCatalog;
@@ -36,9 +34,6 @@ export function getMiladyCharacterAssets(): ResolvedCharacterAsset[] {
   return getResolved().assets;
 }
 
-/** @deprecated Use getMiladyCharacterAssets() instead of this static array. */
-export const MILADY_CHARACTER_ASSETS: ResolvedCharacterAsset[] = [];
-
 export const MILADY_CHARACTER_ASSET_COUNT = 0;
 
 export const DEFAULT_MILADY_CHARACTER_ASSET: ResolvedCharacterAsset | null = null;
@@ -53,9 +48,6 @@ export function getMiladyCharacterAsset(
 export function getMiladyInjectedCharacters(): ResolvedInjectedCharacter[] {
   return getResolved().injectedCharacters;
 }
-
-/** @deprecated Use getMiladyInjectedCharacters() instead. */
-export const MILADY_INJECTED_CHARACTERS: ResolvedInjectedCharacter[] = [];
 
 export const MILADY_INJECTED_CHARACTER_COUNT = 0;
 

@@ -78,8 +78,6 @@ export function dispatchMiladyEvent(
   document.dispatchEvent(new CustomEvent(name, { detail }));
 }
 
-/** @deprecated Use dispatchMiladyEvent directly. */
-export const dispatchElizaEvent = dispatchMiladyEvent;
 
 /** Dispatch a typed custom event on `window`. */
 export function dispatchWindowEvent(
@@ -103,10 +101,3 @@ export type AppEventName = ElizaEventName;
 /** Dispatch a typed custom event on `document`. */
 export const dispatchAppEvent = dispatchElizaEvent;
 
-// ── Deprecated Milady compatibility aliases ─────────────────────────────
-/** @deprecated Use AppDocumentEventName instead. */
-export type MiladyDocumentEventName = ElizaDocumentEventName;
-/** @deprecated Use AppWindowEventName instead. */
-export type MiladyWindowEventName = ElizaWindowEventName;
-/** @deprecated Use AppEventName instead. */
-export type MiladyEventName = ElizaEventName;

@@ -15,9 +15,20 @@ import {
   resolveWebSocketUpgradeRejection as upstreamResolveWebSocketUpgradeRejection,
 } from "@elizaos/agent/api/server";
 import {
-  syncElizaEnvToMilady,
-  syncMiladyEnvToEliza,
-} from "../config/brand-env.js";
+  getBootConfig,
+  syncBrandEnvToEliza,
+  syncElizaEnvToBrand,
+} from "../config/boot-config.js";
+
+function syncMiladyEnvToEliza(): void {
+  const aliases = getBootConfig().envAliases;
+  if (aliases) syncBrandEnvToEliza(aliases);
+}
+
+function syncElizaEnvToMilady(): void {
+  const aliases = getBootConfig().envAliases;
+  if (aliases) syncElizaEnvToBrand(aliases);
+}
 import {
   normalizeCompatRejection,
   runWithCompatAuthContext,

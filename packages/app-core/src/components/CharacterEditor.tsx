@@ -1311,9 +1311,10 @@ export function CharacterEditor({
                                   }
                                   className="min-w-0 flex-1 resize-none border-none bg-transparent p-0 font-mono text-xs leading-normal text-txt [field-sizing:content] min-h-[1.5em] focus-visible:outline-none focus-visible:shadow-none"
                                 />
-                                <button
-                                  type="button"
-                                  className="mt-0.5 shrink-0 text-muted opacity-0 transition-opacity duration-150 cursor-pointer border-none bg-none p-0 hover:text-red-500 group-hover:opacity-100"
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="mt-0.5 shrink-0 text-muted opacity-0 transition-opacity duration-150 p-0 h-auto w-auto hover:text-red-500 group-hover:opacity-100"
                                   onClick={() =>
                                     handleRemoveStyleEntry(key, index)
                                   }
@@ -1331,7 +1332,7 @@ export function CharacterEditor({
                                   >
                                     <path d="M2 2l6 6M8 2l-6 6" />
                                   </svg>
-                                </button>
+                                </Button>
                               </div>
                             ))
                           ) : (
@@ -1415,9 +1416,10 @@ export function CharacterEditor({
                             defaultValue: `Conversation ${ci + 1}`,
                           }).replace("{n}", String(ci + 1))}
                         </span>
-                        <button
-                          type="button"
-                          className="mt-0.5 shrink-0 text-muted opacity-0 transition-opacity duration-150 cursor-pointer border-none bg-none p-0 hover:text-red-500 group-hover:opacity-100"
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="mt-0.5 shrink-0 text-muted opacity-0 transition-opacity duration-150 p-0 h-auto w-auto hover:text-red-500 group-hover:opacity-100"
                           onClick={() => {
                             const updated = [...normalizedMessageExamples];
                             updated.splice(ci, 1);
@@ -1436,7 +1438,7 @@ export function CharacterEditor({
                           >
                             <path d="M2 2l6 6M8 2l-6 6" />
                           </svg>
-                        </button>
+                        </Button>
                       </div>
                       <div className="flex flex-col gap-1">
                         {convo.examples.map((msg, mi) => (
@@ -1523,9 +1525,10 @@ export function CharacterEditor({
                         }}
                         className="h-7 flex-1 rounded-md border border-border bg-white/[0.03] px-2 font-mono text-[11px] text-txt outline-none focus:border-accent"
                       />
-                      <button
-                        type="button"
-                        className="mt-0.5 shrink-0 text-muted opacity-0 transition-opacity duration-150 cursor-pointer border-none bg-none p-0 hover:text-red-500 group-hover:opacity-100"
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="mt-0.5 shrink-0 text-muted opacity-0 transition-opacity duration-150 p-0 h-auto w-auto hover:text-red-500 group-hover:opacity-100"
                         onClick={() => {
                           const updated = [...(d.postExamples ?? [])];
                           updated.splice(pi, 1);
@@ -1544,7 +1547,7 @@ export function CharacterEditor({
                         >
                           <path d="M2 2l6 6M8 2l-6 6" />
                         </svg>
-                      </button>
+                      </Button>
                     </div>
                   ))}
                   {(d.postExamples ?? []).length === 0 && (
@@ -1554,9 +1557,9 @@ export function CharacterEditor({
                       })}
                     </div>
                   )}
-                  <button
-                    type="button"
-                    className="text-[10px] font-bold text-accent cursor-pointer border-none bg-none py-1 px-0 text-left hover:underline"
+                  <Button
+                    variant="ghost"
+                    className="text-[10px] font-bold text-accent p-0 h-auto py-1 text-left hover:underline"
                     onClick={() => {
                       const updated = [...(d.postExamples ?? []), ""];
                       handleFieldEdit("postExamples", updated);
@@ -1564,7 +1567,7 @@ export function CharacterEditor({
                   >
                     +{" "}
                     {t("charactereditor.AddPost", { defaultValue: "Add Post" })}
-                  </button>
+                  </Button>
                 </div>
               </section>
             </div>

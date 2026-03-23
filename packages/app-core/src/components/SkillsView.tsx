@@ -399,25 +399,14 @@ function InstallModal({
               Add skills from the marketplace or a GitHub repository.
             </div>
           </div>
-          <button
-            type="button"
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: "50%",
-              border: "1px solid var(--border)",
-              background: "transparent",
-              color: "var(--muted)",
-              cursor: "pointer",
-              fontSize: 14,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
+          <Button
+            variant="outline"
+            size="icon"
+            className="w-7 h-7 rounded-full text-sm text-muted"
             onClick={onClose}
           >
             ×
-          </button>
+          </Button>
         </div>
 
         {/* Tabs */}
@@ -806,20 +795,14 @@ function EditSkillModal({
               {navigator.platform.includes("Mac") ? "⌘S" : "Ctrl+S"}{" "}
               {t("skillsview.toSave")}
             </span>
-            <button
-              type="button"
-              className="bg-transparent border-0 cursor-pointer text-lg px-2 transition-colors"
-              style={{ color: "var(--muted)" }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = "var(--text)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = "var(--muted)";
-              }}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-lg px-2 text-muted hover:text-txt"
               onClick={onClose}
             >
               ×
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -837,18 +820,13 @@ function EditSkillModal({
               <div className="text-sm font-medium" style={{ color: "#ef4444" }}>
                 {error}
               </div>
-              <button
-                type="button"
-                className="px-3 py-1.5 text-xs font-medium rounded cursor-pointer transition-colors"
-                style={{
-                  background: "var(--bg-hover)",
-                  border: "1px solid var(--border)",
-                  color: "var(--text)",
-                }}
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => loadSource()}
               >
                 {t("common.retry")}
-              </button>
+              </Button>
             </div>
           ) : (
             <textarea
@@ -879,32 +857,21 @@ function EditSkillModal({
             ) : null}
           </div>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className="px-3 py-1.5 text-xs font-medium rounded cursor-pointer transition-colors"
-              style={{
-                background: "transparent",
-                border: "1px solid var(--border)",
-                color: "var(--muted)",
-              }}
+            <Button
+              variant="outline"
+              size="sm"
               onClick={onClose}
             >
               {hasChanges ? "Discard" : "Close"}
-            </button>
-            <button
-              type="button"
-              className="px-3 py-1.5 text-xs font-medium rounded cursor-pointer transition-colors"
-              style={{
-                background: saveSuccess ? "#22c55e" : "#f0b232",
-                border: "none",
-                color: saveSuccess ? "#fff" : "#000",
-                opacity: saving || !hasChanges ? 0.5 : 1,
-              }}
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
               onClick={() => handleSave()}
               disabled={saving || !hasChanges}
             >
               {saving ? "Saving..." : saveSuccess ? "Saved" : "Save"}
-            </button>
+            </Button>
           </div>
         </div>
       </div>

@@ -169,7 +169,7 @@ export function IdentityStep() {
       </div>
 
       {/* ── Roster bar ── */}
-      <div className="ob-identity-roster border-t border-white/5 bg-black/50 p-4 pb-8 backdrop-blur-md">
+      <div className="flex flex-nowrap items-end justify-center gap-0 w-full max-w-[900px] px-2 max-md:px-1 max-md:max-w-full border-t border-white/5 bg-black/50 p-4 pb-8 backdrop-blur-md" style={{ animation: 'ob-roster-slide-up 0.5s cubic-bezier(0.25,0.46,0.45,0.94) 0.15s both' }}>
         <CharacterRoster
           entries={entries}
           selectedId={selectedId}

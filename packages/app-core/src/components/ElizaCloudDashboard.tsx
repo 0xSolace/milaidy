@@ -1366,14 +1366,14 @@ export function CloudDashboard() {
                     </Button>
                   </div>
                 ) : (
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 w-full py-3 text-xs text-muted hover:text-txt transition-colors"
+                  <Button
+                    variant="ghost"
+                    className="flex items-center gap-2 w-full py-3 text-xs text-muted hover:text-txt h-auto justify-start"
                     onClick={() => setShowDeployForm(true)}
                   >
                     <Plus className="w-4 h-4" />
                     {t("elizaclouddashboard.DeployNewAgent")}
-                  </button>
+                  </Button>
                 )}
               </div>
             )}
@@ -1481,13 +1481,14 @@ function AgentDetailSidebar({
         title={t("elizaclouddashboard.agentDetails")}
         className="border-accent/40 bg-accent/5 backdrop-blur-xl rounded-3xl shadow-sm relative overflow-hidden"
       >
-        <button
-          type="button"
-          className="absolute top-4 right-4 p-1 rounded-full hover:bg-bg/50 transition-colors text-muted hover:text-txt-strong"
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute top-4 right-4 p-1 rounded-full text-muted hover:text-txt-strong"
           onClick={onClose}
         >
           <X className="w-5 h-5" />
-        </button>
+        </Button>
 
         <div className="mt-4 space-y-4">
           <div className="grid grid-cols-2 gap-4">

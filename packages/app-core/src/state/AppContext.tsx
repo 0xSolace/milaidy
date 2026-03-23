@@ -96,7 +96,7 @@ import { getBootConfig, setBootConfig } from "../config/boot-config";
 import { BrandingContext, DEFAULT_BRANDING } from "../config/branding";
 import { type AppEmoteEventDetail, dispatchAppEmoteEvent } from "../events";
 import type { UiLanguage } from "../i18n";
-import { pathForTab, type Tab, tabFromPath } from "../navigation";
+import { COMPANION_ENABLED, pathForTab, type Tab, tabFromPath } from "../navigation";
 import {
   canRevertOnboardingTo,
   getFlaminaTopicForOnboardingStep,
@@ -138,7 +138,10 @@ import {
   loadAvatarIndex,
   loadLastNativeTab,
   loadPersistedConnectionMode,
+  loadPersistedOnboardingComplete,
   loadPersistedOnboardingStep,
+  savePersistedOnboardingComplete,
+  loadUiLanguage,
   loadUiTheme,
   mergeStreamingText,
   normalizeAvatarIndex,
@@ -468,7 +471,9 @@ function AppProviderInner({
   const [lastNativeTab, setLastNativeTabState] =
     useState<Tab>(loadLastNativeTab);
   // --- Core state ---
-  const [tab, _setTabRawInner] = useState<Tab>("chat");
+  const [tab, _setTabRawInner] = useState<Tab>(
+    COMPANION_ENABLED ? "companion" : "chat",
+  );
   const initialTabSetRef = useRef(false);
   const setTabRaw = useCallback((t: Tab) => {
     _setTabRawInner(t);
@@ -1920,6 +1925,15 @@ function AppProviderInner({
       setElizaCloudCreditsLow(false);
       setElizaCloudCreditsCritical(false);
     }
+    // Ensure the recurring poll interval is running whenever cloud is connected.
+    // This covers the case where cloud login happens after the initial mount poll
+    // (e.g. during onboarding) — without this the interval would never start.
+    if (isConnected && !elizaCloudPollInterval.current) {
+      elizaCloudPollInterval.current = window.setInterval(
+        () => pollCloudCredits(),
+        60_000,
+      );
+    }
     return isConnected;
   }, []);
 
@@ -3327,7 +3341,10 @@ function AppProviderInner({
           }
         }
       } finally {
-        if (controller == null && chatSendNonceRef.current === sendNonce) {
+        // Unconditionally clear the busy ref when the nonce matches —
+        // the inner finally may not run if an error is thrown between
+        // controller assignment and the inner try block.
+        if (chatSendNonceRef.current === sendNonce) {
           chatSendBusyRef.current = false;
         }
       }
@@ -6200,6 +6217,7 @@ function AppProviderInner({
 
       void loadWorkbench();
       void loadPlugins(); // Hydrate plugin state early so Nav sees streaming-base toggle
+      void loadCharacter(); // Hydrate character data for chat UI agent name + responses
 
       // Hydrate coding agent sessions (also re-called on WS reconnect / server restart)
       const hydratePtySessions = () => {
@@ -6265,11 +6283,12 @@ function AppProviderInner({
           const nextStatus = parseAgentStatusEvent(data);
           if (nextStatus) {
             setAgentStatusIfChanged(nextStatus);
-            // Auto-refresh plugins when agent reports a restart
+            // Auto-refresh plugins and cloud status when agent reports a restart
             if (data.restarted) {
               setPendingRestart(false);
               setPendingRestartReasons([]);
               void loadPlugins();
+              void pollCloudCredits();
               hydratePtySessions();
               ptyHydratedViaWs = true;
             }
@@ -6600,17 +6619,10 @@ function AppProviderInner({
         }
       }
 
-      // Cloud polling — always run the initial poll unconditionally so we can
-      // discover a pre-existing API key / connection. If connected, start the
-      // recurring interval too.
-      pollCloudCredits().then((connected) => {
-        if (connected) {
-          elizaCloudPollInterval.current = window.setInterval(
-            () => pollCloudCredits(),
-            60_000,
-          );
-        }
-      });
+      // Cloud polling — run the initial poll to discover a pre-existing
+      // connection. The recurring interval is started automatically by
+      // pollCloudCredits whenever it detects a connected state.
+      void pollCloudCredits();
 
       // Load tab from URL — use hash in file:// mode (packaged desktop builds)
       const navPath =

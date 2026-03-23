@@ -1667,6 +1667,7 @@ describe("buildCharacterFromConfig", () => {
     } as ElizaConfig;
     const char = buildCharacterFromConfig(config);
 
+    expect(char.name).toBe("Chen");
     expect(Array.isArray(char.topics)).toBe(true);
     expect((char.topics as string[]).length).toBeGreaterThan(0);
   });
@@ -1690,6 +1691,15 @@ describe("buildCharacterFromConfig", () => {
     expect(char.style?.all).toContain("custom rule");
     expect(char.adjectives).toContain("custom-adj");
     expect(char.topics).toEqual(["custom-topic"]);
+  });
+
+  it("does not backfill style/adjectives for non-preset characters", () => {
+    const config = {
+      agents: { list: [{ id: "main", name: "CustomBot" }] },
+    } as ElizaConfig;
+    const char = buildCharacterFromConfig(config);
+
+    expect(char.topics ?? []).toEqual([]);
   });
 });
 

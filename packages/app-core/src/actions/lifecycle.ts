@@ -47,33 +47,6 @@ export const LIFECYCLE_I18N_KEYS: Record<
   },
 };
 
-/** @deprecated Use LIFECYCLE_I18N_KEYS with a translator instead */
-export const LIFECYCLE_MESSAGES: Record<LifecycleAction, LifecycleMessages> = {
-  start: {
-    progress: "Starting agent...",
-    success: "Agent started.",
-    verb: "start",
-    inProgress: "starting",
-  },
-  stop: {
-    progress: "Stopping agent...",
-    success: "Agent stopped.",
-    verb: "stop",
-    inProgress: "stopping",
-  },
-  restart: {
-    progress: "Restarting agent...",
-    success: "Agent restarted.",
-    verb: "restart",
-    inProgress: "restarting",
-  },
-  reset: {
-    progress: "Resetting agent...",
-    success: "Agent reset successfully. GGUF models were not removed.",
-    verb: "reset",
-    inProgress: "resetting",
-  },
-};
 
 export interface LifecycleActionContext {
   client: ElizaClient;
@@ -95,7 +68,9 @@ export async function executeLifecycleAction(
     return null;
   }
   ctx.setBusy(true);
-  ctx.setNotice(LIFECYCLE_MESSAGES[action].progress, "info", 3000);
+  // Using LIFECYCLE_I18N_KEYS[action].progress for backward compatibility
+  // UI layer often expects standard string notices rather than translation keys here natively
+  ctx.setNotice(LIFECYCLE_I18N_KEYS[action].progress, "info", 3000);
 
   try {
     let result: Awaited<ReturnType<ElizaClient["getStatus"]>>;
@@ -113,11 +88,11 @@ export async function executeLifecycleAction(
       default:
         throw new Error(`Unknown lifecycle action: ${action}`);
     }
-    ctx.setNotice(LIFECYCLE_MESSAGES[action].success, "success", 2400);
+    ctx.setNotice(LIFECYCLE_I18N_KEYS[action].success, "success", 2400);
     return result;
   } catch (err) {
     ctx.setNotice(
-      `Failed to ${LIFECYCLE_MESSAGES[action].verb} agent: ${
+      `Failed to ${LIFECYCLE_I18N_KEYS[action].verb} agent: ${
         err instanceof Error ? err.message : "unknown error"
       }`,
       "error",
@@ -158,6 +133,11 @@ export interface StartupErrorState {
   path?: string;
 }
 
+/**
+ * Simple error-to-string formatter (handles Error, string, and fallback JSON).
+ * NOTE: An API-error-aware variant exists in `../state/parsers.ts` that also
+ * extracts structured fields (path, status) from API-like error objects.
+ */
 export function formatStartupErrorDetail(err: unknown): string {
   if (!err) return "";
   if (err instanceof Error) return err.message;

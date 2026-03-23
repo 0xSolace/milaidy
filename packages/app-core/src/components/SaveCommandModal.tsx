@@ -2,7 +2,7 @@
  * Modal for naming and saving a custom /command from selected text.
  */
 
-import { Input } from "@miladyai/ui";
+import { Button, Input } from "@miladyai/ui";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useApp } from "../state";
 
@@ -109,15 +109,16 @@ export function SaveCommandModal({
           >
             {t("savecommandmodal.SaveAsCommand")}
           </span>
-          <button
-            type="button"
-            className="bg-transparent border-0 cursor-pointer text-lg h-6 w-6"
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-lg h-6 w-6"
             style={{ color: "var(--muted)" }}
             onClick={onClose}
             aria-label={t("aria.closeDialog")}
           >
             {t("bugreportmodal.Times")}
-          </button>
+          </Button>
         </div>
 
         <div className="px-5 py-4 flex flex-col gap-3">
@@ -184,26 +185,20 @@ export function SaveCommandModal({
           className="flex justify-end gap-2 px-5 py-3"
           style={{ borderTop: "1px solid var(--border)" }}
         >
-          <button
-            type="button"
-            className="px-3 py-1.5 h-8 text-xs font-medium rounded cursor-pointer transition-colors"
-            style={{
-              background: "transparent",
-              border: "1px solid var(--border)",
-              color: "var(--muted)",
-            }}
+          <Button
+            variant="outline"
+            size="sm"
             onClick={onClose}
           >
             {t("common.cancel")}
-          </button>
-          <button
-            type="button"
-            className="px-3 py-1.5 h-8 text-xs font-medium rounded cursor-pointer transition-colors"
-            style={{ background: "#f0b232", border: "none", color: "#000" }}
+          </Button>
+          <Button
+            variant="default"
+            size="sm"
             onClick={handleSubmit}
           >
             {t("apikeyconfig.save")}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

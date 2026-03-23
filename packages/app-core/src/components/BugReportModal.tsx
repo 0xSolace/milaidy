@@ -1,4 +1,4 @@
-import { Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@miladyai/ui";
+import { Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@miladyai/ui";
 import { ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { client } from "../api";
@@ -245,14 +245,15 @@ export function BugReportModal() {
             >
               {t("bugreportmodal.BugReportSubmitted")}
             </span>
-            <button
-              type="button"
-              className="bg-transparent border-0 cursor-pointer text-lg h-6 w-6"
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-lg h-6 w-6"
               style={{ color: "var(--muted)" }}
               onClick={close}
             >
               {t("bugreportmodal.Times")}
-            </button>
+            </Button>
           </div>
           <div className="px-5 py-6 text-center">
             <p className="text-sm mb-3" style={{ color: "var(--text)" }}>
@@ -272,18 +273,13 @@ export function BugReportModal() {
             className="flex justify-end px-5 py-3"
             style={{ borderTop: "1px solid var(--border)" }}
           >
-            <button
-              type="button"
-              className="px-4 py-1.5 text-xs font-medium rounded cursor-pointer transition-colors"
-              style={{
-                background: "var(--bg-hover)",
-                border: "1px solid var(--border)",
-                color: "var(--text)",
-              }}
+            <Button
+              variant="outline"
+              size="sm"
               onClick={close}
             >
               {t("bugreportmodal.Close")}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -313,14 +309,15 @@ export function BugReportModal() {
           >
             {t("bugreportmodal.ReportABug")}
           </span>
-          <button
-            type="button"
-            className="bg-transparent border-0 cursor-pointer text-lg h-6 w-6"
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-lg h-6 w-6"
             style={{ color: "var(--muted)" }}
             onClick={close}
           >
             {t("bugreportmodal.Times")}
-          </button>
+          </Button>
         </div>
 
         {/* Body */}
@@ -434,9 +431,9 @@ export function BugReportModal() {
 
           {/* Collapsible Logs */}
           <div>
-            <button
-              type="button"
-              className="h-auto p-0 text-[11px] font-bold bg-transparent border-0 cursor-pointer flex items-center gap-1 transition-colors"
+            <Button
+              variant="ghost"
+              className="h-auto p-0 text-[11px] font-bold flex items-center gap-1"
               style={{ color: "var(--muted)" }}
               onClick={() => setShowLogs(!showLogs)}
             >
@@ -446,7 +443,7 @@ export function BugReportModal() {
               />
 
               {t("bugreportmodal.Logs")}
-            </button>
+            </Button>
             {showLogs && (
               <textarea
                 className={`${textareaClass} mt-1 font-mono text-xs`}
@@ -465,41 +462,30 @@ export function BugReportModal() {
           className="flex items-center justify-between gap-2 px-5 py-3 shrink-0"
           style={{ borderTop: "1px solid var(--border)" }}
         >
-          <button
-            type="button"
-            className="px-3 py-1.5 text-xs font-medium rounded cursor-pointer transition-colors"
-            style={{
-              background: "transparent",
-              border: "1px solid var(--border)",
-              color: "var(--muted)",
-            }}
+          <Button
+            variant="outline"
+            size="sm"
             onClick={close}
           >
             {t("common.cancel")}
-          </button>
+          </Button>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className="px-3 py-1.5 text-xs font-medium rounded cursor-pointer transition-colors disabled:opacity-50"
-              style={{
-                background: "var(--bg-hover)",
-                border: "1px solid var(--border)",
-                color: "var(--text)",
-              }}
+            <Button
+              variant="outline"
+              size="sm"
               onClick={handleCopyAndOpen}
               disabled={!canSubmit}
             >
               {copied ? t("bugreportmodal.copied") : t("bugreportmodal.copyAndOpenGitHub")}
-            </button>
-            <button
-              type="button"
-              className="px-3 py-1.5 text-xs font-medium rounded cursor-pointer transition-colors disabled:opacity-50"
-              style={{ background: "#f0b232", border: "none", color: "#000" }}
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
               onClick={handleSubmit}
               disabled={!canSubmit}
             >
               {submitting ? t("bugreportmodal.submitting") : t("bugreportmodal.submit")}
-            </button>
+            </Button>
           </div>
         </div>
       </div>

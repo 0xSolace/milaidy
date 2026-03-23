@@ -4,6 +4,7 @@
 
 import {
   Button,
+  Checkbox,
   Dialog,
   DialogContent,
   DialogHeader,
@@ -352,11 +353,10 @@ function AdvancedSection() {
                 className="rounded-lg bg-bg"
               />
               <label className="flex items-center gap-2 text-sm text-muted">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={exportIncludeLogs}
-                  onChange={(e) =>
-                    setState("exportIncludeLogs", e.target.checked)
+                  onCheckedChange={(checked) =>
+                    setState("exportIncludeLogs", !!checked)
                   }
                 />
 

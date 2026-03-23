@@ -1955,10 +1955,6 @@ import { getBootConfig, setBootConfig } from "../config/boot-config";
 
 declare global {
   interface Window {
-    /** @deprecated Use AppBootConfig.apiBase instead. */
-    __MILADY_API_BASE__?: string;
-    /** @deprecated Use AppBootConfig.apiToken instead. */
-    __MILADY_API_TOKEN__?: string;
   }
 }
 
@@ -2321,7 +2317,6 @@ export class MiladyClient {
     pairingEnabled: boolean;
     expiresAt: number | null;
   }> {
-    console.log("🚨🚨🚨 REAL CLIENT GET_AUTH_STATUS CALLED! 🚨🚨🚨");
     // Retry with exponential backoff — the server may not be ready during boot.
     const maxRetries = 3;
     const baseBackoffMs = 1000;
@@ -4746,13 +4741,6 @@ export class MiladyClient {
     });
   }
 
-  /** @deprecated Prefer {@link sendChatRest} — WebSocket chat may silently drop messages. */
-  sendChat(text: string): void {
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({ type: "chat", text }));
-    }
-  }
-
   // ── Database API ──────────────────────────────────────────────────────
 
   async getDatabaseStatus(): Promise<DatabaseStatus> {
@@ -5728,11 +5716,6 @@ export class MiladyClient {
     throw new Error("Provisioning timed out after 2 minutes");
   }
 }
-
-/** @deprecated Use MiladyClient directly. */
-export type ElizaClient = MiladyClient;
-/** @deprecated Use MiladyClient directly. */
-export const ElizaClient = MiladyClient;
 
 // Singleton
 export const client = new MiladyClient();

@@ -186,7 +186,7 @@ export function ConnectionElizaCloudPreProviderScreen({
                   </p>
                 );
               })()}
-            <p className="onboarding-desc">{t("onboarding.freeCredits")}</p>
+            <p className="text-sm text-[rgba(240,238,250,0.62)] text-center leading-relaxed mt-3">{t("onboarding.freeCredits")}</p>
           </div>
         ) : (
           <div>
@@ -209,7 +209,7 @@ export function ConnectionElizaCloudPreProviderScreen({
               value={onboardingApiKey}
               onChange={handleApiKeyChange}
             />
-            <p className="onboarding-desc">
+            <p className="text-sm text-[rgba(240,238,250,0.62)] text-center leading-relaxed mt-3">
               {t("onboarding.useExistingKey")}{" "}
               <a
                 href="https://elizacloud.ai/dashboard/settings"

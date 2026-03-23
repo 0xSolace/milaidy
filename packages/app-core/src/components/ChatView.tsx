@@ -501,6 +501,7 @@ export function ChatView({ variant = "default" }: ChatViewProps) {
   const {
     agentStatus,
     activeConversationId,
+    characterData,
     chatInput,
     chatSending,
     chatFirstTokenReceived,
@@ -572,7 +573,7 @@ export function ChatView({ variant = "default" }: ChatViewProps) {
     [setState],
   );
 
-  const agentName = agentStatus?.agentName ?? "Agent";
+  const agentName = characterData?.name || agentStatus?.agentName || "Agent";
   const msgs = conversationMessages;
   const visibleMsgs = useMemo(
     () =>

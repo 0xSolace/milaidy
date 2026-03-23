@@ -34,9 +34,18 @@ export interface StewardSignedTransactionResult {
   txHash: string;
 }
 
-export type StewardExecutionResult =
+export interface LocalFallbackResult<TLocal> {
+  mode: "local";
+  pendingApproval: false;
+  fallbackUsed: boolean;
+  stewardError: string | null;
+  result: TLocal;
+}
+
+export type StewardExecutionResult<TLocal> =
   | StewardPendingApprovalResult
-  | StewardSignedTransactionResult;
+  | StewardSignedTransactionResult
+  | LocalFallbackResult<TLocal>;
 
 function normalizeEnvValue(value: string | undefined): string | null {
   const trimmed = value?.trim();
@@ -147,13 +156,14 @@ export function formatStewardError(error: unknown): string {
   return String(error);
 }
 
-export async function signTransactionWithOptionalSteward(params: {
+export async function signTransactionWithOptionalSteward<TLocal>(params: {
   tx: SignTransactionInput;
   env?: NodeJS.ProcessEnv;
   evmAddress?: string | null;
   agentId?: string | null;
   client?: StewardClient | null;
-}): Promise<StewardExecutionResult> {
+  fallback: () => Promise<TLocal>;
+}): Promise<StewardExecutionResult<TLocal>> {
   const env = params.env ?? process.env;
   const evmAddress = params.evmAddress ?? null;
   const agentId =
@@ -166,7 +176,13 @@ export async function signTransactionWithOptionalSteward(params: {
   });
 
   if (!client || !agentId) {
-    throw new Error("Steward API client or agent ID is not configured.");
+    return {
+      mode: "local",
+      pendingApproval: false,
+      fallbackUsed: false,
+      stewardError: null,
+      result: await params.fallback(),
+    };
   }
 
   try {
@@ -189,6 +205,19 @@ export async function signTransactionWithOptionalSteward(params: {
 
     throw new Error("Steward returned an unsigned transaction unexpectedly");
   } catch (error) {
-    throw error;
+    if (error instanceof StewardApiError && error.status === 403) {
+      throw error;
+    }
+
+    console.warn(
+      "[steward-bridge] Steward unreachable, falling back to local signing",
+    );
+    return {
+      mode: "local",
+      pendingApproval: false,
+      fallbackUsed: true,
+      stewardError: formatStewardError(error),
+      result: await params.fallback(),
+    };
   }
 }
