@@ -7008,6 +7008,17 @@ export function AppProvider({
     onboardingStep, onboardingMode, onboardingActiveGuide, onboardingDeferredTasks,
     postOnboardingChecklistDismissed, onboardingOptions, onboardingName, onboardingOwnerName,
     onboardingStyle, onboardingRunMode, onboardingCloudProvider,
+    onboardingSmallModel, onboardingLargeModel, onboardingProvider, onboardingApiKey,
+    onboardingExistingInstallDetected, onboardingDetectedProviders,
+    onboardingRemoteApiBase, onboardingRemoteToken, onboardingRemoteConnecting,
+    onboardingRemoteError, onboardingRemoteConnected,
+    onboardingOpenRouterModel, onboardingPrimaryModel,
+    onboardingTelegramToken, onboardingDiscordToken, onboardingWhatsAppSessionPath,
+    onboardingTwilioAccountSid, onboardingTwilioAuthToken, onboardingTwilioPhoneNumber,
+    onboardingBlooioApiKey, onboardingBlooioPhoneNumber, onboardingGithubToken,
+    onboardingSubscriptionTab, onboardingElizaCloudTab,
+    onboardingSelectedChains, onboardingRpcSelections, onboardingRpcKeys,
+    onboardingAvatar, onboardingRestarting,
     systemWarnings,
   ]);
 
