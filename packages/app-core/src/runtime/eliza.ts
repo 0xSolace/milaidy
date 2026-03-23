@@ -27,6 +27,7 @@ import {
   syncMiladyEnvToEliza,
 } from "../config/brand-env.js";
 import { loadElizaConfig } from "../config/config.js";
+import { ensurePluginManagerAllowed } from "./plugin-manager-guard.js";
 import { STYLE_PRESETS } from "../onboarding-presets.js";
 import { normalizeCharacterMessageExamples } from "../utils/character-message-examples";
 import { ensureRuntimeSqlCompatibility } from "../utils/sql-compat";
@@ -695,6 +696,10 @@ export async function bootElizaRuntime(
       process.env.EMBEDDING_DIMENSION = "384";
     }
 
+    // Called in both bootElizaRuntime and startEliza because they are
+    // independent entry points — CLI uses startEliza, desktop uses boot.
+    ensurePluginManagerAllowed();
+
     const runtime = await upstreamBootElizaRuntime(opts);
     return runtime ? await repairRuntimeAfterBoot(runtime) : runtime;
   } finally {
@@ -720,6 +725,9 @@ export async function startEliza(
     if (!process.env.EMBEDDING_DIMENSION) {
       process.env.EMBEDDING_DIMENSION = "384";
     }
+
+    // See comment in bootElizaRuntime — both entry points need this call.
+    ensurePluginManagerAllowed();
 
     if (options?.serverOnly) {
       let currentRuntime =

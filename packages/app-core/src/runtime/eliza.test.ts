@@ -2913,3 +2913,6 @@ describe("getPgliteRecoveryAction", () => {
     expect(action).toBe("none");
   });
 });
+
+// ensurePluginManagerAllowed tests are in plugin-manager-auto-enable.test.ts
+// (separate file so config mocks don't interfere with other eliza.ts tests).
