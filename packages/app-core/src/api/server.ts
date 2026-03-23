@@ -2758,10 +2758,7 @@ async function handleMiladyCompatRoute(
       } else if (body.runMode !== "cloud") {
         // Non-cloud: only rewrite if deriveCompat changed something
         if (replayBodyRecord !== body) {
-          replayBody = Buffer.from(
-            JSON.stringify(replayBodyRecord),
-            "utf8",
-          );
+          replayBody = Buffer.from(JSON.stringify(replayBodyRecord), "utf8");
         }
       }
     } catch {

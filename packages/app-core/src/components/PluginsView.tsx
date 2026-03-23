@@ -2838,7 +2838,8 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
       <div
         className={`flex-1 min-w-0 ${showDesktopSubgroupSidebar ? "px-5 py-6 sm:px-8 sm:py-8 lg:px-10" : ""}`}
       >
-        {(allowCustomOrder && pluginOrder.length > 0) || showPluginManagementActions ? (
+        {(allowCustomOrder && pluginOrder.length > 0) ||
+        showPluginManagementActions ? (
           <div className="flex items-center gap-3 mb-4 flex-wrap">
             {allowCustomOrder && pluginOrder.length > 0 && (
               <Button

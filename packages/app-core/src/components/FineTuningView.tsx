@@ -753,10 +753,10 @@ export function FineTuningView() {
               {datasets
                 .filter((dataset) => dataset.id)
                 .map((dataset) => (
-                <SelectItem key={dataset.id} value={dataset.id}>
-                  {dataset.id}
-                </SelectItem>
-              ))}
+                  <SelectItem key={dataset.id} value={dataset.id}>
+                    {dataset.id}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
           <Select

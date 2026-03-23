@@ -589,10 +589,10 @@ const SelectComponent: ComponentFn = (props, _children, ctx, el) => {
           {options
             .filter((o) => o.value !== "")
             .map((o) => (
-            <SelectItem key={o.value} value={o.value}>
-              {o.label}
-            </SelectItem>
-          ))}
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
+              </SelectItem>
+            ))}
         </SelectContent>
       </Select>
       {errors?.length ? (
@@ -1096,7 +1096,15 @@ const ButtonComponent: ComponentFn = (props, _children, ctx, el) => {
   return (
     <Button
       type="button"
-      variant={variant === "danger" ? "destructive" : variant === "ghost" ? "ghost" : variant === "secondary" ? "outline" : "default"}
+      variant={
+        variant === "danger"
+          ? "destructive"
+          : variant === "ghost"
+            ? "ghost"
+            : variant === "secondary"
+              ? "outline"
+              : "default"
+      }
       className={`px-3 py-1.5 text-xs font-medium transition-colors ${cls[variant] ?? cls.primary}`}
       disabled={!!props.disabled}
       onClick={() => fireEvent(el.on?.press, ctx)}

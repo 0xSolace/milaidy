@@ -1089,7 +1089,9 @@ export function CloudDashboard() {
                   {BILLING_PRESET_AMOUNTS.map((amount) => (
                     <Button
                       key={amount}
-                      variant={billingAmount === String(amount) ? "default" : "outline"}
+                      variant={
+                        billingAmount === String(amount) ? "default" : "outline"
+                      }
                       size="sm"
                       className={`rounded-lg px-2.5 py-1 text-xs font-medium ${
                         billingAmount !== String(amount)

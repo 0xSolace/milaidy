@@ -418,11 +418,11 @@ export function RenderSelectField(props: FieldRenderProps) {
         {allOptions
           .filter((opt) => opt.value !== "")
           .map((opt) => (
-          <SelectItem key={opt.value} value={opt.value}>
-            {opt.label}
-            {opt.description ? ` — ${opt.description}` : ""}
-          </SelectItem>
-        ))}
+            <SelectItem key={opt.value} value={opt.value}>
+              {opt.label}
+              {opt.description ? ` — ${opt.description}` : ""}
+            </SelectItem>
+          ))}
       </SelectContent>
     </Select>
   );

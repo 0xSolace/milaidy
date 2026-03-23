@@ -396,7 +396,13 @@ export function LifoSandboxView({ inModal }: { inModal?: boolean } = {}) {
 
             <span className={badgeCls}>embedded</span>
 
-            <Button variant="outline" size="sm" type="button" onClick={resetSession} className={btnCls}>
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={resetSession}
+              className={btnCls}
+            >
               {t("lifosandboxview.Reset")}
             </Button>
           </div>
