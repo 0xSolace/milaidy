@@ -26,21 +26,17 @@ import {
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  patchAgentSkillsCatalogFetch,
   patchAutonomousMiladyOnboardingPresets,
   patchAutonomousTypeError,
   patchBrokenElizaCoreRuntimeDists,
   patchBunExports,
-  patchElizaCoreStreamingRetryPlaceholder,
-  patchElizaCoreStreamingTtsHandlerGuard,
   patchExtensionlessJsExports,
   patchMissingLifecycleScript,
   patchNobleHashesCompat,
-  patchPluginVisionPermissionHandling,
   patchProperLockfileSignalExitCompat,
   warnStaleBunCache,
 } from "./lib/patch-bun-exports.mjs";
-import { patchElizaCoreClientChatEvaluate } from "./lib/patch-eliza-core-client-chat-eval.mjs";
+
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
@@ -70,7 +66,6 @@ try {
 } catch {
   // May fail if the version already has the script or JSON is already patched.
 }
-patchAgentSkillsCatalogFetch(root);
 
 // @noble/curves and @noble/hashes publish ".js" subpath exports, while ethers
 // imports extensionless paths like "@noble/curves/secp256k1" and
@@ -84,15 +79,12 @@ patchExtensionlessJsExports(root, "@noble/hashes");
 patchNobleHashesCompat(root);
 patchProperLockfileSignalExitCompat(root);
 patchBrokenElizaCoreRuntimeDists(root);
-patchElizaCoreStreamingTtsHandlerGuard(root);
-patchElizaCoreStreamingRetryPlaceholder(root);
 try {
   patchAutonomousMiladyOnboardingPresets(root);
 } catch {
   // Source file may not exist (moved to @miladyai/shared).
 }
 patchAutonomousTypeError(root);
-patchPluginVisionPermissionHandling(root);
 
 /**
  * Patch @elizaos/plugin-pdf broken ESM bundle.
@@ -293,7 +285,6 @@ function patchAutonomousResetAllowedSegments() {
   );
 }
 patchAutonomousResetAllowedSegments();
-patchElizaCoreClientChatEvaluate(root);
 
 /**
  * Vite caches prebundled dependencies under node_modules/.vite. When patch-deps

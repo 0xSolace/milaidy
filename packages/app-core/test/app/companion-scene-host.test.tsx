@@ -15,6 +15,11 @@ vi.mock("@miladyai/app-core/state", () => ({
   getVrmPreviewUrl: () => "/vrms/previews/milady-1.png",
   getVrmUrl: () => "/vrms/milady-1.vrm.gz",
   VRM_COUNT: 24,
+  useCompanionSceneConfig: () => ({
+    companionVrmPowerMode: "balanced",
+    companionHalfFramerateMode: "when_saving_power",
+    companionAnimateWhenHidden: false,
+  }),
 }));
 
 vi.mock("@miladyai/app-core/utils", () => ({

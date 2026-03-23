@@ -18,6 +18,11 @@ vi.mock("@miladyai/app-core/state", () => ({
   getVrmTitle: (index: number) => `MILADY-${index}`,
   VRM_COUNT: 24,
   CUSTOM_ONBOARDING_STEPS: [],
+  useCompanionSceneConfig: () => ({
+    companionVrmPowerMode: "balanced",
+    companionHalfFramerateMode: "when_saving_power",
+    companionAnimateWhenHidden: false,
+  }),
 }));
 
 vi.mock("@miladyai/app-core/components/avatar/VrmViewer", () => ({

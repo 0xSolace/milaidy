@@ -65,46 +65,33 @@ describe("SWITCH_STREAM_SOURCE action", () => {
 
   // ── Invalid sourceType ────────────────────────────────────────────────────
 
-  it("returns error for invalid sourceType", async () => {
-    const result = await callHandler({ sourceType: "screen-capture" });
-    const { text, success } = result as { text: string; success: boolean };
-
-    expect(success).toBe(false);
-    expect(text).toContain("Invalid sourceType");
-    expect(text).toContain("screen-capture");
-    expect(text).toContain("stream-tab");
-    expect(text).toContain("game");
-    expect(text).toContain("custom-url");
+  it("throws for invalid sourceType", async () => {
+    await expect(callHandler({ sourceType: "screen-capture" })).rejects.toThrow(
+      /Invalid sourceType/,
+    );
   });
 
-  it("returns error for empty string sourceType that is not in valid set", async () => {
-    const result = await callHandler({ sourceType: "unknown-type" });
-    const { text, success } = result as { text: string; success: boolean };
-
-    expect(success).toBe(false);
-    expect(text).toContain("Invalid sourceType");
+  it("throws for empty string sourceType that is not in valid set", async () => {
+    await expect(callHandler({ sourceType: "unknown-type" })).rejects.toThrow(
+      /Invalid sourceType/,
+    );
   });
 
   // ── custom-url validation ────────────────────────────────────────────────
 
-  it("returns error when sourceType is custom-url but customUrl is missing", async () => {
-    const result = await callHandler({ sourceType: "custom-url" });
-    const { text, success } = result as { text: string; success: boolean };
-
-    expect(success).toBe(false);
-    expect(text).toContain("customUrl is required");
-    expect(text).toContain("custom-url");
+  it("throws when sourceType is custom-url but customUrl is missing", async () => {
+    await expect(callHandler({ sourceType: "custom-url" })).rejects.toThrow(
+      /customUrl is required/,
+    );
   });
 
-  it("returns error when sourceType is custom-url and customUrl is empty string", async () => {
-    const result = await callHandler({
-      sourceType: "custom-url",
-      customUrl: "",
-    });
-    const { text, success } = result as { text: string; success: boolean };
-
-    expect(success).toBe(false);
-    expect(text).toContain("customUrl is required");
+  it("throws when sourceType is custom-url and customUrl is empty string", async () => {
+    await expect(
+      callHandler({
+        sourceType: "custom-url",
+        customUrl: "",
+      }),
+    ).rejects.toThrow(/customUrl is required/);
   });
 
   // ── Successful POST ───────────────────────────────────────────────────────
@@ -208,105 +195,68 @@ describe("SWITCH_STREAM_SOURCE action", () => {
 
   // ── API error responses ───────────────────────────────────────────────────
 
-  it("handles non-ok HTTP responses", async () => {
+  it("throws for non-ok HTTP responses", async () => {
     const mockFetch = globalThis.fetch as ReturnType<typeof vi.fn>;
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 500,
     });
 
-    const result = await callHandler({ sourceType: "stream-tab" });
-    const { text, success } = result as { text: string; success: boolean };
-
-    expect(success).toBe(false);
-    expect(text).toContain("HTTP 500");
+    await expect(callHandler({ sourceType: "stream-tab" })).rejects.toThrow(
+      /HTTP 500/,
+    );
   });
 
-  it("handles 404 error", async () => {
+  it("throws for 404 error", async () => {
     const mockFetch = globalThis.fetch as ReturnType<typeof vi.fn>;
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 404,
     });
 
-    const result = await callHandler({ sourceType: "game" });
-    const { text, success } = result as { text: string; success: boolean };
-
-    expect(success).toBe(false);
-    expect(text).toContain("HTTP 404");
+    await expect(callHandler({ sourceType: "game" })).rejects.toThrow(
+      /HTTP 404/,
+    );
   });
 
   // ── Network / fetch errors ───────────────────────────────────────────────
 
-  it("handles fetch errors gracefully", async () => {
+  it("propagates fetch errors", async () => {
     const mockFetch = globalThis.fetch as ReturnType<typeof vi.fn>;
     mockFetch.mockRejectedValueOnce(new Error("ECONNREFUSED"));
 
-    const result = await callHandler({ sourceType: "stream-tab" });
-    const { text, success } = result as { text: string; success: boolean };
-
-    expect(success).toBe(false);
-    expect(text).toContain("Failed to switch stream source");
-    expect(text).toContain("ECONNREFUSED");
+    await expect(callHandler({ sourceType: "stream-tab" })).rejects.toThrow(
+      /ECONNREFUSED/,
+    );
   });
 
-  it("handles timeout errors gracefully", async () => {
+  it("propagates timeout errors", async () => {
     const mockFetch = globalThis.fetch as ReturnType<typeof vi.fn>;
     mockFetch.mockRejectedValueOnce(new Error("The operation was aborted"));
 
-    const result = await callHandler({ sourceType: "game" });
-    const { text, success } = result as { text: string; success: boolean };
-
-    expect(success).toBe(false);
-    expect(text).toContain("Failed to switch stream source");
-    expect(text).toContain("aborted");
+    await expect(callHandler({ sourceType: "game" })).rejects.toThrow(
+      /aborted/,
+    );
   });
 
-  it("handles non-Error thrown values", async () => {
+  it("propagates non-Error thrown values", async () => {
     const mockFetch = globalThis.fetch as ReturnType<typeof vi.fn>;
     mockFetch.mockRejectedValueOnce("string error");
 
-    const result = await callHandler({ sourceType: "stream-tab" });
-    const { text, success } = result as { text: string; success: boolean };
-
-    expect(success).toBe(false);
-    expect(text).toContain("Failed to switch stream source");
-    expect(text).toContain("string error");
+    await expect(callHandler({ sourceType: "stream-tab" })).rejects.toBe(
+      "string error",
+    );
   });
 
   // ── Default / missing parameters ─────────────────────────────────────────
 
-  it("defaults sourceType to stream-tab when not provided", async () => {
-    const mockFetch = globalThis.fetch as ReturnType<typeof vi.fn>;
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ status: "ok" }),
-    });
-
-    const result = await callHandler({});
-    const { text, success } = result as { text: string; success: boolean };
-
-    expect(success).toBe(true);
-    expect(text).toContain("stream-tab");
-
-    const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
-    const body = JSON.parse(init.body as string);
-    expect(body.sourceType).toBe("stream-tab");
+  it("throws when sourceType is not provided", async () => {
+    await expect(callHandler({})).rejects.toThrow(/Invalid sourceType/);
   });
 
-  it("handles missing options entirely", async () => {
-    const mockFetch = globalThis.fetch as ReturnType<typeof vi.fn>;
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ status: "ok" }),
-    });
-
-    const result = await switchStreamSourceAction.handler(
-      {} as never,
-      undefined,
-    );
-    const { success } = result as { success: boolean };
-
-    expect(success).toBe(true);
+  it("throws when options are missing", async () => {
+    await expect(
+      switchStreamSourceAction.handler({} as never, undefined),
+    ).rejects.toThrow(/Invalid sourceType/);
   });
 });

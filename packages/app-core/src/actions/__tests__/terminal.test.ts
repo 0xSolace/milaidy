@@ -20,7 +20,7 @@ describe("terminalAction", () => {
     vi.unstubAllGlobals();
   });
 
-  it("requires a command", async () => {
+  it("returns FAIL for empty command", async () => {
     const result = await terminalAction.handler(
       undefined,
       { roomId: "room", content: { text: "" } },
@@ -78,7 +78,7 @@ describe("terminalAction", () => {
     );
 
     expect(result.success).toBe(true);
-    expect(result.text).toBe("Running in terminal: `bun --version`");
+    expect(result.text).toBe("Running in terminal: \`bun --version\`");
     expect(result.data).toEqual({ command: "bun --version" });
   });
 

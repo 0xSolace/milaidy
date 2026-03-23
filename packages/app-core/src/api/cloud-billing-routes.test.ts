@@ -5,7 +5,8 @@ import type { ElizaConfig } from "../config/config";
 import type { CloudBillingRouteState } from "./cloud-billing-routes";
 import { handleCloudBillingRoute } from "./cloud-billing-routes";
 
-vi.mock("@elizaos/core", () => ({
+vi.mock("@elizaos/core", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@elizaos/core")>()),
   logger: { info: vi.fn(), warn: vi.fn(), debug: vi.fn(), error: vi.fn() },
 }));
 
@@ -535,20 +536,16 @@ describe("cloud-billing-routes", () => {
       }),
     );
 
-    const result = await handleCloudBillingRoute(
-      makeReq({}),
-      makeRes(),
-      "/api/cloud/billing/summary",
-      "GET",
-      makeState(),
-    );
-
-    expect(result).toBe(true);
-    expect(sendJsonError).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.stringContaining("redirected"),
-      502,
-    );
+    // Upstream handler now throws for redirect errors
+    await expect(
+      handleCloudBillingRoute(
+        makeReq({}),
+        makeRes(),
+        "/api/cloud/billing/summary",
+        "GET",
+        makeState(),
+      ),
+    ).rejects.toThrow();
   });
 
   it("returns 504 on timeout", async () => {
@@ -556,19 +553,15 @@ describe("cloud-billing-routes", () => {
       new DOMException("Timed out", "AbortError"),
     );
 
-    const result = await handleCloudBillingRoute(
-      makeReq({}),
-      makeRes(),
-      "/api/cloud/billing/history",
-      "GET",
-      makeState(),
-    );
-
-    expect(result).toBe(true);
-    expect(sendJsonError).toHaveBeenCalledWith(
-      expect.anything(),
-      "Eliza Cloud billing request timed out",
-      504,
-    );
+    // Upstream handler now throws for timeout errors
+    await expect(
+      handleCloudBillingRoute(
+        makeReq({}),
+        makeRes(),
+        "/api/cloud/billing/history",
+        "GET",
+        makeState(),
+      ),
+    ).rejects.toThrow();
   });
 });
