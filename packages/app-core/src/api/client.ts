@@ -83,6 +83,7 @@ import {
 } from "@miladyai/agent/contracts/wallet";
 import type { ConfigUiHint } from "../types";
 import { stripAssistantStageDirections } from "../utils/assistant-text";
+import { getElizaApiBase, getElizaApiToken } from "../utils/eliza-globals";
 import { mergeStreamingText } from "../utils/streaming-text";
 
 export type {
@@ -2033,7 +2034,8 @@ export class MiladyClient {
     this._token = token?.trim() || stored || null;
     // Priority: explicit arg > session storage > boot config > same origin (Vite proxy)
     const bootBase = getBootConfig().apiBase;
-    this._baseUrl = baseUrl ?? storedBase ?? bootBase ?? "";
+    this._baseUrl =
+      baseUrl ?? storedBase ?? bootBase ?? getElizaApiBase() ?? "";
   }
 
   /**
@@ -2045,7 +2047,7 @@ export class MiladyClient {
    */
   private get baseUrl(): string {
     if (!this._explicitBase) {
-      const bootBase = getBootConfig().apiBase;
+      const bootBase = getBootConfig().apiBase ?? getElizaApiBase();
       if (bootBase && bootBase !== this._baseUrl) {
         this._baseUrl = bootBase;
       }
@@ -2058,6 +2060,8 @@ export class MiladyClient {
     const bootToken = getBootConfig().apiToken;
     if (typeof bootToken === "string" && bootToken.trim())
       return bootToken.trim();
+    const injectedToken = getElizaApiToken();
+    if (injectedToken) return injectedToken;
     return null;
   }
 

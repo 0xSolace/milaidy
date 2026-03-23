@@ -7,6 +7,7 @@
  * initial startup and resolve assets against that stable base.
  */
 import { getBootConfig } from "../config/boot-config";
+import { getElizaApiBase } from "./eliza-globals";
 
 type AssetUrlResolveOptions = {
   currentUrl?: string;
@@ -102,7 +103,7 @@ export function resolveAppAssetUrl(
  * This helper reads the API base from the boot config.
  */
 export function resolveApiUrl(apiPath: string): string {
-  const base = getBootConfig().apiBase;
+  const base = getBootConfig().apiBase ?? getElizaApiBase();
   if (base) return `${base}${apiPath}`;
   return apiPath;
 }

@@ -20,6 +20,7 @@ import {
   invokeDesktopBridgeRequest,
   subscribeDesktopBridgeEvent,
 } from "@miladyai/app-core/bridge/electrobun-rpc.js";
+import type { EventCallback } from "../../../shared-types.js";
 import type {
   SpeakOptions,
   SpeakResult,
@@ -32,8 +33,7 @@ import type {
   TalkModeTranscriptEvent,
   TTSCompleteEvent,
   TTSSpeakingEvent,
-} from "@miladyai/app-core/src/definitions";
-import type { EventCallback } from "../../../shared-types.js";
+} from "../../src/definitions";
 
 type TalkModeEvent =
   | TalkModeStateEvent

@@ -20,6 +20,7 @@ import {
   invokeDesktopBridgeRequest,
   subscribeDesktopBridgeEvent,
 } from "@miladyai/app-core/bridge/electrobun-rpc.js";
+import type { EventCallback } from "../../../shared-types.js";
 import type {
   AutoLaunchOptions,
   DesktopPlugin,
@@ -34,8 +35,7 @@ import type {
   TrayOptions,
   WindowBounds,
   WindowOptions,
-} from "@miladyai/app-core/src/definitions";
-import type { EventCallback } from "../../../shared-types.js";
+} from "../../src/definitions";
 
 type DesktopEventPayloads = {
   trayClick: TrayClickEvent;

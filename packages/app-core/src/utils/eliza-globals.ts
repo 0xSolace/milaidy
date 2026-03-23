@@ -1,23 +1,42 @@
 export type ElizaWindow = Window & {
   __ELIZA_API_BASE__?: string;
   __ELIZA_API_TOKEN__?: string;
+  __MILADY_API_BASE__?: string;
+  __MILADY_API_TOKEN__?: string;
 };
 
 function getElizaWindow(): ElizaWindow | null {
   return typeof window === "undefined" ? null : (window as ElizaWindow);
 }
 
+function readTrimmedString(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
 export function getElizaApiBase(): string | undefined {
-  return getElizaWindow()?.__ELIZA_API_BASE__;
+  const elizaWindow = getElizaWindow();
+  return (
+    readTrimmedString(elizaWindow?.__MILADY_API_BASE__) ??
+    readTrimmedString(elizaWindow?.__ELIZA_API_BASE__)
+  );
 }
 
 export function getElizaApiToken(): string | undefined {
-  return getElizaWindow()?.__ELIZA_API_TOKEN__;
+  const elizaWindow = getElizaWindow();
+  return (
+    readTrimmedString(elizaWindow?.__MILADY_API_TOKEN__) ??
+    readTrimmedString(elizaWindow?.__ELIZA_API_TOKEN__)
+  );
 }
 
 export function setElizaApiBase(value: string): void {
   const elizaWindow = getElizaWindow();
   if (elizaWindow) {
+    elizaWindow.__MILADY_API_BASE__ = value;
     elizaWindow.__ELIZA_API_BASE__ = value;
   }
 }
@@ -25,6 +44,7 @@ export function setElizaApiBase(value: string): void {
 export function clearElizaApiBase(): void {
   const elizaWindow = getElizaWindow();
   if (elizaWindow) {
+    delete elizaWindow.__MILADY_API_BASE__;
     delete elizaWindow.__ELIZA_API_BASE__;
   }
 }
@@ -32,6 +52,7 @@ export function clearElizaApiBase(): void {
 export function setElizaApiToken(value: string): void {
   const elizaWindow = getElizaWindow();
   if (elizaWindow) {
+    elizaWindow.__MILADY_API_TOKEN__ = value;
     elizaWindow.__ELIZA_API_TOKEN__ = value;
   }
 }
@@ -39,6 +60,7 @@ export function setElizaApiToken(value: string): void {
 export function clearElizaApiToken(): void {
   const elizaWindow = getElizaWindow();
   if (elizaWindow) {
+    delete elizaWindow.__MILADY_API_TOKEN__;
     delete elizaWindow.__ELIZA_API_TOKEN__;
   }
 }

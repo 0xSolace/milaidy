@@ -1623,7 +1623,7 @@ export async function installDatabaseTrajectoryLogger(
       const tableReady = await ensureTrajectoriesTable(runtime);
       if (!tableReady) return;
 
-      await startTrajectoryStepInDatabase({
+      await writeStartedTrajectoryStep({
         runtime,
         stepId,
         source: options?.source ?? "chat",
@@ -1652,7 +1652,7 @@ export async function installDatabaseTrajectoryLogger(
         const tableReady = await ensureTrajectoriesTable(runtime);
         if (!tableReady) return;
 
-        await completeTrajectoryStepInDatabase({
+        await writeCompletedTrajectoryStep({
           runtime,
           stepId: stepIdOrTrajectoryId,
           status: status as TrajectoryStatus,
@@ -1962,6 +1962,51 @@ export async function installDatabaseTrajectoryLogger(
   void ensureTrajectoriesTable(runtime);
 }
 
+async function writeStartedTrajectoryStep({
+  runtime,
+  stepId,
+  source,
+  metadata,
+}: StartStepOptions): Promise<void> {
+  const now = Date.now();
+  const trajectory =
+    (await loadTrajectoryById(runtime, stepId)) ??
+    createBaseTrajectory(stepId, now, source, metadata);
+
+  trajectory.source = source?.trim() || trajectory.source || "runtime";
+  trajectory.status = "active";
+  trajectory.metadata = mergeMetadata(trajectory.metadata, metadata);
+  trajectory.startTime = Math.min(trajectory.startTime, now);
+  trajectory.endTime = null;
+  ensureStep(trajectory, stepId, now);
+  trajectory.updatedAt = new Date(now).toISOString();
+
+  await saveTrajectory(runtime, trajectory);
+}
+
+async function writeCompletedTrajectoryStep({
+  runtime,
+  stepId,
+  status = "completed",
+  source,
+  metadata,
+}: CompleteStepOptions): Promise<void> {
+  const now = Date.now();
+  const trajectory =
+    (await loadTrajectoryById(runtime, stepId)) ??
+    createBaseTrajectory(stepId, now, source, metadata);
+
+  trajectory.source = source?.trim() || trajectory.source || "runtime";
+  trajectory.status = normalizeStatus(status, "completed");
+  trajectory.metadata = mergeMetadata(trajectory.metadata, metadata);
+  trajectory.endTime = Math.max(trajectory.endTime ?? now, now);
+  trajectory.startTime = Math.min(trajectory.startTime, now);
+  ensureStep(trajectory, stepId, now);
+  trajectory.updatedAt = new Date(now).toISOString();
+
+  await saveTrajectory(runtime, trajectory);
+}
+
 export async function startTrajectoryStepInDatabase({
   runtime,
   stepId,
@@ -1976,20 +2021,12 @@ export async function startTrajectoryStepInDatabase({
   if (!tableReady) return false;
 
   await enqueueStepWrite(runtime, normalizedStepId, async () => {
-    const now = Date.now();
-    const trajectory =
-      (await loadTrajectoryById(runtime, normalizedStepId)) ??
-      createBaseTrajectory(normalizedStepId, now, source, metadata);
-
-    trajectory.source = source?.trim() || trajectory.source || "runtime";
-    trajectory.status = "active";
-    trajectory.metadata = mergeMetadata(trajectory.metadata, metadata);
-    trajectory.startTime = Math.min(trajectory.startTime, now);
-    trajectory.endTime = null;
-    ensureStep(trajectory, normalizedStepId, now);
-    trajectory.updatedAt = new Date(now).toISOString();
-
-    await saveTrajectory(runtime, trajectory);
+    await writeStartedTrajectoryStep({
+      runtime,
+      stepId: normalizedStepId,
+      source,
+      metadata,
+    });
   });
 
   return true;
@@ -2010,20 +2047,13 @@ export async function completeTrajectoryStepInDatabase({
   if (!tableReady) return false;
 
   await enqueueStepWrite(runtime, normalizedStepId, async () => {
-    const now = Date.now();
-    const trajectory =
-      (await loadTrajectoryById(runtime, normalizedStepId)) ??
-      createBaseTrajectory(normalizedStepId, now, source, metadata);
-
-    trajectory.source = source?.trim() || trajectory.source || "runtime";
-    trajectory.status = normalizeStatus(status, "completed");
-    trajectory.metadata = mergeMetadata(trajectory.metadata, metadata);
-    trajectory.endTime = Math.max(trajectory.endTime ?? now, now);
-    trajectory.startTime = Math.min(trajectory.startTime, now);
-    ensureStep(trajectory, normalizedStepId, now);
-    trajectory.updatedAt = new Date(now).toISOString();
-
-    await saveTrajectory(runtime, trajectory);
+    await writeCompletedTrajectoryStep({
+      runtime,
+      stepId: normalizedStepId,
+      status,
+      source,
+      metadata,
+    });
   });
 
   return true;
@@ -2392,7 +2422,7 @@ export class DatabaseTrajectoryLogger extends Service {
       const tableReady = await ensureTrajectoriesTable(this.runtime);
       if (!tableReady) return;
 
-      await startTrajectoryStepInDatabase({
+      await writeStartedTrajectoryStep({
         runtime: this.runtime,
         stepId,
         source: options?.source ?? "chat",
@@ -2431,7 +2461,7 @@ export class DatabaseTrajectoryLogger extends Service {
         const tableReady = await ensureTrajectoriesTable(this.runtime);
         if (!tableReady) return;
 
-        await completeTrajectoryStepInDatabase({
+        await writeCompletedTrajectoryStep({
           runtime: this.runtime,
           stepId: stepIdOrTrajectoryId,
           status,

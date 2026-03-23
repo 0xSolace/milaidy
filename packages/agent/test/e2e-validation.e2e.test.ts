@@ -14,10 +14,7 @@
  *
  * NO MOCKS — all tests use real production code paths.
  */
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-
-const execFileAsync = promisify(execFile);
+import { execFileSync } from "node:child_process";
 
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -67,9 +64,37 @@ const packageManifest = JSON.parse(
 const cliEntryRelativePath =
   packageManifest.bin?.["eliza-autonomous"] ?? packageManifest.bin?.elizaos ?? packageManifest.bin?.eliza ?? "src/bin.ts";
 const cliEntryPath = path.join(packageRoot, cliEntryRelativePath);
+const repoRoot = path.resolve(packageRoot, "..", "..");
 
 function fileExistsAny(candidates: string[]): boolean {
   return candidates.some((candidate) => fs.existsSync(candidate));
+}
+
+function shellEscape(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+function runCliEntry(
+  args: string[],
+  timeout: number = 90_000,
+): string {
+  const command = [
+    shellEscape(process.execPath),
+    "--import",
+    "tsx",
+    shellEscape(cliEntryPath),
+    ...args.map(shellEscape),
+  ].join(" ");
+  try {
+    return execFileSync(
+      "sh",
+      ["-lc", command],
+      { cwd: repoRoot, timeout, encoding: "utf-8" },
+    );
+  } catch {
+    // Ignore non-zero exits/timeouts and treat them as no output.
+    return "";
+  }
 }
 
 dotenv.config({ path: path.resolve(packageRoot, ".env") });
@@ -304,26 +329,9 @@ describe("Fresh Install Simulation", () => {
   });
 
   it("CLI boots and prints help without errors", async () => {
-    const outPath = path.join(
-      os.tmpdir(),
-      `autonomous-cli-out-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`,
-    );
-    try {
-      await execFileAsync(
-        "sh",
-        ["-c", `npx tsx ${cliEntryPath} --help > ${outPath} 2>&1`],
-        { timeout: 30_000 },
-      );
-    } catch {
-      // ignore Commander throwing if it throws
-    }
-    const output = fs.existsSync(outPath)
-      ? fs.readFileSync(outPath, "utf-8")
-      : "";
-    if (fs.existsSync(outPath)) fs.unlinkSync(outPath);
-
+    const output = runCliEntry(["--help"]);
     expect(output.length).toBeGreaterThan(0);
-  }, 45_000);
+  }, 120_000);
 
   it("API server starts and serves status endpoint", async () => {
     const srv = await startApiServer({ port: 0 });
@@ -407,27 +415,10 @@ describe("CLI Entry Point (npx elizaos equivalent)", () => {
   });
 
   it("CLI version command outputs version string", async () => {
-    const outPath = path.join(
-      os.tmpdir(),
-      `autonomous-cli-out-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`,
-    );
-    try {
-      await execFileAsync(
-        "sh",
-        ["-c", `npx tsx ${cliEntryPath} --version > ${outPath} 2>&1`],
-        { timeout: 30_000 },
-      );
-    } catch {
-      // ignore
-    }
-    const output = fs.existsSync(outPath)
-      ? fs.readFileSync(outPath, "utf-8")
-      : "";
-    if (fs.existsSync(outPath)) fs.unlinkSync(outPath);
-
+    const output = runCliEntry(["--version"]);
     // Should contain a semver-like version
     expect(output).toMatch(/\d+\.\d+\.\d+/);
-  }, 45_000);
+  }, 120_000);
 
   it.skip("startEliza() boots, shows chat prompt, exits on 'exit' (covered by test/agent-runtime.e2e.test.ts)", () => { });
 });

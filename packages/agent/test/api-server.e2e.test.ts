@@ -1852,6 +1852,35 @@ describe("API Server E2E (no runtime)", () => {
       }
     });
 
+    it("uses the configured preset catchphrase for intro greetings", async () => {
+      const runtime = createRuntimeForChatSseTests();
+      const streamServer = await startApiServer({ port: 0, runtime });
+      try {
+        const saveConfig = await req(streamServer.port, "PUT", "/api/config", {
+          ui: { presetId: "chen" },
+        });
+        expect(saveConfig.status).toBe(200);
+
+        const create = await req(
+          streamServer.port,
+          "POST",
+          "/api/conversations",
+          {
+            title: "Preset greeting test",
+            includeGreeting: true,
+            lang: "en",
+          },
+        );
+        expect(create.status).toBe(200);
+        expect(create.data.greeting).toMatchObject({
+          text: "you good?",
+          generated: true,
+        });
+      } finally {
+        await streamServer.close();
+      }
+    });
+
     it("POST /api/conversations/:id/greeting is idempotent after the intro is stored", async () => {
       const runtime = createRuntimeForChatSseTests();
       const streamServer = await startApiServer({ port: 0, runtime });
@@ -1868,8 +1897,15 @@ describe("API Server E2E (no runtime)", () => {
         );
         expect(create.status).toBe(200);
         const conversation = create.data.conversation as { id?: string };
+        const createdGreeting = create.data.greeting as {
+          text?: string;
+          agentName?: string;
+          generated?: boolean;
+        };
         const conversationId = conversation.id ?? "";
         expect(conversationId.length).toBeGreaterThan(0);
+        expect(typeof createdGreeting.text).toBe("string");
+        expect((createdGreeting.text ?? "").length).toBeGreaterThan(0);
 
         const greeting = await req(
           streamServer.port,
@@ -1878,9 +1914,9 @@ describe("API Server E2E (no runtime)", () => {
         );
         expect(greeting.status).toBe(200);
         expect(greeting.data).toMatchObject({
-          text: "Welcome to the conversation.",
-          agentName: "ChatStreamAgent",
-          generated: true,
+          text: createdGreeting.text,
+          agentName: createdGreeting.agentName ?? "ChatStreamAgent",
+          generated: createdGreeting.generated ?? true,
         });
 
         const messagesResponse = await req(
@@ -1896,7 +1932,7 @@ describe("API Server E2E (no runtime)", () => {
           (message) =>
             message.role === "assistant" &&
             message.source === "agent_greeting" &&
-            message.text === "Welcome to the conversation.",
+            message.text === createdGreeting.text,
         );
         expect(greetings).toHaveLength(1);
       } finally {
@@ -3372,6 +3408,51 @@ describe("API Server E2E (no runtime)", () => {
       expect(adminEntityId).toMatch(
         /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
       );
+    });
+
+    it("POST /api/onboarding persists the preset voice when ElevenLabs is configured", async () => {
+      const originalElevenLabsApiKey = process.env.ELEVENLABS_API_KEY;
+      process.env.ELEVENLABS_API_KEY = "test-elevenlabs-key";
+
+      try {
+        const res = await req(port, "POST", "/api/onboarding", {
+          name: "Chen",
+          presetId: "chen",
+          avatarIndex: 1,
+          connection: {
+            kind: "local-provider",
+            provider: "groq",
+          },
+          runMode: "local",
+        });
+        expect(res.status).toBe(200);
+
+        const cfg = await req(port, "GET", "/api/config");
+        expect(
+          (
+            cfg.data as {
+              messages?: {
+                tts?: {
+                  provider?: string;
+                  elevenlabs?: { voiceId?: string; modelId?: string };
+                };
+              };
+            }
+          ).messages?.tts,
+        ).toMatchObject({
+          provider: "elevenlabs",
+          elevenlabs: {
+            voiceId: "EXAVITQu4vr4xnSDxMaL",
+            modelId: "eleven_flash_v2_5",
+          },
+        });
+      } finally {
+        if (originalElevenLabsApiKey === undefined) {
+          delete process.env.ELEVENLABS_API_KEY;
+        } else {
+          process.env.ELEVENLABS_API_KEY = originalElevenLabsApiKey;
+        }
+      }
     });
   });
 

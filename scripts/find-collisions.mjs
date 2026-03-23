@@ -19,8 +19,8 @@
  */
 
 import fs from "node:fs";
-import path from "node:path";
 import { createRequire } from "node:module";
+import path from "node:path";
 
 const require = createRequire(import.meta.url);
 const ts = require("typescript");
@@ -99,7 +99,9 @@ function collectFiles(dir, results = []) {
 }
 
 function hasModifier(node, modifierKind) {
-  return node.modifiers?.some((modifier) => modifier.kind === modifierKind) ?? false;
+  return (
+    node.modifiers?.some((modifier) => modifier.kind === modifierKind) ?? false
+  );
 }
 
 function isFunctionVariableDeclaration(declaration) {
@@ -120,7 +122,9 @@ function isClassVariableDeclaration(declaration) {
 }
 
 function getLineNumber(sourceFile, node) {
-  const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+  const { line } = sourceFile.getLineAndCharacterOfPosition(
+    node.getStart(sourceFile),
+  );
   return line + 1;
 }
 
@@ -154,7 +158,10 @@ function collectPackageInfo() {
     ...globPackageJson(path.join(ROOT, "apps")),
     ...globPackageJson(path.join(ROOT, "apps", "app", "plugins")),
     path.join(ROOT, "apps", "app", "electrobun", "package.json"),
-  ].filter((filePath, index, list) => list.indexOf(filePath) === index && fs.existsSync(filePath));
+  ].filter(
+    (filePath, index, list) =>
+      list.indexOf(filePath) === index && fs.existsSync(filePath),
+  );
 
   const packageInfos = packageFiles
     .map((filePath) => {
@@ -196,7 +203,12 @@ function globPackageJson(rootDir) {
 }
 
 function findOwnerPackage(filePath, packageInfos) {
-  return packageInfos.find((info) => filePath === info.dir || filePath.startsWith(`${info.dir}${path.sep}`)) ?? null;
+  return (
+    packageInfos.find(
+      (info) =>
+        filePath === info.dir || filePath.startsWith(`${info.dir}${path.sep}`),
+    ) ?? null
+  );
 }
 
 function resolveRelativeImport(fromFile, specifier) {
@@ -236,8 +248,14 @@ function collapseCollisionMap(map) {
           left.file.localeCompare(right.file) || left.line - right.line,
       ),
     }))
-    .filter(({ entries }) => new Set(entries.map((entry) => entry.file)).size > 1)
-    .sort((left, right) => right.entries.length - left.entries.length || left.name.localeCompare(right.name));
+    .filter(
+      ({ entries }) => new Set(entries.map((entry) => entry.file)).size > 1,
+    )
+    .sort(
+      (left, right) =>
+        right.entries.length - left.entries.length ||
+        left.name.localeCompare(right.name),
+    );
 }
 
 function summarizeViolations(violations) {
@@ -260,7 +278,9 @@ function summarizeViolations(violations) {
     }
     byPackage.set(violation.packageName, existing);
   }
-  return [...byPackage.values()].sort((left, right) => right.count - left.count);
+  return [...byPackage.values()].sort(
+    (left, right) => right.count - left.count,
+  );
 }
 
 function dedupeByKey(entries, getKey) {
@@ -540,28 +560,24 @@ function analyzeWorkspace() {
     }
   }
 
-  const dedupedSymbols = dedupeByKey(
-    symbolRecords,
-    (record) =>
-      [
-        record.kind,
-        record.exported ? "exported" : "local",
-        record.file,
-        record.name,
-      ].join(":"),
+  const dedupedSymbols = dedupeByKey(symbolRecords, (record) =>
+    [
+      record.kind,
+      record.exported ? "exported" : "local",
+      record.file,
+      record.name,
+    ].join(":"),
   );
 
-  const dedupedViolations = dedupeByKey(
-    hierarchyViolations,
-    (record) =>
-      [
-        record.packageName,
-        record.file,
-        record.kind,
-        record.specifier,
-        record.targetPackage ?? "",
-        record.targetFile ?? "",
-      ].join(":"),
+  const dedupedViolations = dedupeByKey(hierarchyViolations, (record) =>
+    [
+      record.packageName,
+      record.file,
+      record.kind,
+      record.specifier,
+      record.targetPackage ?? "",
+      record.targetFile ?? "",
+    ].join(":"),
   );
 
   for (const key of Object.keys(buckets)) {
@@ -595,7 +611,10 @@ function analyzeWorkspace() {
   }
 
   const collisions = Object.fromEntries(
-    Object.entries(buckets).map(([key, map]) => [key, collapseCollisionMap(map)]),
+    Object.entries(buckets).map(([key, map]) => [
+      key,
+      collapseCollisionMap(map),
+    ]),
   );
 
   const pureReexportSummary = {
@@ -707,9 +726,7 @@ console.log(
 console.log(
   `  Package boundary violations: ${report.hierarchyViolations.total}`,
 );
-console.log(
-  `  Class collisions: ${report.collisions.classCollisions.length}`,
-);
+console.log(`  Class collisions: ${report.collisions.classCollisions.length}`);
 console.log(
   `  Exported function collisions: ${report.collisions.exportedFunctionCollisions.length}`,
 );
@@ -740,6 +757,9 @@ printGroup(
   report.collisions.exportedInterfaceCollisions,
 );
 printGroup("Local Type Collisions", report.collisions.localTypeCollisions);
-printGroup("Exported Type Collisions", report.collisions.exportedTypeCollisions);
+printGroup(
+  "Exported Type Collisions",
+  report.collisions.exportedTypeCollisions,
+);
 printViolations(report.hierarchyViolations);
 printPureReexports(report.pureReexports);

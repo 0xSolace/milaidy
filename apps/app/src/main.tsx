@@ -57,6 +57,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { MILADY_ENV_ALIASES } from "./brand-env";
 import { MILADY_CHARACTER_CATALOG } from "./character-catalog";
+import { shouldUseCloudOnlyBranding } from "./cloud-only";
 
 const MILADY_BRANDING: Partial<BrandingConfig> = {
   appName: "Milady",
@@ -69,8 +70,14 @@ const MILADY_BRANDING: Partial<BrandingConfig> = {
   hashtag: "#MiladyAgent",
   fileExtension: ".milady-agent",
   packageScope: "miladyai",
-  // Cloud-only in production; local dev mode allows running a local backend.
-  cloudOnly: !import.meta.env.DEV,
+  // The hosted web bundle stays cloud-only in production. Desktop shells and
+  // other hosts inject an explicit API base before React boots, and that host
+  // backend should control onboarding capabilities instead.
+  cloudOnly: shouldUseCloudOnlyBranding({
+    isDev: import.meta.env.DEV,
+    injectedApiBase:
+      typeof window === "undefined" ? undefined : window.__MILADY_API_BASE__,
+  }),
 };
 
 /**

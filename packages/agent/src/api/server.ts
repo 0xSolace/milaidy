@@ -420,8 +420,20 @@ function hasPersistedOnboardingState(config: ElizaConfig): boolean {
 
 function resolveConversationGreetingText(
   runtime: AgentRuntime,
-  _lang: string,
+  lang: string,
+  configuredPresetId?: string | null,
 ): string {
+  const normalizedLanguage = normalizeCharacterLanguage(lang);
+  const presets = getStylePresets(normalizedLanguage);
+  const preset =
+    (configuredPresetId
+      ? presets.find((candidate) => candidate.id === configuredPresetId)
+      : undefined) ??
+    presets.find((candidate) => candidate.name === runtime.character.name);
+  if (preset?.catchphrase?.trim()) {
+    return preset.catchphrase.trim();
+  }
+
   const postExamples = runtime.character.postExamples ?? [];
   return postExamples[Math.floor(Math.random() * postExamples.length)] ?? "";
 }
@@ -4253,6 +4265,33 @@ import {
 
 import { pickRandomNames } from "../runtime/onboarding-names.js";
 
+const DEFAULT_ELEVENLABS_TTS_MODEL = "eleven_flash_v2_5";
+const ELEVENLABS_VOICE_ID_BY_PRESET: Record<string, string> = {
+  rachel: "21m00Tcm4TlvDq8ikWAM",
+  sarah: "EXAVITQu4vr4xnSDxMaL",
+  matilda: "XrExE9yKIg1WjnnlVkGX",
+  lily: "pFZP5JQG7iQjIQuC4Bku",
+  alice: "Xb7hH8MSUJpSbSDYk0k2",
+  brian: "nPczCjzI2devNBz1zQrb",
+  adam: "pNInz6obpgDQGcFmaJgB",
+  josh: "TxGEqnHWrfWFTfGW9XjX",
+  daniel: "onwK4e9ZLuTAKqWW03F9",
+  liam: "TX3LPaxmHKxFdv7VOQHJ",
+  gigi: "jBpfuIE2acCO8z3wKNLl",
+  mimi: "zrHiDhphv9ZnVXBqCLjz",
+  dorothy: "ThT5KcBeYPX3keUQqHPh",
+  glinda: "z9fAnlkpzviPz146aGWa",
+  charlotte: "XB0fDUnXU5powFXDhCwa",
+  callum: "N2lVS1w4EtoT3dr4eOWO",
+  momo: "n7Wi4g1bhpw4Bs8HK5ph",
+  yuki: "4tRn1lSkEn13EVTuqb0g",
+  rin: "cNYrMw9glwJZXR8RwbuR",
+  kei: "eadgjmk4R4uojdsheG9t",
+  jin: "6IwYbsNENZgAB1dtBZDp",
+  satoshi: "7cOBG34AiHrAzs842Rdi",
+  ryu: "QzTKubutNn9TjrB7Xb2Q",
+};
+
 function readUiLanguageHeader(
   req: http.IncomingMessage | undefined,
 ): string | undefined {
@@ -4277,6 +4316,84 @@ function resolveConfiguredCharacterLanguage(
       | string
       | undefined);
   return normalizeCharacterLanguage(uiLanguage);
+}
+
+function resolveOnboardingStylePreset(
+  body: Record<string, unknown>,
+  language: string,
+) {
+  const presets = getStylePresets(language);
+  const requestedPresetId =
+    typeof body.presetId === "string" ? body.presetId.trim() : "";
+  if (requestedPresetId) {
+    const byId = presets.find((preset) => preset.id === requestedPresetId);
+    if (byId) return byId;
+  }
+
+  if (typeof body.avatarIndex === "number" && Number.isFinite(body.avatarIndex)) {
+    const byAvatar = presets.find(
+      (preset) => preset.avatarIndex === Number(body.avatarIndex),
+    );
+    if (byAvatar) return byAvatar;
+  }
+
+  const requestedName = typeof body.name === "string" ? body.name.trim() : "";
+  if (requestedName) {
+    const byName = presets.find((preset) => preset.name === requestedName);
+    if (byName) return byName;
+  }
+
+  return getDefaultStylePreset(language);
+}
+
+function applyOnboardingVoicePreset(
+  config: ElizaConfig,
+  body: Record<string, unknown>,
+  language: string,
+) {
+  const elevenLabsApiKey = process.env.ELEVENLABS_API_KEY?.trim();
+  if (!elevenLabsApiKey) {
+    return;
+  }
+
+  const stylePreset = resolveOnboardingStylePreset(body, language);
+  const voicePresetId = stylePreset?.voicePresetId?.trim();
+  if (!voicePresetId) {
+    return;
+  }
+
+  const voiceId = ELEVENLABS_VOICE_ID_BY_PRESET[voicePresetId];
+  if (!voiceId) {
+    return;
+  }
+
+  if (!config.messages || typeof config.messages !== "object") {
+    config.messages = {};
+  }
+
+  const messages = config.messages as Record<string, unknown>;
+  const existingTts =
+    messages.tts && typeof messages.tts === "object"
+      ? (messages.tts as Record<string, unknown>)
+      : {};
+  const existingElevenlabs =
+    existingTts.elevenlabs && typeof existingTts.elevenlabs === "object"
+      ? (existingTts.elevenlabs as Record<string, unknown>)
+      : {};
+
+  messages.tts = {
+    ...existingTts,
+    provider: "elevenlabs",
+    elevenlabs: {
+      ...existingElevenlabs,
+      voiceId,
+      modelId:
+        typeof existingElevenlabs.modelId === "string" &&
+        existingElevenlabs.modelId.trim()
+          ? existingElevenlabs.modelId.trim()
+          : DEFAULT_ELEVENLABS_TTS_MODEL,
+    },
+  };
 }
 
 function resolveDefaultAgentName(
@@ -8277,6 +8394,7 @@ async function handleRequest(
     if (typeof body.presetId === "string" && body.presetId.trim()) {
       config.ui.presetId = body.presetId.trim();
     }
+    applyOnboardingVoicePreset(config, body, configuredLanguage);
 
     // ── Theme preference ──────────────────────────────────────────────────
     if (body.theme) {
@@ -13294,7 +13412,11 @@ async function handleRequest(
       };
     }
 
-    const greeting = resolveConversationGreetingText(runtime, lang).trim();
+    const greeting = resolveConversationGreetingText(
+      runtime,
+      lang,
+      state.config.ui?.presetId ?? null,
+    ).trim();
     if (!greeting) {
       return {
         text: "",

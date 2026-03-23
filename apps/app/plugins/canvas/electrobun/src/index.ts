@@ -7,6 +7,7 @@
  */
 
 import type { PluginListenerHandle } from "@capacitor/core";
+import type { EventCallback } from "../../../shared-types.js";
 import type {
   CanvasColor,
   CanvasDrawBatchCommand,
@@ -25,8 +26,7 @@ import type {
   CanvasTextStyle,
   CanvasTouchEvent,
   CanvasTransform,
-} from "@miladyai/app-core/src/definitions";
-import type { EventCallback } from "../../../shared-types.js";
+} from "../../src/definitions";
 
 type CanvasEvent = CanvasTouchEvent | CanvasRenderEvent;
 

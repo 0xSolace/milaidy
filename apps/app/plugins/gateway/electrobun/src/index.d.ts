@@ -20,7 +20,7 @@ import type {
   GatewayEvent,
   GatewayStateEvent,
   GatewayErrorEvent,
-} from "@miladyai/app-core/src/definitions";
+} from "../../src/definitions";
 type IpcPrimitive = string | number | boolean | null | undefined;
 type IpcObject = {
   [key: string]: IpcValue;

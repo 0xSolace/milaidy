@@ -8,7 +8,13 @@ import type {
   OnboardingLocalProviderId,
 } from "@miladyai/agent/contracts/onboarding";
 import { normalizeOnboardingProviderId } from "@miladyai/agent/contracts/onboarding";
+import {
+  getDefaultStylePreset,
+  getStylePresets,
+  normalizeCharacterLanguage,
+} from "@miladyai/shared/onboarding-presets";
 import { loadElizaConfig, saveElizaConfig } from "../config/config";
+import { PREMADE_VOICES } from "../voice/types";
 import {
   applyOnboardingConnectionConfig,
   mergeOnboardingConnectionWithExisting,
@@ -51,6 +57,41 @@ function trimToUndefined(value: unknown): string | undefined {
   }
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+const DEFAULT_ELEVENLABS_TTS_MODEL = "eleven_flash_v2_5";
+const ELEVENLABS_VOICE_ID_BY_PRESET = new Map(
+  PREMADE_VOICES.map((voice) => [voice.id, voice.voiceId]),
+);
+
+function resolveCompatOnboardingStyle(
+  body: Record<string, unknown>,
+  language: string,
+) {
+  const presets = getStylePresets(language);
+  const requestedPresetId = trimToUndefined(body.presetId);
+  if (requestedPresetId) {
+    const byId = presets.find((preset) => preset.id === requestedPresetId);
+    if (byId) return byId;
+  }
+
+  if (
+    typeof body.avatarIndex === "number" &&
+    Number.isFinite(body.avatarIndex)
+  ) {
+    const byAvatar = presets.find(
+      (preset) => preset.avatarIndex === Number(body.avatarIndex),
+    );
+    if (byAvatar) return byAvatar;
+  }
+
+  const requestedName = trimToUndefined(body.name);
+  if (requestedName) {
+    const byName = presets.find((preset) => preset.name === requestedName);
+    if (byName) return byName;
+  }
+
+  return getDefaultStylePreset(language);
 }
 
 function normalizeOnboardingConnection(
@@ -169,6 +210,8 @@ export function persistCompatOnboardingDefaults(
   }
 
   const config = loadElizaConfig();
+  const language = normalizeCharacterLanguage(body.language);
+  const stylePreset = resolveCompatOnboardingStyle(body, language);
   if (!config.agents || typeof config.agents !== "object") {
     (config as Record<string, unknown>).agents = {};
   }
@@ -205,6 +248,65 @@ export function persistCompatOnboardingDefaults(
   }
   if (Array.isArray(body.messageExamples)) {
     agentEntry.messageExamples = body.messageExamples;
+  }
+
+  if (!config.ui || typeof config.ui !== "object") {
+    (config as Record<string, unknown>).ui = {};
+  }
+  const ui = config.ui as Record<string, unknown>;
+  ui.assistant = {
+    ...(ui.assistant && typeof ui.assistant === "object"
+      ? (ui.assistant as Record<string, unknown>)
+      : {}),
+    name,
+  };
+  ui.language = language;
+  if (
+    typeof body.avatarIndex === "number" &&
+    Number.isFinite(body.avatarIndex)
+  ) {
+    ui.avatarIndex = Number(body.avatarIndex);
+  } else if (typeof stylePreset?.avatarIndex === "number") {
+    ui.avatarIndex = stylePreset.avatarIndex;
+  }
+  if (trimToUndefined(body.presetId)) {
+    ui.presetId = trimToUndefined(body.presetId);
+  } else if (stylePreset?.id) {
+    ui.presetId = stylePreset.id;
+  }
+
+  const elevenLabsApiKey = process.env.ELEVENLABS_API_KEY?.trim();
+  const voicePresetId = stylePreset?.voicePresetId?.trim();
+  const voiceId = voicePresetId
+    ? ELEVENLABS_VOICE_ID_BY_PRESET.get(voicePresetId)
+    : undefined;
+  if (elevenLabsApiKey && voiceId) {
+    if (!config.messages || typeof config.messages !== "object") {
+      (config as Record<string, unknown>).messages = {};
+    }
+    const messages = config.messages as Record<string, unknown>;
+    const existingTts =
+      messages.tts && typeof messages.tts === "object"
+        ? (messages.tts as Record<string, unknown>)
+        : {};
+    const existingElevenlabs =
+      existingTts.elevenlabs && typeof existingTts.elevenlabs === "object"
+        ? (existingTts.elevenlabs as Record<string, unknown>)
+        : {};
+
+    messages.tts = {
+      ...existingTts,
+      provider: "elevenlabs",
+      elevenlabs: {
+        ...existingElevenlabs,
+        voiceId,
+        modelId:
+          typeof existingElevenlabs.modelId === "string" &&
+          existingElevenlabs.modelId.trim()
+            ? existingElevenlabs.modelId.trim()
+            : DEFAULT_ELEVENLABS_TTS_MODEL,
+      },
+    };
   }
 
   saveElizaConfig(config);

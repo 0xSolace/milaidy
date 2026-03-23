@@ -67,9 +67,15 @@ import { buildCharacterFromConfig } from "../../runtime/eliza";
 
 describe("Onboarding → Character round-trip", () => {
   const chenPreset = STYLE_PRESETS.find((p) => p.name === "Chen")!;
+  const originalElevenLabsApiKey = process.env.ELEVENLABS_API_KEY;
 
   beforeEach(() => {
     savedConfig = {};
+    if (originalElevenLabsApiKey === undefined) {
+      delete process.env.ELEVENLABS_API_KEY;
+    } else {
+      process.env.ELEVENLABS_API_KEY = originalElevenLabsApiKey;
+    }
   });
 
   it("Chen preset: all personality fields survive persist → build round-trip", () => {
@@ -149,6 +155,33 @@ describe("Onboarding → Character round-trip", () => {
     expect((character.topics as string[]).length).toBeGreaterThan(0);
     expect(character.postExamples.length).toBeGreaterThan(0);
     expect(character.messageExamples.length).toBeGreaterThan(0);
+  });
+
+  it("persists UI preset metadata and ElevenLabs voice defaults for Chen", () => {
+    process.env.ELEVENLABS_API_KEY = "test-elevenlabs-key";
+
+    persistCompatOnboardingDefaults({
+      name: "Chen",
+      presetId: "chen",
+      avatarIndex: 1,
+      language: "en",
+    });
+
+    expect(savedConfig.ui).toMatchObject({
+      assistant: { name: "Chen" },
+      avatarIndex: 1,
+      language: "en",
+      presetId: "chen",
+    });
+    expect(savedConfig.messages).toMatchObject({
+      tts: {
+        provider: "elevenlabs",
+        elevenlabs: {
+          voiceId: "EXAVITQu4vr4xnSDxMaL",
+          modelId: "eleven_flash_v2_5",
+        },
+      },
+    });
   });
 
   it("non-preset character: custom fields persist without preset fallback", () => {

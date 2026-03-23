@@ -1,32 +1,31 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": [
-    "src/entry.ts",
-    "milady.mjs",
-    "scripts/*.mjs",
-    "scripts/*.ts",
-    "scripts/rt.sh"
-  ],
-  "project": [
-    "src/**/*.{ts,tsx}",
-    "scripts/**/*.{ts,mjs,js}"
-  ],
   "ignore": [
     "**/*.d.ts",
     "**/dist/**",
     "**/build/**",
     "**/.vite/**",
-    "node_modules/**"
+    "node_modules/**",
+    "test/contracts/lib/**"
   ],
-  "ignoreDependencies": [
-    "typescript"
-  ],
+  "ignoreDependencies": ["typescript"],
   "workspaces": {
-    "packages/app-core": {
+    ".": {
       "entry": [
-        "src/index.ts",
-        "src/runtime/dev-server.ts"
+        "src/entry.ts",
+        "milady.mjs",
+        "scripts/*.js",
+        "scripts/*.mjs",
+        "scripts/*.ts",
+        "scripts/rt.sh",
+        "tsdown.electrobun.config.ts",
+        "tsdown.electrobun.config.test.ts",
+        "vitest.live.config.ts"
       ],
+      "project": ["src/**/*.{ts,tsx}", "scripts/**/*.{ts,mjs,js}"]
+    },
+    "packages/app-core": {
+      "entry": ["src/index.ts", "src/runtime/dev-server.ts"],
       "project": ["src/**/*.{ts,tsx}"]
     },
     "packages/ui": {
@@ -49,6 +48,10 @@
       "entry": ["src/index.ts"],
       "project": ["src/**/*.{ts,tsx}"]
     },
+    "packages/types": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
     "packages/vrm-utils": {
       "entry": ["src/index.ts"],
       "project": ["src/**/*.{ts,tsx}"]
@@ -58,18 +61,15 @@
       "project": ["src/**/*.{ts,tsx}"]
     },
     "apps/app": {
-      "entry": ["src/main.tsx", "vite.config.ts"],
+      "entry": ["src/main.tsx", "src/stubs/*.ts", "vite.config.ts"],
       "project": ["src/**/*.{ts,tsx}"],
-      "ignore": [
-        "electrobun/**",
-        "plugins/**"
-      ]
+      "ignore": ["electrobun/**", "plugins/**"]
     },
     "apps/app/electrobun": {
       "entry": [
-        "src/native/main.ts",
+        "src/index.ts",
         "src/native/agent.ts",
-        "src/native/preload.ts"
+        "src/bridge/electrobun-preload.ts"
       ],
       "project": ["src/**/*.{ts,tsx}"]
     },
@@ -78,7 +78,7 @@
       "project": ["src/**/*.{ts,tsx}"]
     },
     "apps/homepage": {
-      "entry": ["src/main.tsx", "src/entry-client.tsx", "src/entry-server.tsx"],
+      "entry": ["src/main.tsx"],
       "project": ["src/**/*.{ts,tsx}"]
     }
   }

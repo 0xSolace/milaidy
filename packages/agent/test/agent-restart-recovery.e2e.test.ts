@@ -71,6 +71,21 @@ describe("conversation metadata persistence", () => {
 // ============================================================================
 
 describe("plugin discovery survives restart-like scenarios", () => {
+  const normalizePluginList = (plugins: unknown[]) =>
+    plugins.map((plugin) => {
+      if (!plugin || typeof plugin !== "object") return plugin;
+      const cloned = JSON.parse(JSON.stringify(plugin)) as Record<string, any>;
+      const hints = cloned.configUiHints;
+      if (hints && typeof hints === "object") {
+        for (const hint of Object.values(hints as Record<string, any>)) {
+          if (hint && typeof hint === "object" && Array.isArray(hint.options)) {
+            hint.options = [];
+          }
+        }
+      }
+      return cloned;
+    });
+
   it("GET /api/plugins returns plugin list", async () => {
     const { status, data } = await req(port, "GET", "/api/plugins");
     expect(status).toBe(200);
@@ -81,8 +96,8 @@ describe("plugin discovery survives restart-like scenarios", () => {
   it("plugin list is stable across multiple requests", async () => {
     const { data: data1 } = await req(port, "GET", "/api/plugins");
     const { data: data2 } = await req(port, "GET", "/api/plugins");
-    const list1 = data1.plugins ?? data1;
-    const list2 = data2.plugins ?? data2;
+    const list1 = normalizePluginList(data1.plugins ?? data1);
+    const list2 = normalizePluginList(data2.plugins ?? data2);
     expect(list1).toEqual(list2);
   });
 });

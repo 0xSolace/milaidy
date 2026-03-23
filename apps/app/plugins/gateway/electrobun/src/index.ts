@@ -27,7 +27,7 @@ import type {
   GatewayStateEvent,
   JsonObject,
   JsonValue,
-} from "@miladyai/app-core/src/definitions";
+} from "../../src/definitions";
 import type { EventCallback } from "../../../shared-types.js";
 
 type GatewayEventData =

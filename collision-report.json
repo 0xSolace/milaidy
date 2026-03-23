@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-03-23T18:51:37.928Z",
-  "scannedFiles": 967,
+  "generatedAt": "2026-03-23T19:23:23.314Z",
+  "scannedFiles": 956,
   "includeDeclarationFiles": false,
-  "symbolCount": 6657,
+  "symbolCount": 6544,
   "pureReexports": {
-    "total": 115,
-    "externalBridgeCount": 77,
+    "total": 114,
+    "externalBridgeCount": 75,
     "files": [
       {
         "file": "packages/agent/src/actions/index.ts",
@@ -145,6 +145,11 @@
         ]
       },
       {
+        "file": "packages/app-core/src/actions/index.ts",
+        "packageName": "@miladyai/app-core",
+        "externalSpecifiers": []
+      },
+      {
         "file": "packages/app-core/src/actions/stream-control.ts",
         "packageName": "@miladyai/app-core",
         "externalSpecifiers": [
@@ -219,20 +224,6 @@
         "packageName": "@miladyai/app-core",
         "externalSpecifiers": [
           "@miladyai/agent/api/connector-health"
-        ]
-      },
-      {
-        "file": "packages/app-core/src/api/coordinator-types.ts",
-        "packageName": "@miladyai/app-core",
-        "externalSpecifiers": [
-          "@miladyai/agent/api/coordinator-types"
-        ]
-      },
-      {
-        "file": "packages/app-core/src/api/coordinator-wiring.ts",
-        "packageName": "@miladyai/app-core",
-        "externalSpecifiers": [
-          "@miladyai/agent/api/coordinator-wiring"
         ]
       },
       {
@@ -739,413 +730,9 @@
     ]
   },
   "hierarchyViolations": {
-    "total": 22,
-    "byPackage": [
-      {
-        "packageName": "@miladyai/electrobun",
-        "count": 4,
-        "examples": [
-          {
-            "file": "apps/app/electrobun/src/native/permissions-shared.ts",
-            "kind": "missing-internal-dependency",
-            "specifier": "@miladyai/app-core/contracts/permissions",
-            "targetPackage": "@miladyai/app-core",
-            "targetFile": null
-          },
-          {
-            "file": "apps/app/electrobun/src/native/permissions-shared.ts",
-            "kind": "missing-internal-dependency",
-            "specifier": "@miladyai/app-core/contracts/permissions",
-            "targetPackage": "@miladyai/app-core",
-            "targetFile": null
-          },
-          {
-            "file": "apps/app/electrobun/src/rpc-schema.ts",
-            "kind": "missing-internal-dependency",
-            "specifier": "@miladyai/app-core/contracts/permissions",
-            "targetPackage": "@miladyai/app-core",
-            "targetFile": null
-          },
-          {
-            "file": "apps/app/electrobun/src/rpc-schema.ts",
-            "kind": "missing-internal-dependency",
-            "specifier": "@miladyai/app-core/contracts/permissions",
-            "targetPackage": "@miladyai/app-core",
-            "targetFile": null
-          }
-        ]
-      },
-      {
-        "packageName": "@miladyai/capacitor-camera",
-        "count": 2,
-        "examples": [
-          {
-            "file": "apps/app/plugins/camera/electrobun/src/index.ts",
-            "kind": "missing-internal-dependency",
-            "specifier": "@miladyai/app-core/src/definitions",
-            "targetPackage": "@miladyai/app-core",
-            "targetFile": null
-          },
-          {
-            "file": "apps/app/plugins/camera/electrobun/src/index.ts",
-            "kind": "missing-internal-dependency",
-            "specifier": "@miladyai/app-core/src/web",
-            "targetPackage": "@miladyai/app-core",
-            "targetFile": null
-          }
-        ]
-      },
-      {
-        "packageName": "@miladyai/capacitor-desktop",
-        "count": 2,
-        "examples": [
-          {
-            "file": "apps/app/plugins/desktop/electrobun/src/index.ts",
-            "kind": "missing-internal-dependency",
-            "specifier": "@miladyai/app-core/bridge/electrobun-rpc.js",
-            "targetPackage": "@miladyai/app-core",
-            "targetFile": null
-          },
-          {
-            "file": "apps/app/plugins/desktop/electrobun/src/index.ts",
-            "kind": "missing-internal-dependency",
-            "specifier": "@miladyai/app-core/src/definitions",
-            "targetPackage": "@miladyai/app-core",
-            "targetFile": null
-          }
-        ]
-      },
-      {
-        "packageName": "@miladyai/capacitor-gateway",
-        "count": 2,
-        "examples": [
-          {
-            "file": "apps/app/plugins/gateway/electrobun/src/index.ts",
-            "kind": "missing-internal-dependency",
-            "specifier": "@miladyai/app-core/bridge/electrobun-rpc.js",
-            "targetPackage": "@miladyai/app-core",
-            "targetFile": null
-          },
-          {
-            "file": "apps/app/plugins/gateway/electrobun/src/index.ts",
-            "kind": "missing-internal-dependency",
-            "specifier": "@miladyai/app-core/src/definitions",
-            "targetPackage": "@miladyai/app-core",
-            "targetFile": null
-          }
-        ]
-      },
-      {
-        "packageName": "@miladyai/capacitor-location",
-        "count": 2,
-        "examples": [
-          {
-            "file": "apps/app/plugins/location/electrobun/src/index.ts",
-            "kind": "missing-internal-dependency",
-            "specifier": "@miladyai/app-core/bridge/electrobun-rpc.js",
-            "targetPackage": "@miladyai/app-core",
-            "targetFile": null
-          },
-          {
-            "file": "apps/app/plugins/location/electrobun/src/index.ts",
-            "kind": "missing-internal-dependency",
-            "specifier": "@miladyai/app-core/src/definitions",
-            "targetPackage": "@miladyai/app-core",
-            "targetFile": null
-          }
-        ]
-      },
-      {
-        "packageName": "@miladyai/capacitor-swabble",
-        "count": 2,
-        "examples": [
-          {
-            "file": "apps/app/plugins/swabble/electrobun/src/index.ts",
-            "kind": "missing-internal-dependency",
-            "specifier": "@miladyai/app-core/bridge/electrobun-rpc.js",
-            "targetPackage": "@miladyai/app-core",
-            "targetFile": null
-          },
-          {
-            "file": "apps/app/plugins/swabble/electrobun/src/index.ts",
-            "kind": "missing-internal-dependency",
-            "specifier": "@miladyai/app-core/src/definitions",
-            "targetPackage": "@miladyai/app-core",
-            "targetFile": null
-          }
-        ]
-      },
-      {
-        "packageName": "@miladyai/capacitor-talkmode",
-        "count": 2,
-        "examples": [
-          {
-            "file": "apps/app/plugins/talkmode/electrobun/src/index.ts",
-            "kind": "missing-internal-dependency",
-            "specifier": "@miladyai/app-core/bridge/electrobun-rpc.js",
-            "targetPackage": "@miladyai/app-core",
-            "targetFile": null
-          },
-          {
-            "file": "apps/app/plugins/talkmode/electrobun/src/index.ts",
-            "kind": "missing-internal-dependency",
-            "specifier": "@miladyai/app-core/src/definitions",
-            "targetPackage": "@miladyai/app-core",
-            "targetFile": null
-          }
-        ]
-      },
-      {
-        "packageName": "@miladyai/app",
-        "count": 2,
-        "examples": [
-          {
-            "file": "apps/app/test/setup.ts",
-            "kind": "cross-package-relative-import",
-            "specifier": "../../../test/helpers/browser-mocks",
-            "targetPackage": "miladyai",
-            "targetFile": "test/helpers/browser-mocks.ts"
-          },
-          {
-            "file": "apps/app/vitest.config.ts",
-            "kind": "cross-package-relative-import",
-            "specifier": "../../test/eliza-package-paths",
-            "targetPackage": "miladyai",
-            "targetFile": "test/eliza-package-paths.ts"
-          }
-        ]
-      },
-      {
-        "packageName": "@miladyai/capacitor-canvas",
-        "count": 1,
-        "examples": [
-          {
-            "file": "apps/app/plugins/canvas/electrobun/src/index.ts",
-            "kind": "missing-internal-dependency",
-            "specifier": "@miladyai/app-core/src/definitions",
-            "targetPackage": "@miladyai/app-core",
-            "targetFile": null
-          }
-        ]
-      },
-      {
-        "packageName": "@miladyai/capacitor-screencapture",
-        "count": 1,
-        "examples": [
-          {
-            "file": "apps/app/plugins/screencapture/electrobun/src/index.ts",
-            "kind": "missing-internal-dependency",
-            "specifier": "@miladyai/app-core/bridge/electrobun-rpc.js",
-            "targetPackage": "@miladyai/app-core",
-            "targetFile": null
-          }
-        ]
-      },
-      {
-        "packageName": "@miladyai/homepage",
-        "count": 1,
-        "examples": [
-          {
-            "file": "apps/homepage/src/components/dashboard/CreateAgent.tsx",
-            "kind": "missing-internal-dependency",
-            "specifier": "@miladyai/agent/onboarding-presets",
-            "targetPackage": "@miladyai/agent",
-            "targetFile": null
-          }
-        ]
-      },
-      {
-        "packageName": "miladyai",
-        "count": 1,
-        "examples": [
-          {
-            "file": "scripts/normalize-parallax-capture.ts",
-            "kind": "cross-package-relative-import",
-            "specifier": "../packages/app-core/src/benchmark/replay-capture.ts",
-            "targetPackage": "@miladyai/app-core",
-            "targetFile": "packages/app-core/src/benchmark/replay-capture.ts"
-          }
-        ]
-      }
-    ],
-    "entries": [
-      {
-        "packageName": "@miladyai/app",
-        "file": "apps/app/test/setup.ts",
-        "kind": "cross-package-relative-import",
-        "specifier": "../../../test/helpers/browser-mocks",
-        "targetPackage": "miladyai",
-        "targetFile": "test/helpers/browser-mocks.ts"
-      },
-      {
-        "packageName": "@miladyai/app",
-        "file": "apps/app/vitest.config.ts",
-        "kind": "cross-package-relative-import",
-        "specifier": "../../test/eliza-package-paths",
-        "targetPackage": "miladyai",
-        "targetFile": "test/eliza-package-paths.ts"
-      },
-      {
-        "packageName": "@miladyai/capacitor-camera",
-        "file": "apps/app/plugins/camera/electrobun/src/index.ts",
-        "kind": "missing-internal-dependency",
-        "specifier": "@miladyai/app-core/src/definitions",
-        "targetPackage": "@miladyai/app-core",
-        "targetFile": null
-      },
-      {
-        "packageName": "@miladyai/capacitor-camera",
-        "file": "apps/app/plugins/camera/electrobun/src/index.ts",
-        "kind": "missing-internal-dependency",
-        "specifier": "@miladyai/app-core/src/web",
-        "targetPackage": "@miladyai/app-core",
-        "targetFile": null
-      },
-      {
-        "packageName": "@miladyai/capacitor-canvas",
-        "file": "apps/app/plugins/canvas/electrobun/src/index.ts",
-        "kind": "missing-internal-dependency",
-        "specifier": "@miladyai/app-core/src/definitions",
-        "targetPackage": "@miladyai/app-core",
-        "targetFile": null
-      },
-      {
-        "packageName": "@miladyai/capacitor-desktop",
-        "file": "apps/app/plugins/desktop/electrobun/src/index.ts",
-        "kind": "missing-internal-dependency",
-        "specifier": "@miladyai/app-core/bridge/electrobun-rpc.js",
-        "targetPackage": "@miladyai/app-core",
-        "targetFile": null
-      },
-      {
-        "packageName": "@miladyai/capacitor-desktop",
-        "file": "apps/app/plugins/desktop/electrobun/src/index.ts",
-        "kind": "missing-internal-dependency",
-        "specifier": "@miladyai/app-core/src/definitions",
-        "targetPackage": "@miladyai/app-core",
-        "targetFile": null
-      },
-      {
-        "packageName": "@miladyai/capacitor-gateway",
-        "file": "apps/app/plugins/gateway/electrobun/src/index.ts",
-        "kind": "missing-internal-dependency",
-        "specifier": "@miladyai/app-core/bridge/electrobun-rpc.js",
-        "targetPackage": "@miladyai/app-core",
-        "targetFile": null
-      },
-      {
-        "packageName": "@miladyai/capacitor-gateway",
-        "file": "apps/app/plugins/gateway/electrobun/src/index.ts",
-        "kind": "missing-internal-dependency",
-        "specifier": "@miladyai/app-core/src/definitions",
-        "targetPackage": "@miladyai/app-core",
-        "targetFile": null
-      },
-      {
-        "packageName": "@miladyai/capacitor-location",
-        "file": "apps/app/plugins/location/electrobun/src/index.ts",
-        "kind": "missing-internal-dependency",
-        "specifier": "@miladyai/app-core/bridge/electrobun-rpc.js",
-        "targetPackage": "@miladyai/app-core",
-        "targetFile": null
-      },
-      {
-        "packageName": "@miladyai/capacitor-location",
-        "file": "apps/app/plugins/location/electrobun/src/index.ts",
-        "kind": "missing-internal-dependency",
-        "specifier": "@miladyai/app-core/src/definitions",
-        "targetPackage": "@miladyai/app-core",
-        "targetFile": null
-      },
-      {
-        "packageName": "@miladyai/capacitor-screencapture",
-        "file": "apps/app/plugins/screencapture/electrobun/src/index.ts",
-        "kind": "missing-internal-dependency",
-        "specifier": "@miladyai/app-core/bridge/electrobun-rpc.js",
-        "targetPackage": "@miladyai/app-core",
-        "targetFile": null
-      },
-      {
-        "packageName": "@miladyai/capacitor-swabble",
-        "file": "apps/app/plugins/swabble/electrobun/src/index.ts",
-        "kind": "missing-internal-dependency",
-        "specifier": "@miladyai/app-core/bridge/electrobun-rpc.js",
-        "targetPackage": "@miladyai/app-core",
-        "targetFile": null
-      },
-      {
-        "packageName": "@miladyai/capacitor-swabble",
-        "file": "apps/app/plugins/swabble/electrobun/src/index.ts",
-        "kind": "missing-internal-dependency",
-        "specifier": "@miladyai/app-core/src/definitions",
-        "targetPackage": "@miladyai/app-core",
-        "targetFile": null
-      },
-      {
-        "packageName": "@miladyai/capacitor-talkmode",
-        "file": "apps/app/plugins/talkmode/electrobun/src/index.ts",
-        "kind": "missing-internal-dependency",
-        "specifier": "@miladyai/app-core/bridge/electrobun-rpc.js",
-        "targetPackage": "@miladyai/app-core",
-        "targetFile": null
-      },
-      {
-        "packageName": "@miladyai/capacitor-talkmode",
-        "file": "apps/app/plugins/talkmode/electrobun/src/index.ts",
-        "kind": "missing-internal-dependency",
-        "specifier": "@miladyai/app-core/src/definitions",
-        "targetPackage": "@miladyai/app-core",
-        "targetFile": null
-      },
-      {
-        "packageName": "@miladyai/electrobun",
-        "file": "apps/app/electrobun/src/native/permissions-shared.ts",
-        "kind": "missing-internal-dependency",
-        "specifier": "@miladyai/app-core/contracts/permissions",
-        "targetPackage": "@miladyai/app-core",
-        "targetFile": null
-      },
-      {
-        "packageName": "@miladyai/electrobun",
-        "file": "apps/app/electrobun/src/native/permissions-shared.ts",
-        "kind": "missing-internal-dependency",
-        "specifier": "@miladyai/app-core/contracts/permissions",
-        "targetPackage": "@miladyai/app-core",
-        "targetFile": null
-      },
-      {
-        "packageName": "@miladyai/electrobun",
-        "file": "apps/app/electrobun/src/rpc-schema.ts",
-        "kind": "missing-internal-dependency",
-        "specifier": "@miladyai/app-core/contracts/permissions",
-        "targetPackage": "@miladyai/app-core",
-        "targetFile": null
-      },
-      {
-        "packageName": "@miladyai/electrobun",
-        "file": "apps/app/electrobun/src/rpc-schema.ts",
-        "kind": "missing-internal-dependency",
-        "specifier": "@miladyai/app-core/contracts/permissions",
-        "targetPackage": "@miladyai/app-core",
-        "targetFile": null
-      },
-      {
-        "packageName": "@miladyai/homepage",
-        "file": "apps/homepage/src/components/dashboard/CreateAgent.tsx",
-        "kind": "missing-internal-dependency",
-        "specifier": "@miladyai/agent/onboarding-presets",
-        "targetPackage": "@miladyai/agent",
-        "targetFile": null
-      },
-      {
-        "packageName": "miladyai",
-        "file": "scripts/normalize-parallax-capture.ts",
-        "kind": "cross-package-relative-import",
-        "specifier": "../packages/app-core/src/benchmark/replay-capture.ts",
-        "targetPackage": "@miladyai/app-core",
-        "targetFile": "packages/app-core/src/benchmark/replay-capture.ts"
-      }
-    ]
+    "total": 0,
+    "byPackage": [],
+    "entries": []
   },
   "collisions": {
     "classCollisions": [
@@ -1262,191 +849,6 @@
     ],
     "exportedFunctionCollisions": [
       {
-        "name": "parseClampedInteger",
-        "entries": [
-          {
-            "name": "parseClampedInteger",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/agent/src/utils/number-parsing.ts",
-            "line": 26,
-            "packageName": "@miladyai/agent",
-            "packageDir": "packages/agent",
-            "sourceName": "parseClampedInteger"
-          },
-          {
-            "name": "parseClampedInteger",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/agent/src/utils/number-parsing.ts",
-            "line": 30,
-            "packageName": "@miladyai/agent",
-            "packageDir": "packages/agent",
-            "sourceName": "parseClampedInteger"
-          },
-          {
-            "name": "parseClampedInteger",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/agent/src/utils/number-parsing.ts",
-            "line": 34,
-            "packageName": "@miladyai/agent",
-            "packageDir": "packages/agent",
-            "sourceName": "parseClampedInteger"
-          },
-          {
-            "name": "parseClampedInteger",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/app-core/src/utils/number-parsing.ts",
-            "line": 100,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "parseClampedInteger"
-          },
-          {
-            "name": "parseClampedInteger",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/app-core/src/utils/number-parsing.ts",
-            "line": 104,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "parseClampedInteger"
-          },
-          {
-            "name": "parseClampedInteger",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/app-core/src/utils/number-parsing.ts",
-            "line": 108,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "parseClampedInteger"
-          }
-        ]
-      },
-      {
-        "name": "parsePositiveInteger",
-        "entries": [
-          {
-            "name": "parsePositiveInteger",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/agent/src/utils/number-parsing.ts",
-            "line": 53,
-            "packageName": "@miladyai/agent",
-            "packageDir": "packages/agent",
-            "sourceName": "parsePositiveInteger"
-          },
-          {
-            "name": "parsePositiveInteger",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/agent/src/utils/number-parsing.ts",
-            "line": 57,
-            "packageName": "@miladyai/agent",
-            "packageDir": "packages/agent",
-            "sourceName": "parsePositiveInteger"
-          },
-          {
-            "name": "parsePositiveInteger",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/agent/src/utils/number-parsing.ts",
-            "line": 61,
-            "packageName": "@miladyai/agent",
-            "packageDir": "packages/agent",
-            "sourceName": "parsePositiveInteger"
-          },
-          {
-            "name": "parsePositiveInteger",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/app-core/src/utils/number-parsing.ts",
-            "line": 33,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "parsePositiveInteger"
-          },
-          {
-            "name": "parsePositiveInteger",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/app-core/src/utils/number-parsing.ts",
-            "line": 37,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "parsePositiveInteger"
-          },
-          {
-            "name": "parsePositiveInteger",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/app-core/src/utils/number-parsing.ts",
-            "line": 41,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "parsePositiveInteger"
-          }
-        ]
-      },
-      {
-        "name": "parseClampedFloat",
-        "entries": [
-          {
-            "name": "parseClampedFloat",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/agent/src/utils/number-parsing.ts",
-            "line": 91,
-            "packageName": "@miladyai/agent",
-            "packageDir": "packages/agent",
-            "sourceName": "parseClampedFloat"
-          },
-          {
-            "name": "parseClampedFloat",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/agent/src/utils/number-parsing.ts",
-            "line": 95,
-            "packageName": "@miladyai/agent",
-            "packageDir": "packages/agent",
-            "sourceName": "parseClampedFloat"
-          },
-          {
-            "name": "parseClampedFloat",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/agent/src/utils/number-parsing.ts",
-            "line": 99,
-            "packageName": "@miladyai/agent",
-            "packageDir": "packages/agent",
-            "sourceName": "parseClampedFloat"
-          },
-          {
-            "name": "parseClampedFloat",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/app-core/src/utils/number-parsing.ts",
-            "line": 78,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "parseClampedFloat"
-          },
-          {
-            "name": "parseClampedFloat",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/app-core/src/utils/number-parsing.ts",
-            "line": 82,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "parseClampedFloat"
-          }
-        ]
-      },
-      {
         "name": "canUseLocalTradeExecution",
         "entries": [
           {
@@ -1513,41 +915,6 @@
             "packageName": "@miladyai/electrobun",
             "packageDir": "apps/app/electrobun",
             "sourceName": "checkPermission"
-          }
-        ]
-      },
-      {
-        "name": "computeStreamingDelta",
-        "entries": [
-          {
-            "name": "computeStreamingDelta",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/app-core/src/actions/chat-helpers.ts",
-            "line": 15,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "computeStreamingDelta"
-          },
-          {
-            "name": "computeStreamingDelta",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/app-core/src/state/parsers.ts",
-            "line": 181,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "computeStreamingDelta"
-          },
-          {
-            "name": "computeStreamingDelta",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/app-core/src/utils/streaming-text.ts",
-            "line": 125,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "computeStreamingDelta"
           }
         ]
       },
@@ -1937,31 +1304,6 @@
         ]
       },
       {
-        "name": "asApiLikeError",
-        "entries": [
-          {
-            "name": "asApiLikeError",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/app-core/src/actions/lifecycle.ts",
-            "line": 146,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "asApiLikeError"
-          },
-          {
-            "name": "asApiLikeError",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/app-core/src/state/parsers.ts",
-            "line": 317,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "asApiLikeError"
-          }
-        ]
-      },
-      {
         "name": "bootElizaRuntime",
         "entries": [
           {
@@ -2108,6 +1450,31 @@
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
             "sourceName": "collectPluginNames"
+          }
+        ]
+      },
+      {
+        "name": "computeStreamingDelta",
+        "entries": [
+          {
+            "name": "computeStreamingDelta",
+            "kind": "function",
+            "exported": true,
+            "file": "packages/app-core/src/state/parsers.ts",
+            "line": 181,
+            "packageName": "@miladyai/app-core",
+            "packageDir": "packages/app-core",
+            "sourceName": "computeStreamingDelta"
+          },
+          {
+            "name": "computeStreamingDelta",
+            "kind": "function",
+            "exported": true,
+            "file": "packages/app-core/src/utils/streaming-text.ts",
+            "line": 125,
+            "packageName": "@miladyai/app-core",
+            "packageDir": "packages/app-core",
+            "sourceName": "computeStreamingDelta"
           }
         ]
       },
@@ -2462,56 +1829,6 @@
         ]
       },
       {
-        "name": "formatSearchBullet",
-        "entries": [
-          {
-            "name": "formatSearchBullet",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/app-core/src/actions/chat-helpers.ts",
-            "line": 36,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "formatSearchBullet"
-          },
-          {
-            "name": "formatSearchBullet",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/app-core/src/state/parsers.ts",
-            "line": 312,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "formatSearchBullet"
-          }
-        ]
-      },
-      {
-        "name": "formatStartupErrorDetail",
-        "entries": [
-          {
-            "name": "formatStartupErrorDetail",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/app-core/src/actions/lifecycle.ts",
-            "line": 128,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "formatStartupErrorDetail"
-          },
-          {
-            "name": "formatStartupErrorDetail",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/app-core/src/state/parsers.ts",
-            "line": 337,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "formatStartupErrorDetail"
-          }
-        ]
-      },
-      {
         "name": "getAccessToken",
         "entries": [
           {
@@ -2533,31 +1850,6 @@
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
             "sourceName": "getAccessToken"
-          }
-        ]
-      },
-      {
-        "name": "getBackendStartupTimeoutMs",
-        "entries": [
-          {
-            "name": "getBackendStartupTimeoutMs",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/app-core/src/actions/lifecycle.ts",
-            "line": 103,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "getBackendStartupTimeoutMs"
-          },
-          {
-            "name": "getBackendStartupTimeoutMs",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/app-core/src/bridge/electrobun-runtime.ts",
-            "line": 49,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "getBackendStartupTimeoutMs"
           }
         ]
       },
@@ -3812,31 +3104,6 @@
         ]
       },
       {
-        "name": "normalizeCustomActionName",
-        "entries": [
-          {
-            "name": "normalizeCustomActionName",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/app-core/src/actions/chat-helpers.ts",
-            "line": 62,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "normalizeCustomActionName"
-          },
-          {
-            "name": "normalizeCustomActionName",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/app-core/src/state/parsers.ts",
-            "line": 237,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "normalizeCustomActionName"
-          }
-        ]
-      },
-      {
         "name": "normalizeOnboardingProviderId",
         "entries": [
           {
@@ -3912,27 +3179,52 @@
         ]
       },
       {
-        "name": "parseCustomActionParams",
+        "name": "parseClampedFloat",
         "entries": [
           {
-            "name": "parseCustomActionParams",
+            "name": "parseClampedFloat",
             "kind": "function",
             "exported": true,
-            "file": "packages/app-core/src/actions/chat-helpers.ts",
-            "line": 69,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "parseCustomActionParams"
+            "file": "packages/agent/src/utils/number-parsing.ts",
+            "line": 91,
+            "packageName": "@miladyai/agent",
+            "packageDir": "packages/agent",
+            "sourceName": "parseClampedFloat"
           },
           {
-            "name": "parseCustomActionParams",
+            "name": "parseClampedFloat",
             "kind": "function",
             "exported": true,
-            "file": "packages/app-core/src/state/parsers.ts",
-            "line": 244,
+            "file": "packages/app-core/src/utils/number-parsing.ts",
+            "line": 78,
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
-            "sourceName": "parseCustomActionParams"
+            "sourceName": "parseClampedFloat"
+          }
+        ]
+      },
+      {
+        "name": "parseClampedInteger",
+        "entries": [
+          {
+            "name": "parseClampedInteger",
+            "kind": "function",
+            "exported": true,
+            "file": "packages/agent/src/utils/number-parsing.ts",
+            "line": 26,
+            "packageName": "@miladyai/agent",
+            "packageDir": "packages/agent",
+            "sourceName": "parseClampedInteger"
+          },
+          {
+            "name": "parseClampedInteger",
+            "kind": "function",
+            "exported": true,
+            "file": "packages/app-core/src/utils/number-parsing.ts",
+            "line": 100,
+            "packageName": "@miladyai/app-core",
+            "packageDir": "packages/app-core",
+            "sourceName": "parseClampedInteger"
           }
         ]
       },
@@ -4012,6 +3304,31 @@
         ]
       },
       {
+        "name": "parsePositiveInteger",
+        "entries": [
+          {
+            "name": "parsePositiveInteger",
+            "kind": "function",
+            "exported": true,
+            "file": "packages/agent/src/utils/number-parsing.ts",
+            "line": 53,
+            "packageName": "@miladyai/agent",
+            "packageDir": "packages/agent",
+            "sourceName": "parsePositiveInteger"
+          },
+          {
+            "name": "parsePositiveInteger",
+            "kind": "function",
+            "exported": true,
+            "file": "packages/app-core/src/utils/number-parsing.ts",
+            "line": 33,
+            "packageName": "@miladyai/app-core",
+            "packageDir": "packages/app-core",
+            "sourceName": "parsePositiveInteger"
+          }
+        ]
+      },
+      {
         "name": "parseRegistryEndpointUrl",
         "entries": [
           {
@@ -4033,31 +3350,6 @@
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
             "sourceName": "parseRegistryEndpointUrl"
-          }
-        ]
-      },
-      {
-        "name": "parseSlashCommandInput",
-        "entries": [
-          {
-            "name": "parseSlashCommandInput",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/app-core/src/actions/chat-helpers.ts",
-            "line": 44,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "parseSlashCommandInput"
-          },
-          {
-            "name": "parseSlashCommandInput",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/app-core/src/state/parsers.ts",
-            "line": 223,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "parseSlashCommandInput"
           }
         ]
       },
@@ -4812,31 +4104,6 @@
         ]
       },
       {
-        "name": "shouldApplyFinalStreamText",
-        "entries": [
-          {
-            "name": "shouldApplyFinalStreamText",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/app-core/src/actions/chat-helpers.ts",
-            "line": 27,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "shouldApplyFinalStreamText"
-          },
-          {
-            "name": "shouldApplyFinalStreamText",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/app-core/src/state/parsers.ts",
-            "line": 192,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "shouldApplyFinalStreamText"
-          }
-        ]
-      },
-      {
         "name": "sortOnboardingProviders",
         "entries": [
           {
@@ -4883,31 +4150,6 @@
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
             "sourceName": "startApiServer"
-          }
-        ]
-      },
-      {
-        "name": "startBenchmarkServer",
-        "entries": [
-          {
-            "name": "startBenchmarkServer",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/agent/src/benchmark-server.ts",
-            "line": 272,
-            "packageName": "@miladyai/agent",
-            "packageDir": "packages/agent",
-            "sourceName": "startBenchmarkServer"
-          },
-          {
-            "name": "startBenchmarkServer",
-            "kind": "function",
-            "exported": true,
-            "file": "packages/app-core/src/benchmark/server.ts",
-            "line": 246,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "startBenchmarkServer"
           }
         ]
       },
@@ -5251,7 +4493,7 @@
             "kind": "interface",
             "exported": false,
             "file": "packages/app-core/src/api/client.ts",
-            "line": 1969,
+            "line": 1970,
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
             "sourceName": "Window"
@@ -6143,7 +5385,7 @@
             "kind": "interface",
             "exported": true,
             "file": "packages/app-core/src/api/client.ts",
-            "line": 1518,
+            "line": 1519,
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
             "sourceName": "AppUiExtensionConfig"
@@ -6188,7 +5430,7 @@
             "kind": "interface",
             "exported": true,
             "file": "packages/app-core/src/api/client.ts",
-            "line": 1063,
+            "line": 1064,
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
             "sourceName": "RegistrySearchResult"
@@ -6233,7 +5475,7 @@
             "kind": "interface",
             "exported": true,
             "file": "packages/app-core/src/api/client.ts",
-            "line": 250,
+            "line": 251,
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
             "sourceName": "AgentStatus"
@@ -6398,7 +5640,7 @@
             "kind": "interface",
             "exported": true,
             "file": "packages/app-core/src/api/client.ts",
-            "line": 1522,
+            "line": 1523,
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
             "sourceName": "RegistryAppInfo"
@@ -6561,31 +5803,6 @@
         ]
       },
       {
-        "name": "ApiLikeError",
-        "entries": [
-          {
-            "name": "ApiLikeError",
-            "kind": "interface",
-            "exported": true,
-            "file": "packages/app-core/src/actions/lifecycle.ts",
-            "line": 139,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "ApiLikeError"
-          },
-          {
-            "name": "ApiLikeError",
-            "kind": "interface",
-            "exported": true,
-            "file": "packages/app-core/src/state/types.ts",
-            "line": 231,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "ApiLikeError"
-          }
-        ]
-      },
-      {
         "name": "AppLaunchResult",
         "entries": [
           {
@@ -6593,7 +5810,7 @@
             "kind": "interface",
             "exported": true,
             "file": "packages/app-core/src/api/client.ts",
-            "line": 1552,
+            "line": 1553,
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
             "sourceName": "AppLaunchResult"
@@ -6618,7 +5835,7 @@
             "kind": "interface",
             "exported": true,
             "file": "packages/app-core/src/api/client.ts",
-            "line": 1560,
+            "line": 1561,
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
             "sourceName": "AppStopResult"
@@ -6643,7 +5860,7 @@
             "kind": "interface",
             "exported": true,
             "file": "packages/app-core/src/api/client.ts",
-            "line": 1503,
+            "line": 1504,
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
             "sourceName": "AppViewerAuthMessage"
@@ -6668,7 +5885,7 @@
             "kind": "interface",
             "exported": true,
             "file": "packages/app-core/src/api/client.ts",
-            "line": 1510,
+            "line": 1511,
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
             "sourceName": "AppViewerConfig"
@@ -6778,7 +5995,7 @@
             "kind": "interface",
             "exported": true,
             "file": "packages/app-core/src/api/client.ts",
-            "line": 789,
+            "line": 790,
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
             "sourceName": "CatalogSearchResult"
@@ -6803,7 +6020,7 @@
             "kind": "interface",
             "exported": true,
             "file": "packages/app-core/src/api/client.ts",
-            "line": 777,
+            "line": 778,
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
             "sourceName": "CatalogSkill"
@@ -6828,7 +6045,7 @@
             "kind": "interface",
             "exported": true,
             "file": "packages/app-core/src/api/client.ts",
-            "line": 762,
+            "line": 763,
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
             "sourceName": "CatalogSkillStats"
@@ -6853,7 +6070,7 @@
             "kind": "interface",
             "exported": true,
             "file": "packages/app-core/src/api/client.ts",
-            "line": 771,
+            "line": 772,
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
             "sourceName": "CatalogSkillVersion"
@@ -7053,7 +6270,7 @@
             "kind": "interface",
             "exported": true,
             "file": "packages/app-core/src/api/client.ts",
-            "line": 480,
+            "line": 481,
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
             "sourceName": "CreateTriggerRequest"
@@ -7168,7 +6385,7 @@
             "kind": "interface",
             "exported": true,
             "file": "packages/app-core/src/api/client.ts",
-            "line": 1544,
+            "line": 1545,
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
             "sourceName": "InstalledAppInfo"
@@ -7253,7 +6470,7 @@
             "kind": "interface",
             "exported": true,
             "file": "packages/app-core/src/api/client.ts",
-            "line": 800,
+            "line": 801,
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
             "sourceName": "LogEntry"
@@ -7278,7 +6495,7 @@
             "kind": "interface",
             "exported": true,
             "file": "packages/app-core/src/api/client.ts",
-            "line": 1403,
+            "line": 1404,
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
             "sourceName": "McpServerConfig"
@@ -7778,7 +6995,7 @@
             "kind": "interface",
             "exported": true,
             "file": "packages/app-core/src/api/client.ts",
-            "line": 1081,
+            "line": 1082,
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
             "sourceName": "PluginInstallResult"
@@ -7878,7 +7095,7 @@
             "kind": "interface",
             "exported": true,
             "file": "packages/app-core/src/api/client.ts",
-            "line": 1937,
+            "line": 1938,
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
             "sourceName": "RegistrationResult"
@@ -8003,7 +7220,7 @@
             "kind": "interface",
             "exported": true,
             "file": "packages/app-core/src/api/client.ts",
-            "line": 1924,
+            "line": 1925,
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
             "sourceName": "RegistryStatus"
@@ -8157,31 +7374,6 @@
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
             "sourceName": "SandboxManagerConfig"
-          }
-        ]
-      },
-      {
-        "name": "StartupErrorState",
-        "entries": [
-          {
-            "name": "StartupErrorState",
-            "kind": "interface",
-            "exported": true,
-            "file": "packages/app-core/src/actions/lifecycle.ts",
-            "line": 114,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "StartupErrorState"
-          },
-          {
-            "name": "StartupErrorState",
-            "kind": "interface",
-            "exported": true,
-            "file": "packages/app-core/src/state/types.ts",
-            "line": 222,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "StartupErrorState"
           }
         ]
       },
@@ -8603,7 +7795,7 @@
             "kind": "interface",
             "exported": true,
             "file": "packages/app-core/src/api/client.ts",
-            "line": 470,
+            "line": 471,
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
             "sourceName": "TriggerHealthSnapshot"
@@ -8653,7 +7845,7 @@
             "kind": "interface",
             "exported": true,
             "file": "packages/app-core/src/api/client.ts",
-            "line": 458,
+            "line": 459,
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
             "sourceName": "TriggerRunRecord"
@@ -8678,7 +7870,7 @@
             "kind": "interface",
             "exported": true,
             "file": "packages/app-core/src/api/client.ts",
-            "line": 435,
+            "line": 436,
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
             "sourceName": "TriggerSummary"
@@ -8703,7 +7895,7 @@
             "kind": "interface",
             "exported": true,
             "file": "packages/app-core/src/api/client.ts",
-            "line": 494,
+            "line": 495,
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
             "sourceName": "UpdateTriggerRequest"
@@ -9367,7 +8559,7 @@
             "kind": "type",
             "exported": true,
             "file": "packages/app-core/src/api/client.ts",
-            "line": 263,
+            "line": 264,
             "packageName": "@miladyai/app-core",
             "packageDir": "packages/app-core",
             "sourceName": "TradePermissionMode"
@@ -11926,31 +11118,6 @@
             "packageName": "@miladyai/shared",
             "packageDir": "packages/shared",
             "sourceName": "KnowledgeConfig"
-          }
-        ]
-      },
-      {
-        "name": "LifecycleAction",
-        "entries": [
-          {
-            "name": "LifecycleAction",
-            "kind": "type",
-            "exported": true,
-            "file": "packages/app-core/src/actions/lifecycle.ts",
-            "line": 5,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "LifecycleAction"
-          },
-          {
-            "name": "LifecycleAction",
-            "kind": "type",
-            "exported": true,
-            "file": "packages/app-core/src/state/types.ts",
-            "line": 158,
-            "packageName": "@miladyai/app-core",
-            "packageDir": "packages/app-core",
-            "sourceName": "LifecycleAction"
           }
         ]
       },

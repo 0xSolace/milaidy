@@ -27,8 +27,7 @@ vi.mock("@miladyai/agent/config/paths", () => ({
 }));
 
 vi.mock("./plugin-installer", async () => {
-  const VALID_PACKAGE_NAME =
-    /^(@[a-zA-Z0-9][\w.-]*\/)?[a-zA-Z0-9][\w.-]*$/;
+  const VALID_PACKAGE_NAME = /^(@[a-zA-Z0-9][\w.-]*\/)?[a-zA-Z0-9][\w.-]*$/;
   const VALID_GIT_URL = /^https:\/\/[a-zA-Z0-9][\w./-]*\.git$/;
   return {
     detectPackageManager: vi.fn(async () => "npm"),

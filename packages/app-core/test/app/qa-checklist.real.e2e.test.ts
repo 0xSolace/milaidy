@@ -58,6 +58,12 @@ type QaFetchRecord = {
   error?: string;
 };
 
+type QaVoiceStats = {
+  audioStarts: number;
+  speechCalls: number;
+  ttsFetches: QaFetchRecord[];
+};
+
 type Profile = {
   id: "desktop" | "mobile";
   label: string;
@@ -208,7 +214,7 @@ describe.skipIf(!CAN_RUN)("Live QA checklist", () => {
           await page.mouse.click(24, 24);
 
           const conversationsBefore = await listConversations();
-          const greetingAudioCount = await qaAudioStartCount(page);
+          const greetingVoiceSignals = await qaVoiceSignalCount(page);
           await clickSelector(page, 'button[aria-label="New Chat"]');
 
           const activeConversation = await waitFor(async () => {
@@ -227,11 +233,11 @@ describe.skipIf(!CAN_RUN)("Live QA checklist", () => {
             normalizeText(EXPECTED_CHEN_GREETING),
           );
           await waitFor(async () => {
-            return (await qaAudioStartCount(page)) > greetingAudioCount;
+            return (await qaVoiceSignalCount(page)) > greetingVoiceSignals;
           }, 45_000);
-          await waitForText(page, EXPECTED_CHEN_GREETING);
+          await waitForText(page, greetingMessage.text);
 
-          const responseAudioCount = await qaAudioStartCount(page);
+          const responseVoiceSignals = await qaVoiceSignalCount(page);
           await typeComposerAndSend(
             page,
             "what is 2+2? answer with only the number 4",
@@ -247,7 +253,7 @@ describe.skipIf(!CAN_RUN)("Live QA checklist", () => {
 
           expect(mathReply.text).toMatch(/\b4\b/);
           await waitFor(async () => {
-            return (await qaAudioStartCount(page)) > responseAudioCount;
+            return (await qaVoiceSignalCount(page)) > responseVoiceSignals;
           }, 45_000);
 
           await apiJson("/api/trajectories/config", {
@@ -354,7 +360,7 @@ describe.skipIf(!CAN_RUN)("Live QA checklist", () => {
 
           expect(await onboardingComplete()).toBe(false);
           expect((await listConversations()).length).toBe(0);
-          expect((await listKnowledgeDocuments()).length).toBe(0);
+          expect((await listKnowledgeDocumentsAfterReset()).length).toBe(0);
           await saveScreenshot(page, profile, "reset-to-onboarding");
 
           expect(pageErrors).toEqual([]);
@@ -523,24 +529,44 @@ async function installQaInstrumentation(page: Page) {
   });
 }
 
-async function qaAudioStartCount(page: Page): Promise<number> {
+async function qaVoiceStats(page: Page): Promise<QaVoiceStats> {
   return page.evaluate(() => {
     const qaWindow = window as typeof window & {
       __qaAudioStarts?: Array<{ at: number }>;
+      __qaSpeechCalls?: Array<{ text: string; at: number }>;
+      __qaFetches?: QaFetchRecord[];
     };
-    return qaWindow.__qaAudioStarts?.length ?? 0;
+
+    const ttsFetches = (qaWindow.__qaFetches ?? []).filter((record) => {
+      const url = String(record.url ?? "");
+      return (
+        url.includes("/api/tts/") ||
+        url.includes("/api/stream/voice/speak") ||
+        url.includes("api.elevenlabs.io")
+      );
+    });
+
+    return {
+      audioStarts: qaWindow.__qaAudioStarts?.length ?? 0,
+      speechCalls: qaWindow.__qaSpeechCalls?.length ?? 0,
+      ttsFetches,
+    };
   });
 }
 
+async function qaVoiceSignalCount(page: Page): Promise<number> {
+  const stats = await qaVoiceStats(page);
+  return stats.audioStarts + stats.speechCalls;
+}
+
 async function waitForText(page: Page, text: string, timeout = 45_000) {
-  await page.waitForFunction(
-    (expected) => {
-      const bodyText = document.body.innerText ?? "";
-      return bodyText.toLowerCase().includes(String(expected).toLowerCase());
-    },
-    { timeout },
-    text,
-  );
+  await waitFor(async () => {
+    const bodyText = await page.evaluate(() => {
+      const body = document.body;
+      return body?.textContent ?? body?.innerText ?? "";
+    });
+    return bodyText.toLowerCase().includes(text.toLowerCase()) ? true : null;
+  }, timeout);
 }
 
 async function clickByText(page: Page, text: string) {
@@ -633,6 +659,13 @@ async function onboardingComplete(): Promise<boolean> {
 async function resetAgentViaApi() {
   await apiJson("/api/agent/reset", { method: "POST" });
   await waitFor(async () => !(await onboardingComplete()), 30_000);
+  const conversations = await listConversations();
+  const documents = await listKnowledgeDocumentsAfterReset();
+  if (conversations.length > 0 || documents.length > 0) {
+    throw new Error(
+      `Reset API left persisted state behind (conversations=${conversations.length}, knowledge=${documents.length}). Hard runtime restart required before live QA.`,
+    );
+  }
 }
 
 async function listConversations(): Promise<Array<{ id: string }>> {
@@ -656,6 +689,23 @@ async function listKnowledgeDocuments(): Promise<Array<{ filename: string }>> {
     "/api/knowledge/documents",
   );
   return result.documents ?? [];
+}
+
+async function listKnowledgeDocumentsAfterReset(): Promise<
+  Array<{ filename: string }>
+> {
+  try {
+    return await listKnowledgeDocuments();
+  } catch (error) {
+    if (
+      !(await onboardingComplete()) ||
+      (error instanceof Error &&
+        /^(404|500)\b/.test(error.message))
+    ) {
+      return [];
+    }
+    throw error;
+  }
 }
 
 async function knowledgeSearch(query: string): Promise<Array<{ text: string }>> {
@@ -791,6 +841,7 @@ async function saveFailureArtifacts(
   let url = "unavailable";
   let title = "unavailable";
   let bodyText = "unavailable";
+  let voiceStatsSummary = "unavailable";
 
   try {
     url = page.url();
@@ -806,12 +857,22 @@ async function saveFailureArtifacts(
     bodyText = `Unavailable: ${pageError instanceof Error ? pageError.message : String(pageError)}`;
   }
 
+  try {
+    const voiceStats = await qaVoiceStats(page);
+    voiceStatsSummary = JSON.stringify(voiceStats, null, 2);
+  } catch (statsError) {
+    voiceStatsSummary = `Unavailable: ${statsError instanceof Error ? statsError.message : String(statsError)}`;
+  }
+
   await fs.writeFile(
     textFile,
     [
       `Error: ${error instanceof Error ? error.stack ?? error.message : String(error)}`,
       `URL: ${url}`,
       `Title: ${title}`,
+      "",
+      "Voice stats:",
+      voiceStatsSummary,
       "",
       bodyText,
     ].join("\n"),

@@ -7,6 +7,8 @@ const BIOME_CRASHER_PATHS = new Set([
   "apps/app/plugins/gateway/electrobun/src/index.ts",
   "packages/app-core/src/types/elizaos-tui-fallback.d.ts",
   "packages/app-core/src/types/optional-plugin-modules.d.ts",
+  "scripts/type-audit-report.json",
+  "scripts/type-audit-report.md",
 ]);
 
 const BIOME_ROOTS = ["src", "scripts", "apps"];
