@@ -183,6 +183,15 @@ async function dispatchInstruction(
       ? autonomyService.getTargetRoomId()
       : undefined);
 
+  if (!roomId) {
+    runtime.logger.warn?.(
+      `[trigger-runtime] No autonomy room resolvable for trigger ${trigger.triggerId} — cannot dispatch`,
+    );
+    throw new Error(
+      "No autonomy room available for trigger dispatch. Ensure the AutonomyService has a target room configured.",
+    );
+  }
+
   // Create a memory in the autonomy room with the trigger instruction.
   // The AutonomyService loop picks this up as an autonomous action.
   const instructionText = `[Heartbeat: ${trigger.displayName}]\n${trigger.instructions}`;
@@ -190,7 +199,7 @@ async function dispatchInstruction(
   await runtime.createMemory(
     {
       entityId: runtime.agentId,
-      roomId: roomId ?? (trigger.triggerId as UUID),
+      roomId,
       content: {
         text: instructionText,
         source: "trigger-runtime",
@@ -211,7 +220,7 @@ async function dispatchInstruction(
       await runtime.processActions(
         {
           entityId: runtime.agentId,
-          roomId: roomId ?? (trigger.triggerId as UUID),
+          roomId,
           content: {
             text: instructionText,
             source: "trigger-runtime",
@@ -220,7 +229,7 @@ async function dispatchInstruction(
         [],
         await runtime.composeState({
           entityId: runtime.agentId,
-          roomId: roomId ?? (trigger.triggerId as UUID),
+          roomId,
           content: { text: instructionText },
         }),
       );
