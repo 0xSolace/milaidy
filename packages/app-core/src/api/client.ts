@@ -1775,7 +1775,8 @@ export interface TrajectoryConfig {
   enabled: boolean;
 }
 
-export type TrajectoryExportFormat = "json" | "csv" | "zip";
+import type { TrajectoryExportFormat } from "@miladyai/agent/api/trajectory-routes";
+export type { TrajectoryExportFormat };
 
 export interface TrajectoryExportOptions {
   format: TrajectoryExportFormat;

@@ -26,9 +26,9 @@ import {
 import { CharacterEditor } from "@miladyai/app-core/components";
 import type { BrandingConfig } from "@miladyai/app-core/config";
 import {
+  type AppBootConfig,
   getBootConfig,
   setBootConfig,
-  type AppBootConfig,
 } from "@miladyai/app-core/config";
 import {
   AGENT_READY_EVENT,
@@ -168,14 +168,16 @@ const MILADY_VRM_ASSETS = [
 
 const miladyBootConfig: AppBootConfig = {
   branding: MILADY_BRANDING,
-  cloudApiBase: (import.meta.env.VITE_CLOUD_BASE as string) ?? "https://www.elizacloud.ai",
+  cloudApiBase:
+    (import.meta.env.VITE_CLOUD_BASE as string) ?? "https://www.elizacloud.ai",
   vrmAssets: MILADY_VRM_ASSETS,
   onboardingStyles: STYLE_PRESETS,
   characterEditor: CharacterEditor,
   characterCatalog: MILADY_CHARACTER_CATALOG,
   envAliases: MILADY_ENV_ALIASES,
   clientMiddleware: {
-    forceFreshOnboarding: shouldInstallMainWindowOnboardingPatches(windowShellRoute),
+    forceFreshOnboarding:
+      shouldInstallMainWindowOnboardingPatches(windowShellRoute),
     preferLocalProvider: true,
     desktopPermissions: isDesktopPlatform(),
   },
