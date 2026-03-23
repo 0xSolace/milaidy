@@ -1177,47 +1177,52 @@ function SkillsFullView() {
   }, [loadSkills]);
 
   // Group into: needs attention, active, inactive — with text filter
-  const { attention, active, inactive, activeCount: _activeCount, totalCount: _totalCount } =
-    useMemo(() => {
-      const attention: SkillInfo[] = [];
-      const active: SkillInfo[] = [];
-      const inactive: SkillInfo[] = [];
-      let activeCount = 0;
+  const {
+    attention,
+    active,
+    inactive,
+    activeCount: _activeCount,
+    totalCount: _totalCount,
+  } = useMemo(() => {
+    const attention: SkillInfo[] = [];
+    const active: SkillInfo[] = [];
+    const inactive: SkillInfo[] = [];
+    let activeCount = 0;
 
-      const query = filterText.toLowerCase();
+    const query = filterText.toLowerCase();
 
-      for (const skill of skills) {
-        if (
-          query &&
-          !skill.name.toLowerCase().includes(query) &&
-          !skill.description?.toLowerCase().includes(query)
-        ) {
-          continue;
-        }
-
-        if (skill.enabled) activeCount++;
-
-        if (
-          skill.scanStatus === "warning" ||
-          skill.scanStatus === "critical" ||
-          skill.scanStatus === "blocked"
-        ) {
-          attention.push(skill);
-        } else if (skill.enabled) {
-          active.push(skill);
-        } else {
-          inactive.push(skill);
-        }
+    for (const skill of skills) {
+      if (
+        query &&
+        !skill.name.toLowerCase().includes(query) &&
+        !skill.description?.toLowerCase().includes(query)
+      ) {
+        continue;
       }
 
-      return {
-        attention,
-        active,
-        inactive,
-        activeCount,
-        totalCount: skills.length,
-      };
-    }, [skills, filterText]);
+      if (skill.enabled) activeCount++;
+
+      if (
+        skill.scanStatus === "warning" ||
+        skill.scanStatus === "critical" ||
+        skill.scanStatus === "blocked"
+      ) {
+        attention.push(skill);
+      } else if (skill.enabled) {
+        active.push(skill);
+      } else {
+        inactive.push(skill);
+      }
+    }
+
+    return {
+      attention,
+      active,
+      inactive,
+      activeCount,
+      totalCount: skills.length,
+    };
+  }, [skills, filterText]);
 
   const handleDismissReview = () => {
     setState("skillReviewId", "");

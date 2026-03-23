@@ -17,7 +17,7 @@ import {
   buildCharacterFromConfig,
   collectPluginNames,
 } from "../src/runtime/eliza";
-import { saveEnv } from "../../../test/helpers/test-utils";
+import { envSnapshot, saveEnv } from "../../../test/helpers/test-utils";
 
 const CLOUD_ENV_KEYS = [
   "ELIZAOS_CLOUD_ENABLED",

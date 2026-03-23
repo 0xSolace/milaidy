@@ -329,6 +329,7 @@ export function CharacterEditor({
     cloudConnected: elizaCloudConnected,
     interruptOnSpeech: false,
     lang: "en-US",
+    // biome-ignore lint/suspicious/noExplicitAny: complex type
     voiceConfig: voiceConfig as any,
     onTranscript: () => {},
   });
@@ -1048,6 +1049,7 @@ export function CharacterEditor({
         )}
 
         {customizing && (
+          // biome-ignore lint/a11y/useSemanticElements: existing pattern
           <div
             className="flex flex-col flex-1 min-h-0 gap-2 overflow-hidden"
             role="region"
@@ -1479,6 +1481,7 @@ export function CharacterEditor({
                   <div className="flex flex-col gap-1.5 overflow-y-auto min-h-0">
                     {normalizedMessageExamples.map((convo, ci) => (
                       <div
+                        // biome-ignore lint/suspicious/noArrayIndexKey: items lack stable keys
                         key={`convo-${ci}`}
                         className="rounded-lg border border-border p-2.5"
                       >
@@ -1515,6 +1518,7 @@ export function CharacterEditor({
                         <div className="flex flex-col gap-1">
                           {convo.examples.map((msg, mi) => (
                             <div
+                              // biome-ignore lint/suspicious/noArrayIndexKey: items lack stable keys
                               key={`msg-${ci}-${mi}`}
                               className="flex items-center gap-2"
                             >
@@ -1586,6 +1590,7 @@ export function CharacterEditor({
                   <div className="flex flex-col gap-1.5 overflow-y-auto min-h-0">
                     {(d.postExamples ?? []).map((post, pi) => (
                       <div
+                        // biome-ignore lint/suspicious/noArrayIndexKey: items lack stable keys
                         key={`post-${pi}`}
                         className="flex items-center gap-1.5"
                       >

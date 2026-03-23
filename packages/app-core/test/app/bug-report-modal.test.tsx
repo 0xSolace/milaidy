@@ -2,6 +2,36 @@ import React from "react";
 import TestRenderer, { act } from "react-test-renderer";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+// Mock @miladyai/ui components to render inline (no Radix portals)
+// so react-test-renderer does not crash with parentInstance.children.indexOf.
+vi.mock("@miladyai/ui", () => {
+  const passthrough = ({
+    children,
+    ...props
+  }: React.PropsWithChildren<Record<string, unknown>>) =>
+    React.createElement("div", props, children);
+  return {
+    Button: ({
+      children,
+      ...props
+    }: React.ButtonHTMLAttributes<HTMLButtonElement>) =>
+      React.createElement("button", { type: "button", ...props }, children),
+    Input: (props: React.InputHTMLAttributes<HTMLInputElement>) =>
+      React.createElement("input", props),
+    Textarea: (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) =>
+      React.createElement("textarea", props),
+    Select: passthrough,
+    SelectContent: passthrough,
+    SelectItem: ({
+      children,
+      ...props
+    }: React.PropsWithChildren<Record<string, unknown>>) =>
+      React.createElement("option", props, children),
+    SelectTrigger: passthrough,
+    SelectValue: passthrough,
+  };
+});
+
 // --- hoisted mocks ----------------------------------------------------------
 
 const { mockUseBugReport, mockClient } = vi.hoisted(() => ({
@@ -20,6 +50,11 @@ vi.mock("@miladyai/app-core/hooks", async () => {
   return {
     ...actual,
     useBugReport: () => mockUseBugReport(),
+    useTimeout: () => ({
+      setTimeout: (fn: () => void, ms: number) => globalThis.setTimeout(fn, ms),
+      clearTimeout: (id: ReturnType<typeof globalThis.setTimeout>) =>
+        globalThis.clearTimeout(id),
+    }),
   };
 });
 

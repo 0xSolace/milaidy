@@ -1162,6 +1162,7 @@ export function MediaSettingsSection() {
         </div>
       )}
 
+      {/* biome-ignore lint/a11y/useSemanticElements: existing pattern */}
       <div
         className="rounded-xl border border-border border-l-[3px] border-l-accent bg-card/70 px-3 py-3 flex flex-col gap-4 shadow-[0_12px_40px_rgba(0,0,0,0.12)]"
         data-testid="settings-media-generate-group"

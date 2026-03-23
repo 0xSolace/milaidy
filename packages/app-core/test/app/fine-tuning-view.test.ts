@@ -56,6 +56,51 @@ vi.mock("@miladyai/app-core/state", () => ({
   CUSTOM_ONBOARDING_STEPS: [],
 }));
 
+vi.mock("@miladyai/app-core/hooks", () => ({
+  useIntervalWhenDocumentVisible: vi.fn(),
+}));
+
+// Mock @miladyai/ui components to render inline (no Radix portals)
+// so react-test-renderer does not crash with parentInstance.children.indexOf.
+vi.mock("@miladyai/ui", () => {
+  const passthrough = ({
+    children,
+    ...props
+  }: React.PropsWithChildren<Record<string, unknown>>) =>
+    React.createElement("div", props, children);
+  return {
+    Button: ({
+      children,
+      ...props
+    }: React.ButtonHTMLAttributes<HTMLButtonElement>) =>
+      React.createElement("button", { type: "button", ...props }, children),
+    Input: (props: React.InputHTMLAttributes<HTMLInputElement>) =>
+      React.createElement("input", props),
+    Textarea: (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) =>
+      React.createElement("textarea", props),
+    Select: passthrough,
+    SelectContent: passthrough,
+    SelectItem: ({
+      children,
+      ...props
+    }: React.PropsWithChildren<Record<string, unknown>>) =>
+      React.createElement("option", props, children),
+    SelectTrigger: passthrough,
+    SelectValue: passthrough,
+    ConfirmDelete: passthrough,
+    Dialog: ({
+      children,
+      open,
+    }: React.PropsWithChildren<{ open?: boolean }>) =>
+      open !== false ? React.createElement(React.Fragment, null, children) : null,
+    DialogContent: passthrough,
+    DialogHeader: passthrough,
+    DialogTitle: passthrough,
+    DialogDescription: passthrough,
+    DialogFooter: passthrough,
+  };
+});
+
 import { FineTuningView } from "@miladyai/app-core/components/FineTuningView";
 
 function baseTrajectoryList(): TrainingTrajectoryList {

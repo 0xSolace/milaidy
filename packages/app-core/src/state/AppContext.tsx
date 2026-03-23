@@ -4868,9 +4868,13 @@ function AppProviderInner({
             `You are ${onboardingName || defaultName}, an autonomous AI agent powered by elizaOS.`,
           style: style?.style,
           adjectives: style?.adjectives,
+          // biome-ignore lint/suspicious/noExplicitAny: complex type
           postExamples: (style as any)?.postExamples,
+          // biome-ignore lint/suspicious/noExplicitAny: complex type
           postExamples_zhCN: (style as any)?.postExamples_zhCN,
+          // biome-ignore lint/suspicious/noExplicitAny: complex type
           messageExamples: (style as any)?.messageExamples,
+          // biome-ignore lint/suspicious/noExplicitAny: complex type
           topics: (style as any)?.topics,
           // Cloud onboarding: the API key was already persisted server-side
           // by handleCloudLogin → persistCloudLoginStatus. We just need to

@@ -88,13 +88,12 @@ import { detectEmbeddingPreset } from "./embedding-presets";
 
 const resolvePluginImportSpecifier:
   | ((name: string, url?: string) => string)
-  | undefined =
-  ((_elizaExports as Record<string, unknown>)
-    .resolveElizaPluginImportSpecifier ??
-    (_elizaExports as Record<string, unknown>)
-      .resolveElizaPluginImportSpecifier) as
-    | ((name: string, url?: string) => string)
-    | undefined;
+  | undefined = ((_elizaExports as Record<string, unknown>)
+  .resolveElizaPluginImportSpecifier ??
+  (_elizaExports as Record<string, unknown>)
+    .resolveElizaPluginImportSpecifier) as
+  | ((name: string, url?: string) => string)
+  | undefined;
 
 // ---------------------------------------------------------------------------
 // collectPluginNames

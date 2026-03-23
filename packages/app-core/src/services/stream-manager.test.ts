@@ -87,9 +87,7 @@ async function startWithMock(config: StreamConfig): Promise<string[]> {
 
   const isTts = config.audioSource === "tts";
   const proc = makeMockProc({ withTtsPipe: isTts });
-  vi.mocked(spawn).mockReturnValueOnce(
-    proc as never,
-  );
+  vi.mocked(spawn).mockReturnValueOnce(proc as never);
 
   vi.useFakeTimers();
   try {
@@ -694,9 +692,7 @@ describe("autoRestart on unexpected FFmpeg exit", () => {
     await streamManager.stop();
 
     const proc = makeMockProc();
-    vi.mocked(spawn).mockReturnValue(
-      proc as never,
-    );
+    vi.mocked(spawn).mockReturnValue(proc as never);
 
     vi.useFakeTimers();
     try {
@@ -727,9 +723,7 @@ describe("autoRestart on unexpected FFmpeg exit", () => {
     await streamManager.stop();
 
     const proc = makeMockProc();
-    vi.mocked(spawn).mockReturnValue(
-      proc as never,
-    );
+    vi.mocked(spawn).mockReturnValue(proc as never);
 
     vi.useFakeTimers();
     try {
@@ -769,9 +763,7 @@ describe("autoRestart on unexpected FFmpeg exit", () => {
     await streamManager.stop();
 
     const proc = makeMockProc();
-    vi.mocked(spawn).mockReturnValue(
-      proc as never,
-    );
+    vi.mocked(spawn).mockReturnValue(proc as never);
 
     vi.useFakeTimers();
     try {

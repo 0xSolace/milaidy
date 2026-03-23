@@ -614,6 +614,7 @@ export class VrmEngine {
 
   private outgoingVrm: VRM | null = null;
   private outgoingMixer: THREE.AnimationMixer | null = null;
+  private outgoingIdleAction: THREE.AnimationAction | null = null;
   private cameraAnimation: CameraAnimationConfig = {
     ...DEFAULT_CAMERA_ANIMATION,
   };
@@ -686,6 +687,8 @@ export class VrmEngine {
   private lkgVrButton: HTMLElement | null = null;
   private lkgRenderer: THREE.WebGLRenderer | null = null;
   private lkgKeyListener: ((e: KeyboardEvent) => void) | null = null;
+  // biome-ignore lint/suspicious/noExplicitAny: LookingGlassWebXRPolyfill has no type definitions.
+  private lkgPolyfill: any = null;
 
   private clearEmoteTimeout(): void {
     if (this.emoteTimeout !== null) {

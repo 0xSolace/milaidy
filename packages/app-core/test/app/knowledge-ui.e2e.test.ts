@@ -357,6 +357,19 @@ vi.mock("@miladyai/ui", async (importOriginal) => {
         { type: "button", onClick: onConfirm, "data-testid": "delete-btn" },
         children,
       ),
+    Dialog: ({
+      open,
+      children,
+    }: {
+      open?: boolean;
+      children: React.ReactNode;
+    }) => (open ? React.createElement("div", { "data-testid": "dialog" }, children) : null),
+    DialogContent: ({ children }: { children: React.ReactNode }) =>
+      React.createElement("div", { "data-testid": "dialog-content" }, children),
+    DialogHeader: ({ children }: { children: React.ReactNode }) =>
+      React.createElement("div", null, children),
+    DialogTitle: ({ children }: { children: React.ReactNode }) =>
+      React.createElement("div", null, children),
   };
 });
 

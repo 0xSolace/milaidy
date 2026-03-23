@@ -82,6 +82,7 @@ export async function loadIdleClip(
   // to a different @pixiv/three-vrm version than the one used here.
   const clip = retargetMixamoGltfToVrm(
     { scene: gltf.scene, animations: gltf.animations },
+    // biome-ignore lint/suspicious/noExplicitAny: complex type
     vrm as any,
   );
 

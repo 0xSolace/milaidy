@@ -36,6 +36,14 @@ vi.mock("@miladyai/app-core/hooks", async () => {
   return {
     ...actual,
     useVoiceChat: () => mockUseVoiceChat(),
+    useTimeout: () => ({
+      setTimeout: (fn: () => void, ms: number) => globalThis.setTimeout(fn, ms),
+      clearTimeout: (id: ReturnType<typeof globalThis.setTimeout>) =>
+        globalThis.clearTimeout(id),
+    }),
+    useDocumentVisibility: () => true,
+    useBugReport: () => ({ isOpen: false, open: vi.fn(), close: vi.fn() }),
+    BugReportProvider: ({ children }: { children: React.ReactNode }) => children,
   };
 });
 
@@ -51,6 +59,51 @@ vi.mock("@miladyai/app-core/components/MessageContent", () => ({
 vi.mock("@miladyai/app-core/api", () => ({
   client: mockClient,
 }));
+
+// Mock @miladyai/ui components to render inline (no Radix portals)
+// so react-test-renderer does not crash with parentInstance.children.indexOf.
+vi.mock("@miladyai/ui", () => {
+  const passthrough = ({
+    children,
+    ...props
+  }: React.PropsWithChildren<Record<string, unknown>>) =>
+    React.createElement("div", props, children);
+  return {
+    Button: ({
+      children,
+      ...props
+    }: React.ButtonHTMLAttributes<HTMLButtonElement>) =>
+      React.createElement("button", { type: "button", ...props }, children),
+    Input: (props: React.InputHTMLAttributes<HTMLInputElement>) =>
+      React.createElement("input", props),
+    Textarea: (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) =>
+      React.createElement("textarea", props),
+    Select: passthrough,
+    SelectContent: passthrough,
+    SelectItem: ({
+      children,
+      ...props
+    }: React.PropsWithChildren<Record<string, unknown>>) =>
+      React.createElement("option", props, children),
+    SelectTrigger: passthrough,
+    SelectValue: passthrough,
+    Switch: passthrough,
+    Checkbox: passthrough,
+    Dialog: ({
+      children,
+      open,
+    }: React.PropsWithChildren<{ open?: boolean }>) =>
+      open !== false
+        ? React.createElement(React.Fragment, null, children)
+        : null,
+    DialogContent: passthrough,
+    DialogHeader: passthrough,
+    DialogTitle: passthrough,
+    DialogDescription: passthrough,
+    DialogFooter: passthrough,
+    ConfirmDelete: passthrough,
+  };
+});
 
 interface ChatViewContextStub {
   agentStatus: { agentName: string } | null;
