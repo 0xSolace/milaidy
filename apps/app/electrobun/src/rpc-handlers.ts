@@ -1,4 +1,13 @@
 import fs from "node:fs";
+/**
+ * RPC Handler Registration for Electrobun
+ *
+ * Maps each RPC request method from MiladyRPCSchema.bun.requests
+ * to the corresponding native module method. This is the Bun-side
+ * equivalent of main-process request handler registration.
+ *
+ * Called once during app startup after the BrowserView is created.
+ */
 
 import { Utils } from "electrobun/bun";
 import { setAgentReady } from "./agent-ready-state";
@@ -20,6 +29,7 @@ import { getScreenCaptureManager } from "./native/screencapture";
 import { getSwabbleManager } from "./native/swabble";
 import { getTalkModeManager } from "./native/talkmode";
 import { isDetachedSurface } from "./surface-windows";
+import type { SendToWebview } from "./types.js";
 
 /** Push current OS permission states to the agent REST API in-process. */
 async function syncPermissionsToRestApi(): Promise<void> {
@@ -36,8 +46,6 @@ async function syncPermissionsToRestApi(): Promise<void> {
     // non-fatal — renderer will still get data via IPC response
   }
 }
-
-type SendToWebview = (message: string, payload?: unknown) => void;
 
 /**
  * Structural type for the Electrobun RPC instance used in rpc-handlers.
@@ -100,9 +108,19 @@ export function registerRpcHandlers(
       return status;
     },
     agentRestartClearLocalDb: async () => {
-      const status = await agent.restartClearingLocalDb();
-      setAgentReady(status.state === "running");
-      return status;
+      console.log("[RPC][reset] agentRestartClearLocalDb invoked");
+      try {
+        const status = await agent.restartClearingLocalDb();
+        console.log("[RPC][reset] agentRestartClearLocalDb done", {
+          state: status.state,
+          port: status.port,
+        });
+        setAgentReady(status.state === "running");
+        return status;
+      } catch (err) {
+        console.error("[RPC][reset] agentRestartClearLocalDb failed", err);
+        throw err;
+      }
     },
     agentStatus: async () => agent.getStatus(),
     agentInspectExistingInstall: async () => agent.inspectExistingInstall(),
@@ -572,4 +590,6 @@ export function registerRpcHandlers(
     ) => gpuWindow.getViewNativeHandle(params),
     gpuViewList: async () => gpuWindow.listViews(),
   });
+
+  console.log("[RPC] All handlers registered");
 }

@@ -27,7 +27,7 @@ vi.mock("../../config/config", () => ({
   }),
 }));
 
-import { persistCompatOnboardingDefaults } from "../server";
+import { persistCompatOnboardingDefaults } from "../server-onboarding-compat";
 
 vi.mock("@elizaos/plugin-agent-orchestrator", () => ({ default: {} }));
 vi.mock("@elizaos/plugin-agent-skills", () => ({ default: {} }));
@@ -56,7 +56,6 @@ vi.mock("@elizaos/plugin-plugin-manager", () => ({ default: {} }));
 vi.mock("@elizaos/plugin-rolodex", () => ({ default: {} }));
 vi.mock("@elizaos/plugin-secrets-manager", () => ({ default: {} }));
 vi.mock("@elizaos/plugin-shell", () => ({ default: {} }));
-vi.mock("@elizaos/plugin-sql", () => ({ default: {} }));
 vi.mock("@elizaos/plugin-telegram", () => ({ default: {} }));
 vi.mock("@elizaos/plugin-trajectory-logger", () => ({ default: {} }));
 vi.mock("@elizaos/plugin-trust", () => ({ default: {} }));
@@ -121,7 +120,9 @@ describe("Onboarding → Character round-trip", () => {
     expect(character.adjectives).toContain("gentle");
 
     expect(Array.isArray(character.topics)).toBe(true);
-    expect((character.topics as string[]).length).toBe(chenPreset.topics!.length);
+    expect((character.topics as string[]).length).toBe(
+      chenPreset.topics!.length,
+    );
     expect(character.topics).toContain("emotional intelligence");
     expect(character.topics).toContain("design thinking");
 

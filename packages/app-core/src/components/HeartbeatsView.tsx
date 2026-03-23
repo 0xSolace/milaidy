@@ -7,7 +7,6 @@ import {
   SelectTrigger,
   SelectValue,
   StatusBadge,
-  Spinner,
   StatusDot,
   Switch,
 } from "@miladyai/ui";
@@ -16,14 +15,14 @@ import { useEffect, useMemo, useState } from "react";
 import type {
   CreateTriggerRequest,
   TriggerSummary,
+  TriggerType,
+  TriggerWakeMode,
   UpdateTriggerRequest,
 } from "../api/client";
 import { useApp } from "../state";
 import { confirmDesktopAction } from "../utils";
 import { formatDateTime, formatDurationMs } from "./format";
 
-type TriggerType = "interval" | "once" | "cron";
-type TriggerWakeMode = "inject_now" | "next_autonomy_cycle";
 type TranslateFn = (
   key: string,
   vars?: Record<string, string | number | boolean | null | undefined>,
@@ -610,10 +609,7 @@ export function HeartbeatsView() {
                     <Select
                       value={form.triggerType}
                       onValueChange={(value) =>
-                        setField(
-                          "triggerType",
-                          value as TriggerType,
-                        )
+                        setField("triggerType", value as TriggerType)
                       }
                     >
                       <SelectTrigger className={SELECT_CLASS}>
@@ -623,7 +619,9 @@ export function HeartbeatsView() {
                         <SelectItem value="interval">
                           {t("triggersview.RepeatingInterval")}
                         </SelectItem>
-                        <SelectItem value="once">{t("triggersview.OneTime")}</SelectItem>
+                        <SelectItem value="once">
+                          {t("triggersview.OneTime")}
+                        </SelectItem>
                         <SelectItem value="cron">
                           {t("triggersview.CronSchedule")}
                         </SelectItem>
@@ -638,10 +636,7 @@ export function HeartbeatsView() {
                     <Select
                       value={form.wakeMode}
                       onValueChange={(value) =>
-                        setField(
-                          "wakeMode",
-                          value as TriggerWakeMode,
-                        )
+                        setField("wakeMode", value as TriggerWakeMode)
                       }
                     >
                       <SelectTrigger className={SELECT_CLASS}>
@@ -678,10 +673,7 @@ export function HeartbeatsView() {
                       <Select
                         value={form.durationUnit}
                         onValueChange={(value) =>
-                          setField(
-                            "durationUnit",
-                            value as DurationUnit,
-                          )
+                          setField("durationUnit", value as DurationUnit)
                         }
                       >
                         <SelectTrigger className={SELECT_CLASS}>
@@ -874,7 +866,7 @@ export function HeartbeatsView() {
                       if (!hasLoadedRuns) {
                         return (
                           <div className="py-6 text-sm text-muted/70 flex items-center gap-2">
-                            <Spinner size={16} />{" "}
+                            <div className="w-4 h-4 border-2 border-muted/30 border-t-muted/80 rounded-full animate-spin" />{" "}
                             {t("databaseview.Loading")}
                           </div>
                         );

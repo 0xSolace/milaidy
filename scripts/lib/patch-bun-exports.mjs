@@ -672,17 +672,17 @@ export function patchAutonomousMiladyOnboardingPresets(
   const candidates = [
     ...findPackageFilePaths(
       root,
-      "@elizaos/agent",
+      "@miladyai/agent",
       "packages/agent/src/onboarding-presets.js",
     ),
     ...findPackageFilePaths(
       root,
-      "@elizaos/agent",
+      "@miladyai/agent",
       "src/onboarding-presets.js",
     ),
     ...findPackageFilePaths(
       root,
-      "@elizaos/agent",
+      "@miladyai/agent",
       "src/onboarding-presets.ts",
     ),
   ];
@@ -696,7 +696,7 @@ export function patchAutonomousMiladyOnboardingPresets(
     }
     patched = true;
     log(
-      "[patch-deps] Patched @elizaos/agent packages/agent/src/onboarding-presets.js: onboarding presets now derive from Milady.",
+      "[patch-deps] Patched @miladyai/agent packages/agent/src/onboarding-presets.js: onboarding presets now derive from Milady.",
     );
   }
 
@@ -1003,7 +1003,7 @@ export function patchProperLockfileSignalExitCompat(root, log = console.log) {
 export function patchAutonomousTypeError(root, log = console.log) {
   const candidates = findPackageFilePaths(
     root,
-    "@elizaos/agent",
+    "@miladyai/agent",
     "src/api/server.ts",
   );
   let patched = false;
@@ -1019,7 +1019,7 @@ export function patchAutonomousTypeError(root, log = console.log) {
       );
       writeFileSync(filePath, source, "utf8");
       patched = true;
-      log("[patch-deps] Patched @elizaos/agent type error in server.ts");
+      log("[patch-deps] Patched @miladyai/agent type error in server.ts");
     }
   }
   return patched;

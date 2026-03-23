@@ -559,7 +559,7 @@ describe("onboarding finish locking", () => {
 
     const snapshot = requireApi().snapshot();
     expect(snapshot.onboardingComplete).toBe(true);
-    expect(snapshot.tab).toBe("character-select");
+    expect(snapshot.tab).toBe("companion");
     expect(snapshot.activeConversationId).toBeNull();
     expect(snapshot.conversationMessages).toEqual([]);
     expect(mockClient.restartAgent).toHaveBeenCalledTimes(1);
@@ -652,7 +652,7 @@ describe("onboarding finish locking", () => {
 
     const snapshot = requireApi().snapshot();
     expect(snapshot.onboardingComplete).toBe(true);
-    expect(snapshot.tab).toBe("character-select");
+    expect(snapshot.tab).toBe("companion");
     expect(snapshot.activeConversationId).toBe("conv-restored");
     expect(mockClient.getStatus).toHaveBeenCalled();
     expect(mockClient.createConversation).not.toHaveBeenCalled();

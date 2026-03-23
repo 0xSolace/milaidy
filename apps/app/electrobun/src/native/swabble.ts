@@ -1,6 +1,20 @@
+/**
+ * Swabble (Wake Word) Native Module for Electrobun
+ *
+ * Wake word detection using whisper.cpp via Bun.spawn for audio processing.
+ * Audio arrives as base64-encoded Float32 PCM chunks (16kHz mono) from the
+ * renderer. Chunks accumulate until ~3 seconds of audio is buffered, then
+ * the buffer is transcribed and checked for wake words.
+ *
+ * Fallback: if the whisper.cpp binary is missing, raw audio chunks are pushed
+ * back to the renderer via swabbleAudioChunkPush so the renderer can handle
+ * them (e.g. via Web Speech API).
+ */
+
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import type { SendToWebview } from "../types.js";
 import type { WhisperResult } from "./whisper";
 import {
   isWhisperBinaryAvailable,
@@ -8,7 +22,9 @@ import {
   writeWavFile,
 } from "./whisper";
 
-type SendToWebview = (message: string, payload?: unknown) => void;
+// ============================================================================
+// Types
+// ============================================================================
 
 interface SwabbleConfig {
   triggers: string[];
@@ -16,6 +32,10 @@ interface SwabbleConfig {
   minCommandLength: number;
   enabled: boolean;
 }
+
+// ============================================================================
+// WakeWordGate — processes wake-word phrase matching from Whisper transcripts.
+// ============================================================================
 
 class WakeWordGate {
   private triggers: string[];
@@ -133,6 +153,10 @@ class WakeWordGate {
     return targetVariations.includes(word);
   }
 }
+
+// ============================================================================
+// SwabbleManager
+// ============================================================================
 
 // 3 seconds of audio at 16kHz = 48000 Float32 samples = 192000 bytes
 const AUDIO_BUFFER_THRESHOLD_BYTES = 16000 * 3 * 4;

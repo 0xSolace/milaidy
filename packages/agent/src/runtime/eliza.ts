@@ -322,7 +322,7 @@ export function configureLocalEmbeddingPlugin(
 
 /** Extract a human-readable error message from an unknown thrown value. */
 function formatError(err: unknown): string {
-  return String(err);
+  return err instanceof Error ? err.message : String(err);
 }
 
 type RuntimeAdapterWithClose = {
@@ -843,7 +843,13 @@ export function collectPluginNames(config: ElizaConfig): Set<string> {
 
   // Connector plugins — load when connector has config entries
   // Prefer config.connectors, fall back to config.channels for backward compatibility
-  const connectors = config.connectors ?? ((config as Record<string, unknown>).channels as Record<string, unknown>) ?? {};
+  const connectors =
+    config.connectors ??
+    ((config as Record<string, unknown>).channels as Record<
+      string,
+      unknown
+    >) ??
+    {};
   for (const [channelName, channelConfig] of Object.entries(connectors)) {
     if (channelConfig && typeof channelConfig === "object") {
       const pluginName = CHANNEL_PLUGIN_MAP[channelName];
@@ -1799,7 +1805,8 @@ export async function resolvePackageEntry(pkgRoot: string): Promise<string> {
 /** @internal Exported for testing. */
 export function applyConnectorSecretsToEnv(config: ElizaConfig): void {
   // Prefer config.connectors, fall back to config.channels for backward compatibility
-  const connectors = config.connectors ?? ((config as Record<string, unknown>).channels as Record<string, unknown>) ?? {};
+  const connectors =
+    config.connectors ?? (config as Record<string, unknown>).channels ?? {};
 
   for (const [channelName, channelConfig] of Object.entries(connectors)) {
     if (!channelConfig || typeof channelConfig !== "object") continue;
@@ -2827,7 +2834,7 @@ export function buildCharacterFromConfig(config: ElizaConfig): Character {
     const presetCatchphrase = presetByName[name.trim()];
     if (!presetCatchphrase) return undefined;
     return getStylePresets().find(
-      (preset) => preset.catchphrase === presetCatchphrase,
+      (preset: MiladyStylePreset) => preset.catchphrase === presetCatchphrase,
     );
   })();
 
@@ -3002,7 +3009,7 @@ import { pickRandomNames } from "./onboarding-names";
 // Style presets — shared between CLI and GUI onboarding
 // ---------------------------------------------------------------------------
 
-import { getPresetNameMap, getStylePresets } from "../onboarding-presets";
+import { type MiladyStylePreset, getPresetNameMap, getStylePresets } from "../onboarding-presets";
 
 /**
  * Detect whether this is the first run (no agent name configured)
@@ -3065,7 +3072,7 @@ async function runFirstTimeSetup(config: ElizaConfig): Promise<ElizaConfig> {
   // ── Step 3: Catchphrase / writing style ────────────────────────────────
   const styleChoice = await clack.select({
     message: `${name}: Now... how do I like to talk again?`,
-    options: getStylePresets().map((preset) => ({
+    options: getStylePresets().map((preset: MiladyStylePreset) => ({
       value: preset.catchphrase,
       label: preset.catchphrase,
       hint: preset.hint,
@@ -3075,7 +3082,7 @@ async function runFirstTimeSetup(config: ElizaConfig): Promise<ElizaConfig> {
   if (clack.isCancel(styleChoice)) cancelOnboarding();
 
   const chosenTemplate = getStylePresets().find(
-    (p) => p.catchphrase === styleChoice,
+    (p: MiladyStylePreset) => p.catchphrase === styleChoice,
   );
 
   // ── Step 3.5: Runtime selection (Cloud vs Local) ───────────────────────
@@ -3562,7 +3569,7 @@ export interface StartElizaOptions {
 export interface BootElizaRuntimeOptions {
   /**
    * When true, require an existing ~/.eliza/eliza.json config file.
-   * This is used by non-CLI UIs (like the desktop app) where interactive
+   * This is used by non-CLI UIs (like the @elizaos/tui interface) where interactive
    * onboarding prompts would break the alternate screen.
    */
   requireConfig?: boolean;
@@ -3984,7 +3991,7 @@ export async function startEliza(
         logger.info("[eliza] Sandbox manager started");
       } catch (err) {
         logger.error(
-          `[eliza] Sandbox manager failed to start: ${String(err)}`,
+          `[eliza] Sandbox manager failed to start: ${err instanceof Error ? err.message : String(err)}`,
         );
         // Non-fatal: light mode fallback
       }
@@ -4350,7 +4357,7 @@ export async function startEliza(
             logger.info("[eliza] Sandbox manager stopped");
           } catch (err) {
             logger.warn(
-              `[eliza] Sandbox stop error: ${String(err)}`,
+              `[eliza] Sandbox stop error: ${err instanceof Error ? err.message : String(err)}`,
             );
           }
         }
@@ -4888,7 +4895,7 @@ export async function startInCloudMode(
           }
           console.log("\n");
         } catch (err) {
-          const msg = String(err);
+          const msg = err instanceof Error ? err.message : String(err);
           console.error(`\n[error] ${msg}\n`);
         }
 

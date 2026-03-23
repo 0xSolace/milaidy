@@ -1,4 +1,4 @@
-type SendToWebview = (message: string, payload?: unknown) => void;
+import type { SendToWebview } from "../types.js";
 
 interface GeoPosition {
   latitude: number;

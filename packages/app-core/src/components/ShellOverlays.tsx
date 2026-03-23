@@ -1,4 +1,4 @@
-import { Loader2 } from "lucide-react";
+import { Spinner } from "@miladyai/ui";
 import type { ActionNotice } from "../state/types";
 import { GlobalEmoteOverlay } from "./GlobalEmoteOverlay";
 import { BugReportModal } from "./BugReportModal";
@@ -32,10 +32,7 @@ export function ShellOverlays({
           aria-busy={actionNotice.busy ? true : undefined}
         >
           {actionNotice.busy ? (
-            <Loader2
-              className="h-4 w-4 shrink-0 animate-spin opacity-95"
-              aria-hidden
-            />
+            <Spinner size={16} className="shrink-0 opacity-95" aria-hidden />
           ) : null}
           <span className="text-left leading-snug">{actionNotice.text}</span>
         </div>

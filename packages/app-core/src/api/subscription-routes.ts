@@ -1,7 +1,7 @@
 import {
   type SubscriptionRouteState as AutonomousSubscriptionRouteState,
   handleSubscriptionRoutes as handleAutonomousSubscriptionRoutes,
-} from "@elizaos/agent/api/subscription-routes";
+} from "@miladyai/agent/api/subscription-routes";
 import type { ElizaConfig } from "../config/config";
 import type { RouteRequestContext } from "./route-helpers";
 
@@ -23,6 +23,7 @@ export async function handleSubscriptionRoutes(
   return handleAutonomousSubscriptionRoutes({
     ...ctx,
     saveConfig: (config: unknown) => ctx.saveConfig(config as ElizaConfig),
-    loadSubscriptionAuth: async () => (await import("../auth/credentials.js")) as never,
+    loadSubscriptionAuth: async () =>
+      (await import("../auth/credentials.js")) as never,
   } as never);
 }

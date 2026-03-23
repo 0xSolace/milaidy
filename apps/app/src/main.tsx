@@ -1,4 +1,3 @@
-
 import { ErrorBoundary } from "@miladyai/app-core/components";
 import "@miladyai/app-core/styles/styles.css";
 import "@miladyai/app-core/styles/brand-gold.css";
@@ -19,9 +18,9 @@ import {
 import { CharacterEditor } from "@miladyai/app-core/components";
 import type { BrandingConfig } from "@miladyai/app-core/config";
 import {
+  type AppBootConfig,
   getBootConfig,
   setBootConfig,
-  type AppBootConfig,
 } from "@miladyai/app-core/config";
 import {
   AGENT_READY_EVENT,
@@ -144,27 +143,23 @@ window.__MILADY_CHARACTER_EDITOR__ = CharacterEditor;
 
 import { STYLE_PRESETS } from "@miladyai/app-core/onboarding-presets";
 
-const MILADY_VRM_ASSETS = [
-  { title: "Chen", slug: "milady-1" },
-  { title: "Jin", slug: "milady-2" },
-  { title: "Kei", slug: "milady-3" },
-  { title: "Momo", slug: "milady-4" },
-  { title: "Rin", slug: "milady-5" },
-  { title: "Ryu", slug: "milady-6" },
-  { title: "Satoshi", slug: "milady-7" },
-  { title: "Yuki", slug: "milady-8" },
-];
+// Derive VRM roster from STYLE_PRESETS so character names stay in one place.
+const MILADY_VRM_ASSETS = STYLE_PRESETS.slice()
+  .sort((a, b) => a.avatarIndex - b.avatarIndex)
+  .map((p) => ({ title: p.name, slug: `milady-${p.avatarIndex}` }));
 
 const miladyBootConfig: AppBootConfig = {
   branding: MILADY_BRANDING,
-  cloudApiBase: (import.meta.env.VITE_CLOUD_BASE as string) ?? "https://www.elizacloud.ai",
+  cloudApiBase:
+    (import.meta.env.VITE_CLOUD_BASE as string) ?? "https://www.elizacloud.ai",
   vrmAssets: MILADY_VRM_ASSETS,
   onboardingStyles: STYLE_PRESETS,
   characterEditor: CharacterEditor,
   characterCatalog: MILADY_CHARACTER_CATALOG,
   envAliases: MILADY_ENV_ALIASES,
   clientMiddleware: {
-    forceFreshOnboarding: shouldInstallMainWindowOnboardingPatches(windowShellRoute),
+    forceFreshOnboarding:
+      shouldInstallMainWindowOnboardingPatches(windowShellRoute),
     preferLocalProvider: true,
     desktopPermissions: isDesktopPlatform(),
   },
@@ -434,9 +429,7 @@ function validateAndSetApiBase(apiBase: string): void {
       /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host) ||
       /^192\.168\.\d{1,3}\.\d{1,3}$/.test(host) ||
       /^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(host) ||
-      /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d{1,3}\.\d{1,3}$/.test(
-        host,
-      ) ||
+      /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d{1,3}\.\d{1,3}$/.test(host) ||
       host.endsWith(".local") ||
       host.endsWith(".internal") ||
       host.endsWith(".ts.net");

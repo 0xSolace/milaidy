@@ -29,7 +29,6 @@ vi.mock("@elizaos/plugin-plugin-manager", () => ({ default: {} }));
 vi.mock("@elizaos/plugin-rolodex", () => ({ default: {} }));
 vi.mock("@elizaos/plugin-secrets-manager", () => ({ default: {} }));
 vi.mock("@elizaos/plugin-shell", () => ({ default: {} }));
-vi.mock("@elizaos/plugin-sql", () => ({ default: {} }));
 vi.mock("@elizaos/plugin-telegram", () => ({ default: {} }));
 vi.mock("@elizaos/plugin-trajectory-logger", () => ({ default: {} }));
 vi.mock("@elizaos/plugin-trust", () => ({ default: {} }));
@@ -44,7 +43,7 @@ import {
 } from "./plugin-auto-enable";
 import { CONNECTOR_IDS, MILADY_LOCAL_CONNECTOR_IDS } from "./schema";
 
-/** Connectors registered locally in Milady, not in upstream @elizaos/agent. */
+/** Connectors registered locally in Milady, not in upstream @miladyai/agent. */
 const MILADY_LOCAL_CONNECTORS = new Set<string>(MILADY_LOCAL_CONNECTOR_IDS);
 
 function sorted(values: Iterable<string>): string[] {

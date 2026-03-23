@@ -853,6 +853,33 @@ describe("chat journey", () => {
       });
     });
 
+
+      // The fallback should have called requestGreeting since inline was missing
+      expect(mockClient.requestGreeting).toHaveBeenCalledWith(
+        "conv-no-greeting",
+        "en",
+      );
+
+      // Wait for the async fallback to populate messages
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      const snapshot = api!.snapshot();
+      expect(snapshot.activeConversationId).toBe("conv-no-greeting");
+      expect(snapshot.conversationMessages).toEqual([
+        expect.objectContaining({
+          role: "assistant",
+          text: "hey there!",
+          source: "agent_greeting",
+        }),
+      ]);
+
+      await act(async () => {
+        tree!.unmount();
+      });
+    });
+
     it("switches conversations and loads messages for selected conversation", async () => {
       // First call returns conv-1 messages with a user message (prevents deletion)
       mockClient.getConversationMessages
@@ -882,7 +909,6 @@ describe("chat journey", () => {
             },
           ],
         });
-
       let api: ProbeApi | null = null;
       let tree: TestRenderer.ReactTestRenderer;
 

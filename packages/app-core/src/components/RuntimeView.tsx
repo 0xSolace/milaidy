@@ -7,7 +7,6 @@
  * - Explicit load order metadata
  */
 
-import { Button } from "@miladyai/ui";
 import { useCallback, useEffect, useState } from "react";
 import {
   client,
@@ -327,30 +326,30 @@ export function RuntimeView() {
             className="w-20 px-1.5 py-0.5 border border-border bg-bg text-txt rounded-lg"
           />
         </label>
-        <Button
-          variant="outline"
-          size="sm"
+        <button
+          type="button"
           onClick={() => void loadSnapshot()}
           disabled={loading}
+          className="px-3 py-1.5 text-xs rounded-lg border border-border bg-bg hover:bg-card disabled:opacity-60"
         >
           {loading ? t("runtimeview.Refreshing") : t("common.refresh")}
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
+        </button>
+        <button
+          type="button"
           onClick={() => setExpandedPaths(new Set([rootPath]))}
+          className="px-3 py-1.5 text-xs rounded-lg border border-border bg-bg hover:bg-card"
         >
           {t("runtimeview.Collapse")}
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
+        </button>
+        <button
+          type="button"
           onClick={() =>
             setExpandedPaths(buildInitialExpanded(rootPath, sectionData))
           }
+          className="px-3 py-1.5 text-xs rounded-lg border border-border bg-bg hover:bg-card"
         >
           {t("runtimeview.ExpandTop")}
-        </Button>
+        </button>
         <div className="text-[11px] text-muted ml-auto">
           {snapshot
             ? `${t("runtimeview.lastUpdated")} ${formatDateTime(snapshot.generatedAt, { fallback: "n/a" })}`

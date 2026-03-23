@@ -4,7 +4,7 @@
  * Children access state and actions through the useApp() hook.
  */
 
-import { ONBOARDING_PROVIDER_CATALOG } from "@elizaos/agent/contracts/onboarding";
+import { ONBOARDING_PROVIDER_CATALOG } from "@miladyai/agent/contracts/onboarding";
 import {
   type ReactNode,
   useCallback,
@@ -98,7 +98,12 @@ import { getBootConfig, setBootConfig } from "../config/boot-config";
 import { BrandingContext, DEFAULT_BRANDING } from "../config/branding";
 import { type AppEmoteEventDetail, dispatchAppEmoteEvent } from "../events";
 import type { UiLanguage } from "../i18n";
-import { COMPANION_ENABLED, pathForTab, type Tab, tabFromPath } from "../navigation";
+import {
+  COMPANION_ENABLED,
+  pathForTab,
+  type Tab,
+  tabFromPath,
+} from "../navigation";
 import {
   canRevertOnboardingTo,
   getFlaminaTopicForOnboardingStep,
@@ -670,7 +675,7 @@ function AppProviderInner({
     autonomousReplayInFlightRef,
   } = chatState;
   // Compat: old code sometimes used a separate chatAwaitingGreeting state
-  const [chatAwaitingGreeting, _setChatAwaitingGreeting] = useState(false);
+  const [chatAwaitingGreeting, setChatAwaitingGreeting] = useState(false);
   // addUnread / removeUnread wrappers for old setUnreadConversations patterns
   const setUnreadConversations = useCallback(
     (v: Set<string> | ((prev: Set<string>) => Set<string>)) => {
@@ -789,9 +794,14 @@ function AppProviderInner({
   const [mintError, setMintError] = useState<string | null>(null);
   const [mintShiny, setMintShiny] = useState(false);
 
+  // --- Whitelist ---
   const [whitelistStatus, setWhitelistStatus] =
     useState<WhitelistStatus | null>(null);
   const [whitelistLoading, setWhitelistLoading] = useState(false);
+  // Dead state — setters were never destructured. These never change.
+  const twitterVerifyMessage: string | null = null;
+  const twitterVerifyUrl = "";
+  const twitterVerifying = false;
 
   // --- Character ---
   const [characterData, setCharacterData] = useState<CharacterData | null>(
@@ -2088,9 +2098,9 @@ function AppProviderInner({
       setElizaCloudCreditsError(null);
     }
     lastElizaCloudPollConnectedRef.current = isConnected;
-    // Ensure the recurring poll interval is running whenever cloud is connected.
-    // This covers the case where cloud login happens after the initial mount poll
-    // (e.g. during onboarding) — without this the interval would never start.
+    // Self-manage the recurring poll interval: start when connected, stop when not.
+    // This covers login during onboarding (interval wasn't started at mount) and
+    // disconnect (interval should stop to avoid useless API calls).
     if (isConnected && !elizaCloudPollInterval.current) {
       elizaCloudPollInterval.current = window.setInterval(() => {
         if (
@@ -2101,6 +2111,9 @@ function AppProviderInner({
         }
         void pollCloudCredits();
       }, 60_000);
+    } else if (!isConnected && elizaCloudPollInterval.current) {
+      clearInterval(elizaCloudPollInterval.current);
+      elizaCloudPollInterval.current = null;
     }
     return isConnected;
   }, []);
@@ -2123,6 +2136,7 @@ function AppProviderInner({
         return false;
       }
       greetingInFlightConversationRef.current = convId;
+      setChatAwaitingGreeting(true);
       try {
         const data = await client.requestGreeting(convId, uiLanguage);
         if (data.text) {
@@ -2161,6 +2175,7 @@ function AppProviderInner({
         greetingFiredRef.current = false;
         /* greeting failed silently — user can still chat */
       } finally {
+        setChatAwaitingGreeting(false);
         if (greetingInFlightConversationRef.current === convId) {
           greetingInFlightConversationRef.current = null;
         }
@@ -7140,11 +7155,7 @@ function AppProviderInner({
     if (elizaCloudAuthRejected) {
       if (!elizaCloudAuthNoticeSentRef.current) {
         elizaCloudAuthNoticeSentRef.current = true;
-        setActionNotice(
-          t("notice.elizaCloudAuthRejected"),
-          "error",
-          14_000,
-        );
+        setActionNotice(t("notice.elizaCloudAuthRejected"), "error", 14_000);
       }
     } else {
       elizaCloudAuthNoticeSentRef.current = false;
@@ -7263,7 +7274,9 @@ function AppProviderInner({
     mintShiny,
     whitelistStatus,
     whitelistLoading,
-
+    twitterVerifyMessage,
+    twitterVerifyUrl,
+    twitterVerifying,
     characterData,
     characterLoading,
     characterSaving,

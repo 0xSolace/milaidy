@@ -42,7 +42,6 @@ vi.mock("@elizaos/plugin-plugin-manager", () => ({ default: {} }));
 vi.mock("@elizaos/plugin-rolodex", () => ({ default: {} }));
 vi.mock("@elizaos/plugin-secrets-manager", () => ({ default: {} }));
 vi.mock("@elizaos/plugin-shell", () => ({ default: {} }));
-vi.mock("@elizaos/plugin-sql", () => ({ default: {} }));
 vi.mock("@elizaos/plugin-telegram", () => ({ default: {} }));
 vi.mock("@elizaos/plugin-trajectory-logger", () => ({ default: {} }));
 vi.mock("@elizaos/plugin-trust", () => ({ default: {} }));
@@ -56,7 +55,7 @@ import { CONNECTOR_PLUGINS } from "../config/plugin-auto-enable";
 import { CONNECTOR_IDS, MILADY_LOCAL_CONNECTOR_IDS } from "../config/schema";
 // Import the plugin import specifier resolver by whichever name is exported.
 // The eliza workspace exports resolveElizaPluginImportSpecifier while the
-// npm-published @elizaos/agent package exports
+// npm-published @miladyai/agent package exports
 // resolveElizaPluginImportSpecifier.
 import * as _elizaExports from "./eliza";
 import {
@@ -92,9 +91,11 @@ const resolvePluginImportSpecifier:
   | ((name: string, url?: string) => string)
   | undefined =
   // biome-ignore lint/suspicious/noExplicitAny: dynamic export name
-  ((_elizaExports as any).resolveElizaPluginImportSpecifier ??
+  ((_elizaExports as Record<string, unknown>)
+    .resolveElizaPluginImportSpecifier ??
     // biome-ignore lint/suspicious/noExplicitAny: dynamic export name
-    (_elizaExports as any).resolveElizaPluginImportSpecifier) as
+    (_elizaExports as Record<string, unknown>)
+      .resolveElizaPluginImportSpecifier) as
     | ((name: string, url?: string) => string)
     | undefined;
 
@@ -911,8 +912,6 @@ describe("applyConnectorSecretsToEnv", () => {
     expect(() => applyConnectorSecretsToEnv(config)).not.toThrow();
   });
 
-
-
   it("copies Signal account, httpUrl, and cliPath from config to env", () => {
     const config = {
       connectors: {
@@ -1224,7 +1223,7 @@ describe("applyDatabaseConfigToEnv", () => {
   it("defaults PGLITE_DATA_DIR to the agent workspace when database config is missing", () => {
     applyDatabaseConfigToEnv({} as ElizaConfig);
     expect(process.env.POSTGRES_URL).toBeUndefined();
-    // The state dir name depends on the @elizaos/agent build
+    // The state dir name depends on the @miladyai/agent build
     // (either .eliza in workspace or .eliza in the published npm package).
     expect(process.env.PGLITE_DATA_DIR).toMatch(
       /\.(eliza|eliza)[/\\]workspace[/\\]\.eliza[/\\]\.elizadb$/,

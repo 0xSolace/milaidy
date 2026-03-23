@@ -7,7 +7,7 @@ import path from "node:path";
 import {
   isSafeResetStateDir as upstreamIsSafeResetStateDir,
   resolveCorsOrigin as upstreamResolveCorsOrigin,
-} from "@elizaos/agent/api/server";
+} from "@miladyai/agent/api/server";
 import {
   getBootConfig,
   syncBrandEnvToEliza,
@@ -24,11 +24,7 @@ function syncElizaEnvToMilady(): void {
   if (aliases) syncElizaEnvToBrand(aliases);
 }
 
-const PACKAGE_ROOT_NAMES = new Set([
-  "eliza",
-  "elizaai",
-  "elizaos",
-]);
+const PACKAGE_ROOT_NAMES = new Set(["eliza", "elizaai", "elizaos"]);
 
 /**
  * Register additional package root names for findOwnPackageRoot().

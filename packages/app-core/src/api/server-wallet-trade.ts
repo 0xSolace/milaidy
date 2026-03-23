@@ -3,7 +3,7 @@
  * guards, and wallet export rejection wrappers.
  */
 import type http from "node:http";
-import { resolveWalletExportRejection as upstreamResolveWalletExportRejection } from "@elizaos/agent/api/server";
+import { resolveWalletExportRejection as upstreamResolveWalletExportRejection } from "@miladyai/agent/api/server";
 import {
   getBootConfig,
   syncBrandEnvToEliza,
@@ -130,4 +130,3 @@ export function resolveWalletExportRejection(
     normalizeCompatRejection(hardenedGuard(...args)),
   );
 }
-

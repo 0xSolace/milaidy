@@ -1,3 +1,26 @@
+/**
+ * Desktop Native Module for Electrobun
+ *
+ * Implements the desktop manager on top of Electrobun APIs:
+ * - System tray management (Tray)
+ * - Global keyboard shortcuts (GlobalShortcut)
+ * - Window management (BrowserWindow)
+ * - Native notifications (Utils.showNotification)
+ * - Clipboard operations (Utils.clipboard*)
+ * - Shell operations (Utils.openExternal, Utils.showItemInFolder)
+ * - App lifecycle (Utils.quit)
+ * - Path resolution (Utils.paths)
+ *
+ * Key differences from the prior desktop runtime:
+ * - No ipcMain — methods are called directly from rpc-handlers.ts
+ * - Uses sendToWebview callback instead of mainWindow.webContents.send()
+ * - No powerMonitor — power state via `pmset` (macOS), sysfs (Linux), or WinForms power line (Windows)
+ * - No nativeImage — tray icons use file paths directly
+ * - No setOpacity on BrowserWindow — no-op
+ * - No hide() on BrowserWindow — uses minimize() as fallback
+ * - No app.setLoginItemSettings — stubbed
+ */
+
 import * as fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -38,6 +61,7 @@ import type {
   WindowBounds,
   WindowOptions,
 } from "../rpc-schema";
+import type { SendToWebview } from "../types.js";
 import {
   isAppActive,
   isKeyWindow,
@@ -49,8 +73,6 @@ import {
   parseWindowsPowerLineOutput,
 } from "./power-state";
 import { checkWebGpuSupport } from "./webgpu-browser-support";
-
-type SendToWebview = (message: string, payload?: unknown) => void;
 
 interface SetAlwaysOnTopOptions {
   flag: boolean;
@@ -79,6 +101,10 @@ interface ElectrobunEventTarget {
   off?: (event: string, handler: ElectrobunEventHandler) => void;
   removeListener?: (event: string, handler: ElectrobunEventHandler) => void;
 }
+
+// ============================================================================
+// Path name mapping: legacy desktop path names -> Utils.paths equivalents
+// ============================================================================
 
 const PATH_NAME_MAP: Record<string, string | (() => string)> = {
   home: Utils.paths.home,
@@ -109,6 +135,17 @@ export function resetDesktopManagerForTesting(): void {
   nativeContextMenuEventsInstalled = false;
 }
 
+// ============================================================================
+// DesktopManager
+// ============================================================================
+
+/**
+ * Desktop Manager — handles all native desktop features for Electrobun.
+ *
+ * This implementation does not register IPC handlers.
+ * Methods are called directly from rpc-handlers.ts. Push events to the
+ * webview are sent via the sendToWebview callback.
+ */
 export class DesktopManager {
   private mainWindow: BrowserWindow | null = null;
   private tray: Tray | null = null;
@@ -156,6 +193,9 @@ export class DesktopManager {
 
   // MARK: - Configuration
 
+  /**
+   * Set the main BrowserWindow reference and wire up window events.
+   */
   setMainWindow(window: BrowserWindow): void {
     if (this.mainWindow === window) {
       return;
@@ -166,14 +206,23 @@ export class DesktopManager {
     this.setupWindowEvents();
   }
 
+  /**
+   * Set the callback used to push messages to the webview renderer.
+   */
   setSendToWebview(fn: SendToWebview): void {
     this.sendToWebview = fn;
   }
 
+  /**
+   * Set the callback used to open the settings window from menus.
+   */
   setOpenSettingsCallback(cb: (tabHint?: string) => void): void {
     this.openSettingsCallback = cb;
   }
 
+  /**
+   * Set the callback used to open detached surface windows from RPC or menus.
+   */
   setOpenSurfaceWindowCallback(
     cb: (
       surface:
@@ -199,10 +248,16 @@ export class DesktopManager {
     this.openExternalHandler = cb;
   }
 
+  /**
+   * Open the settings window via the registered callback.
+   */
   openSettings(tabHint?: string): void {
     this.openSettingsCallback?.(tabHint);
   }
 
+  /**
+   * Open a detached surface window via the registered callback.
+   */
   openSurfaceWindow(
     surface:
       | "chat"
@@ -1768,6 +1823,10 @@ X-GNOME-Autostart-enabled=true
     this.sendToWebview = null;
   }
 }
+
+// ============================================================================
+// Singleton
+// ============================================================================
 
 let desktopManager: DesktopManager | null = null;
 

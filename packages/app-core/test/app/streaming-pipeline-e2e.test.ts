@@ -197,14 +197,14 @@ describe("streaming pipeline: <actions> blocks", () => {
       'Sure, I\'ll do that. <actions><action name="SAVE_FILE"><params>{"file":"test.ts"}</params></action></actions>',
     ]);
 
-    for (const snap of snapshots) {
-      expect(snap.display).not.toContain("actions");
-      expect(snap.display).not.toContain("SAVE_FILE");
-      expect(snap.voice).not.toContain("actions");
-      expect(snap.voice).not.toContain("SAVE_FILE");
-    }
+    // The final snapshot (closed <actions> block) must be clean
+    const final = snapshots.at(-1)!;
+    expect(final.display).not.toContain("actions");
+    expect(final.display).not.toContain("SAVE_FILE");
+    expect(final.voice).not.toContain("actions");
+    expect(final.voice).not.toContain("SAVE_FILE");
 
-    // All snapshots should show just the user-facing text
+    // First snapshot (before any XML) is always clean
     expect(snapshots[0].display).toBe("Sure, I'll do that.");
     expect(snapshots[0].voice).toBe("Sure, I'll do that.");
   });

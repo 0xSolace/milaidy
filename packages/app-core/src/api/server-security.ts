@@ -10,7 +10,7 @@ import {
   resolveTerminalRunClientId as upstreamResolveTerminalRunClientId,
   resolveTerminalRunRejection as upstreamResolveTerminalRunRejection,
   resolveWebSocketUpgradeRejection as upstreamResolveWebSocketUpgradeRejection,
-} from "@elizaos/agent/api/server";
+} from "@miladyai/agent/api/server";
 import {
   getBootConfig,
   syncBrandEnvToEliza,

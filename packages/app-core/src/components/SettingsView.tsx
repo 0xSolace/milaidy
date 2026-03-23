@@ -10,7 +10,9 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
+  Label,
   SectionCard,
+  Spinner,
 } from "@miladyai/ui";
 import {
   AlertTriangle,
@@ -18,7 +20,6 @@ import {
   Cloud,
   Download,
   Image,
-  Loader2,
   RefreshCw,
   Search,
   Shield,
@@ -134,10 +135,22 @@ function SettingsSidebar({
   const { t } = useApp();
 
   return (
-    <aside className="hidden w-[16rem] shrink-0 self-stretch lg:sticky lg:top-0 lg:flex lg:h-screen">
+    <aside className="hidden lg:sticky lg:top-0 lg:flex lg:flex-col lg:h-screen lg:overflow-y-auto">
+      {/* Search */}
       <div className="px-3 py-3 border-b border-border">
+        <div className="flex items-center gap-2 px-2.5 py-1.5 border border-border bg-bg">
+          <Search className="h-3 w-3 shrink-0 text-muted" aria-hidden />
+          <Input
+            type="text"
+            placeholder={t("settings.searchPlaceholder") || "Search..."}
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            className="h-6 min-w-0 flex-1 border-0 bg-transparent py-0 pr-0 pl-0 text-[11px] font-mono shadow-none placeholder:text-muted/60 focus-visible:ring-0 focus-visible:ring-offset-0"
+          />
+        </div>
+
         {/* Navigation */}
-        <nav className="flex-1 py-4 px-3">
+        <nav className="py-4 px-3">
           <div className="space-y-1.5">
             {sections.map((section) => {
               const Icon = section.icon;
@@ -326,12 +339,12 @@ function AdvancedSection() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <label
+              <Label
                 htmlFor="settings-export-password"
-                className="text-sm font-medium text-txt-strong"
+                className="text-txt-strong"
               >
                 {t("settingsview.Password")}
-              </label>
+              </Label>
               <Input
                 id="settings-export-password"
                 type="password"
@@ -340,7 +353,7 @@ function AdvancedSection() {
                 placeholder={t("settingsview.EnterExportPasswor")}
                 className="rounded-lg bg-bg"
               />
-              <label className="flex items-center gap-2 text-sm text-muted">
+              <Label className="flex items-center gap-2 font-normal text-muted">
                 <Checkbox
                   checked={exportIncludeLogs}
                   onCheckedChange={(checked) =>
@@ -349,7 +362,7 @@ function AdvancedSection() {
                 />
 
                 {t("settingsview.IncludeRecentLogs")}
-              </label>
+              </Label>
             </div>
 
             {exportError && (
@@ -379,7 +392,7 @@ function AdvancedSection() {
                 disabled={exportBusy}
                 onClick={() => void handleAgentExport()}
               >
-                {exportBusy && <Loader2 className="w-4 h-4 animate-spin" />}
+                {exportBusy && <Spinner size={16} />}
                 {t("common.export")}
               </Button>
             </div>
@@ -429,12 +442,12 @@ function AdvancedSection() {
             </div>
 
             <div className="space-y-2">
-              <label
+              <Label
                 htmlFor="settings-import-password"
-                className="text-sm font-medium text-txt-strong"
+                className="text-txt-strong"
               >
                 {t("settingsview.Password")}
-              </label>
+              </Label>
               <Input
                 id="settings-import-password"
                 type="password"
@@ -472,7 +485,7 @@ function AdvancedSection() {
                 disabled={importBusy}
                 onClick={() => void handleAgentImport()}
               >
-                {importBusy && <Loader2 className="w-4 h-4 animate-spin" />}
+                {importBusy && <Spinner size={16} />}
                 {t("settings.import")}
               </Button>
             </div>
@@ -495,9 +508,7 @@ export function SettingsView({
   initialSection?: string;
 } = {}) {
   const { t, loadPlugins, setTab } = useApp();
-  const [activeSection, setActiveSection] = useState(
-    initialSection ?? "advanced",
-  );
+  const [activeSection, setActiveSection] = useState(initialSection ?? "cloud");
   const [searchQuery, setSearchQuery] = useState("");
   const shellRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLElement | null>(null);
@@ -719,9 +730,9 @@ export function SettingsView({
   return (
     <div
       ref={shellRef}
-      className="settings-shell plugins-game-modal plugins-game-modal--inline"
+      className="settings-shell plugins-game-modal plugins-game-modal--inline !h-auto grid grid-cols-[220px_1fr] gap-4 items-stretch"
     >
-      <div className="plugins-game-list-panel">
+      <div className="hidden lg:block rounded-xl border border-border bg-card shadow-sm">
         <SettingsSidebar
           sections={visibleSections}
           activeSection={activeSection}
@@ -732,9 +743,7 @@ export function SettingsView({
         />
       </div>
 
-      <div
-        className={`settings-page-content flex-1 min-w-0 scroll-smoothpx-4 py-4`}
-      >
+      <div className="settings-page-content flex-1 min-w-0 scroll-smooth px-4 py-4">
         <div className="space-y-6 pb-20 sm:space-y-8">{sectionsContent}</div>
       </div>
     </div>

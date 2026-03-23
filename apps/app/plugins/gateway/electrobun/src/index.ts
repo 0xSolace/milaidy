@@ -29,8 +29,7 @@ import type {
   JsonObject,
   JsonValue,
 } from "@miladyai/app-core/src/definitions";
-
-type EventCallback<T> = (event: T) => void;
+import type { EventCallback } from "../../../shared-types.js";
 type GatewayEventData =
   | GatewayEvent
   | GatewayStateEvent
@@ -343,6 +342,56 @@ export class GatewayElectrobun implements GatewayPlugin {
       message: `Connection lost: ${reason}`,
       code: String(code),
       willRetry: true,
+    } as GatewayErrorEvent);
+
+    this.scheduleReconnect();
+  }
+
+  private scheduleReconnect(): void {
+    if (this.closed || this.reconnectTimer) {
+      return;
+    }
+
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      this.backoffMs = Math.min(this.backoffMs * 1.7, 15000);
+      this.establishConnection();
+    }, this.backoffMs);
+  }
+
+  private notifyStateChange(
+    state: GatewayStateEvent["state"],
+    reason?: string,
+  ): void {
+    this.notifyListeners("stateChange", {
+      state,
+      reason,
+    } as GatewayStateEvent);
+  }
+
+  private getPlatform(): string {
+    if (typeof navigator !== "undefined") {
+      return navigator.platform || "electrobun";
+    }
+    return "electrobun";
+  }
+
+  async disconnect(): Promise<void> {
+    this.closed = true;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    if (this.ws) {
+      this.ws.close(1000, "Client disconnect");
+      this.ws = null;
+    }
+    this.sessionId = null;
+    this.protocol = null;
+    this.role = null;
+    this.notifyStateChange("disconnected", "Client disconnect");
+  }
+
   // MARK: - Discovery Methods
 
   async startDiscovery(
@@ -516,8 +565,9 @@ export class GatewayElectrobun implements GatewayPlugin {
     };
   }
 
-  async removeAllListeners(): Promise<void> 
+  async removeAllListeners(): Promise<void> {
     this.listeners = [];
+  }
 }
 
 // Export the plugin instance

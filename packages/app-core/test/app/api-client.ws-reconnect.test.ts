@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * Tests for the WS reconnect logic in ElizaClient.
+ * Tests for the WS reconnect logic in MiladyClient.
  *
- * We import and test the real ElizaClient class, mocking WebSocket
+ * We import and test the real MiladyClient class, mocking WebSocket
  * and browser globals so connectWs() and onWsEvent() can run in Node.
  */
 
@@ -52,11 +52,11 @@ vi.stubGlobal(
 );
 
 // Mock contract modules that api-client.ts imports from autonomous.
-vi.mock("@elizaos/agent/contracts/drop", () => ({}));
-vi.mock("@elizaos/agent/contracts/onboarding", () => ({}));
-vi.mock("@elizaos/agent/contracts/verification", () => ({}));
-vi.mock("@elizaos/agent/contracts/wallet", () => ({}));
-vi.mock("@elizaos/agent/contracts/permissions", () => ({}));
+vi.mock("@miladyai/agent/contracts/drop", () => ({}));
+vi.mock("@miladyai/agent/contracts/onboarding", () => ({}));
+vi.mock("@miladyai/agent/contracts/verification", () => ({}));
+vi.mock("@miladyai/agent/contracts/wallet", () => ({}));
+vi.mock("@miladyai/agent/contracts/permissions", () => ({}));
 
 // Provide window.location so connectWs() can build a WS URL
 vi.stubGlobal("window", {
@@ -67,17 +67,17 @@ vi.stubGlobal("window", {
 });
 
 // ---------------------------------------------------------------------------
-// Import the real ElizaClient
+// Import the real MiladyClient
 // ---------------------------------------------------------------------------
 
-const { ElizaClient } = await import("@miladyai/app-core/api");
+const { MiladyClient } = await import("@miladyai/app-core/api");
 
-describe("ElizaClient WS reconnect", () => {
-  let client: InstanceType<typeof ElizaClient>;
+describe("MiladyClient WS reconnect", () => {
+  let client: InstanceType<typeof MiladyClient>;
 
   beforeEach(() => {
     latestWs = null;
-    client = new ElizaClient("http://localhost:2138");
+    client = new MiladyClient("http://localhost:2138");
   });
 
   afterEach(() => {

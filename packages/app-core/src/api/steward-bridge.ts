@@ -4,6 +4,7 @@ import {
   type PolicyResult,
   type SignTransactionInput,
 } from "@stwd/sdk";
+import { normalizeEnvValueOrNull } from "../utils/env";
 
 export interface StewardBridgeOptions {
   env?: NodeJS.ProcessEnv;
@@ -38,10 +39,8 @@ export type StewardExecutionResult =
   | StewardPendingApprovalResult
   | StewardSignedTransactionResult;
 
-function normalizeEnvValue(value: string | undefined): string | null {
-  const trimmed = value?.trim();
-  return trimmed ? trimmed : null;
-}
+/** Alias for steward-specific env resolution. */
+const normalizeEnvValue = normalizeEnvValueOrNull;
 
 export function resolveStewardAgentId(
   env: NodeJS.ProcessEnv = process.env,
@@ -166,7 +165,9 @@ export async function signTransactionWithOptionalSteward(params: {
   });
 
   if (!client || !agentId) {
-    throw new Error("Steward credentials and agent ID must be provided to sign transactions.");
+    throw new Error(
+      "Steward credentials and agent ID must be provided to sign transactions.",
+    );
   }
 
   try {

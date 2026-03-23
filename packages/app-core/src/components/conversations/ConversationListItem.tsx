@@ -1,9 +1,4 @@
-import {
-  Button,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@miladyai/ui";
+import { Button, Tooltip, TooltipContent, TooltipTrigger } from "@miladyai/ui";
 import { PencilLine, X } from "lucide-react";
 import type React from "react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
@@ -219,14 +214,15 @@ export function ConversationListItem({
         </Button>
 
         {confirmDeleteId !== conv.id ? (
-          <button
-            type="button"
+          <Button
+            size="icon"
+            variant="ghost"
             data-testid="conv-rename"
             aria-label={t("conversations.rename")}
             className={
               isGameModal
-                ? `flex shrink-0 self-center h-7 w-7 items-center justify-center rounded-md border border-transparent text-white/50 transition-colors hover:border-white/15 hover:bg-white/10 hover:text-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent ${rowActionVisibility}`
-                : `flex shrink-0 h-7 w-7 items-center justify-center rounded-md border border-transparent text-muted transition-colors hover:border-border hover:bg-card hover:text-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent ${rowActionVisibility}`
+                ? `shrink-0 self-center h-7 w-7 rounded-md border border-transparent text-white/50 transition-colors hover:border-white/15 hover:bg-white/10 hover:text-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent ${rowActionVisibility}`
+                : `shrink-0 h-7 w-7 rounded-md border border-transparent text-muted transition-colors hover:border-border hover:bg-card hover:text-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent ${rowActionVisibility}`
             }
             onClick={(e) => {
               e.preventDefault();
@@ -234,19 +230,24 @@ export function ConversationListItem({
               onRequestRename(conv);
             }}
           >
-            <PencilLine className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-          </button>
+            <PencilLine
+              className="h-3.5 w-3.5"
+              strokeWidth={2.25}
+              aria-hidden
+            />
+          </Button>
         ) : null}
 
         {confirmDeleteId !== conv.id ? (
-          <button
-            type="button"
+          <Button
+            size="icon"
+            variant="ghost"
             data-testid="conv-delete"
             aria-label={t("conversations.delete")}
             className={
               isGameModal
-                ? `flex shrink-0 self-center h-7 w-7 items-center justify-center rounded-md border border-transparent text-white/50 transition-colors hover:border-white/15 hover:bg-white/10 hover:text-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent ${rowActionVisibility}`
-                : `flex shrink-0 h-7 w-7 items-center justify-center rounded-md border border-transparent text-muted transition-colors hover:border-border hover:bg-card hover:text-danger focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent ${rowActionVisibility}`
+                ? `shrink-0 self-center h-7 w-7 rounded-md border border-transparent text-white/50 transition-colors hover:border-white/15 hover:bg-white/10 hover:text-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent ${rowActionVisibility}`
+                : `shrink-0 h-7 w-7 rounded-md border border-transparent text-muted transition-colors hover:border-border hover:bg-card hover:text-danger focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent ${rowActionVisibility}`
             }
             onClick={(e) => {
               e.preventDefault();
@@ -255,7 +256,7 @@ export function ConversationListItem({
             }}
           >
             <X className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-          </button>
+          </Button>
         ) : null}
 
         {confirmDeleteId === conv.id ? (

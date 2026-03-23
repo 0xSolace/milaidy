@@ -1,25 +1,71 @@
 import { Electroview } from "electrobun/view";
 
+/**
+ * Maps legacy desktop push channels to RPC message names.
+ * These are messages that flow Bun → webview.
+ */
+const PUSH_CHANNEL_TO_RPC: Record<string, string> = {
+  "agent:status": "agentStatusUpdate",
+  "gateway:discovery": "gatewayDiscovery",
+  "permissions:changed": "permissionsChanged",
+  "desktop:trayMenuClick": "desktopTrayMenuClick",
+  "desktop:trayClick": "desktopTrayClick",
+  "desktop:shortcutPressed": "desktopShortcutPressed",
+  "desktop:windowFocus": "desktopWindowFocus",
+  "desktop:windowBlur": "desktopWindowBlur",
+  "desktop:windowMaximize": "desktopWindowMaximize",
+  "desktop:windowUnmaximize": "desktopWindowUnmaximize",
+  "desktop:windowClose": "desktopWindowClose",
+  "canvas:windowEvent": "canvasWindowEvent",
+  "talkmode:audioChunkPush": "talkmodeAudioChunkPush",
+  "talkmode:stateChanged": "talkmodeStateChanged",
+  "talkmode:speakComplete": "talkmodeSpeakComplete",
+  "talkmode:transcript": "talkmodeTranscript",
+  "talkmode:error": "talkmodeError",
+  "swabble:wakeWord": "swabbleWakeWord",
+  "swabble:stateChange": "swabbleStateChanged",
+  "swabble:transcript": "swabbleTranscript",
+  "swabble:error": "swabbleError",
+  "swabble:audioChunkPush": "swabbleAudioChunkPush",
+  "contextMenu:askAgent": "contextMenuAskAgent",
+  "contextMenu:createSkill": "contextMenuCreateSkill",
+  "contextMenu:quoteInChat": "contextMenuQuoteInChat",
+  "contextMenu:saveAsCommand": "contextMenuSaveAsCommand",
+  apiBaseUpdate: "apiBaseUpdate",
+  shareTargetReceived: "shareTargetReceived",
+  "location:update": "locationUpdate",
+  "desktop:updateAvailable": "desktopUpdateAvailable",
+  "desktop:updateReady": "desktopUpdateReady",
+
+  // GPU Window push events
+  "gpuWindow:closed": "gpuWindowClosed",
+
+  // WebGPU browser support
+  "webgpu:browserStatus": "webGpuBrowserStatus",
+};
+
+// Reverse mapping: RPC message name → legacy desktop push channel
+const RPC_TO_PUSH_CHANNEL: Record<string, string> = {};
+for (const [channel, rpcName] of Object.entries(PUSH_CHANNEL_TO_RPC)) {
+  RPC_TO_PUSH_CHANNEL[rpcName] = channel;
+}
+
+// ============================================================================
+// Listener Registry (for ipcRenderer.on / ipcRenderer.removeListener)
+
 type IpcListener = (...args: unknown[]) => void;
 
 const listenersByRpcMessage: Record<string, Set<IpcListener>> = {};
 const listenersByChannel: Record<string, Set<IpcListener>> = {};
 
-// Electrobun's native layer sets __electrobun before preloads run.
-// Stub it if the built-in preload hasn't fired yet.
-if (typeof window.__electrobun === "undefined") {
-  (
-    window as {
-      __electrobun: {
-        receiveMessageFromBun: (m: unknown) => void;
-        receiveInternalMessageFromBun: (m: unknown) => void;
-      };
-    }
-  ).__electrobun = {
-    receiveMessageFromBun: (_m: unknown) => {},
-    receiveInternalMessageFromBun: (_m: unknown) => {},
-  };
-}
+// ============================================================================
+// Electrobun RPC Setup
+// ============================================================================
+
+// Electrobun's native layer sets these globals before preloads run.
+// __electrobun must exist before Electroview.init() tries to write to it.
+// If the built-in preload hasn't fired yet (rare edge case), stub it.
+ensureElectrobunGlobal();
 
 function dispatchMessage(messageName: string, payload: unknown): void {
   if (messageName === "apiBaseUpdate") {
@@ -50,8 +96,7 @@ function dispatchMessage(messageName: string, payload: unknown): void {
 }
 
 // Electrobun defaults outgoing RPC timeout to 1s; native dialogs need much longer.
-// biome-ignore lint/suspicious/noExplicitAny: schema types live on the Bun side and can't be imported in a browser bundle
-const rpc = Electroview.defineRPC<any>({
+const rpc = Electroview.defineRPC<unknown>({
   maxRequestTime: 600_000,
   handlers: {
     requests: {},
@@ -60,16 +105,14 @@ const rpc = Electroview.defineRPC<any>({
         if (typeof messageName === "string") {
           dispatchMessage(messageName, payload);
         }
-        // biome-ignore lint/suspicious/noExplicitAny: required for Electroview wildcard signature
-      }) as any,
+      }) as unknown,
     },
   },
 });
 
 new Electroview({ rpc });
 
-// biome-ignore lint/suspicious/noExplicitAny: request proxy is dynamically typed, schema only available on Bun side
-const rpcRequest = (rpc as any).request as Record<
+const rpcRequest = (rpc as Record<string, unknown>).request as Record<
   string,
   (params: unknown) => Promise<unknown>
 >;
@@ -140,8 +183,6 @@ const electrobunAPI = {
     version: "",
   },
 };
-
-type RpcMessageListener = (payload: unknown) => void;
 
 const rpcListenerWrappers: Record<
   string,

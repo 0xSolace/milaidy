@@ -1,7 +1,15 @@
+/**
+ * TalkMode Native Module for Electrobun
+ *
+ * Provides text-to-speech via ElevenLabs API (fetch-based, works in Bun)
+ * and speech-to-text via Whisper (if available) or Web Speech API fallback.
+ */
+
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { TalkModeConfig, TalkModeState } from "../rpc-schema";
+import type { SendToWebview } from "../types.js";
 import {
   isWhisperAvailable,
   transcribeBunSpawn,
@@ -19,8 +27,6 @@ const TALKMODE_AUDIO_BUFFER_THRESHOLD =
   FLOAT32_BYTES_PER_SAMPLE;
 const TALKMODE_MIN_FLUSH_BYTES =
   TALKMODE_SAMPLE_RATE * TALKMODE_MIN_FLUSH_SECONDS * FLOAT32_BYTES_PER_SAMPLE;
-
-type SendToWebview = (message: string, payload?: unknown) => void;
 
 export class TalkModeManager {
   private sendToWebview: SendToWebview | null = null;

@@ -1866,7 +1866,7 @@ describe("API Server E2E (no runtime)", () => {
           "/api/conversations",
           {
             title: "Idempotent greeting test",
-            bootstrapGreeting: true,
+            includeGreeting: true,
             lang: "en",
           },
         );

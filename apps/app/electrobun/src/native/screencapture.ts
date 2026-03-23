@@ -1,8 +1,30 @@
+/**
+ * Screen Capture Native Module for Electrobun
+ *
+ * Frame capture strategy:
+ *
+ * 1. App-window capture (default, no gameUrl):
+ *    Uses native CLI screenshot tools to capture real pixel data from the screen.
+ *    - macOS: `screencapture -x -t jpg <tmpPath>` (no sound, no shadow)
+ *    - Linux: `scrot --quality 70 <tmpPath>`, falling back to ImageMagick `import`
+ *    - Windows: PowerShell `System.Drawing.CopyFromScreen` for native capture.
+ *    The temp JPEG file is read, POSTed to the stream endpoint, then deleted.
+ *
+ * 2. Game URL capture (gameUrl provided):
+ *    Creates a BrowserWindow for the game URL and captures its canvas/video
+ *    content via JS. No offscreen `paint` event in Electrobun, so we poll.
+ *
+ * The captured JPEG frames are POSTed to the stream endpoint (e.g.
+ * /api/stream/frame). The MJPEG monitor (GET /api/stream/screen) on the agent
+ * server receives these frames for live view.
+ */
+
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { BrowserWindow } from "electrobun/bun";
 import { DEFAULT_PORT } from "../constants";
+import type { SendToWebview, WebviewEvalRpc } from "../types.js";
 
 /**
  * Allow-list for game-capture URLs.
@@ -24,17 +46,7 @@ function isAllowedCaptureUrl(url: string): boolean {
   }
 }
 
-type WebviewEvalRpc = {
-  requestProxy?: {
-    evaluateJavascriptWithResponse?: (params: {
-      script: string;
-    }) => Promise<unknown>;
-  };
-};
-
 type Webview = { rpc?: unknown };
-
-type SendToWebview = (message: string, payload?: unknown) => void;
 
 export class ScreenCaptureManager {
   private frameCaptureActive = false;
@@ -53,8 +65,22 @@ export class ScreenCaptureManager {
     // Native CLI capture does not use the webview reference; retained for RPC compat.
   }
 
-  /** Intentionally inert — native CLI tools capture the full screen, not a webview. */
-  setCaptureTarget(_webview: Webview | null): void {}
+  /**
+   * Override the capture target webview. Pass null to revert to mainWebview.
+   * Used when a StreamView is popped out to a separate window.
+   *
+   * NOTE: Since screen capture was moved to native CLI tools on all platforms
+   * (screencapture on macOS, PowerShell on Windows, scrot/import on Linux),
+   * this override is intentionally inert — frame capture always captures the
+   * full screen, not a specific webview. The setter is retained because it is
+   * wired into the RPC schema (screencapture:setCaptureTarget) and called by
+   * StreamView popout logic. Removing it would require coordinated changes
+   * across rpc-schema.ts, rpc-handlers.ts, electrobun-bridge.ts, and the
+   * renderer.
+   */
+  setCaptureTarget(_webview: Webview | null): void {
+    // Intentionally inert — see docblock above.
+  }
 
   async getSources() {
     return {

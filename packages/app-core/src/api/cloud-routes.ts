@@ -2,18 +2,21 @@ import type http from "node:http";
 import {
   type CloudRouteState as AutonomousCloudRouteState,
   handleCloudRoute as handleAutonomousCloudRoute,
-} from "@elizaos/agent/api/cloud-routes";
-import { normalizeCloudSiteUrl } from "@elizaos/agent/cloud/base-url";
-import type { CloudManager } from "@elizaos/agent/cloud/cloud-manager";
-import { validateCloudBaseUrl } from "@elizaos/agent/cloud/validate-url";
+} from "@miladyai/agent/api/cloud-routes";
+import { normalizeCloudSiteUrl } from "@miladyai/agent/cloud/base-url";
+import type { CloudManager } from "@miladyai/agent/cloud/cloud-manager";
+import { validateCloudBaseUrl } from "@miladyai/agent/cloud/validate-url";
 import type { AgentRuntime } from "@elizaos/core";
 import type { ElizaConfig } from "../config/config";
 import { saveElizaConfig } from "../config/config";
 import { createIntegrationTelemetrySpan } from "../diagnostics/integration-observability";
-import { disconnectUnifiedCloudConnection } from "./cloud-connection";
+import { isTimeoutError } from "../utils/errors";
+import {
+  disconnectUnifiedCloudConnection,
+  type RuntimeCloudLike,
+} from "./cloud-connection";
 import { clearCloudSecrets, scrubCloudSecretsFromEnv } from "./cloud-secrets";
-
-
+import { sendJson, sendJsonError } from "./response";
 
 export interface CloudRouteState {
   config: ElizaConfig;
@@ -23,16 +26,6 @@ export interface CloudRouteState {
 }
 
 type CloudRuntimeSecrets = Record<string, string | number | boolean>;
-type RuntimeCloudLike = AgentRuntime & {
-  agentId: string;
-  character: {
-    secrets?: CloudRuntimeSecrets;
-  };
-  updateAgent?: (
-    agentId: string,
-    update: { secrets: CloudRuntimeSecrets },
-  ) => Promise<unknown>;
-};
 
 const CLOUD_LOGIN_POLL_TIMEOUT_MS = 10_000;
 
@@ -41,36 +34,8 @@ type TelemetrySpan = {
   failure: (meta?: Record<string, unknown>) => void;
 };
 
-function sendJson(res: http.ServerResponse, body: unknown, status = 200): void {
-  res.statusCode = status;
-  res.setHeader("content-type", "application/json; charset=utf-8");
-  res.end(JSON.stringify(body));
-}
-
-function sendJsonError(
-  res: http.ServerResponse,
-  message: string,
-  status = 400,
-): void {
-  sendJson(res, { error: message }, status);
-}
-
 function isRedirectResponse(response: Response): boolean {
   return response.status >= 300 && response.status < 400;
-}
-
-function isTimeoutError(error: unknown): boolean {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-  if (error.name === "TimeoutError" || error.name === "AbortError") {
-    return true;
-  }
-  const normalizedMessage = error.message.toLowerCase();
-  return (
-    normalizedMessage.includes("timed out") ||
-    normalizedMessage.includes("timeout")
-  );
 }
 
 function createNoopTelemetrySpan(): TelemetrySpan {
@@ -117,9 +82,7 @@ async function persistCloudLoginStatus(args: {
 
   try {
     saveElizaConfig(args.state.config);
-    console.log(`[DEBUG persistCloudLoginStatus] SAVED config with apiKey (${typeof args.apiKey}, len=${args.apiKey.length}), cloud keys after save: ${JSON.stringify(Object.keys(cloud))}`);
-  } catch (saveErr) {
-    console.error(`[DEBUG persistCloudLoginStatus] SAVE FAILED:`, saveErr);
+  } catch {
     // Non-fatal: the authenticated account still lives in sealed secrets/runtime.
   }
 
@@ -182,14 +145,10 @@ export async function handleCloudRoute(
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       console.error("[cloud/disconnect] failed", err);
-      res.statusCode = 500;
-      res.setHeader("content-type", "application/json; charset=utf-8");
-      res.end(JSON.stringify({ ok: false, error: message }));
+      sendJson(res, 500, { ok: false, error: message });
       return true;
     }
-    res.statusCode = 200;
-    res.setHeader("content-type", "application/json; charset=utf-8");
-    res.end(JSON.stringify({ ok: true, status: "disconnected" }));
+    sendJson(res, 200, { ok: true, status: "disconnected" });
     return true;
   }
 
@@ -200,14 +159,14 @@ export async function handleCloudRoute(
     );
     const sessionId = url.searchParams.get("sessionId");
     if (!sessionId) {
-      sendJsonError(res, "sessionId query parameter is required");
+      sendJsonError(res, 400, "sessionId query parameter is required");
       return true;
     }
 
     const baseUrl = normalizeCloudSiteUrl(state.config.cloud?.baseUrl);
     const urlError = await validateCloudBaseUrl(baseUrl);
     if (urlError) {
-      sendJsonError(res, urlError);
+      sendJsonError(res, 400, urlError);
       return true;
     }
 
@@ -223,26 +182,18 @@ export async function handleCloudRoute(
     } catch (fetchErr) {
       if (isTimeoutError(fetchErr)) {
         loginPollSpan.failure({ error: fetchErr, statusCode: 504 });
-        sendJson(
-          res,
-          {
-            status: "error",
-            error: "Eliza Cloud status request timed out",
-          },
-          504,
-        );
+        sendJson(res, 504, {
+          status: "error",
+          error: "Eliza Cloud status request timed out",
+        });
         return true;
       }
 
       loginPollSpan.failure({ error: fetchErr, statusCode: 502 });
-      sendJson(
-        res,
-        {
-          status: "error",
-          error: "Failed to reach Eliza Cloud",
-        },
-        502,
-      );
+      sendJson(res, 502, {
+        status: "error",
+        error: "Failed to reach Eliza Cloud",
+      });
       return true;
     }
 
@@ -251,15 +202,11 @@ export async function handleCloudRoute(
         statusCode: pollRes.status,
         errorKind: "redirect_response",
       });
-      sendJson(
-        res,
-        {
-          status: "error",
-          error:
-            "Eliza Cloud status request was redirected; redirects are not allowed",
-        },
-        502,
-      );
+      sendJson(res, 502, {
+        status: "error",
+        error:
+          "Eliza Cloud status request was redirected; redirects are not allowed",
+      });
       return true;
     }
 
@@ -270,6 +217,7 @@ export async function handleCloudRoute(
       });
       sendJson(
         res,
+        200,
         pollRes.status === 404
           ? { status: "expired", error: "Session not found or expired" }
           : {
@@ -303,7 +251,7 @@ export async function handleCloudRoute(
         apiKey: data.apiKey,
         state,
       });
-      sendJson(res, {
+      sendJson(res, 200, {
         status: "authenticated",
         keyPrefix:
           typeof data.keyPrefix === "string" ? data.keyPrefix : undefined,
@@ -311,7 +259,7 @@ export async function handleCloudRoute(
       return true;
     }
 
-    sendJson(res, {
+    sendJson(res, 200, {
       status: typeof data.status === "string" ? data.status : "error",
     });
     return true;
