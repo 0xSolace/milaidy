@@ -117,7 +117,7 @@
     "test": "node test/scripts/test-parallel.mjs",
     "test:coverage": "bunx vitest run --config vitest.unit.config.ts --coverage",
     "test:e2e": "bunx vitest run --config vitest.e2e.config.ts",
-    "test:e2e:coding-agents": "bunx vitest run packages/agent/test/agent-orchestration.e2e.test.ts packages/agent/test/coding-agent-route-readiness.e2e.test.ts",
+    "test:e2e:coding-agents": "bunx vitest run packages/agent/test/agent-orchestration.e2e.test.ts packages/agent/test/coding-agent-route-readiness.e2e.test.ts packages/agent/test/coding-agent-codex-artifact.e2e.test.ts",
     "test:force": "node --import tsx test/scripts/test-force.ts",
     "test:live": "node scripts/run-with-env.mjs MILADY_LIVE_TEST=1 -- bun exec vitest run --config vitest.e2e.config.ts test/wallet-live.e2e.test.ts test/api-auth-live.e2e.test.ts test/cloud-providers.e2e.test.ts",
     "test:once": "bunx vitest run",
@@ -236,10 +236,10 @@
   "patchedDependencies": {
     "electrobun@1.15.1": "patches/electrobun@1.15.1.patch",
     "@elizaos/core@2.0.0-alpha.98": "patches/@elizaos%2Fcore@2.0.0-alpha.98.patch",
-    "@elizaos/plugin-agent-orchestrator@0.3.16": "patches/@elizaos%2Fplugin-agent-orchestrator@0.3.16.patch",
     "@elizaos/plugin-coding-agent@0.1.0-next.1": "patches/@elizaos%2Fplugin-coding-agent@0.1.0-next.1.patch",
     "@elizaos/plugin-agent-skills@2.0.0-alpha.70": "patches/@elizaos%2Fplugin-agent-skills@2.0.0-alpha.70.patch",
     "@elizaos/plugin-sql@2.0.0-alpha.17": "patches/@elizaos%2Fplugin-sql@2.0.0-alpha.17.patch",
+    "@elizaos/plugin-todo@2.0.0-alpha.13": "patches/@elizaos%2Fplugin-todo@2.0.0-alpha.13.patch",
     "@noble/curves@2.0.1": "patches/@noble%2Fcurves@2.0.1.patch",
     "proper-lockfile@4.1.2": "patches/proper-lockfile@4.1.2.patch",
     "@pixiv/three-vrm@3.5.1": "patches/@pixiv%2Fthree-vrm@3.5.1.patch"

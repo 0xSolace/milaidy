@@ -38,14 +38,16 @@ try {
       // react-test-renderer and component code share one React instance.
       if (
         resolved.includes("node_modules/.bun/") &&
-        resolved.includes("/react/") &&
+        resolved.includes("/node_modules/react/") &&
         !resolved.includes("react-dom") &&
         !resolved.includes("react-test-renderer")
       ) {
         // Extract the relative path within the react package
-        const reactPkgIdx = resolved.lastIndexOf("/react/");
+        const reactPkgIdx = resolved.lastIndexOf("/node_modules/react/");
         if (reactPkgIdx !== -1) {
-          const relPath = resolved.slice(reactPkgIdx + "/react/".length);
+          const relPath = resolved.slice(
+            reactPkgIdx + "/node_modules/react/".length,
+          );
           return require("node:path").join(rootReactDir, relPath);
         }
       }

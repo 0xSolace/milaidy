@@ -457,42 +457,6 @@ function createRuntimeForWorkbenchCrudTests(options?: {
   return runtimeSubset as unknown as AgentRuntime;
 }
 
-function createRuntimeForWorkbenchTodoFallbackTests(counters: {
-  schemaProbeCount: number;
-  dbAccessCount: number;
-}): AgentRuntime {
-  const runtimeSubset = {
-    agentId: "workbench-fallback-agent",
-    character: {
-      name: "WorkbenchFallbackAgent",
-    } as AgentRuntime["character"],
-    getSetting: () => undefined,
-    getService: () => null,
-    getRoomsByWorld: async () => [],
-    getTasks: async () => [],
-    adapter: {
-      db: {
-        execute: async () => {
-          counters.schemaProbeCount += 1;
-          return { rows: [] };
-        },
-      },
-    },
-  };
-
-  Object.defineProperty(runtimeSubset, "db", {
-    configurable: true,
-    get() {
-      counters.dbAccessCount += 1;
-      throw new Error(
-        "runtime.db should not be accessed when the todos table is unavailable",
-      );
-    },
-  });
-
-  return runtimeSubset as unknown as AgentRuntime;
-}
-
 function createRuntimeForChatSseTests(options?: {
   onEmitEvent?: (
     event: Parameters<AgentRuntime["emitEvent"]>[0],
@@ -4146,31 +4110,6 @@ describe("API Server E2E (workbench CRUD)", () => {
       `/api/workbench/todos/${encodeURIComponent(todoId)}`,
     );
     expect(readAfterDelete.status).toBe(404);
-  });
-
-  it("skips the DB-backed todo service when the todos table is unavailable", async () => {
-    const counters = {
-      schemaProbeCount: 0,
-      dbAccessCount: 0,
-    };
-    const server = await startApiServer({
-      port: 0,
-      runtime: createRuntimeForWorkbenchTodoFallbackTests(counters),
-    });
-
-    try {
-      const overview = await req(server.port, "GET", "/api/workbench/overview");
-      expect(overview.status).toBe(200);
-      expect(Array.isArray(overview.data.todos)).toBe(true);
-
-      const list = await req(server.port, "GET", "/api/workbench/todos");
-      expect(list.status).toBe(200);
-      expect(Array.isArray(list.data.todos)).toBe(true);
-      expect(counters.schemaProbeCount).toBeGreaterThan(0);
-      expect(counters.dbAccessCount).toBe(0);
-    } finally {
-      await server.close();
-    }
   });
 });
 

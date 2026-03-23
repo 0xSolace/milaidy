@@ -27,13 +27,25 @@ export function sanitizeApiKey(apiKey: string | undefined): string | undefined {
 }
 
 /**
- * Treat any non-empty stored value as an existing key, including masked or
- * redacted placeholders from persisted config.
+ * Treat only non-redacted, non-masked values as usable API keys. Persisted
+ * placeholder values like "[REDACTED]" or "abcd...wxyz" are display-only.
  */
 export function hasConfiguredApiKey(
   apiKey: string | null | undefined,
 ): boolean {
-  return typeof apiKey === "string" && apiKey.trim().length > 0;
+  const trimmed = typeof apiKey === "string" ? apiKey.trim() : "";
+  if (!trimmed) return false;
+  if (
+    trimmed === "REDACTED" ||
+    trimmed === "[REDACTED]" ||
+    /^\*+$/.test(trimmed)
+  ) {
+    return false;
+  }
+  if (/^.{4}\.\.\..{4}$/.test(trimmed)) {
+    return false;
+  }
+  return true;
 }
 
 export const PREMADE_VOICES: VoicePreset[] = [

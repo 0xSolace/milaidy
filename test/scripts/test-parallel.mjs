@@ -24,6 +24,7 @@ const runs = [
     args: ["vitest", "run"],
     vitest: true,
     cwd: "apps/app",
+    reportFile: path.join(os.tmpdir(), "milady-vitest-app-unit-report.json"),
   },
   {
     name: "e2e",

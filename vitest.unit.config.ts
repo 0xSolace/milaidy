@@ -1,9 +1,35 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig, mergeConfig } from "vitest/config";
 import baseConfig from "./vitest.config";
+
+const repoRoot = path.dirname(fileURLToPath(import.meta.url));
 
 export default mergeConfig(
   baseConfig,
   defineConfig({
+    resolve: {
+      alias: [
+        {
+          find: "@elizaos/plugin-agent-orchestrator",
+          replacement: path.join(
+            repoRoot,
+            "test",
+            "stubs",
+            "coding-agent-module.ts",
+          ),
+        },
+        {
+          find: "@elizaos/plugin-coding-agent",
+          replacement: path.join(
+            repoRoot,
+            "test",
+            "stubs",
+            "coding-agent-module.ts",
+          ),
+        },
+      ],
+    },
     test: {
       // Keep unit coverage focused on colocated source tests plus shared
       // helpers. The higher-level app harness suites under packages/app-core

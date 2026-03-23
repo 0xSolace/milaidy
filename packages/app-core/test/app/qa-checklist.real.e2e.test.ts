@@ -39,6 +39,12 @@ const CAN_RUN =
   LIVE_TESTS_ENABLED &&
   GROQ_API_KEY.length > 0 &&
   ELEVENLABS_API_KEY.length > 0;
+const PROFILE_FILTER = new Set(
+  (process.env.MILADY_LIVE_PROFILE ?? "")
+    .split(",")
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean),
+);
 
 const EXPECTED_CHEN_GREETING = "you good?";
 const EXPECTED_SARAH_VOICE_ID = "EXAVITQu4vr4xnSDxMaL";
@@ -91,6 +97,10 @@ const PROFILES: Profile[] = [
       "Mozilla/5.0 (iPhone; CPU iPhone OS 18_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3 Mobile/15E148 Safari/604.1",
   },
 ];
+const ACTIVE_PROFILES =
+  PROFILE_FILTER.size > 0
+    ? PROFILES.filter((profile) => PROFILE_FILTER.has(profile.id))
+    : PROFILES;
 
 let browser: Browser | null = null;
 
@@ -102,6 +112,7 @@ describe.skipIf(!CAN_RUN)("Live QA checklist", () => {
     browser = await puppeteer.launch({
       executablePath: CHROME_PATH,
       headless: true,
+      protocolTimeout: 120_000,
       args: [
         "--autoplay-policy=no-user-gesture-required",
         "--disable-background-timer-throttling",
@@ -115,7 +126,7 @@ describe.skipIf(!CAN_RUN)("Live QA checklist", () => {
     await browser?.close();
   }, 30_000);
 
-  for (const profile of PROFILES) {
+  for (const profile of ACTIVE_PROFILES) {
     it(
       `${profile.label}: completes the real QA checklist`,
       async () => {
@@ -158,7 +169,7 @@ describe.skipIf(!CAN_RUN)("Live QA checklist", () => {
 
         const knowledgeFile = await writeKnowledgeFile(profile.id);
         try {
-          await page.goto(`${UI_URL}/`, { waitUntil: "networkidle2" });
+          await navigate(page, `${UI_URL}/`);
 
           await waitForText(page, "Get Started");
           await clickByText(page, "Get Started");
@@ -176,14 +187,16 @@ describe.skipIf(!CAN_RUN)("Live QA checklist", () => {
             { timeout: 180_000 },
           );
 
-          const chenButton = await page.waitForSelector(
-            '[data-testid="character-preset-chen"]',
-          );
-          expect(chenButton).toBeTruthy();
-          const chenPressed = await page.$eval(
-            '[data-testid="character-preset-chen"]',
-            (el) => el.getAttribute("aria-pressed"),
-          );
+          const chenPressed = await waitFor(async () => {
+            return page.evaluate(() => {
+              const element = document.querySelector(
+                '[data-testid="character-preset-chen"]',
+              );
+              return element?.getAttribute("aria-pressed") === "true"
+                ? "true"
+                : null;
+            });
+          }, 30_000);
           expect(chenPressed).toBe("true");
           expect(await onboardingComplete()).toBe(true);
 
@@ -254,7 +267,7 @@ describe.skipIf(!CAN_RUN)("Live QA checklist", () => {
           });
 
           await clickSelector(page, '[data-testid="ui-shell-toggle-desktop"]');
-          await page.goto(`${UI_URL}/knowledge`, { waitUntil: "networkidle2" });
+          await navigate(page, `${UI_URL}/knowledge`);
           await waitForText(page, "Choose Files");
 
           const uploadInput = await page.waitForSelector('input[type="file"]');
@@ -282,7 +295,7 @@ describe.skipIf(!CAN_RUN)("Live QA checklist", () => {
             );
           }, 120_000, 2000);
 
-          await page.goto(`${UI_URL}/chat`, { waitUntil: "networkidle2" });
+          await navigate(page, `${UI_URL}/chat`);
           await page.waitForSelector('[data-testid="chat-composer-textarea"]');
           await typeComposerAndSend(
             page,
@@ -331,7 +344,7 @@ describe.skipIf(!CAN_RUN)("Live QA checklist", () => {
             KNOWLEDGE_CODEWORD,
           );
 
-          await page.goto(`${UI_URL}/trajectories`, { waitUntil: "networkidle2" });
+          await navigate(page, `${UI_URL}/trajectories`);
           await page.waitForSelector('[data-testid="trajectories-view"]');
           await typeInto(
             page,
@@ -345,7 +358,7 @@ describe.skipIf(!CAN_RUN)("Live QA checklist", () => {
 
           await smokeTabs(page, profile);
 
-          await page.goto(`${UI_URL}/settings`, { waitUntil: "networkidle2" });
+          await navigate(page, `${UI_URL}/settings`);
           await waitForText(page, "Reset Agent");
           await clickByText(page, "Reset Everything");
           await waitForText(page, "Get Started", 180_000);
@@ -358,7 +371,7 @@ describe.skipIf(!CAN_RUN)("Live QA checklist", () => {
           expect(pageErrors).toEqual([]);
           expect(sameOriginFailures).toEqual([]);
         } catch (error) {
-          await saveScreenshot(page, profile, "failure");
+          await saveFailureArtifacts(page, profile, error);
           throw error;
         } finally {
           await fs.rm(knowledgeFile, { force: true });
@@ -439,7 +452,7 @@ async function smokeTabs(page: Page, profile: Profile) {
   ];
 
   for (const tab of tabChecks) {
-    await page.goto(`${UI_URL}${tab.path}`, { waitUntil: "networkidle2" });
+    await navigate(page, `${UI_URL}${tab.path}`);
     await tab.waitForReady();
     await saveScreenshot(page, profile, `tab-${tab.name}`);
   }
@@ -677,9 +690,64 @@ async function ensureHttpOk(url: string) {
   }
 }
 
+async function navigate(page: Page, url: string) {
+  await page.goto(url, { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => document.readyState !== "loading", {
+    timeout: 30_000,
+  });
+}
+
 async function saveScreenshot(page: Page, profile: Profile, step: string) {
   const filename = path.join(QA_ARTIFACT_DIR, `${profile.id}-${step}.png`);
-  await page.screenshot({ path: filename, fullPage: true });
+  try {
+    await page.screenshot({ path: filename, fullPage: true });
+  } catch (error) {
+    const noteFile = path.join(QA_ARTIFACT_DIR, `${profile.id}-${step}.txt`);
+    await fs.writeFile(
+      noteFile,
+      `Screenshot unavailable: ${error instanceof Error ? error.message : String(error)}\n`,
+      "utf8",
+    );
+  }
+}
+
+async function saveFailureArtifacts(
+  page: Page,
+  profile: Profile,
+  error: unknown,
+) {
+  await saveScreenshot(page, profile, "failure");
+  const textFile = path.join(QA_ARTIFACT_DIR, `${profile.id}-failure-state.txt`);
+
+  let url = "unavailable";
+  let title = "unavailable";
+  let bodyText = "unavailable";
+
+  try {
+    url = page.url();
+  } catch {}
+
+  try {
+    title = await page.title();
+  } catch {}
+
+  try {
+    bodyText = await page.evaluate(() => document.body.innerText.slice(0, 10_000));
+  } catch (pageError) {
+    bodyText = `Unavailable: ${pageError instanceof Error ? pageError.message : String(pageError)}`;
+  }
+
+  await fs.writeFile(
+    textFile,
+    [
+      `Error: ${error instanceof Error ? error.stack ?? error.message : String(error)}`,
+      `URL: ${url}`,
+      `Title: ${title}`,
+      "",
+      bodyText,
+    ].join("\n"),
+    "utf8",
+  );
 }
 
 async function waitFor<T>(
