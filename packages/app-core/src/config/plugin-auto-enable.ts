@@ -11,6 +11,7 @@ export const CONNECTOR_PLUGINS: Record<string, string> = {
   ..._upstreamConnectorPlugins,
   wechat: "@miladyai/plugin-wechat",
 };
+
 import { isWechatConfigured } from "./wechat-config";
 
 export function applyPluginAutoEnable(
@@ -23,8 +24,10 @@ export function applyPluginAutoEnable(
   const wechatBlock = connectors?.wechat as Record<string, unknown> | undefined;
 
   if (wechatBlock && isWechatConfigured(wechatBlock)) {
-    const plugins = (config.plugins ??= {}) as Record<string, unknown>;
-    const allow = (plugins.allow ??= []) as string[];
+    if (config.plugins == null) config.plugins = {};
+    const plugins = config.plugins as Record<string, unknown>;
+    if (plugins.allow == null) plugins.allow = [];
+    const allow = plugins.allow as string[];
     if (!allow.includes("wechat")) {
       allow.push("wechat");
     }

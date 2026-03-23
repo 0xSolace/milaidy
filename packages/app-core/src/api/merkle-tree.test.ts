@@ -13,6 +13,7 @@
 
 import { ethers } from "ethers";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
 // ── Mocks ────────────────────────────────────────────────────────────────
 
 vi.mock("@elizaos/core", () => ({

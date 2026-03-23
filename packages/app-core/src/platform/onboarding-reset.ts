@@ -1,6 +1,6 @@
 import type {
-  HistoryLike,
   OnboardingClientLike as ClientLike,
+  HistoryLike,
   OnboardingPatchState as PatchState,
   StorageLike,
 } from "./types";

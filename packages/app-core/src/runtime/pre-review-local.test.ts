@@ -9,8 +9,8 @@ import {
   resolveRunnableTestFiles,
   runChecks,
   scanDiffTextForBlockedPatterns,
-  splitRunnableTestFiles,
   scopeVerdictFor,
+  splitRunnableTestFiles,
 } from "../../../../scripts/pre-review-local.mjs";
 
 describe("pre-review-local helpers", () => {

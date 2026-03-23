@@ -1,4 +1,5 @@
 import type http from "node:http";
+import { type AgentRuntime, logger } from "@elizaos/core";
 import {
   type CloudRouteState as AutonomousCloudRouteState,
   handleCloudRoute as handleAutonomousCloudRoute,
@@ -6,7 +7,6 @@ import {
 import { normalizeCloudSiteUrl } from "@miladyai/agent/cloud/base-url";
 import type { CloudManager } from "@miladyai/agent/cloud/cloud-manager";
 import { validateCloudBaseUrl } from "@miladyai/agent/cloud/validate-url";
-import { logger, type AgentRuntime } from "@elizaos/core";
 import type { ElizaConfig } from "@miladyai/agent/config/config";
 import { saveElizaConfig } from "@miladyai/agent/config/config";
 import { createIntegrationTelemetrySpan } from "../diagnostics/integration-observability";
@@ -84,7 +84,9 @@ async function persistCloudLoginStatus(args: {
     saveElizaConfig(args.state.config);
     logger.info("[cloud-login] Saved cloud API key to config file");
   } catch (saveErr) {
-    logger.error(`[cloud-login] Failed to save cloud API key to config: ${saveErr instanceof Error ? saveErr.message : String(saveErr)}`);
+    logger.error(
+      `[cloud-login] Failed to save cloud API key to config: ${saveErr instanceof Error ? saveErr.message : String(saveErr)}`,
+    );
   }
 
   clearCloudSecrets();

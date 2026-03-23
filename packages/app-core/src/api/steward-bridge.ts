@@ -1,8 +1,8 @@
 import {
-  StewardApiError,
-  StewardClient,
   type PolicyResult,
   type SignTransactionInput,
+  StewardApiError,
+  StewardClient,
 } from "@stwd/sdk";
 import { normalizeEnvValueOrNull } from "../utils/env";
 
@@ -169,27 +169,22 @@ export async function signTransactionWithOptionalSteward(params: {
       "Steward credentials and agent ID must be provided to sign transactions.",
     );
   }
-
-  try {
-    const result = await client.signTransaction(agentId, params.tx);
-    if ("txHash" in result) {
-      return {
-        mode: "steward",
-        pendingApproval: false,
-        txHash: result.txHash,
-      };
-    }
-
-    if ("results" in result) {
-      return {
-        mode: "steward",
-        pendingApproval: true,
-        policyResults: result.results,
-      };
-    }
-
-    throw new Error("Steward returned an unsigned transaction unexpectedly");
-  } catch (error) {
-    throw error;
+  const result = await client.signTransaction(agentId, params.tx);
+  if ("txHash" in result) {
+    return {
+      mode: "steward",
+      pendingApproval: false,
+      txHash: result.txHash,
+    };
   }
+
+  if ("results" in result) {
+    return {
+      mode: "steward",
+      pendingApproval: true,
+      policyResults: result.results,
+    };
+  }
+
+  throw new Error("Steward returned an unsigned transaction unexpectedly");
 }

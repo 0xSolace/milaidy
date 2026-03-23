@@ -160,12 +160,7 @@ export function BrowserSurfaceWindow() {
       webview.off("dom-ready", handleDomReady);
       webview.off("new-window-open", handleNewWindowOpen);
     };
-  }, [
-    applyNavigationUrl,
-    navigateTo,
-    syncNavigationState,
-    webviewTagAvailable,
-  ]);
+  }, [webviewTagAvailable]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

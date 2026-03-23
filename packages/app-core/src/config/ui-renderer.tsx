@@ -615,6 +615,7 @@ const CheckboxComponent: ComponentFn = (props, _children, ctx) => {
     ctx,
   );
   return (
+    {/* biome-ignore lint/a11y/noLabelWithoutControl: form control is associated programmatically */}
     <label className="flex items-center gap-2 text-xs cursor-pointer">
       <Checkbox
         checked={!!value}

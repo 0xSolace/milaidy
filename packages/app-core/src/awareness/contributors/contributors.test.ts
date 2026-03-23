@@ -1,6 +1,6 @@
 import type { IAgentRuntime } from "@elizaos/core";
-import { describe, expect, it } from "vitest";
 import { SUMMARY_CHAR_LIMIT } from "@miladyai/agent/contracts";
+import { describe, expect, it } from "vitest";
 import { builtinContributors } from "./index";
 
 function fakeRuntime(overrides: Record<string, unknown> = {}): IAgentRuntime {

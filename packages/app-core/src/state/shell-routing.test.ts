@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { COMPANION_ENABLED } from "../navigation";
 import {
   deriveUiShellModeForTab,
   getTabForShellView,
   shouldStartAtCharacterSelectOnLaunch,
 } from "./shell-routing";
-import { COMPANION_ENABLED } from "../navigation";
 
 describe("shouldStartAtCharacterSelectOnLaunch", () => {
   const baseParams = {

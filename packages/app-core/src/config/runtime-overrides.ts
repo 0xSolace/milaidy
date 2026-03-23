@@ -1,10 +1,10 @@
+import type { ElizaConfig } from "@miladyai/agent/config";
+import { isPlainObject } from "@miladyai/agent/config";
 import {
   parseConfigPath,
   setConfigValueAtPath,
   unsetConfigValueAtPath,
 } from "./config-paths";
-import { isPlainObject } from "@miladyai/agent/config";
-import type { ElizaConfig } from "@miladyai/agent/config";
 
 type OverrideTree = Record<string, unknown>;
 

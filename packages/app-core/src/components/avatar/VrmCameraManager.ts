@@ -221,7 +221,7 @@ export class VrmCameraManager {
   applyCameraProfileToCamera(
     camera: THREE.PerspectiveCamera,
     controls: OrbitControls | null,
-    cameraProfile: CameraProfile,
+    _cameraProfile: CameraProfile,
   ): void {
     camera.fov = 12;
     camera.near = 2.5;

@@ -532,9 +532,7 @@ vi.mock("three/examples/jsm/webxr/VRButton.js", () => ({
 }));
 
 vi.mock("@lookingglass/webxr", () => ({
-  LookingGlassWebXRPolyfill: class MockLookingGlassWebXRPolyfill {
-    constructor(_options?: unknown) {}
-  },
+  LookingGlassWebXRPolyfill: class MockLookingGlassWebXRPolyfill {},
 }));
 
 vi.mock("@miladyai/app-core/utils", () => ({
@@ -601,7 +599,6 @@ Object.assign(globalThis, {
     observe = vi.fn();
     disconnect = vi.fn();
     takeRecords = vi.fn(() => []);
-    constructor(_callback?: unknown) {}
   },
 });
 
@@ -829,7 +826,7 @@ describe("VrmEngine", () => {
           .reverse()
           .find((c) => typeof c[0] === "function");
         expect(withFn?.[0]).toBeTypeOf("function");
-        return withFn![0] as () => void;
+        return withFn?.[0] as () => void;
       };
 
       const loopCb = extractLoopCallback();

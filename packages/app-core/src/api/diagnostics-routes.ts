@@ -2,16 +2,16 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  type DiagnosticsRouteContext as AutonomousDiagnosticsRouteContext,
-  handleDiagnosticsRoutes as handleAutonomousDiagnosticsRoutes,
-} from "@miladyai/agent/api/diagnostics-routes";
-import {
   AUDIT_EVENT_TYPES,
   AUDIT_SEVERITIES,
   getAuditFeedSize,
   queryAuditFeed,
   subscribeAuditFeed,
 } from "@miladyai/agent";
+import {
+  type DiagnosticsRouteContext as AutonomousDiagnosticsRouteContext,
+  handleDiagnosticsRoutes as handleAutonomousDiagnosticsRoutes,
+} from "@miladyai/agent/api/diagnostics-routes";
 
 type DiagnosticsRouteContext = Omit<
   AutonomousDiagnosticsRouteContext,

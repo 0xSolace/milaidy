@@ -26,6 +26,7 @@ function syncElizaEnvToMilady(): void {
   const aliases = getBootConfig().envAliases;
   if (aliases) syncElizaEnvToBrand(aliases);
 }
+
 import {
   normalizeCompatRejection,
   runWithCompatAuthContext,

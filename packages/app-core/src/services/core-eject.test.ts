@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
 let mockedStateDir = "";
 let originalCwd = "";
 const toPosix = (value: string) => value.replaceAll("\\", "/");
@@ -11,9 +12,13 @@ vi.mock("node:child_process", () => ({
   execFile: vi.fn(),
 }));
 
-vi.mock("@elizaos/core", () => ({
-  logger: { info: vi.fn(), warn: vi.fn(), debug: vi.fn(), error: vi.fn() },
-}));
+vi.mock("@elizaos/core", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@elizaos/core")>();
+  return {
+    ...actual,
+    logger: { info: vi.fn(), warn: vi.fn(), debug: vi.fn(), error: vi.fn() },
+  };
+});
 
 vi.mock("@miladyai/agent/services/registry-client", () => ({
   getPluginInfo: vi.fn(),
@@ -133,8 +138,9 @@ beforeEach(async () => {
 
   process.chdir(repoDir);
 
-  const { getPluginInfo } = await import("@miladyai/agent/services/registry-client");
-  // biome-ignore lint/suspicious/noExplicitAny: mocking
+  const { getPluginInfo } = await import(
+    "@miladyai/agent/services/registry-client"
+  );
   vi.mocked(getPluginInfo).mockResolvedValue({
     name: "@elizaos/core",
     npm: {

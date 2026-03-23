@@ -5,8 +5,8 @@
  * and resolving release channels, without making real network requests.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CHANNEL_DIST_TAGS } from "@miladyai/agent/services/update-checker";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // The type is inlined to avoid resolving types.eliza vs types.eliza
 // depending on the workspace layout.

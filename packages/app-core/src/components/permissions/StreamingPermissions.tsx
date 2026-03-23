@@ -193,7 +193,7 @@ function getBadgeLabel(state: MediaPermissionState): string {
   return "Not Set";
 }
 
-function useAllPermissionsGranted(
+function _useAllPermissionsGranted(
   permStates: Record<string, MediaPermissionState>,
 ): boolean {
   return useMemo(

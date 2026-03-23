@@ -23,13 +23,13 @@ import type {
   GatewayErrorEvent,
   GatewayEvent,
   GatewayPlugin,
-  GatewaySendOptions,
   GatewaySendResult,
   GatewayStateEvent,
   JsonObject,
   JsonValue,
 } from "@miladyai/app-core/src/definitions";
 import type { EventCallback } from "../../../shared-types.js";
+
 type GatewayEventData =
   | GatewayEvent
   | GatewayStateEvent

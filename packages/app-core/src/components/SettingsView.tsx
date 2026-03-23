@@ -21,17 +21,14 @@ import {
   Download,
   Image,
   RefreshCw,
-  Search,
   Shield,
   Sliders,
   Terminal,
   Upload,
   Wallet,
-  X,
 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { isElectrobunRuntime } from "../bridge";
 import { useApp } from "../state";
 import { CodingAgentSettingsSection } from "./CodingAgentSettingsSection";
 import { ConfigPageView } from "./ConfigPageView";
@@ -120,9 +117,9 @@ function SettingsSidebar({
   sections,
   activeSection,
   onSectionChange,
-  searchQuery,
-  onSearchChange,
-  onClose,
+  searchQuery: _searchQuery,
+  onSearchChange: _onSearchChange,
+  onClose: _onClose,
 }: {
   sections: SettingsSectionDef[];
   activeSection: string;
@@ -152,9 +149,10 @@ function SettingsSidebar({
                   aria-current={isActive ? "page" : undefined}
                   className={`group w-full flex items-center gap-3 text-left px-3 py-2.5 rounded-lg transition-all duration-150
                     text-sm h-auto
-                    ${isActive
-                      ? "text-txt font-semibold bg-surface"
-                      : "text-muted hover:text-txt hover:bg-surface/50"
+                    ${
+                      isActive
+                        ? "text-txt font-semibold bg-surface"
+                        : "text-muted hover:text-txt hover:bg-surface/50"
                     }`}
                 >
                   <Icon

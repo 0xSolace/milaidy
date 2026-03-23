@@ -9,9 +9,8 @@ import {
   type Plugin,
   stringToUuid,
 } from "@elizaos/core";
+import { CORE_PLUGINS, createElizaPlugin } from "@miladyai/agent/runtime";
 import dotenv from "dotenv";
-import { CORE_PLUGINS } from "@miladyai/agent/runtime";
-import { createElizaPlugin } from "@miladyai/agent/runtime";
 import {
   clearCapturedAction,
   createBenchmarkPlugin,

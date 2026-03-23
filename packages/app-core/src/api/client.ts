@@ -421,14 +421,15 @@ export interface RuntimeDebugSnapshot {
 }
 
 export type {
+  TriggerLastStatus,
   TriggerType,
   TriggerWakeMode,
-  TriggerLastStatus,
 } from "@miladyai/agent/triggers/types";
+
 import type {
+  TriggerLastStatus,
   TriggerType,
   TriggerWakeMode,
-  TriggerLastStatus,
 } from "@miladyai/agent/triggers/types";
 
 export interface TriggerSummary {
@@ -866,6 +867,7 @@ export type SecurityAuditStreamEvent =
     };
 
 export type { StreamEventType } from "@miladyai/agent/api/server";
+
 import type { StreamEventType } from "@miladyai/agent/api/server";
 
 export interface StreamEventEnvelope {
@@ -1784,6 +1786,7 @@ export interface TrajectoryConfig {
 }
 
 import type { TrajectoryExportFormat } from "@miladyai/agent/api/trajectory-routes";
+
 export type { TrajectoryExportFormat };
 
 export interface TrajectoryExportOptions {

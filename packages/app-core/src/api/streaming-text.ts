@@ -1,5 +1,5 @@
 export {
-  mergeStreamingText,
   computeStreamingDelta,
+  mergeStreamingText,
   resolveStreamingUpdate,
 } from "../utils/streaming-text";

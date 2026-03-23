@@ -321,7 +321,7 @@ export function useInventoryData({
     [walletBalances],
   );
 
-  const bscHasError = useMemo(
+  const _bscHasError = useMemo(
     () => chainErrors.some((c: EvmChainBalance) => isBscChainName(c.chain)),
     [chainErrors],
   );
@@ -399,7 +399,7 @@ export function useInventoryData({
     return sortedRows.filter((row) => matchesChainFocus(row.chain, chainFocus));
   }, [sortedRows, chainFocus]);
 
-  const bscRows = sortedRows.filter((row) => isBscChainName(row.chain));
+  const _bscRows = sortedRows.filter((row) => isBscChainName(row.chain));
   const visibleRows = chainFocus === "all" ? sortedRows : focusedRows;
 
   const totalUsd = useMemo(

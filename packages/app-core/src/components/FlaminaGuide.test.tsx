@@ -14,7 +14,7 @@ describe("FlaminaGuideCard", () => {
       );
     });
 
-    const renderedText = textOf(tree!.root);
+    const renderedText = textOf(tree?.root);
 
     expect(renderedText).toContain("reasons");
     expect(renderedText).toContain("latency");
@@ -29,7 +29,7 @@ describe("FlaminaGuideCard", () => {
       );
     });
 
-    const renderedText = textOf(tree!.root);
+    const renderedText = textOf(tree?.root);
 
     expect(renderedText).toContain("wallets");
     expect(renderedText).toContain("chains");
@@ -44,7 +44,7 @@ describe("FlaminaGuideCard", () => {
       );
     });
 
-    const renderedText = textOf(tree!.root);
+    const renderedText = textOf(tree?.root);
 
     expect(renderedText).toContain("see");
     expect(renderedText).toContain("control");
@@ -59,7 +59,7 @@ describe("FlaminaGuideCard", () => {
       );
     });
 
-    const renderedText = textOf(tree!.root);
+    const renderedText = textOf(tree?.root);
 
     expect(renderedText).toContain("sounds");
     expect(renderedText).toContain("spoken interactions");

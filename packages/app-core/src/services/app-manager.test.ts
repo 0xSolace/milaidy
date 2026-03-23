@@ -2,8 +2,6 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { AppManager } from "@miladyai/agent/services/app-manager";
-import * as registryClient from "@miladyai/agent/services/registry-client";
 import {
   type Action,
   type Character,
@@ -25,6 +23,8 @@ import {
   PluginManagerService,
   pluginRegistry,
 } from "@elizaos/plugin-plugin-manager";
+import { AppManager } from "@miladyai/agent/services/app-manager";
+import * as registryClient from "@miladyai/agent/services/registry-client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   PluginManagerLike,

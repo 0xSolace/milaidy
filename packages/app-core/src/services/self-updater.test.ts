@@ -31,13 +31,12 @@ vi.mock("node:fs", async () => {
 
 import { execSync, spawn } from "node:child_process";
 import fs from "node:fs";
-import { createMockChildProcess } from "../test-support/process-helpers";
-
 import {
   buildUpdateCommand,
   detectInstallMethod,
   performUpdate,
 } from "@miladyai/agent/services/self-updater";
+import { createMockChildProcess } from "../test-support/process-helpers";
 
 // ============================================================================
 // 1. Installation method detection

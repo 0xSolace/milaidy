@@ -21,9 +21,7 @@ import {
   EDGE_BACKUP_VOICES,
   PREMADE_VOICES,
   sanitizeApiKey,
-  type VoicePreset,
 } from "../voice/types";
-import { AvatarSelector } from "./AvatarSelector";
 import {
   CharacterRoster,
   type CharacterRosterEntry,
@@ -205,7 +203,7 @@ export function CharacterEditor({
     characterLoading,
     characterSaving,
     characterSaveSuccess,
-    chatAgentVoiceMuted,
+    chatAgentVoiceMuted: _chatAgentVoiceMuted,
     characterSaveError,
     handleCharacterFieldInput,
     handleCharacterArrayInput,
@@ -215,7 +213,7 @@ export function CharacterEditor({
     setState,
     onboardingOptions,
     selectedVrmIndex,
-    customVrmUrl,
+    customVrmUrl: _customVrmUrl,
     t,
     registryStatus: _registryStatus,
     registryLoading: _registryLoading,
@@ -279,7 +277,7 @@ export function CharacterEditor({
     if (!customizing) return;
     leftPanelRef.current?.scrollTo({ top: 0, behavior: "smooth" });
     rightPanelRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-  }, [activePage, customizing]);
+  }, [customizing]);
 
   /* ── Style entry state ──────────────────────────────────────────── */
   const [pendingStyleEntries, setPendingStyleEntries] = useState<
@@ -638,6 +636,8 @@ export function CharacterEditor({
       useElevenLabs,
       voiceSelectionLocked,
       voice,
+      voiceTestAudio,
+      voiceTesting,
     ],
   );
 
@@ -701,7 +701,7 @@ export function CharacterEditor({
       window.clearTimeout(greetingTimerRef.current);
       greetingTimerRef.current = null;
     }
-  }, [selectedCharacterId]);
+  }, []);
 
   useEffect(() => {
     const handler = () => {
@@ -740,7 +740,7 @@ export function CharacterEditor({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [voice.speak]);
 
   /* ── Sync customizing state with tab ─────────────────────────────── */
   /* Removed: previously auto-set customizing=true when tab==="character",
@@ -1478,7 +1478,6 @@ export function CharacterEditor({
                   </div>
                   <div className="flex flex-col gap-1.5 overflow-y-auto min-h-0">
                     {normalizedMessageExamples.map((convo, ci) => (
-                      // biome-ignore lint/suspicious/noArrayIndexKey: order is static in designer
                       <div
                         key={`convo-${ci}`}
                         className="rounded-lg border border-border p-2.5"
@@ -1515,7 +1514,6 @@ export function CharacterEditor({
                         </div>
                         <div className="flex flex-col gap-1">
                           {convo.examples.map((msg, mi) => (
-                            // biome-ignore lint/suspicious/noArrayIndexKey: order is static in designer
                             <div
                               key={`msg-${ci}-${mi}`}
                               className="flex items-center gap-2"
@@ -1587,7 +1585,6 @@ export function CharacterEditor({
                   </div>
                   <div className="flex flex-col gap-1.5 overflow-y-auto min-h-0">
                     {(d.postExamples ?? []).map((post, pi) => (
-                      // biome-ignore lint/suspicious/noArrayIndexKey: order is static in designer
                       <div
                         key={`post-${pi}`}
                         className="flex items-center gap-1.5"

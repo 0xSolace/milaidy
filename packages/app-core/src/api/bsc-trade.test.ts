@@ -1,5 +1,3 @@
-import { ethers } from "ethers";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   BSC_WBNB_FALLBACK,
   buildBscApproveUnsignedTx,
@@ -9,6 +7,8 @@ import {
   buildBscTradeQuote,
   PANCAKE_SWAP_V2_ROUTER,
 } from "@miladyai/agent/api/bsc-trade";
+import { ethers } from "ethers";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const WALLET = "0x1111111111111111111111111111111111111111";
 const TOKEN = "0x55d398326f99059fF775485246999027B3197955";

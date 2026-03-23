@@ -120,7 +120,7 @@ class MacOSKeychainPlatformSecureStore implements PlatformSecureStore {
   ): Promise<SecureStoreGetResult> {
     const account = keychainAccountForSecretKind(vaultId, kind);
     try {
-      const { stdout, stderr } = await execFileAsync(
+      const { stdout, stderr: _stderr } = await execFileAsync(
         "security",
         [
           "find-generic-password",

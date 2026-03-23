@@ -47,11 +47,14 @@ export function SaveCommandModal({
     }
   }, [open]);
 
-  const validate = useCallback((value: string) => {
-    if (!value) return t("savecommandmodal.nameRequired");
-    if (!NAME_PATTERN.test(value)) return t("savecommandmodal.nameFormat");
-    return "";
-  }, []);
+  const validate = useCallback(
+    (value: string) => {
+      if (!value) return t("savecommandmodal.nameRequired");
+      if (!NAME_PATTERN.test(value)) return t("savecommandmodal.nameFormat");
+      return "";
+    },
+    [t],
+  );
 
   const handleSubmit = useCallback(() => {
     const err = validate(name);

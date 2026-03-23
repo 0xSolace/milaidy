@@ -101,13 +101,13 @@ describe("Header", () => {
 
     // Check shell toggle button
     const shellToggle = root.findByProps({ "data-testid": "ui-shell-toggle" });
-    const activeDesktopToggle = root.findByProps({
+    const _activeDesktopToggle = root.findByProps({
       "data-testid": "ui-shell-toggle-desktop",
     });
-    const inactiveCharacterToggle = root.findByProps({
+    const _inactiveCharacterToggle = root.findByProps({
       "data-testid": "ui-shell-toggle-character",
     });
-    const inactiveCompanionToggle = root.findByProps({
+    const _inactiveCompanionToggle = root.findByProps({
       "data-testid": "ui-shell-toggle-companion",
     });
     expect(shellToggle).toBeDefined();
@@ -152,7 +152,7 @@ describe("Header", () => {
       throw new Error("Failed to render Header");
     }
 
-    const header = (testRenderer as ReactTestRenderer).root.findByType(
+    const _header = (testRenderer as ReactTestRenderer).root.findByType(
       "header",
     );
     expect(
@@ -210,7 +210,7 @@ describe("Header", () => {
       throw new Error("Failed to render Header");
     }
 
-    const header = (testRenderer as ReactTestRenderer).root.findByType(
+    const _header = (testRenderer as ReactTestRenderer).root.findByType(
       "header",
     );
     expect(

@@ -13,7 +13,6 @@ import type {
 } from "@sparkjsdev/spark";
 import * as THREE from "three";
 import type {
-  TeleportFallbackShader,
   TeleportSparkleParticle,
   TeleportSparkleSystem,
 } from "./VrmTeleportEffect";
@@ -34,15 +33,14 @@ interface MeshStandardMaterialWithNodeProps {
 }
 
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import type { Vector3 } from "three";
-import { resolveVisionModeSetting } from "../../runtime/eliza";
 
 // biome-ignore lint/suspicious/noExplicitAny: Three.js TSL shader nodes are opaque chainable objects with no exported types.
 type TslNode = any;
 type TslMathFn = (...args: TslNode[]) => TslNode;
 type TslMathLib = Record<string, TslMathFn | undefined>;
 
-const RENDERER_FALLBACK_POLL_INTERVAL = 1000;
+const _RENDERER_FALLBACK_POLL_INTERVAL = 1000;
+
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
@@ -616,7 +614,6 @@ export class VrmEngine {
 
   private outgoingVrm: VRM | null = null;
   private outgoingMixer: THREE.AnimationMixer | null = null;
-  private outgoingIdleAction: THREE.AnimationAction | null = null;
   private cameraAnimation: CameraAnimationConfig = {
     ...DEFAULT_CAMERA_ANIMATION,
   };
@@ -686,7 +683,6 @@ export class VrmEngine {
   private avatarLookTarget: THREE.Group | null = null;
   private headLookTarget = new THREE.Vector2();
   private headLookCurrent = new THREE.Vector2();
-  private lkgPolyfill: LookingGlassWebXRPolyfill | null = null;
   private lkgVrButton: HTMLElement | null = null;
   private lkgRenderer: THREE.WebGLRenderer | null = null;
   private lkgKeyListener: ((e: KeyboardEvent) => void) | null = null;
@@ -750,21 +746,6 @@ export class VrmEngine {
     action.setEffectiveTimeScale(1);
     action.setEffectiveWeight(1);
     action.play();
-  }
-
-  private playActionWithBlend(
-    action: THREE.AnimationAction,
-    fromAction: THREE.AnimationAction | null,
-    fadeDuration: number,
-  ): void {
-    action.reset();
-    this.activateAction(action);
-    if (fromAction && fromAction !== action) {
-      this.activateAction(fromAction);
-      action.crossFadeFrom(fromAction, fadeDuration, false);
-      return;
-    }
-    action.fadeIn(fadeDuration);
   }
 
   private async ensureIdleAction(
@@ -1165,8 +1146,11 @@ export class VrmEngine {
         if (!gsplat) {
           throw new Error("Missing gsplat input for world reveal");
         }
-        const { center, scales, rgb, opacity } =
-          dyno!.splitGsplat!(gsplat).outputs;
+        const splitResult = dyno?.splitGsplat?.(gsplat);
+        if (!splitResult) {
+          throw new Error("splitGsplat returned undefined");
+        }
+        const { center, scales, rgb, opacity } = splitResult.outputs;
         const radialDistance = validatedMath.length(
           validatedMath.swizzle(validatedMath.sub(center, originUniform), "xz"),
         );
@@ -1211,7 +1195,7 @@ export class VrmEngine {
           validatedMath.add(one, validatedMath.mul(ringMask, wireBoostUniform)),
         );
         return {
-          gsplat: dyno!.combineGsplat!({
+          gsplat: dyno?.combineGsplat?.({
             gsplat,
             scales: validatedMath.mix(wireScaleUniform, scales, wireFactor),
             rgb: validatedMath.mix(brightenedRgb, rgb, visibleMask),

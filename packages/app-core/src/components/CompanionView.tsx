@@ -3,11 +3,11 @@ import { useApp } from "@miladyai/app-core/state";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { ChatModalView } from "./ChatModalView";
 import { CompanionHeader } from "./companion/CompanionHeader";
-import { InferenceCloudAlertButton } from "./companion/InferenceCloudAlertButton";
 import {
   CompanionSceneHost,
   useSharedCompanionScene,
 } from "./companion/CompanionSceneHost";
+import { InferenceCloudAlertButton } from "./companion/InferenceCloudAlertButton";
 import { resolveCompanionInferenceNotice } from "./companion/resolve-companion-inference-notice";
 
 // Module-level flag so remounts (e.g. switching to character editor and back)

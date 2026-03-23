@@ -4,12 +4,12 @@ import path from "node:path";
 import type { AgentRuntime } from "@elizaos/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { req } from "../../../../../test/helpers/http";
+import { startApiServer } from "../server";
 import {
   createStewardClient,
   getStewardBridgeStatus,
   signTransactionWithOptionalSteward,
 } from "../steward-bridge";
-import { startApiServer } from "../server";
 
 const mockSignTransaction = vi.fn();
 const mockGetAgent = vi.fn();

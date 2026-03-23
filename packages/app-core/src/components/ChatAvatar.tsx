@@ -16,7 +16,7 @@ import { AvatarLoader } from "./AvatarLoader";
 import type { VrmEngine, VrmEngineState } from "./avatar/VrmEngine";
 import { VrmViewer } from "./avatar/VrmViewer";
 
-export interface ChatAvatarProps {}
+export type ChatAvatarProps = Record<string, never>;
 
 export function ChatAvatar(_props: ChatAvatarProps) {
   const {

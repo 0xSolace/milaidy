@@ -1,6 +1,5 @@
 import os from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
 import {
   resolveConfigPath,
   resolveDefaultConfigCandidates,
@@ -9,6 +8,7 @@ import {
   resolveStateDir,
   resolveUserPath,
 } from "@miladyai/agent/config/paths";
+import { describe, expect, it } from "vitest";
 
 describe("oauth paths", () => {
   it("prefers ELIZA_OAUTH_DIR over ELIZA_STATE_DIR", () => {

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { isWalletOsStoreReadEnabled } from "./platform-secure-store-node";
 

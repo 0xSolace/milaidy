@@ -4,13 +4,13 @@
 
 import type { ConversationMessage } from "@miladyai/app-core/api";
 import { useTimeout } from "@miladyai/app-core/hooks";
-import { getVrmPreviewUrl, useApp } from "@miladyai/app-core/state";
+import { useApp } from "@miladyai/app-core/state";
 import { Button, Textarea } from "@miladyai/ui";
 import { Check, Copy, Pencil, Trash2, Volume2 } from "lucide-react";
 import {
   type KeyboardEvent,
-  type TouchEvent,
   memo,
+  type TouchEvent,
   useCallback,
   useEffect,
   useRef,

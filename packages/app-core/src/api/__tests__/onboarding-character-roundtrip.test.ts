@@ -15,8 +15,8 @@
  * style/adjectives/topics/examples were silently dropped.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { STYLE_PRESETS } from "@miladyai/shared/onboarding-presets";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 let savedConfig: Record<string, unknown> = {};
 
@@ -62,8 +62,8 @@ vi.mock("@elizaos/plugin-trust", () => ({ default: {} }));
 vi.mock("@elizaos/plugin-twitch", () => ({ default: {} }));
 vi.mock("@miladyai/plugin-wechat", () => ({ default: {} }));
 
-import { buildCharacterFromConfig } from "../../runtime/eliza";
 import type { ElizaConfig } from "../../config/config";
+import { buildCharacterFromConfig } from "../../runtime/eliza";
 
 describe("Onboarding → Character round-trip", () => {
   const chenPreset = STYLE_PRESETS.find((p) => p.name === "Chen")!;
@@ -121,7 +121,7 @@ describe("Onboarding → Character round-trip", () => {
 
     expect(Array.isArray(character.topics)).toBe(true);
     expect((character.topics as string[]).length).toBe(
-      chenPreset.topics!.length,
+      chenPreset.topics?.length,
     );
     expect(character.topics).toContain("emotional intelligence");
     expect(character.topics).toContain("design thinking");

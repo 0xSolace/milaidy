@@ -339,13 +339,13 @@ function splitFirstSentence(text: string): {
     match = boundary.exec(sheltered);
     if (!match || typeof match.index !== "number") break;
 
-    const punctChar = match[1]![0];
+    const punctChar = match[1]?.[0];
 
     // For periods, apply extra heuristics to skip abbreviations, decimals,
     // and ellipses.
     if (punctChar === ".") {
       // Ellipsis ("...") is a mid-sentence pause, not a sentence boundary.
-      if (match[1]!.length >= 3) continue;
+      if (match[1]?.length >= 3) continue;
       // Single period: skip abbreviations and decimals.
       if (!isRealSentenceEnd(sheltered, match.index)) continue;
     }
@@ -408,9 +408,9 @@ function queueableSpeechPrefix(text: string, isFinal: boolean): string {
     match = boundary.exec(sheltered);
     if (!match || typeof match.index !== "number") break;
 
-    const punctChar = match[1]![0];
+    const punctChar = match[1]?.[0];
     if (punctChar === ".") {
-      if (match[1]!.length >= 3) continue; // Ellipsis — not a sentence boundary.
+      if (match[1]?.length >= 3) continue; // Ellipsis — not a sentence boundary.
       if (!isRealSentenceEnd(sheltered, match.index)) continue;
     }
 
@@ -1280,7 +1280,7 @@ export function useVoiceChat(options: VoiceChatOptions): VoiceChatState {
         const utterance = new SpeechSynthesisUtterance(text.trim());
         utteranceRef.current = utterance;
 
-        if (synth && synth.getVoices) {
+        if (synth?.getVoices) {
           const voices = synth.getVoices();
           let selectedVoice: SpeechSynthesisVoice | undefined;
 

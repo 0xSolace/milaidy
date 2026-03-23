@@ -1,6 +1,6 @@
 import type { IAgentRuntime, Memory, State } from "@elizaos/core";
-import { describe, expect, it } from "vitest";
 import { AwarenessRegistry } from "@miladyai/shared/awareness";
+import { describe, expect, it } from "vitest";
 import { createSelfStatusProvider } from "./self-status";
 
 describe("self-status provider", () => {

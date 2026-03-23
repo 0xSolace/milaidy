@@ -4,6 +4,7 @@
 
 import { Keyboard } from "@capacitor/keyboard";
 import { isIOS, isNative } from "@miladyai/app-core/platform";
+import { Button } from "@miladyai/ui";
 import {
   type ReactNode,
   useCallback,
@@ -11,7 +12,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { Button } from "@miladyai/ui";
 import type { AgentStartupDiagnostics } from "./api/client";
 import {
   AdvancedPageView,

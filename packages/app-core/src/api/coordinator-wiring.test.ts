@@ -1,9 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   type WirableState,
   type WireCoordinatorOpts,
   wireCoordinatorBridgesWhenReady,
 } from "@miladyai/agent/api/coordinator-wiring";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 function makeMockState(
   overrides?: Partial<WirableState> & {

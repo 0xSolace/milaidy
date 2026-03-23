@@ -19,9 +19,9 @@ console.log(`${getLogPrefix()} Script starting...`);
 import process from "node:process";
 import type { AgentRuntime } from "@elizaos/core";
 import { logger } from "@elizaos/core";
+import { setRestartHandler } from "@miladyai/agent/runtime/restart";
 import { startApiServer } from "../api/server";
 import { shutdownRuntime, startEliza } from "./eliza";
-import { setRestartHandler } from "@miladyai/agent/runtime/restart";
 
 console.log(
   `${getLogPrefix()} Imports complete (${Date.now() - SCRIPT_START}ms)`,

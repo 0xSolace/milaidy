@@ -4,12 +4,12 @@
  * Validates the pluggable handler system without actually exiting the process
  * or starting a runtime.
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+
 import {
-  RESTART_EXIT_CODE,
   requestRestart,
   setRestartHandler,
 } from "@miladyai/agent/runtime/restart";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("restart", () => {
   // Replace the default process.exit handler before each test to avoid

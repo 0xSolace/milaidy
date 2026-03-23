@@ -6,13 +6,13 @@ describe("ADAPTER_NAME_TO_TAB", () => {
     expect(ADAPTER_NAME_TO_TAB["claude code"]).toBe("claude");
     expect(ADAPTER_NAME_TO_TAB["google gemini"]).toBe("gemini");
     expect(ADAPTER_NAME_TO_TAB["openai codex"]).toBe("codex");
-    expect(ADAPTER_NAME_TO_TAB["aider"]).toBe("aider");
+    expect(ADAPTER_NAME_TO_TAB.aider).toBe("aider");
   });
 
   it("maps short adapter names for backwards compatibility", () => {
-    expect(ADAPTER_NAME_TO_TAB["claude"]).toBe("claude");
-    expect(ADAPTER_NAME_TO_TAB["gemini"]).toBe("gemini");
-    expect(ADAPTER_NAME_TO_TAB["codex"]).toBe("codex");
+    expect(ADAPTER_NAME_TO_TAB.claude).toBe("claude");
+    expect(ADAPTER_NAME_TO_TAB.gemini).toBe("gemini");
+    expect(ADAPTER_NAME_TO_TAB.codex).toBe("codex");
   });
 
   it("returns undefined for unknown adapter names", () => {

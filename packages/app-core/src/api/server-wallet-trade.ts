@@ -19,6 +19,7 @@ function syncElizaEnvToMilady(): void {
   const aliases = getBootConfig().envAliases;
   if (aliases) syncElizaEnvToBrand(aliases);
 }
+
 import { mirrorCompatHeaders } from "./server-cloud-tts";
 import {
   type WalletExportRejection as CompatWalletExportRejection,

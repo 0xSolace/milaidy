@@ -5,6 +5,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
 // ── Mock ethers ──────────────────────────────────────────────────────────
 
 const mockBalanceOf = vi.fn();
@@ -71,7 +72,7 @@ describeNftVerify("nft-verify", () => {
   describe("verifyElizaHolder", () => {
     it("returns verified=true when wallet holds ≥1 Eliza NFT", async () => {
       mockBalanceOf.mockResolvedValue(BigInt(3));
-      const result = await verifyElizaHolder!(
+      const result = await verifyElizaHolder?.(
         "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
       );
       expect(result.verified).toBe(true);
@@ -81,7 +82,7 @@ describeNftVerify("nft-verify", () => {
 
     it("returns verified=false when wallet holds 0 NFTs", async () => {
       mockBalanceOf.mockResolvedValue(BigInt(0));
-      const result = await verifyElizaHolder!(
+      const result = await verifyElizaHolder?.(
         "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
       );
       expect(result.verified).toBe(false);
@@ -90,14 +91,14 @@ describeNftVerify("nft-verify", () => {
     });
 
     it("rejects invalid Ethereum address", async () => {
-      const result = await verifyElizaHolder!("not-an-address");
+      const result = await verifyElizaHolder?.("not-an-address");
       expect(result.verified).toBe(false);
       expect(result.error).toContain("Invalid Ethereum address");
       expect(mockBalanceOf).not.toHaveBeenCalled();
     });
 
     it("rejects empty address", async () => {
-      const result = await verifyElizaHolder!("");
+      const result = await verifyElizaHolder?.("");
       expect(result.verified).toBe(false);
       expect(result.error).toContain("required");
       expect(mockBalanceOf).not.toHaveBeenCalled();
@@ -105,7 +106,7 @@ describeNftVerify("nft-verify", () => {
 
     it("handles RPC errors gracefully", async () => {
       mockBalanceOf.mockRejectedValue(new Error("network timeout"));
-      const result = await verifyElizaHolder!(
+      const result = await verifyElizaHolder?.(
         "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
       );
       expect(result.verified).toBe(false);
@@ -114,7 +115,7 @@ describeNftVerify("nft-verify", () => {
 
     it("includes contract address in result", async () => {
       mockBalanceOf.mockResolvedValue(BigInt(1));
-      const result = await verifyElizaHolder!(
+      const result = await verifyElizaHolder?.(
         "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
       );
       expect(result.contractAddress).toBe(
@@ -124,7 +125,7 @@ describeNftVerify("nft-verify", () => {
 
     it("destroys provider after call", async () => {
       mockBalanceOf.mockResolvedValue(BigInt(0));
-      await verifyElizaHolder!("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045");
+      await verifyElizaHolder?.("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045");
       expect(mockDestroy).toHaveBeenCalled();
     });
   });
@@ -134,7 +135,7 @@ describeNftVerify("nft-verify", () => {
   describe("verifyAndWhitelistHolder", () => {
     it("adds verified address to whitelist", async () => {
       mockBalanceOf.mockResolvedValue(BigInt(2));
-      const result = await verifyAndWhitelistHolder!(
+      const result = await verifyAndWhitelistHolder?.(
         "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
       );
       expect(result.verified).toBe(true);
@@ -147,7 +148,7 @@ describeNftVerify("nft-verify", () => {
 
     it("does NOT add non-holder to whitelist", async () => {
       mockBalanceOf.mockResolvedValue(BigInt(0));
-      const result = await verifyAndWhitelistHolder!(
+      const result = await verifyAndWhitelistHolder?.(
         "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
       );
       expect(result.verified).toBe(false);
@@ -156,7 +157,7 @@ describeNftVerify("nft-verify", () => {
 
     it("skips RPC call when already whitelisted", async () => {
       mockIsAddressWhitelisted.mockReturnValue(true);
-      const result = await verifyAndWhitelistHolder!(
+      const result = await verifyAndWhitelistHolder?.(
         "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
       );
       expect(result.verified).toBe(true);

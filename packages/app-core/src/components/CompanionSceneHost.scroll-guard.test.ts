@@ -108,7 +108,7 @@ describe("CompanionSceneHost scroll guard", () => {
       tree = renderSceneHost();
     });
 
-    const root = tree!.root.findByProps({ "data-testid": "companion-root" });
+    const root = tree?.root.findByProps({ "data-testid": "companion-root" });
     const onWheelCapture = root.props.onWheelCapture as (
       event: React.WheelEvent<HTMLDivElement>,
     ) => void;
@@ -138,7 +138,7 @@ describe("CompanionSceneHost scroll guard", () => {
       tree = renderSceneHost();
     });
 
-    const root = tree!.root.findByProps({ "data-testid": "companion-root" });
+    const root = tree?.root.findByProps({ "data-testid": "companion-root" });
     const onWheelCapture = root.props.onWheelCapture as (
       event: React.WheelEvent<HTMLDivElement>,
     ) => void;

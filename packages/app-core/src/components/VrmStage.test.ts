@@ -87,8 +87,8 @@ describe("VrmStage", () => {
 
     const viewers = getViewerNode(renderer!);
     expect(viewers).toHaveLength(1);
-    expect(viewers[0]!.props["data-vrm-path"]).toBe("/vrms/eliza-1.vrm.gz");
-    expect(viewers[0]!.props["data-world-url"]).toBe(
+    expect(viewers[0]?.props["data-vrm-path"]).toBe("/vrms/eliza-1.vrm.gz");
+    expect(viewers[0]?.props["data-world-url"]).toBe(
       "/worlds/companion-day.spz",
     );
   });
@@ -105,7 +105,7 @@ describe("VrmStage", () => {
     });
 
     await act(async () => {
-      renderer!.update(
+      renderer?.update(
         renderStage({
           vrmPath: "/vrms/eliza-4.vrm.gz",
           worldUrl: "/worlds/companion-day.spz",
@@ -117,9 +117,9 @@ describe("VrmStage", () => {
     // Still only one VrmViewer — same engine, just different vrmPath
     const viewers = getViewerNode(renderer!);
     expect(viewers).toHaveLength(1);
-    expect(viewers[0]!.props["data-vrm-path"]).toBe("/vrms/eliza-4.vrm.gz");
+    expect(viewers[0]?.props["data-vrm-path"]).toBe("/vrms/eliza-4.vrm.gz");
     // worldUrl stays the same — background is decoupled from character
-    expect(viewers[0]!.props["data-world-url"]).toBe(
+    expect(viewers[0]?.props["data-world-url"]).toBe(
       "/worlds/companion-day.spz",
     );
   });

@@ -14,13 +14,13 @@
  *   - Policy update
  */
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createDefaultPolicy,
   type SigningPolicy,
   SigningPolicyEvaluator,
   type SigningRequest,
 } from "@miladyai/agent/services/signing-policy";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 

@@ -246,6 +246,7 @@ export function CustomActionsPanel({
                   )}
 
                   <div className="flex items-center gap-2 pt-1 border-t border-border">
+                    {/* biome-ignore lint/a11y/noLabelWithoutControl: form control is associated programmatically */}
                     <label className="flex items-center gap-1 cursor-pointer text-xs text-muted">
                       <Switch
                         checked={action.enabled}

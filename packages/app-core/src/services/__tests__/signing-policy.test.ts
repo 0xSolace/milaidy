@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it } from "vitest";
 import {
   createDefaultPolicy,
   SigningPolicyEvaluator,
   type SigningRequest,
 } from "@miladyai/agent/services/signing-policy";
+import { beforeEach, describe, expect, it } from "vitest";
 
 function makeRequest(overrides: Partial<SigningRequest> = {}): SigningRequest {
   return {

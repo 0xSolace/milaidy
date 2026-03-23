@@ -1,12 +1,12 @@
 import os from "node:os";
 import nodePath from "node:path";
 import type { IAgentRuntime } from "@elizaos/core";
-import chalk from "chalk";
-import type { Command } from "commander";
 import type {
   InstallProgressLike,
   PluginManagerLike,
 } from "@miladyai/agent/services/plugin-manager-types";
+import chalk from "chalk";
+import type { Command } from "commander";
 import { parseClampedInteger } from "../utils/number-parsing";
 
 /** Validate that a resolved plugin path is within allowed boundaries. */
@@ -388,7 +388,9 @@ export function registerPluginsCli(program: Command): void {
           console.log(
             chalk.dim("Agent is restarting to load the new plugin..."),
           );
-          const { requestRestart } = await import("@miladyai/agent/runtime/restart");
+          const { requestRestart } = await import(
+            "@miladyai/agent/runtime/restart"
+          );
           await Promise.resolve(
             requestRestart(`Plugin ${result.pluginName} installed`),
           );

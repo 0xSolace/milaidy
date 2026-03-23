@@ -36,8 +36,8 @@ vi.mock("@miladyai/ui", () => {
   };
 });
 
-import { DesktopMediaControlPanel } from "./MediaSettingsSection";
 import { findButtonByText } from "../../../../test/helpers/react-test";
+import { DesktopMediaControlPanel } from "./MediaSettingsSection";
 
 describe("DesktopMediaControlPanel", () => {
   beforeEach(() => {

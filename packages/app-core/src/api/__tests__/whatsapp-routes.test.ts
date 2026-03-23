@@ -3,11 +3,11 @@
  */
 
 import fs from "node:fs";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   type WhatsAppPairingSession,
   whatsappLogout,
 } from "@miladyai/agent/services/whatsapp-pairing";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   applyWhatsAppQrOverride,
   handleWhatsAppRoute,

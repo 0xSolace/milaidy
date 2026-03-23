@@ -18,6 +18,7 @@ import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { getCloudSecret } from "../../api/cloud-secrets";
+
 // Inlined to avoid circular dependency with register.setup.ts
 function resolveConfigPath(
   env: Record<string, string | undefined> = process.env,

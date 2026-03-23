@@ -8,8 +8,8 @@
  *   eliza update channel [name]    # View or change release channel
  */
 
-import type { Command } from "commander";
 import type { ReleaseChannel } from "@miladyai/agent/config";
+import type { Command } from "commander";
 import { theme } from "../../terminal/theme";
 import { CLI_VERSION } from "../version";
 
@@ -173,7 +173,9 @@ async function statusAction(): Promise<void> {
   const { resolveChannel, fetchAllChannelVersions } = await import(
     "@miladyai/agent/services/update-checker"
   );
-  const { detectInstallMethod } = await import("@miladyai/agent/services/self-updater");
+  const { detectInstallMethod } = await import(
+    "@miladyai/agent/services/self-updater"
+  );
   console.log(`\n${theme.heading("Version Status")}\n`);
 
   const config = loadElizaConfig();
@@ -206,7 +208,9 @@ async function channelAction(channelArg: string | undefined): Promise<void> {
   const { loadElizaConfig, saveElizaConfig } = await import(
     "@miladyai/agent/config/config"
   );
-  const { resolveChannel } = await import("@miladyai/agent/services/update-checker");
+  const { resolveChannel } = await import(
+    "@miladyai/agent/services/update-checker"
+  );
   const config = loadElizaConfig();
   const current = resolveChannel(config.update);
 

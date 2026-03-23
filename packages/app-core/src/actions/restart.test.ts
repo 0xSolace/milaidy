@@ -5,9 +5,9 @@
  */
 
 import type { ActionResult, Memory } from "@elizaos/core";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { setRestartHandler } from "@miladyai/agent/runtime/restart";
 import { restartAction } from "@miladyai/agent/actions/restart";
+import { setRestartHandler } from "@miladyai/agent/runtime/restart";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // --- Mock runtime & message ------------------------------------------------
 

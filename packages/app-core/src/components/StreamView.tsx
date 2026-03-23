@@ -56,7 +56,7 @@ export function StreamView({ inModal }: { inModal?: boolean } = {}) {
     conversationMessages,
     activeGameViewerUrl,
     activeGameSandbox,
-    chatAvatarSpeaking,
+    chatAvatarSpeaking: _chatAvatarSpeaking,
     t,
   } = useApp();
 

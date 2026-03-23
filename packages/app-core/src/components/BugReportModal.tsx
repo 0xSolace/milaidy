@@ -167,7 +167,7 @@ export function BugReportModal() {
     } finally {
       setSubmitting(false);
     }
-  }, [copyToClipboard, form, formatMarkdown]);
+  }, [copyToClipboard, form, formatMarkdown, t]);
 
   const handleCopyAndOpen = useCallback(async () => {
     let ok = false;
@@ -342,6 +342,7 @@ export function BugReportModal() {
             </div>
           )}
 
+          {/* biome-ignore lint/a11y/noLabelWithoutControl: form control is associated programmatically */}
           <label className={labelClass} style={labelStyle}>
             {t("skillsview.Description")}{" "}
             <span style={{ color: "#ef4444" }}>*</span>
@@ -356,6 +357,7 @@ export function BugReportModal() {
             />
           </label>
 
+          {/* biome-ignore lint/a11y/noLabelWithoutControl: form control is associated programmatically */}
           <label className={labelClass} style={labelStyle}>
             {t("bugreportmodal.StepsToReproduce")}{" "}
             <span style={{ color: "#ef4444" }}>*</span>
@@ -369,6 +371,7 @@ export function BugReportModal() {
             />
           </label>
 
+          {/* biome-ignore lint/a11y/noLabelWithoutControl: form control is associated programmatically */}
           <label className={labelClass} style={labelStyle}>
             {t("bugreportmodal.ExpectedBehavior")}
             <Textarea
@@ -381,6 +384,7 @@ export function BugReportModal() {
             />
           </label>
 
+          {/* biome-ignore lint/a11y/noLabelWithoutControl: form control is associated programmatically */}
           <label className={labelClass} style={labelStyle}>
             {t("bugreportmodal.ActualBehavior")}
             <Textarea

@@ -6,8 +6,8 @@
  * but re-exported from there so existing imports remain valid.
  */
 import type http from "node:http";
-import { loadElizaConfig } from "../config/config";
 import { sanitizeSpeechText } from "@miladyai/agent";
+import { loadElizaConfig } from "../config/config";
 import { getCloudSecret } from "./cloud-secrets";
 
 // ---------------------------------------------------------------------------

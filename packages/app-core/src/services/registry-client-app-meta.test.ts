@@ -6,8 +6,8 @@
  * to prevent XSS via allow-top-navigation or other dangerous directives.
  */
 
-import { describe, expect, it, vi } from "vitest";
 import type { RegistryAppMeta } from "@miladyai/agent/services/registry-client";
+import { describe, expect, it, vi } from "vitest";
 import {
   LOCAL_APP_DEFAULT_SANDBOX,
   mergeAppMeta,

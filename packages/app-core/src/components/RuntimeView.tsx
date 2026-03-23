@@ -286,6 +286,7 @@ export function RuntimeView() {
   return (
     <div data-testid="runtime-view" className="flex flex-col gap-4 h-full">
       <div className="flex flex-wrap items-center gap-3 px-4 py-2.5 bg-card/60 backdrop-blur-xl border border-border/40 rounded-2xl">
+        {/* biome-ignore lint/a11y/noLabelWithoutControl: form control is associated programmatically */}
         <label className="text-[11px] text-muted flex items-center gap-1">
           {t("runtimeview.depth")}
           <Input
@@ -299,6 +300,7 @@ export function RuntimeView() {
             className="w-16 px-1.5 py-0.5 border border-border bg-bg text-txt rounded-lg"
           />
         </label>
+        {/* biome-ignore lint/a11y/noLabelWithoutControl: form control is associated programmatically */}
         <label className="text-[11px] text-muted flex items-center gap-1">
           {t("runtimeview.arrayCap")}
           <Input
@@ -314,6 +316,7 @@ export function RuntimeView() {
             className="w-20 px-1.5 py-0.5 border border-border bg-bg text-txt rounded-lg"
           />
         </label>
+        {/* biome-ignore lint/a11y/noLabelWithoutControl: form control is associated programmatically */}
         <label className="text-[11px] text-muted flex items-center gap-1">
           {t("runtimeview.objectCap")}
           <Input

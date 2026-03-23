@@ -1,10 +1,10 @@
+import type { RouteHelpers, RouteRequestMeta } from "@miladyai/agent/api";
 import {
   type RegistryRouteContext as AutonomousRegistryRouteContext,
   handleRegistryRoutes as handleAutonomousRegistryRoutes,
 } from "@miladyai/agent/api/registry-routes";
 import { classifyRegistryPluginRelease } from "@miladyai/agent/runtime";
 import type { PluginManagerLike } from "@miladyai/agent/services/plugin-manager-types";
-import type { RouteHelpers, RouteRequestMeta } from "@miladyai/agent/api";
 
 export interface RegistryRouteContext
   extends RouteRequestMeta,

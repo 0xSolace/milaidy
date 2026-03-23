@@ -1,7 +1,7 @@
 export {
+  formatShortcut,
   type ShortcutConfig,
   useKeyboardShortcuts,
-  formatShortcut,
 } from "@miladyai/ui";
 
 import type { ShortcutConfig } from "@miladyai/ui";

@@ -433,7 +433,7 @@ export function VrmViewer(props: VrmViewerProps) {
 
   useEffect(() => {
     applyVisibilityAndBackgroundPolicy();
-  }, [props.active, props.companionAnimateWhenHidden]);
+  }, []);
 
   useEffect(() => {
     const engine = engineRef.current;

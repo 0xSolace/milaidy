@@ -1,18 +1,18 @@
 import type { AgentRuntime } from "@elizaos/core";
+import { handleDatabaseRoute } from "@miladyai/agent/api/database";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createTestRuntime } from "../../../../test/helpers/pglite-runtime";
 import {
   createMockHttpResponse,
   createMockJsonRequest,
 } from "../test-support/test-helpers";
-import { handleDatabaseRoute } from "@miladyai/agent/api/database";
 
 interface DbExecuteResult {
   rows: Array<Record<string, unknown>>;
   fields?: Array<{ name: string }>;
 }
 
-function makeRuntime(executeResult: DbExecuteResult) {
+function _makeRuntime(executeResult: DbExecuteResult) {
   const execute = vi.fn().mockResolvedValue(executeResult);
   const runtime = {
     adapter: {

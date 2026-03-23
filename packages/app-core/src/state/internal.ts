@@ -48,7 +48,6 @@ export {
   loadPersistedConnectionMode,
   loadPersistedOnboardingComplete,
   loadPersistedOnboardingStep,
-  savePersistedOnboardingComplete,
   loadUiLanguage,
   loadUiShellMode,
   loadUiTheme,
@@ -69,11 +68,17 @@ export {
   saveLastNativeTab,
   saveOnboardingStep,
   savePersistedConnectionMode,
+  savePersistedOnboardingComplete,
   saveUiLanguage,
   saveUiShellMode,
   saveUiTheme,
   type UiTheme,
 } from "./persistence";
+export {
+  type TranslationContextValue,
+  TranslationProvider,
+  useTranslation,
+} from "./TranslationContext";
 export {
   type ActionNotice,
   AGENT_READY_TIMEOUT_MS,
@@ -97,17 +102,12 @@ export {
   type OnboardingStep,
   type ShellView,
   type SlashCommandInput,
-  type TabCommittedDetail,
   type StartupErrorReason,
   type StartupErrorState,
   type StartupPhase,
+  type TabCommittedDetail,
   type UiShellMode,
 } from "./types";
-export {
-  TranslationProvider,
-  type TranslationContextValue,
-  useTranslation,
-} from "./TranslationContext";
 export { AppContext, useApp } from "./useApp";
 export {
   getCompanionBackgroundUrl,

@@ -92,8 +92,8 @@ function createCompanionControls() {
         const pts = [...touchPoints.values()];
         pinchState.active = true;
         pinchState.startDistance = Math.hypot(
-          pts[1]!.x - pts[0]!.x,
-          pts[1]!.y - pts[0]!.y,
+          pts[1]?.x - pts[0]?.x,
+          pts[1]?.y - pts[0]?.y,
         );
         pinchState.startZoom = companionZoomRef.current;
         dragState.active = false;
@@ -128,7 +128,7 @@ function createCompanionControls() {
         pinchState.startDistance > 0
       ) {
         const pts = [...touchPoints.values()];
-        const dist = Math.hypot(pts[1]!.x - pts[0]!.x, pts[1]!.y - pts[0]!.y);
+        const dist = Math.hypot(pts[1]?.x - pts[0]?.x, pts[1]?.y - pts[0]?.y);
         const viewportSpan = Math.max(1, Math.min(viewWidth, viewHeight));
         const PINCH_SENSITIVITY = 2.35;
         const delta =

@@ -1,7 +1,7 @@
 import { loadElizaConfig, saveElizaConfig } from "../config/config";
 import { deriveAgentVaultId } from "./agent-vault-id";
-import { createNodePlatformSecureStore } from "./platform-secure-store-node";
 import type { SecureStoreSecretKind } from "./platform-secure-store";
+import { createNodePlatformSecureStore } from "./platform-secure-store-node";
 
 const WALLET_PAIRS: [string, SecureStoreSecretKind][] = [
   ["EVM_PRIVATE_KEY", "wallet.evm_private_key"],
@@ -46,7 +46,7 @@ export async function migrateWalletPrivateKeysToOsStore(): Promise<MigrateWallet
   for (const [envKey, kind] of WALLET_PAIRS) {
     const fromProcess =
       typeof process.env[envKey] === "string"
-        ? process.env[envKey]!.trim()
+        ? process.env[envKey]?.trim()
         : "";
     const fromConfig =
       typeof persisted[envKey] === "string"

@@ -126,6 +126,7 @@ function looksLikeStageDirection(input: string): boolean {
   const normalized = collapseInlineWhitespace(input).trim();
   if (!normalized || normalized.length > 100) return false;
 
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional ASCII-range check to reject non-ASCII input
   if (/[^\x00-\x7F]/.test(normalized)) {
     return false;
   }

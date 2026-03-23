@@ -24,6 +24,7 @@ import {
   type VoicePlaybackStartEvent,
 } from "@miladyai/app-core/hooks";
 import { getVrmPreviewUrl, useApp } from "@miladyai/app-core/state";
+import { Button } from "@miladyai/ui";
 import {
   type ChangeEvent,
   type DragEvent,
@@ -34,7 +35,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { Button } from "@miladyai/ui";
 import { AgentActivityBox } from "./AgentActivityBox";
 import { ChatComposer } from "./ChatComposer";
 import { ChatMessage, TypingIndicator } from "./ChatMessage";
@@ -316,9 +316,6 @@ function useChatVoiceController(options: {
     isGameModal,
     queueAssistantSpeech,
     voice.isListening,
-    // Re-run when AudioContext is unlocked by user gesture so we retry
-    // speech that was silently blocked by browser autoplay policy.
-    voice.voiceUnlockedGeneration,
   ]);
 
   useEffect(() => {

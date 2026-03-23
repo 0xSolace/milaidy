@@ -95,7 +95,7 @@ export function ConnectionProviderDetailScreen({
   const catalogProviders: ProviderOption[] = (
     onboardingOptions?.providers as ProviderOption[] | undefined
   )?.length
-    ? (onboardingOptions!.providers as ProviderOption[])
+    ? (onboardingOptions?.providers as ProviderOption[])
     : ([...ONBOARDING_PROVIDER_CATALOG] as unknown as ProviderOption[]);
   const customProviders = branding.customProviders ?? [];
   const catalogIds = new Set(catalogProviders.map((p: ProviderOption) => p.id));

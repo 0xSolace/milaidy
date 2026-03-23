@@ -1,5 +1,4 @@
 import { arch, platform } from "node:os";
-import { describe, expect, it } from "vitest";
 import {
   AppleContainerEngine,
   createEngine,
@@ -8,6 +7,7 @@ import {
   getAllEngineInfo,
   getPlatformSetupNotes,
 } from "@miladyai/agent/services/sandbox-engine";
+import { describe, expect, it } from "vitest";
 
 describe("SandboxEngine", () => {
   describe("DockerEngine", () => {

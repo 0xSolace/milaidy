@@ -1,8 +1,6 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
-import type { WalletTradeLedgerEntry } from "../contracts/wallet.js";
 import {
   buildWalletTradingProfile,
   loadWalletTradingProfile,
@@ -11,6 +9,8 @@ import {
   resolveWalletTradingProfileFilePath,
   updateWalletTradeLedgerEntryStatus,
 } from "@miladyai/agent/api/wallet-trading-profile";
+import { afterEach, describe, expect, it } from "vitest";
+import type { WalletTradeLedgerEntry } from "../contracts/wallet.js";
 
 const TMP_PREFIX = "eliza-wallet-profile-";
 

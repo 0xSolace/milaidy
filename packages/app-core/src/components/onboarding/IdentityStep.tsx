@@ -1,5 +1,5 @@
+import { useApp } from "@miladyai/app-core/state";
 import { STYLE_PRESETS } from "@miladyai/shared/onboarding-presets";
-import { getVrmPreviewUrl, useApp } from "@miladyai/app-core/state";
 import { Button, Input } from "@miladyai/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -42,7 +42,7 @@ export function IdentityStep() {
     if (!onboardingStyle && firstEntry) {
       handleSelect(firstEntry);
     }
-  }, [onboardingStyle, entries, handleSelect]);
+  }, [onboardingStyle, handleSelect]);
 
   const handleImportAgent = useCallback(async () => {
     if (importBusyRef.current || importBusy) return;

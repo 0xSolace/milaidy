@@ -7,7 +7,6 @@
 
 import { logger } from "@elizaos/core";
 import {
-  type ElizaConfig,
   loadElizaConfig,
   saveElizaConfig,
 } from "@miladyai/agent/config/config";

@@ -52,7 +52,7 @@ import { envSnapshot } from "../../../../test/helpers/test-utils";
 import { findPluginExport } from "../cli/plugins-cli";
 import type { ElizaConfig } from "../config/config";
 import { CONNECTOR_PLUGINS } from "../config/plugin-auto-enable";
-import { CONNECTOR_IDS, MILADY_LOCAL_CONNECTOR_IDS } from "../config/schema";
+import { CONNECTOR_IDS } from "../config/schema";
 // Import the plugin import specifier resolver by whichever name is exported.
 // The eliza workspace exports resolveElizaPluginImportSpecifier while the
 // npm-published @miladyai/agent package exports
@@ -67,7 +67,6 @@ import {
   buildCharacterFromConfig,
   CHANNEL_PLUGIN_MAP,
   CORE_PLUGINS,
-  CUSTOM_PLUGINS_DIRNAME,
   cleanStalePglitePid,
   collectPluginNames,
   configureLocalEmbeddingPlugin,
@@ -90,10 +89,8 @@ import { detectEmbeddingPreset } from "./embedding-presets";
 const resolvePluginImportSpecifier:
   | ((name: string, url?: string) => string)
   | undefined =
-  // biome-ignore lint/suspicious/noExplicitAny: dynamic export name
   ((_elizaExports as Record<string, unknown>)
     .resolveElizaPluginImportSpecifier ??
-    // biome-ignore lint/suspicious/noExplicitAny: dynamic export name
     (_elizaExports as Record<string, unknown>)
       .resolveElizaPluginImportSpecifier) as
     | ((name: string, url?: string) => string)
@@ -2022,7 +2019,6 @@ describe("scanDropInPlugins", () => {
     // but there should be exactly one entry
     expect(Object.keys(records)).toHaveLength(1);
   });
-
 });
 
 // ---------------------------------------------------------------------------

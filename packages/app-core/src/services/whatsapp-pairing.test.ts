@@ -9,13 +9,13 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   sanitizeAccountId,
   type WhatsAppPairingEvent,
   WhatsAppPairingSession,
   whatsappAuthExists,
 } from "@miladyai/agent/services/whatsapp-pairing";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 // ═════════════════════════════════════════════════════════════════════════
 describe("whatsapp-pairing", () => {

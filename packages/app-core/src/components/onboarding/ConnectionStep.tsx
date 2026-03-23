@@ -8,10 +8,11 @@
  * @see ../../onboarding/connection-flow.ts
  * @see ./connection/README.md
  */
-import { ONBOARDING_PROVIDER_CATALOG } from "@miladyai/shared/contracts/onboarding";
+
 import type { ProviderOption } from "@miladyai/app-core/api";
 import { useBranding } from "@miladyai/app-core/config";
 import { isNative } from "@miladyai/app-core/platform";
+import { ONBOARDING_PROVIDER_CATALOG } from "@miladyai/shared/contracts/onboarding";
 import { useCallback, useEffect, useMemo } from "react";
 import {
   applyConnectionTransition,
@@ -111,7 +112,7 @@ export function ConnectionStep() {
   const catalogProviders: ProviderOption[] = (
     onboardingOptions?.providers as ProviderOption[] | undefined
   )?.length
-    ? (onboardingOptions!.providers as ProviderOption[])
+    ? (onboardingOptions?.providers as ProviderOption[])
     : ([...ONBOARDING_PROVIDER_CATALOG] as unknown as ProviderOption[]);
   const customProviders = branding.customProviders ?? [];
   const catalogIds = new Set(catalogProviders.map((p: ProviderOption) => p.id));

@@ -6,7 +6,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   deriveAgentVaultId,
   keychainAccountForSecretKind,
-  MILADY_AGENT_VAULT_SERVICE,
   resolveCanonicalStateDir,
 } from "./agent-vault-id";
 

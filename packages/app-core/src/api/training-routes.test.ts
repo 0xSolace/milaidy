@@ -1,8 +1,8 @@
 import type { AgentRuntime } from "@elizaos/core";
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import type { TrainingServiceLike } from "./training-service-like";
 import { createRouteInvoker } from "../test-support/route-test-helpers";
 import { handleTrainingRoutes } from "./training-routes";
+import type { TrainingServiceLike } from "./training-service-like";
 
 function createMockTrainingService(): TrainingServiceLike {
   return {

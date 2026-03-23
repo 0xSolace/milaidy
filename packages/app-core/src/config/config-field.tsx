@@ -850,6 +850,7 @@ function MultiselectFieldInner({ fp: props }: { fp: FieldRenderProps }) {
       {/* Checkbox list */}
       <div className="flex flex-col gap-1">
         {options.map((opt) => (
+          // biome-ignore lint/a11y/noLabelWithoutControl: form control is associated programmatically
           <label
             key={opt.value}
             className="flex items-center gap-2 cursor-pointer text-[13px]"
@@ -857,7 +858,10 @@ function MultiselectFieldInner({ fp: props }: { fp: FieldRenderProps }) {
             <Checkbox
               checked={selected.has(opt.value)}
               disabled={props.readonly}
-              onCheckedChange={() => { toggle(opt.value); fireAction(props, "click"); }}
+              onCheckedChange={() => {
+                toggle(opt.value);
+                fireAction(props, "click");
+              }}
             />
             <span>{opt.label}</span>
           </label>
@@ -1625,6 +1629,7 @@ function CheckboxGroupInner(props: FieldRenderProps) {
       data-field-type="checkbox-group"
     >
       {options.map((opt) => (
+        // biome-ignore lint/a11y/noLabelWithoutControl: form control is associated programmatically
         <label
           key={opt.value}
           className={`flex items-start gap-2.5 px-3 py-2 border border-[var(--border)] bg-[var(--card)] cursor-pointer transition-colors hover:bg-[var(--bg-hover)] ${
@@ -1861,7 +1866,7 @@ export function ConfigField({
   const { t } = useApp();
   const label = renderProps.hint.label ?? renderProps.key;
   const envKey = renderProps.key;
-  const labelDiffersFromKey = label !== envKey;
+  const _labelDiffersFromKey = label !== envKey;
   const errors = renderProps.errors ?? [];
   const hasError = errors.length > 0;
   const isRequiredEmpty = renderProps.required && !renderProps.isSet;

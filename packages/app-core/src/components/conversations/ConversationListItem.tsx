@@ -65,7 +65,7 @@ function TruncatingConversationTitle({
       ro?.disconnect();
       window.removeEventListener("resize", measure);
     };
-  }, [measure, displayTitle]);
+  }, [measure]);
 
   const spanClass = isGameModal
     ? `block w-full min-w-0 max-w-full text-[13px] font-medium truncate leading-tight text-left transition-colors ${
@@ -170,121 +170,115 @@ export function ConversationListItem({
             : "border-l-transparent hover:bg-bg-hover"
       }`}
     >
-      <>
+      <Button
+        variant="ghost"
+        size="sm"
+        data-testid="conv-select"
+        className={
+          isGameModal
+            ? "flex w-full min-w-0 flex-1 flex-col !items-start !justify-start !text-left cursor-pointer h-auto p-0 rounded-none bg-transparent border-none overflow-hidden"
+            : "flex min-w-0 flex-1 items-center gap-2 overflow-hidden bg-transparent border-0 p-0 m-0 text-left h-auto cursor-pointer rounded-none"
+        }
+        onClick={() => {
+          if (suppressClickRef.current) {
+            suppressClickRef.current = false;
+            return;
+          }
+          onSelect(conv.id);
+        }}
+        onContextMenu={(event) => {
+          if (mobile) return;
+          onOpenActions(event, conv);
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
+        onTouchMove={handleTouchEnd}
+      >
+        {isUnread && (
+          <span
+            className={
+              isGameModal
+                ? "absolute top-3 left-3 z-[1] w-2 h-2 rounded-full bg-accent animate-pulse shadow-[0_0_8px_rgba(240,178,50,0.8)] shrink-0"
+                : "w-2 h-2 rounded-full bg-accent shrink-0"
+            }
+          />
+        )}
+
+        <TruncatingConversationTitle
+          displayTitle={displayTitle}
+          isGameModal={isGameModal}
+          isActive={isActive}
+        />
+      </Button>
+
+      {confirmDeleteId !== conv.id ? (
         <Button
+          size="icon"
           variant="ghost"
-          size="sm"
-          data-testid="conv-select"
+          data-testid="conv-rename"
+          aria-label={t("conversations.rename")}
           className={
             isGameModal
-              ? "flex w-full min-w-0 flex-1 flex-col !items-start !justify-start !text-left cursor-pointer h-auto p-0 rounded-none bg-transparent border-none overflow-hidden"
-              : "flex min-w-0 flex-1 items-center gap-2 overflow-hidden bg-transparent border-0 p-0 m-0 text-left h-auto cursor-pointer rounded-none"
+              ? `shrink-0 self-center h-7 w-7 rounded-md border border-transparent text-white/50 transition-colors hover:border-white/15 hover:bg-white/10 hover:text-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent ${rowActionVisibility}`
+              : `shrink-0 h-7 w-7 rounded-md border border-transparent text-muted transition-colors hover:border-border hover:bg-card hover:text-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent ${rowActionVisibility}`
           }
-          onClick={() => {
-            if (suppressClickRef.current) {
-              suppressClickRef.current = false;
-              return;
-            }
-            onSelect(conv.id);
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onRequestRename(conv);
           }}
-          onContextMenu={(event) => {
-            if (mobile) return;
-            onOpenActions(event, conv);
-          }}
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-          onTouchCancel={handleTouchEnd}
-          onTouchMove={handleTouchEnd}
         >
-          {isUnread && (
-            <span
-              className={
-                isGameModal
-                  ? "absolute top-3 left-3 z-[1] w-2 h-2 rounded-full bg-accent animate-pulse shadow-[0_0_8px_rgba(240,178,50,0.8)] shrink-0"
-                  : "w-2 h-2 rounded-full bg-accent shrink-0"
-              }
-            />
-          )}
-
-          <TruncatingConversationTitle
-            displayTitle={displayTitle}
-            isGameModal={isGameModal}
-            isActive={isActive}
-          />
+          <PencilLine className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
         </Button>
+      ) : null}
 
-        {confirmDeleteId !== conv.id ? (
+      {confirmDeleteId !== conv.id ? (
+        <Button
+          size="icon"
+          variant="ghost"
+          data-testid="conv-delete"
+          aria-label={t("conversations.delete")}
+          className={
+            isGameModal
+              ? `shrink-0 self-center h-7 w-7 rounded-md border border-transparent text-white/50 transition-colors hover:border-white/15 hover:bg-white/10 hover:text-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent ${rowActionVisibility}`
+              : `shrink-0 h-7 w-7 rounded-md border border-transparent text-muted transition-colors hover:border-border hover:bg-card hover:text-danger focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent ${rowActionVisibility}`
+          }
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onRequestDeleteConfirm(conv.id);
+          }}
+        >
+          <X className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+        </Button>
+      ) : null}
+
+      {confirmDeleteId === conv.id ? (
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <span className="text-[10px] text-danger">
+            {t("conversations.deleteConfirm")}
+          </span>
           <Button
-            size="icon"
-            variant="ghost"
-            data-testid="conv-rename"
-            aria-label={t("conversations.rename")}
-            className={
-              isGameModal
-                ? `shrink-0 self-center h-7 w-7 rounded-md border border-transparent text-white/50 transition-colors hover:border-white/15 hover:bg-white/10 hover:text-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent ${rowActionVisibility}`
-                : `shrink-0 h-7 w-7 rounded-md border border-transparent text-muted transition-colors hover:border-border hover:bg-card hover:text-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent ${rowActionVisibility}`
-            }
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onRequestRename(conv);
-            }}
+            variant="destructive"
+            size="sm"
+            className="h-6 px-1.5 py-0.5 text-[10px] text-white shadow-sm disabled:opacity-50"
+            onClick={() => void onConfirmDelete(conv.id)}
+            disabled={deletingId === conv.id}
           >
-            <PencilLine
-              className="h-3.5 w-3.5"
-              strokeWidth={2.25}
-              aria-hidden
-            />
+            {deletingId === conv.id ? "..." : t("conversations.deleteYes")}
           </Button>
-        ) : null}
-
-        {confirmDeleteId !== conv.id ? (
           <Button
-            size="icon"
-            variant="ghost"
-            data-testid="conv-delete"
-            aria-label={t("conversations.delete")}
-            className={
-              isGameModal
-                ? `shrink-0 self-center h-7 w-7 rounded-md border border-transparent text-white/50 transition-colors hover:border-white/15 hover:bg-white/10 hover:text-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent ${rowActionVisibility}`
-                : `shrink-0 h-7 w-7 rounded-md border border-transparent text-muted transition-colors hover:border-border hover:bg-card hover:text-danger focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent ${rowActionVisibility}`
-            }
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onRequestDeleteConfirm(conv.id);
-            }}
+            variant="outline"
+            size="sm"
+            className="h-6 px-1.5 py-0.5 text-[10px] text-muted shadow-sm hover:border-accent hover:text-txt disabled:opacity-50"
+            onClick={() => onCancelDelete()}
+            disabled={deletingId === conv.id}
           >
-            <X className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+            {t("conversations.deleteNo")}
           </Button>
-        ) : null}
-
-        {confirmDeleteId === conv.id ? (
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            <span className="text-[10px] text-danger">
-              {t("conversations.deleteConfirm")}
-            </span>
-            <Button
-              variant="destructive"
-              size="sm"
-              className="h-6 px-1.5 py-0.5 text-[10px] text-white shadow-sm disabled:opacity-50"
-              onClick={() => void onConfirmDelete(conv.id)}
-              disabled={deletingId === conv.id}
-            >
-              {deletingId === conv.id ? "..." : t("conversations.deleteYes")}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-6 px-1.5 py-0.5 text-[10px] text-muted shadow-sm hover:border-accent hover:text-txt disabled:opacity-50"
-              onClick={() => onCancelDelete()}
-              disabled={deletingId === conv.id}
-            >
-              {t("conversations.deleteNo")}
-            </Button>
-          </div>
-        ) : null}
-      </>
+        </div>
+      ) : null}
     </div>
   );
 }

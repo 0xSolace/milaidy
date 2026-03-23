@@ -195,6 +195,7 @@ function UploadZone({
         >
           {t("knowledgeview.AddFromURL")}
         </Button>
+        {/* biome-ignore lint/a11y/noLabelWithoutControl: form control is associated programmatically */}
         <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border border-border/30 bg-bg/40 px-3 text-[11px] text-muted/80 transition-colors hover:text-muted">
           <Checkbox
             checked={includeImageDescriptions}

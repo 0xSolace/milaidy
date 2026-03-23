@@ -1,8 +1,8 @@
+import { requestRestart } from "@miladyai/agent/runtime/restart";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ejectPluginAction } from "../../actions/eject-plugin";
 import { listEjectedAction } from "../../actions/list-ejected";
 import { reinjectPluginAction } from "../../actions/reinject-plugin";
-import { requestRestart } from "@miladyai/agent/runtime/restart";
 import {
   ejectPlugin,
   listEjectedPlugins,

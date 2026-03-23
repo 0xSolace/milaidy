@@ -12,8 +12,8 @@ import {
   useApp,
   VRM_COUNT,
 } from "@miladyai/app-core/state";
-import { Button, Spinner } from "@miladyai/ui";
 import { alertDesktopMessage } from "@miladyai/app-core/utils";
+import { Button, Spinner } from "@miladyai/ui";
 import { useCallback, useRef, useState } from "react";
 
 export interface AvatarSelectorProps {

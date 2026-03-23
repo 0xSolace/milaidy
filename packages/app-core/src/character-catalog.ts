@@ -6,9 +6,9 @@
  */
 import {
   getBootConfig,
-  resolveCharacterCatalog,
   type ResolvedCharacterAsset,
   type ResolvedInjectedCharacter,
+  resolveCharacterCatalog,
 } from "./config/boot-config";
 
 function getResolved() {

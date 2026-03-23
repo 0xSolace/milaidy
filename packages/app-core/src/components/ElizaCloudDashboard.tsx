@@ -6,6 +6,7 @@ import {
   DialogTitle,
   Input,
   SectionCard,
+  Switch,
 } from "@miladyai/ui";
 import {
   AlertCircle,
@@ -35,9 +36,8 @@ import { useIntervalWhenDocumentVisible } from "../hooks/useDocumentVisibility";
 import { useApp } from "../state";
 import { openDesktopInAppBrowser, openExternalUrl } from "../utils";
 import { StripeEmbeddedCheckout } from "./StripeEmbeddedCheckout";
-import { Switch } from "@miladyai/ui";
 
-const ELIZA_CLOUD_LOGIN_URL =
+const _ELIZA_CLOUD_LOGIN_URL =
   "https://www.elizacloud.ai/login?returnTo=%2Fdashboard%2Feliza";
 const ELIZA_CLOUD_INSTANCES_URL = "https://www.elizacloud.ai/dashboard/eliza";
 /** Marketing / docs site — “Learn more” when not connected (in-app browser on desktop). */

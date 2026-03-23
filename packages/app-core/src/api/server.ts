@@ -5,21 +5,6 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { type AgentRuntime, logger } from "@elizaos/core";
-import { StewardApiError, type PolicyResult } from "@stwd/sdk";
-import {
-  ensureCompatApiAuthorized,
-  ensureCompatSensitiveRouteAuthorized,
-  extractHeaderValue,
-  getCompatApiToken,
-  getProvidedApiToken,
-  isDevEnvironment,
-  tokenMatches,
-} from "./auth";
-import {
-  sendJson as sendJsonResponse,
-  sendJsonError as sendJsonErrorResponse,
-} from "./response";
-
 import { handleCloudBillingRoute } from "@miladyai/agent/api/cloud-billing-routes";
 import { handleCloudCompatRoute } from "@miladyai/agent/api/cloud-compat-routes";
 // Override the wallet export rejection function with the hardened version
@@ -29,18 +14,20 @@ import {
   discoverPluginsFromManifest,
   startApiServer as upstreamStartApiServer,
 } from "@miladyai/agent/api/server";
-export { discoverInstalledPlugins, discoverPluginsFromManifest };
-import { type ElizaConfig, loadElizaConfig, saveElizaConfig } from "@miladyai/agent/config/config";
+import { type PolicyResult, StewardApiError } from "@stwd/sdk";
 import {
-  ensureRuntimeSqlCompatibility,
-  executeRawSql,
-  quoteIdent,
-  sanitizeIdentifier,
-  sqlLiteral,
-} from "../utils/sql-compat";
-import { ethers } from "ethers";
-import { handleCloudRoute } from "./cloud-routes";
-import { handleCloudStatusRoutes } from "./cloud-status-routes";
+  ensureCompatApiAuthorized,
+  ensureCompatSensitiveRouteAuthorized,
+  getCompatApiToken,
+  tokenMatches,
+} from "./auth";
+import {
+  sendJsonError as sendJsonErrorResponse,
+  sendJson as sendJsonResponse,
+} from "./response";
+
+export { discoverInstalledPlugins, discoverPluginsFromManifest };
+
 import {
   buildBscApproveUnsignedTx,
   buildBscBuyUnsignedTx,
@@ -48,6 +35,25 @@ import {
   buildBscTradeQuote,
   resolvePrimaryBscRpcUrl,
 } from "@miladyai/agent/api/bsc-trade";
+import { getWalletAddresses } from "@miladyai/agent/api/wallet";
+import { fetchEvmNfts } from "@miladyai/agent/api/wallet-evm-balance";
+import { resolveWalletRpcReadiness } from "@miladyai/agent/api/wallet-rpc";
+import { recordWalletTradeLedgerEntry } from "@miladyai/agent/api/wallet-trading-profile";
+import {
+  type ElizaConfig,
+  loadElizaConfig,
+  saveElizaConfig,
+} from "@miladyai/agent/config/config";
+import { ethers } from "ethers";
+import {
+  ensureRuntimeSqlCompatibility,
+  executeRawSql,
+  quoteIdent,
+  sanitizeIdentifier,
+  sqlLiteral,
+} from "../utils/sql-compat";
+import { handleCloudRoute } from "./cloud-routes";
+import { handleCloudStatusRoutes } from "./cloud-status-routes";
 import {
   isAllowedDevConsoleLogPath,
   readDevConsoleLogTail,
@@ -57,10 +63,6 @@ import {
   getStewardBridgeStatus,
   signTransactionWithOptionalSteward,
 } from "./steward-bridge";
-import { getWalletAddresses } from "@miladyai/agent/api/wallet";
-import { fetchEvmNfts } from "@miladyai/agent/api/wallet-evm-balance";
-import { resolveWalletRpcReadiness } from "@miladyai/agent/api/wallet-rpc";
-import { recordWalletTradeLedgerEntry } from "@miladyai/agent/api/wallet-trading-profile";
 
 const require = createRequire(import.meta.url);
 
@@ -82,6 +84,7 @@ function syncElizaEnvToMilady(): void {
 // Lazy-imported to avoid circular dependency with runtime/eliza.ts
 const lazyEnsureTTS = () =>
   import("../runtime/eliza.js").then((m) => m.ensureMiladyTextToSpeechHandler);
+
 import { getMiladyStartupEmbeddingAugmentation } from "../runtime/milady-startup-overlay.js";
 import { deriveAgentVaultId } from "../security/agent-vault-id";
 import { hydrateWalletKeysFromNodePlatformSecureStore } from "../security/hydrate-wallet-keys-from-platform-store";
@@ -99,25 +102,27 @@ import { getCloudSecret } from "./cloud-secrets";
 // Import from extracted modules for use within this file
 // ---------------------------------------------------------------------------
 
-import { mirrorCompatHeaders } from "./server-cloud-tts";
-import { handleCloudTtsPreviewRoute as _handleCloudTtsPreviewRoute } from "./server-cloud-tts";
+import {
+  handleCloudTtsPreviewRoute as _handleCloudTtsPreviewRoute,
+  mirrorCompatHeaders,
+} from "./server-cloud-tts";
 import { filterConfigEnvForResponse as _filterConfigEnvForResponse } from "./server-config-filter";
 import {
-  extractAndPersistOnboardingApiKey as _extractAndPersistOnboardingApiKey,
-  persistCompatOnboardingDefaults as _persistCompatOnboardingDefaults,
   deriveCompatOnboardingReplayBody as _deriveCompatOnboardingReplayBody,
+  extractAndPersistOnboardingApiKey as _extractAndPersistOnboardingApiKey,
   isCloudProvisioned as _isCloudProvisioned,
+  persistCompatOnboardingDefaults as _persistCompatOnboardingDefaults,
 } from "./server-onboarding-compat";
 import {
-  resolveTradePermissionMode as _resolveTradePermissionMode,
   canUseLocalTradeExecution as _canUseLocalTradeExecution,
+  resolveTradePermissionMode as _resolveTradePermissionMode,
 } from "./server-wallet-trade";
 
 // ---------------------------------------------------------------------------
 // Module-level constants and types that stay in server.ts
 // ---------------------------------------------------------------------------
 
-const PACKAGE_ROOT_NAMES = new Set(["eliza", "elizaai", "elizaos"]);
+const _PACKAGE_ROOT_NAMES = new Set(["eliza", "elizaai", "elizaos"]);
 
 type PluginCategory =
   | "ai-provider"
@@ -1637,7 +1642,7 @@ interface LocalSignedTransactionResult {
   gasLimit: string;
 }
 
-async function sendLocalWalletTransaction(
+async function _sendLocalWalletTransaction(
   rpcUrl: string,
   tx: {
     to: string;
@@ -2591,7 +2596,7 @@ async function handleMiladyCompatRoute(
       return true;
     }
 
-    const rpcUrl = resolvePrimaryBscRpcUrl({
+    const _rpcUrl = resolvePrimaryBscRpcUrl({
       rpcUrls: rpcReadiness.bscRpcUrls,
       cloudManagedAccess: rpcReadiness.cloudManagedAccess,
     });
@@ -2773,7 +2778,7 @@ async function handleMiladyCompatRoute(
           if (!resolvedCloudApiKey) {
             logger.warn(
               "[milady-api] Cloud onboarding but no API key found on disk, in sealed secrets, or in env. " +
-              "The upstream handler will save config WITHOUT cloud.apiKey.",
+                "The upstream handler will save config WITHOUT cloud.apiKey.",
             );
           } else {
             logger.info(
@@ -2839,7 +2844,8 @@ async function handleMiladyCompatRoute(
             if (!freshConfig.cloud) {
               (freshConfig as Record<string, unknown>).cloud = {};
             }
-            (freshConfig.cloud as Record<string, unknown>).apiKey = keyToRestore;
+            (freshConfig.cloud as Record<string, unknown>).apiKey =
+              keyToRestore;
             (freshConfig.cloud as Record<string, unknown>).enabled = true;
             saveElizaConfig(freshConfig);
             logger.info(

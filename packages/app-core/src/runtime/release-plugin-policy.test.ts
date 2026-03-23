@@ -1,8 +1,8 @@
-import { describe, expect, it } from "vitest";
 import {
   classifyRegistryPluginRelease,
   getBundledRuntimePackages,
 } from "@miladyai/agent/runtime/release-plugin-policy";
+import { describe, expect, it } from "vitest";
 
 describe("release-plugin-policy", () => {
   it("returns the curated baseline runtime bundle", () => {

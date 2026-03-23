@@ -37,12 +37,9 @@ function syncElizaEnvToMilady(): void {
   const aliases = getBootConfig().envAliases;
   if (aliases) syncElizaEnvToBrand(aliases);
 }
-import {
-  type ElizaConfig,
-  loadElizaConfig,
-} from "@miladyai/agent/config/config";
+
+import { loadElizaConfig } from "@miladyai/agent/config/config";
 import { STYLE_PRESETS } from "@miladyai/agent/onboarding-presets";
-import type { StylePreset as MiladyStylePreset } from "@miladyai/agent/contracts/onboarding";
 import { normalizeCharacterMessageExamples } from "../utils/character-message-examples";
 import { ensureRuntimeSqlCompatibility } from "../utils/sql-compat";
 import type { EmbeddingProgressCallback } from "./embedding-manager-support.js";

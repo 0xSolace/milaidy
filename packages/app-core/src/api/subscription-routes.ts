@@ -1,9 +1,9 @@
+import type { RouteRequestContext } from "@miladyai/agent/api";
 import {
   type SubscriptionRouteState as AutonomousSubscriptionRouteState,
   handleSubscriptionRoutes as handleAutonomousSubscriptionRoutes,
 } from "@miladyai/agent/api/subscription-routes";
 import type { ElizaConfig } from "../config/config";
-import type { RouteRequestContext } from "@miladyai/agent/api";
 
 export type SubscriptionRouteState = Omit<
   AutonomousSubscriptionRouteState,

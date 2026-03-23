@@ -13,7 +13,10 @@
 import { createContext, useContext } from "react";
 import type { Tab } from "../navigation";
 import type { UiTheme } from "./persistence";
-import type { CompanionHalfFramerateMode, CompanionVrmPowerMode } from "./types";
+import type {
+  CompanionHalfFramerateMode,
+  CompanionVrmPowerMode,
+} from "./types";
 
 export interface CompanionSceneConfig {
   selectedVrmIndex: number;
@@ -42,9 +45,7 @@ export function useCompanionSceneConfig(): CompanionSceneConfig {
         companionAnimateWhenHidden: false,
       };
     }
-    throw new Error(
-      "useCompanionSceneConfig must be used within AppProvider",
-    );
+    throw new Error("useCompanionSceneConfig must be used within AppProvider");
   }
   return ctx;
 }

@@ -994,7 +994,6 @@ describe("applyPluginAutoEnable — streaming destinations", () => {
       makeParams({
         config: {
           streaming: { retake: { accessToken: "rtk-test" } },
-          // biome-ignore lint/suspicious/noExplicitAny: partial test config
         } as never,
       }),
     );
@@ -1007,7 +1006,6 @@ describe("applyPluginAutoEnable — streaming destinations", () => {
       makeParams({
         config: {
           streaming: { twitch: { streamKey: "live_abc" } },
-          // biome-ignore lint/suspicious/noExplicitAny: partial test config
         } as never,
       }),
     );
@@ -1020,7 +1018,6 @@ describe("applyPluginAutoEnable — streaming destinations", () => {
       makeParams({
         config: {
           streaming: { youtube: { streamKey: "xxxx-xxxx" } },
-          // biome-ignore lint/suspicious/noExplicitAny: partial test config
         } as never,
       }),
     );
@@ -1038,7 +1035,6 @@ describe("applyPluginAutoEnable — streaming destinations", () => {
               rtmpKey: "key123",
             },
           },
-          // biome-ignore lint/suspicious/noExplicitAny: partial test config
         } as never,
       }),
     );
@@ -1054,7 +1050,6 @@ describe("applyPluginAutoEnable — streaming destinations", () => {
             activeDestination: "twitch",
             twitch: { streamKey: "live_abc" },
           },
-          // biome-ignore lint/suspicious/noExplicitAny: partial test config
         } as never,
       }),
     );
@@ -1069,7 +1064,6 @@ describe("applyPluginAutoEnable — streaming destinations", () => {
       makeParams({
         config: {
           streaming: { twitch: { enabled: false, streamKey: "live_abc" } },
-          // biome-ignore lint/suspicious/noExplicitAny: partial test config
         } as never,
       }),
     );
@@ -1082,7 +1076,6 @@ describe("applyPluginAutoEnable — streaming destinations", () => {
         config: {
           streaming: { twitch: { streamKey: "live_abc" } },
           plugins: { entries: { "twitch-streaming": { enabled: false } } },
-          // biome-ignore lint/suspicious/noExplicitAny: partial test config
         } as never,
       }),
     );
@@ -1092,7 +1085,6 @@ describe("applyPluginAutoEnable — streaming destinations", () => {
   it("does not auto-enable when streaming config is empty", () => {
     const { changes } = applyPluginAutoEnable(
       makeParams({
-        // biome-ignore lint/suspicious/noExplicitAny: partial test config
         config: { streaming: {} } as never,
       }),
     );
@@ -1108,7 +1100,6 @@ describe("applyPluginAutoEnable — streaming destinations", () => {
             twitch: { streamKey: "live_abc" },
             youtube: { streamKey: "xxxx-xxxx" },
           },
-          // biome-ignore lint/suspicious/noExplicitAny: partial test config
         } as never,
       }),
     );

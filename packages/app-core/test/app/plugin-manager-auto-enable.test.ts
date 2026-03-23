@@ -13,7 +13,7 @@ const mockLoadElizaConfig = vi.fn();
 const mockSaveElizaConfig = vi.fn();
 
 // Mock config module used by plugin-manager-guard.ts
-vi.mock("../../src/config/config.js", () => ({
+vi.mock("@miladyai/agent/config/config", () => ({
   loadElizaConfig: (...args: unknown[]) => mockLoadElizaConfig(...args),
   saveElizaConfig: (...args: unknown[]) => mockSaveElizaConfig(...args),
 }));

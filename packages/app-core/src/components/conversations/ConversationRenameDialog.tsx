@@ -39,7 +39,7 @@ export function ConversationRenameDialog({
       setSuggesting(false);
       setSaving(false);
     }
-  }, [open, initialTitle, conversationId]);
+  }, [open, initialTitle]);
 
   const handleSuggest = async () => {
     if (!conversationId || suggesting || saving) return;

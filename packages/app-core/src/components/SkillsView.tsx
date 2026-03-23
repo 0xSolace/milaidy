@@ -1082,7 +1082,12 @@ function SkillsModalView() {
       </div>
 
       {/* Portal modals to body so they escape the 3D transform stacking context */}
-      <Dialog open={!!editingSkill} onOpenChange={(open) => { if (!open) setEditingSkill(null); }}>
+      <Dialog
+        open={!!editingSkill}
+        onOpenChange={(open) => {
+          if (!open) setEditingSkill(null);
+        }}
+      >
         <DialogPortal>
           {editingSkill && (
             <EditSkillModal
@@ -1095,7 +1100,12 @@ function SkillsModalView() {
         </DialogPortal>
       </Dialog>
 
-      <Dialog open={installModalOpen} onOpenChange={(open) => { if (!open) setInstallModalOpen(false); }}>
+      <Dialog
+        open={installModalOpen}
+        onOpenChange={(open) => {
+          if (!open) setInstallModalOpen(false);
+        }}
+      >
         <DialogPortal>
           {installModalOpen && (
             <InstallModal
@@ -1105,7 +1115,9 @@ function SkillsModalView() {
               skillsMarketplaceError={skillsMarketplaceError}
               skillsMarketplaceLoading={skillsMarketplaceLoading}
               skillsMarketplaceAction={skillsMarketplaceAction}
-              skillsMarketplaceManualGithubUrl={skillsMarketplaceManualGithubUrl}
+              skillsMarketplaceManualGithubUrl={
+                skillsMarketplaceManualGithubUrl
+              }
               searchSkillsMarketplace={searchSkillsMarketplace}
               installSkillFromMarketplace={installSkillFromMarketplace}
               uninstallMarketplaceSkill={uninstallMarketplaceSkill}
@@ -1165,7 +1177,7 @@ function SkillsFullView() {
   }, [loadSkills]);
 
   // Group into: needs attention, active, inactive — with text filter
-  const { attention, active, inactive, activeCount, totalCount } =
+  const { attention, active, inactive, activeCount: _activeCount, totalCount: _totalCount } =
     useMemo(() => {
       const attention: SkillInfo[] = [];
       const active: SkillInfo[] = [];
@@ -1282,7 +1294,7 @@ function SkillsFullView() {
         >
           {skillCreateFormOpen
             ? t("common.cancel")
-            : "+ " + t("skillsview.NewSkill", { defaultValue: "New Skill" })}
+            : `+ ${t("skillsview.NewSkill", { defaultValue: "New Skill" })}`}
         </Button>
         <Button
           variant="default"

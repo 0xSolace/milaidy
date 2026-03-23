@@ -1,3 +1,29 @@
+// Re-exported from @miladyai/ui for backwards compatibility
+export {
+  ConfirmDialog as ConfirmModal,
+  type ConfirmDialogProps as ConfirmModalProps,
+  type ConfirmOptions,
+  ErrorBoundary,
+  PromptDialog as PromptModal,
+  type PromptDialogProps as PromptModalProps,
+  type PromptOptions,
+  SaveFooter as ConfigSaveFooter,
+  Skeleton,
+  SkeletonCard,
+  SkeletonChat,
+  SkeletonLine,
+  SkeletonMessage,
+  SkeletonSidebar,
+  SkeletonText,
+  StatCard,
+  StatusBadge,
+  StatusDot,
+  type StatusTone,
+  Switch,
+  statusToneForBoolean,
+  useConfirm,
+  usePrompt,
+} from "@miladyai/ui";
 export * from "./AdvancedPageView";
 export * from "./AgentActivityBox";
 export * from "./ApiKeyConfig";
@@ -22,22 +48,9 @@ export * from "./CloudSourceControls";
 export * from "./CodingAgentSettingsSection";
 export * from "./CommandPalette";
 export * from "./CompanionSceneHost";
-export * from "./confirm-delete-control";
 export * from "./CompanionShell";
 export * from "./CompanionView";
 export * from "./ConfigPageView";
-// Re-exported from @miladyai/ui for backwards compatibility
-export { SaveFooter as ConfigSaveFooter } from "@miladyai/ui";
-export {
-  ConfirmDialog as ConfirmModal,
-  type ConfirmDialogProps as ConfirmModalProps,
-  PromptDialog as PromptModal,
-  type PromptDialogProps as PromptModalProps,
-  useConfirm,
-  usePrompt,
-  type ConfirmOptions,
-  type PromptOptions,
-} from "@miladyai/ui";
 export * from "./ConnectionFailedBanner";
 export * from "./ConnectorsPageView";
 export * from "./ConversationsSidebar";
@@ -46,7 +59,7 @@ export * from "./CustomActionsPanel";
 export * from "./CustomActionsView";
 export * from "./chainConfig";
 export * from "./companion-shell-styles";
-
+export * from "./confirm-delete-control";
 export * from "./conversations/ConversationListItem";
 export * from "./conversations/conversation-utils";
 export * from "./DatabasePageView";
@@ -54,7 +67,6 @@ export * from "./DatabaseView";
 export * from "./DesktopWorkspaceSection";
 export * from "./ElizaCloudDashboard";
 export * from "./EmotePicker";
-export { ErrorBoundary } from "@miladyai/ui";
 export * from "./FineTuningView";
 export * from "./format";
 export * from "./GameView";
@@ -95,28 +107,11 @@ export * from "./StreamView";
 export * from "./SubscriptionStatus";
 export * from "./SystemWarningBanner";
 export { useSharedCompanionScene } from "./shared-companion-scene-context";
-export {
-  Skeleton,
-  SkeletonLine,
-  SkeletonText,
-  SkeletonMessage,
-  SkeletonCard,
-  SkeletonSidebar,
-  SkeletonChat,
-} from "@miladyai/ui";
 export * from "./ThemeToggle";
 export * from "./TrajectoriesView";
 export * from "./TrajectoryDetailView";
 export * from "./TriggersView";
 export * from "./trajectory-format";
-export {
-  StatusBadge,
-  StatusDot,
-  StatCard,
-  statusToneForBoolean,
-  type StatusTone,
-} from "@miladyai/ui";
-export { Switch } from "@miladyai/ui";
 export * from "./VectorBrowserView";
 export * from "./VoiceConfigView";
 export * from "./VrmStage";

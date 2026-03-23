@@ -1,10 +1,10 @@
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import type { ElizaConfig } from "../config/config";
 import {
   applyWalletRpcConfigUpdate,
   getInventoryProviderOptions,
   resolveWalletRpcReadiness,
 } from "@miladyai/agent/api/wallet-rpc";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import type { ElizaConfig } from "../config/config";
 
 const ENV_KEYS = [
   "ALCHEMY_API_KEY",

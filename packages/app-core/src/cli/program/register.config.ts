@@ -1,5 +1,5 @@
-import type { Command } from "commander";
 import type { ElizaConfig } from "@miladyai/agent/config";
+import type { Command } from "commander";
 import { theme } from "../../terminal/theme";
 import { getLogPrefix } from "../../utils/log-prefix";
 
@@ -46,7 +46,9 @@ export function registerConfigCli(program: Command) {
     .command("path")
     .description("Print the resolved config file path")
     .action(async () => {
-      const { resolveConfigPath } = await import("@miladyai/agent/config/paths");
+      const { resolveConfigPath } = await import(
+        "@miladyai/agent/config/paths"
+      );
       console.log(resolveConfigPath());
     });
 

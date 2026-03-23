@@ -44,8 +44,8 @@ vi.mock("@miladyai/ui", () => {
   };
 });
 
-import { DesktopTalkModePanel } from "./VoiceConfigView";
 import { findButtonByText } from "../../../../test/helpers/react-test";
+import { DesktopTalkModePanel } from "./VoiceConfigView";
 
 describe("DesktopTalkModePanel", () => {
   beforeEach(() => {

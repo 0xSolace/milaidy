@@ -21,8 +21,8 @@ vi.mock("@miladyai/ui", () => ({
     React.createElement("button", { type: "button", ...props }, children),
 }));
 
-import { DesktopGameWindowControls } from "./GameView";
 import { findButtonByText } from "../../../../test/helpers/react-test";
+import { DesktopGameWindowControls } from "./GameView";
 
 describe("DesktopGameWindowControls", () => {
   beforeEach(() => {

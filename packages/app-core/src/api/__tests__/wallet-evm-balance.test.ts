@@ -3,7 +3,6 @@
  * and direct-RPC fallback paths.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_EVM_CHAINS,
   type EvmProviderKeys,
@@ -11,6 +10,7 @@ import {
   fetchEvmNfts,
   resolveEvmProviderKeys,
 } from "@miladyai/agent/api/wallet-evm-balance";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // ── Mocks ────────────────────────────────────────────────────────────────
 

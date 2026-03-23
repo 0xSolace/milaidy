@@ -1,7 +1,7 @@
 import type { IAgentRuntime } from "@elizaos/core";
-import { describe, expect, it } from "vitest";
-import type { AwarenessContributor } from "@miladyai/shared/contracts/awareness";
 import { AwarenessRegistry } from "@miladyai/shared/awareness";
+import type { AwarenessContributor } from "@miladyai/shared/contracts/awareness";
+import { describe, expect, it } from "vitest";
 
 function fakeRuntime(): IAgentRuntime {
   return {} as IAgentRuntime;

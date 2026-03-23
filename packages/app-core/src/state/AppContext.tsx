@@ -123,6 +123,7 @@ import {
   computeAgentDeadlineExtensions,
   getAgentReadyTimeoutMs,
 } from "./agent-startup-timing";
+import { CompanionSceneConfigCtx } from "./CompanionSceneConfigContext";
 import { completeResetLocalStateAfterServerWipe as runCompleteResetLocalStateAfterServerWipe } from "./complete-reset-local-state-after-wipe";
 import { handleResetAppliedFromMainCore } from "./handle-reset-applied-from-main";
 import {
@@ -193,7 +194,6 @@ import {
   getTabForShellView,
   shouldStartAtCharacterSelectOnLaunch,
 } from "./shell-routing";
-import { CompanionSceneConfigCtx } from "./CompanionSceneConfigContext";
 import { TranslationProvider, useTranslation } from "./TranslationContext";
 import { useChatState } from "./useChatState";
 import { useLifecycleState } from "./useLifecycleState";

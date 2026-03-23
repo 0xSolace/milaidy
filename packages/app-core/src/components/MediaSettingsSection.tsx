@@ -11,6 +11,7 @@
 import {
   Button,
   Input,
+  SaveFooter,
   Select,
   SelectContent,
   SelectGroup,
@@ -18,6 +19,7 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
+  Switch,
 } from "@miladyai/ui";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -42,7 +44,6 @@ import {
   CloudConnectionStatus,
   CloudSourceModeToggle,
 } from "./CloudSourceControls";
-import { SaveFooter, Switch } from "@miladyai/ui";
 import { VoiceConfigView } from "./VoiceConfigView";
 
 type MediaCategory = "image" | "video" | "audio" | "vision" | "voice";

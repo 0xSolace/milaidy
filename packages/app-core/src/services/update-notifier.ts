@@ -3,9 +3,12 @@
  * to stderr if a newer version is available (like npm's update-notifier).
  */
 
+import {
+  checkForUpdate,
+  resolveChannel,
+} from "@miladyai/agent/services/update-checker";
 import { loadElizaConfig } from "../config/config";
 import { theme } from "../terminal/theme";
-import { checkForUpdate, resolveChannel } from "@miladyai/agent/services/update-checker";
 
 let notified = false;
 

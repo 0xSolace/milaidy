@@ -29,10 +29,13 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { logger } from "@elizaos/core";
-import { loadElizaConfig, saveElizaConfig } from "../config/config";
 import { requestRestart } from "@miladyai/agent/runtime";
+import {
+  getPluginInfo,
+  type RegistryPluginInfo,
+} from "@miladyai/agent/services/registry-client";
+import { loadElizaConfig, saveElizaConfig } from "../config/config";
 import { createSerialise } from "../utils/serialise";
-import { getPluginInfo, type RegistryPluginInfo } from "@miladyai/agent/services/registry-client";
 
 const execFileAsync = promisify(execFile);
 const require = createRequire(import.meta.url);

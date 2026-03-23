@@ -9,11 +9,15 @@
  *   - API server is available in both CLI and headless modes
  *   - Config env vars are applied identically
  */
+
+// Shared presets used by both CLI and API server
+import {
+  SHARED_STYLE_RULES,
+  STYLE_PRESETS,
+} from "@miladyai/shared/onboarding-presets";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { envSnapshot } from "../../../test/helpers/test-utils";
 import type { ElizaConfig } from "./config/config";
-// Shared presets used by both CLI and API server
-import { SHARED_STYLE_RULES, STYLE_PRESETS } from "@miladyai/shared/onboarding-presets";
 import {
   applyCloudConfigToEnv,
   applyConnectorSecretsToEnv,

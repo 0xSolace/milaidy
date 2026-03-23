@@ -126,7 +126,7 @@ export const VrmStage = memo(function VrmStage({
       }
       onEngineReady?.(engine);
     },
-    [cameraProfile, initialCompanionZoomNormalized, onEngineReady],
+    [initialCompanionZoomNormalized, onEngineReady],
   );
 
   const handleEngineState = useCallback(
@@ -164,7 +164,6 @@ export const VrmStage = memo(function VrmStage({
 
   /* ── Reset loading UI when avatar path changes ──────────────────── */
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reset loader on avatar change
   useEffect(() => {
     if (vrmPath === prevVrmPathRef.current && hasMountedRef.current) return;
     prevVrmPathRef.current = vrmPath;

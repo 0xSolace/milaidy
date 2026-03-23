@@ -1,5 +1,6 @@
 import {
   Button,
+  SaveFooter,
   Select,
   SelectContent,
   SelectItem,
@@ -11,7 +12,6 @@ import type { AgentPreflightResult } from "../api";
 import { client } from "../api";
 import { useTimeout } from "../hooks";
 import { useApp } from "../state";
-import { SaveFooter } from "@miladyai/ui";
 
 type AgentTab = "claude" | "gemini" | "codex" | "aider";
 type AiderProvider = "anthropic" | "openai" | "google";

@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
+  Switch,
 } from "@miladyai/ui";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -102,7 +103,6 @@ import type { ConfigUiHint } from "../types";
 import { openExternalUrl, resolveAppAssetUrl } from "../utils";
 import { autoLabel } from "./labels";
 import { SHOWCASE_PLUGIN } from "./plugins/showcase-data";
-import { Switch } from "@miladyai/ui";
 import { WhatsAppQrOverlay } from "./WhatsAppQrOverlay";
 
 /* ── Always-on plugins (hidden from all views) ────────────────────────── */
@@ -1161,7 +1161,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
   const {
     plugins,
     pluginStatusFilter,
-    pluginSearch,
+    pluginSearch: _pluginSearch,
     pluginSettingsOpen,
     pluginSaving,
     pluginSaveSuccess,
@@ -1265,8 +1265,8 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
     mode !== "connectors" && mode !== "streaming" && mode !== "social";
   const showDesktopSubgroupSidebar = showSubgroupFilters;
   const {
-    categoryPlugins,
-    enabledCount,
+    categoryPlugins: _categoryPlugins,
+    enabledCount: _enabledCount,
     nonDbPlugins,
     sorted,
     subgroupTags,
@@ -1286,8 +1286,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
       }),
     [
       allowCustomOrder,
-      effectiveSearch,
-      effectiveStatusFilter,
       isConnectorLikeMode,
       mode,
       pluginOrder,

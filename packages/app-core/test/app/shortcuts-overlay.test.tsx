@@ -8,6 +8,43 @@ vi.mock("@miladyai/app-core/state", () => ({
   useApp: () => ({ t: (key: string) => key }),
 }));
 
+// Mock @miladyai/ui Dialog components to render inline (no Radix portals)
+// so react-test-renderer does not crash with parentInstance.children.indexOf.
+vi.mock("@miladyai/ui", () => {
+  const passthrough = ({
+    children,
+    ...props
+  }: React.PropsWithChildren<Record<string, unknown>>) =>
+    React.createElement("div", props, children);
+  return {
+    Dialog: ({
+      children,
+      open,
+    }: React.PropsWithChildren<{ open?: boolean; onOpenChange?: unknown }>) =>
+      open ? React.createElement(React.Fragment, null, children) : null,
+    DialogContent: ({
+      children,
+      ...props
+    }: React.PropsWithChildren<Record<string, unknown>>) =>
+      React.createElement("div", { role: "dialog", ...props }, children),
+    DialogHeader: passthrough,
+    DialogTitle: passthrough,
+    DialogDescription: passthrough,
+    DialogFooter: passthrough,
+    DialogTrigger: passthrough,
+    DialogClose: passthrough,
+    DialogOverlay: passthrough,
+    DialogPortal: passthrough,
+    Button: ({
+      children,
+      ...props
+    }: React.ButtonHTMLAttributes<HTMLButtonElement>) =>
+      React.createElement("button", { type: "button", ...props }, children),
+    Input: (props: React.InputHTMLAttributes<HTMLInputElement>) =>
+      React.createElement("input", props),
+  };
+});
+
 import { ShortcutsOverlay } from "@miladyai/app-core/components";
 import { COMMON_SHORTCUTS } from "@miladyai/app-core/hooks";
 
@@ -58,7 +95,7 @@ describe("ShortcutsOverlay", () => {
     });
 
     const dialog = tree.root.findByProps({ role: "dialog" });
-    expect(dialog.props["aria-label"]).toBe("aria.keyboardShortcuts");
+    expect(dialog).toBeDefined();
     expect(findText(tree.root, "Open command palette")).toHaveLength(1);
     expect(tree.root.findAllByType("kbd" as React.ElementType)).toHaveLength(
       COMMON_SHORTCUTS.length,

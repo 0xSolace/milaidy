@@ -15,7 +15,7 @@ import type {
   WebGpuBrowserStatus,
   WgpuTagElement,
 } from "./types";
-import { RELEASE_NOTES_PARTITION, SESSION_PARTITIONS } from "./types";
+import { SESSION_PARTITIONS } from "./types";
 
 export function ReleaseStatusSection({
   busyAction,
@@ -543,4 +543,5 @@ export function WgpuSurfaceSection({
     </section>
   );
 }
+
 import { useBranding } from "../../config/branding";

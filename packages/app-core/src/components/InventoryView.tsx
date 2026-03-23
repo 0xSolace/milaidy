@@ -16,7 +16,6 @@ import {
   resolveChainKey,
 } from "./chainConfig";
 import {
-  BSC_GAS_THRESHOLD,
   loadTrackedBscTokens,
   loadTrackedTokens,
   removeTrackedBscToken,

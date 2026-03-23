@@ -5,8 +5,11 @@
  * All pure functions — no I/O or external dependencies to mock.
  */
 
+import type {
+  RegistryAppMeta,
+  RegistryPluginInfo,
+} from "@miladyai/agent/services/registry-client";
 import { describe, expect, it } from "vitest";
-import type { RegistryAppMeta, RegistryPluginInfo } from "@miladyai/agent/services/registry-client";
 import {
   getPluginInfoFromRegistry,
   normalizePluginLookupAlias,

@@ -3,15 +3,20 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
 let mockedStateDir = "";
 
 vi.mock("node:child_process", () => ({
   execFile: vi.fn(),
 }));
 
-vi.mock("@elizaos/core", () => ({
-  logger: { info: vi.fn(), warn: vi.fn(), debug: vi.fn(), error: vi.fn() },
-}));
+vi.mock("@elizaos/core", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@elizaos/core")>();
+  return {
+    ...actual,
+    logger: { info: vi.fn(), warn: vi.fn(), debug: vi.fn(), error: vi.fn() },
+  };
+});
 
 vi.mock("@miladyai/agent/services/registry-client", () => ({
   getPluginInfo: vi.fn(),
@@ -187,7 +192,9 @@ describe("plugin-eject", () => {
 
   describe("ejectPlugin", () => {
     it("ejects a plugin and writes upstream metadata", async () => {
-      const { getPluginInfo } = await import("@miladyai/agent/services/registry-client");
+      const { getPluginInfo } = await import(
+        "@miladyai/agent/services/registry-client"
+      );
       vi.mocked(getPluginInfo).mockResolvedValue(pluginInfo() as never);
 
       setExecFileHandler(async (file, args) => {
@@ -229,7 +236,9 @@ describe("plugin-eject", () => {
     });
 
     it("returns already ejected error when target exists", async () => {
-      const { getPluginInfo } = await import("@miladyai/agent/services/registry-client");
+      const { getPluginInfo } = await import(
+        "@miladyai/agent/services/registry-client"
+      );
       vi.mocked(getPluginInfo).mockResolvedValue(pluginInfo() as never);
 
       const existing = path.join(
@@ -261,7 +270,9 @@ describe("plugin-eject", () => {
     });
 
     it("returns registry error when plugin is missing", async () => {
-      const { getPluginInfo } = await import("@miladyai/agent/services/registry-client");
+      const { getPluginInfo } = await import(
+        "@miladyai/agent/services/registry-client"
+      );
       vi.mocked(getPluginInfo).mockResolvedValue(null);
 
       const { ejectPlugin } = await loadPluginEject();
@@ -272,7 +283,9 @@ describe("plugin-eject", () => {
     });
 
     it("rejects path traversal when sanitised dir escapes ejected root", async () => {
-      const { getPluginInfo } = await import("@miladyai/agent/services/registry-client");
+      const { getPluginInfo } = await import(
+        "@miladyai/agent/services/registry-client"
+      );
       const installer = await import("./plugin-installer");
       vi.mocked(getPluginInfo).mockResolvedValue(pluginInfo() as never);
       vi.mocked(installer.sanitisePackageName).mockReturnValueOnce("../escape");
@@ -285,7 +298,9 @@ describe("plugin-eject", () => {
     });
 
     it("serialises concurrent eject calls", async () => {
-      const { getPluginInfo } = await import("@miladyai/agent/services/registry-client");
+      const { getPluginInfo } = await import(
+        "@miladyai/agent/services/registry-client"
+      );
       vi.mocked(getPluginInfo).mockImplementation(async (id: string) => {
         if (id.includes("one")) {
           return pluginInfo({
@@ -346,7 +361,9 @@ describe("plugin-eject", () => {
     });
 
     it("cleans up cloned dir when install step fails", async () => {
-      const { getPluginInfo } = await import("@miladyai/agent/services/registry-client");
+      const { getPluginInfo } = await import(
+        "@miladyai/agent/services/registry-client"
+      );
       vi.mocked(getPluginInfo).mockResolvedValue(pluginInfo() as never);
 
       const targetDir = path.join(
@@ -382,7 +399,9 @@ describe("plugin-eject", () => {
     });
 
     it("rejects invalid package name from registry info", async () => {
-      const { getPluginInfo } = await import("@miladyai/agent/services/registry-client");
+      const { getPluginInfo } = await import(
+        "@miladyai/agent/services/registry-client"
+      );
       vi.mocked(getPluginInfo).mockResolvedValue(
         pluginInfo({ name: "bad name" }) as never,
       );
@@ -395,7 +414,9 @@ describe("plugin-eject", () => {
     });
 
     it("rejects invalid git URL from registry info", async () => {
-      const { getPluginInfo } = await import("@miladyai/agent/services/registry-client");
+      const { getPluginInfo } = await import(
+        "@miladyai/agent/services/registry-client"
+      );
       vi.mocked(getPluginInfo).mockResolvedValue(
         pluginInfo({
           gitUrl: "git@github.com:elizaos-plugins/plugin-test.git",
@@ -411,7 +432,9 @@ describe("plugin-eject", () => {
 
     it("rejects invalid branch before attempting clone", async () => {
       const installer = await import("./plugin-installer");
-      const { getPluginInfo } = await import("@miladyai/agent/services/registry-client");
+      const { getPluginInfo } = await import(
+        "@miladyai/agent/services/registry-client"
+      );
       vi.mocked(getPluginInfo).mockResolvedValue(pluginInfo() as never);
       vi.mocked(installer.resolveGitBranch).mockResolvedValue("bad branch");
 
@@ -424,7 +447,9 @@ describe("plugin-eject", () => {
 
     it("propagates non-ENOENT access errors before cloning", async () => {
       const installer = await import("./plugin-installer");
-      const { getPluginInfo } = await import("@miladyai/agent/services/registry-client");
+      const { getPluginInfo } = await import(
+        "@miladyai/agent/services/registry-client"
+      );
       vi.mocked(getPluginInfo).mockResolvedValue(pluginInfo() as never);
       vi.mocked(installer.resolveGitBranch).mockResolvedValue("main");
 
@@ -442,7 +467,9 @@ describe("plugin-eject", () => {
 
     it("falls back to npm when primary package manager install fails", async () => {
       const installer = await import("./plugin-installer");
-      const { getPluginInfo } = await import("@miladyai/agent/services/registry-client");
+      const { getPluginInfo } = await import(
+        "@miladyai/agent/services/registry-client"
+      );
       vi.mocked(getPluginInfo).mockResolvedValue(pluginInfo() as never);
       vi.mocked(installer.detectPackageManager).mockResolvedValue("bun");
 
@@ -489,7 +516,9 @@ describe("plugin-eject", () => {
 
     it("continues when build script fails during ejected plugin install", async () => {
       const installer = await import("./plugin-installer");
-      const { getPluginInfo } = await import("@miladyai/agent/services/registry-client");
+      const { getPluginInfo } = await import(
+        "@miladyai/agent/services/registry-client"
+      );
       vi.mocked(getPluginInfo).mockResolvedValue(pluginInfo() as never);
       vi.mocked(installer.detectPackageManager).mockResolvedValue("npm");
 
@@ -535,7 +564,9 @@ describe("plugin-eject", () => {
     });
 
     it("converts non-Error install errors during eject", async () => {
-      const { getPluginInfo } = await import("@miladyai/agent/services/registry-client");
+      const { getPluginInfo } = await import(
+        "@miladyai/agent/services/registry-client"
+      );
       const installer = await import("./plugin-installer");
       vi.mocked(getPluginInfo).mockResolvedValue(pluginInfo() as never);
       vi.mocked(installer.detectPackageManager).mockResolvedValue("npm");

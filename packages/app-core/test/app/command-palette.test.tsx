@@ -17,6 +17,43 @@ vi.mock("@miladyai/app-core/hooks", () => ({
   BugReportProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
+// Mock @miladyai/ui Dialog components to render inline (no Radix portals)
+// so react-test-renderer does not crash with parentInstance.children.indexOf.
+vi.mock("@miladyai/ui", () => {
+  const passthrough = ({
+    children,
+    ...props
+  }: React.PropsWithChildren<Record<string, unknown>>) =>
+    React.createElement("div", props, children);
+  return {
+    Dialog: ({
+      children,
+      open,
+    }: React.PropsWithChildren<{ open?: boolean; onOpenChange?: unknown }>) =>
+      open !== false ? React.createElement(React.Fragment, null, children) : null,
+    DialogContent: ({
+      children,
+      ...props
+    }: React.PropsWithChildren<Record<string, unknown>>) =>
+      React.createElement("div", { role: "dialog", ...props }, children),
+    DialogHeader: passthrough,
+    DialogTitle: passthrough,
+    DialogDescription: passthrough,
+    DialogFooter: passthrough,
+    DialogTrigger: passthrough,
+    DialogClose: passthrough,
+    DialogOverlay: passthrough,
+    DialogPortal: passthrough,
+    Button: ({
+      children,
+      ...props
+    }: React.ButtonHTMLAttributes<HTMLButtonElement>) =>
+      React.createElement("button", { type: "button", ...props }, children),
+    Input: (props: React.InputHTMLAttributes<HTMLInputElement>) =>
+      React.createElement("input", props),
+  };
+});
+
 import { CommandPalette } from "@miladyai/app-core/components/CommandPalette";
 
 type PaletteContext = {

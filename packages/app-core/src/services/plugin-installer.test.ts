@@ -199,7 +199,9 @@ afterEach(async () => {
 describe("plugin-installer", () => {
   describe("installPlugin", () => {
     it("returns error when plugin is not found in registry", async () => {
-      const { getPluginInfo } = await import("@miladyai/agent/services/registry-client");
+      const { getPluginInfo } = await import(
+        "@miladyai/agent/services/registry-client"
+      );
       vi.mocked(getPluginInfo).mockResolvedValue(null);
 
       const { installPlugin } = await loadInstaller();
@@ -211,7 +213,9 @@ describe("plugin-installer", () => {
     });
 
     it("reports progress phases during install (real npm failure path)", async () => {
-      const { getPluginInfo } = await import("@miladyai/agent/services/registry-client");
+      const { getPluginInfo } = await import(
+        "@miladyai/agent/services/registry-client"
+      );
       // Use a package name that definitely doesn't exist on npm
       vi.mocked(getPluginInfo).mockResolvedValue(
         testPluginInfo({ name: "@elizaos/plugin-nonexistent-test-12345" }),
@@ -239,7 +243,9 @@ describe("plugin-installer", () => {
         "@elizaos/plugin-local-source",
         "1.2.3",
       );
-      const { getPluginInfo } = await import("@miladyai/agent/services/registry-client");
+      const { getPluginInfo } = await import(
+        "@miladyai/agent/services/registry-client"
+      );
       vi.mocked(getPluginInfo).mockResolvedValue(
         testPluginInfo({
           name: "@elizaos/plugin-local-source",
@@ -271,7 +277,9 @@ describe("plugin-installer", () => {
     }, 180_000);
 
     it("falls back to raw git source when a monorepo build fails", async () => {
-      const { getPluginInfo } = await import("@miladyai/agent/services/registry-client");
+      const { getPluginInfo } = await import(
+        "@miladyai/agent/services/registry-client"
+      );
       vi.mocked(getPluginInfo).mockResolvedValue(
         testPluginInfo({
           name: "@elizaos/plugin-git-fallback",
@@ -586,10 +594,14 @@ describe("plugin-installer", () => {
 
   describe("installAndRestart", () => {
     it("does NOT call requestRestart when install fails", async () => {
-      const { getPluginInfo } = await import("@miladyai/agent/services/registry-client");
+      const { getPluginInfo } = await import(
+        "@miladyai/agent/services/registry-client"
+      );
       vi.mocked(getPluginInfo).mockResolvedValue(testPluginInfo());
 
-      const { requestRestart } = await import("@miladyai/agent/runtime/restart");
+      const { requestRestart } = await import(
+        "@miladyai/agent/runtime/restart"
+      );
       const { installAndRestart } = await loadInstaller();
 
       // In test env npm/git installs fail (packages don't exist)
@@ -605,7 +617,9 @@ describe("plugin-installer", () => {
     it("sanitises package names for directory paths", async () => {
       // We test this indirectly through installPlugin — the targetDir
       // should be sanitised with no special characters
-      const { getPluginInfo } = await import("@miladyai/agent/services/registry-client");
+      const { getPluginInfo } = await import(
+        "@miladyai/agent/services/registry-client"
+      );
       vi.mocked(getPluginInfo).mockResolvedValue(
         testPluginInfo({ name: "@elizaos/plugin-foo-bar" }),
       );
@@ -627,7 +641,9 @@ describe("plugin-installer", () => {
 
   describe("serialisation", () => {
     it("serialises concurrent install calls", async () => {
-      const { getPluginInfo } = await import("@miladyai/agent/services/registry-client");
+      const { getPluginInfo } = await import(
+        "@miladyai/agent/services/registry-client"
+      );
       vi.mocked(getPluginInfo).mockResolvedValue(null); // Quick rejection
 
       const { installPlugin } = await loadInstaller();

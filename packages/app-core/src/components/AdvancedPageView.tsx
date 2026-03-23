@@ -23,7 +23,6 @@ import type { Tab } from "@miladyai/app-core/navigation";
 import { useApp } from "@miladyai/app-core/state";
 import { Button } from "@miladyai/ui";
 import React, { type ReactNode, useState } from "react";
-import { CustomActionsView } from "./CustomActionsView";
 import { DesktopWorkspaceSection } from "./DesktopWorkspaceSection";
 import { FineTuningView } from "./FineTuningView";
 import { LifoSandboxView } from "./LifoSandboxView";

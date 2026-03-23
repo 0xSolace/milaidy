@@ -11,7 +11,7 @@ import {
   Switch,
   Textarea,
 } from "@miladyai/ui";
-import { ChevronDown, Clock3, PencilLine, Plus } from "lucide-react";
+import { Clock3, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type {
   CreateTriggerRequest,
@@ -232,7 +232,7 @@ function toneForLastStatus(
   return "muted";
 }
 
-function wakeModeLabel(
+function _wakeModeLabel(
   wakeMode: TriggerWakeMode,
   t: (key: string) => string,
 ): string {
@@ -260,7 +260,7 @@ function localizedExecutionStatus(status: string, t: TranslateFn): string {
   }
 }
 
-function runCountLabel(count: number, t: TranslateFn): string {
+function _runCountLabel(count: number, t: TranslateFn): string {
   return count === 1
     ? t("heartbeatsview.runCountSingle", { count })
     : t("heartbeatsview.runCountPlural", { count });
@@ -292,7 +292,7 @@ export function HeartbeatsView() {
   const [formError, setFormError] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
 
-  const selectedRuns = useMemo(() => {
+  const _selectedRuns = useMemo(() => {
     if (!selectedTriggerId) return [];
     return triggerRunsById[selectedTriggerId] ?? [];
   }, [selectedTriggerId, triggerRunsById]);
@@ -352,7 +352,7 @@ export function HeartbeatsView() {
     value: TriggerFormState[K],
   ) => setForm((previous) => ({ ...previous, [key]: value }));
 
-  const toggleExpandedTrigger = (triggerId: string) => {
+  const _toggleExpandedTrigger = (triggerId: string) => {
     const nextTriggerId = selectedTriggerId === triggerId ? null : triggerId;
     setSelectedTriggerId(nextTriggerId);
     if (nextTriggerId) {
@@ -743,6 +743,7 @@ export function HeartbeatsView() {
                   </div>
 
                   <div className="flex items-end">
+                    {/* biome-ignore lint/a11y/noLabelWithoutControl: form control is associated programmatically */}
                     <label className="inline-flex cursor-pointer select-none flex-1 items-center gap-3 rounded-xl bg-bg/50 px-4 py-2 border border-border/50 hover:border-accent/50 text-sm text-txt transition-colors h-10">
                       <Switch
                         checked={form.enabled}

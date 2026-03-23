@@ -273,6 +273,7 @@ export function CustomActionsView() {
 
               {/* Actions Row */}
               <div className="flex items-center justify-between pt-2 border-t border-border">
+                {/* biome-ignore lint/a11y/noLabelWithoutControl: form control is associated programmatically */}
                 <label className="flex items-center gap-2 cursor-pointer">
                   <Switch
                     checked={action.enabled}

@@ -34,25 +34,25 @@ export function ReleaseCenterView() {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [nativeUpdater, setNativeUpdater] =
     useState<DesktopUpdaterSnapshot | null>(null);
-  const [buildInfo, setBuildInfo] = useState<DesktopBuildInfo | null>(null);
+  const [_buildInfo, setBuildInfo] = useState<DesktopBuildInfo | null>(null);
   const [dockVisible, setDockVisible] = useState<boolean>(true);
-  const [sessionSnapshots, setSessionSnapshots] = useState<
+  const [_sessionSnapshots, setSessionSnapshots] = useState<
     Record<string, DesktopSessionSnapshot | undefined>
   >({});
-  const [webGpuStatus, setWebGpuStatus] = useState<WebGpuBrowserStatus | null>(
+  const [_webGpuStatus, setWebGpuStatus] = useState<WebGpuBrowserStatus | null>(
     null,
   );
-  const [releaseNotesWindow, setReleaseNotesWindow] =
+  const [_releaseNotesWindow, setReleaseNotesWindow] =
     useState<DesktopReleaseNotesWindowInfo | null>(null);
   const [releaseNotesUrl, setReleaseNotesUrl] = useState(
     defaultReleaseNotesUrl,
   );
   const [releaseNotesUrlDirty, setReleaseNotesUrlDirty] = useState(false);
   const [wgpuTagAvailable, setWgpuTagAvailable] = useState(false);
-  const [wgpuReady, setWgpuReady] = useState(false);
-  const [wgpuTransparent, setWgpuTransparent] = useState(false);
-  const [wgpuPassthrough, setWgpuPassthrough] = useState(false);
-  const [wgpuHidden, setWgpuHidden] = useState(false);
+  const [_wgpuReady, setWgpuReady] = useState(false);
+  const [_wgpuTransparent, _setWgpuTransparent] = useState(false);
+  const [_wgpuPassthrough, _setWgpuPassthrough] = useState(false);
+  const [_wgpuHidden, _setWgpuHidden] = useState(false);
   const wgpuRef = useRef<WgpuTagElement | null>(null);
 
   const refreshNativeState = useCallback(async () => {
@@ -233,7 +233,7 @@ export function ReleaseCenterView() {
     });
   };
 
-  const toggleDockIcon = async () => {
+  const _toggleDockIcon = async () => {
     const next = await invokeDesktopBridgeRequest<{ visible: boolean }>({
       rpcMethod: "desktopSetDockIconVisibility",
       ipcChannel: "desktop:setDockIconVisibility",
@@ -267,7 +267,7 @@ export function ReleaseCenterView() {
     }
   };
 
-  const clearSession = async (partition: string) => {
+  const _clearSession = async (partition: string) => {
     const snapshot = await invokeDesktopBridgeRequest<DesktopSessionSnapshot>({
       rpcMethod: "desktopClearSessionData",
       ipcChannel: "desktop:clearSessionData",
@@ -285,7 +285,7 @@ export function ReleaseCenterView() {
     }
   };
 
-  const clearCookiesOnly = async (partition: string) => {
+  const _clearCookiesOnly = async (partition: string) => {
     const snapshot = await invokeDesktopBridgeRequest<DesktopSessionSnapshot>({
       rpcMethod: "desktopClearSessionData",
       ipcChannel: "desktop:clearSessionData",
@@ -303,7 +303,7 @@ export function ReleaseCenterView() {
     }
   };
 
-  const runWgpuAction = (action: () => void, stateMessage: string) => {
+  const _runWgpuAction = (action: () => void, stateMessage: string) => {
     setActionError(null);
     setActionMessage(stateMessage);
     action();
@@ -504,4 +504,5 @@ export function ReleaseCenterView() {
     </div>
   );
 }
+
 import { useBranding } from "../config/branding";
