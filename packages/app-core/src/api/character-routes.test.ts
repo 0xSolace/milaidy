@@ -28,7 +28,9 @@ function createRuntimeStub(): AgentRuntime {
 
   return {
     character,
+    agentId: "mock-agent-id",
     useModel: vi.fn(async () => "generated output"),
+    updateAgent: vi.fn(async () => {}),
   } as unknown as AgentRuntime;
 }
 
