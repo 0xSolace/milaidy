@@ -69,8 +69,20 @@ describe("HeartbeatTemplate storage", () => {
 
   it("handles multiple templates", () => {
     const templates: HeartbeatTemplate[] = [
-      { id: "t1", name: "First", instructions: "A", interval: "1", unit: "hours" },
-      { id: "t2", name: "Second", instructions: "B", interval: "30", unit: "minutes" },
+      {
+        id: "t1",
+        name: "First",
+        instructions: "A",
+        interval: "1",
+        unit: "hours",
+      },
+      {
+        id: "t2",
+        name: "Second",
+        instructions: "B",
+        interval: "30",
+        unit: "minutes",
+      },
     ];
     saveUserTemplates(templates);
     const loaded = loadUserTemplates();
@@ -86,8 +98,20 @@ describe("HeartbeatTemplate storage", () => {
 
   it("delete template removes only the target", () => {
     const templates: HeartbeatTemplate[] = [
-      { id: "t1", name: "Keep", instructions: "A", interval: "1", unit: "hours" },
-      { id: "t2", name: "Delete", instructions: "B", interval: "2", unit: "hours" },
+      {
+        id: "t1",
+        name: "Keep",
+        instructions: "A",
+        interval: "1",
+        unit: "hours",
+      },
+      {
+        id: "t2",
+        name: "Delete",
+        instructions: "B",
+        interval: "2",
+        unit: "hours",
+      },
     ];
     saveUserTemplates(templates);
     const filtered = loadUserTemplates().filter((t) => t.id !== "t2");
@@ -105,21 +129,24 @@ describe("Built-in templates", () => {
     {
       id: "__builtin_crypto",
       name: "Check crypto prices",
-      instructions: "Check the current prices of BTC, ETH, and SOL. Summarize any significant moves in the last hour.",
+      instructions:
+        "Check the current prices of BTC, ETH, and SOL. Summarize any significant moves in the last hour.",
       interval: "30",
       unit: "minutes",
     },
     {
       id: "__builtin_journal",
       name: "Daily journal prompt",
-      instructions: "Write a brief, thoughtful journal prompt for the user based on current events or seasonal themes. Keep it under 2 sentences.",
+      instructions:
+        "Write a brief, thoughtful journal prompt for the user based on current events or seasonal themes. Keep it under 2 sentences.",
       interval: "24",
       unit: "hours",
     },
     {
       id: "__builtin_trending",
       name: "Trending topics digest",
-      instructions: "Scan for trending topics on crypto Twitter and tech news. Give a 3-bullet summary of what's worth paying attention to.",
+      instructions:
+        "Scan for trending topics on crypto Twitter and tech news. Give a 3-bullet summary of what's worth paying attention to.",
       interval: "4",
       unit: "hours",
     },
