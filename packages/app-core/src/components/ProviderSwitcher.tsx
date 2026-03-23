@@ -2,7 +2,11 @@
  * ProviderSwitcher — Provider grid, cloud settings, and switching logic.
  */
 
+<<<<<<< Updated upstream
 import { Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@miladyai/ui";
+=======
+import { Button, Input } from "@miladyai/ui";
+>>>>>>> Stashed changes
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { client, type OnboardingOptions, type PluginParamDef } from "../api";
 import {

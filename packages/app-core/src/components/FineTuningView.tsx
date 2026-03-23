@@ -14,7 +14,11 @@ import { formatTime } from "@miladyai/app-core/components";
 import { useIntervalWhenDocumentVisible } from "@miladyai/app-core/hooks";
 import { useApp } from "@miladyai/app-core/state";
 import { confirmDesktopAction } from "@miladyai/app-core/utils";
+<<<<<<< Updated upstream
 import { Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@miladyai/ui";
+=======
+import { Button, Input } from "@miladyai/ui";
+>>>>>>> Stashed changes
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   parsePositiveFloat,

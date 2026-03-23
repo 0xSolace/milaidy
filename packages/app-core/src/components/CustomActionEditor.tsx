@@ -4,7 +4,18 @@ import {
   client,
 } from "@miladyai/app-core/api";
 import { useApp } from "@miladyai/app-core/state";
+<<<<<<< Updated upstream
 import { Button, Checkbox, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@miladyai/ui";
+=======
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@miladyai/ui";
+>>>>>>> Stashed changes
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -726,25 +737,15 @@ export function CustomActionEditor({
     }
   };
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-2xl border border-border bg-card shadow-lg flex flex-col overflow-hidden">
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-2xl p-0 overflow-hidden">
         {/* Header */}
-        <div className="flex items-center px-5 py-3 border-b border-border shrink-0">
-          <h2 className="flex-1 text-sm font-medium text-txt">
+        <DialogHeader className="px-5 py-3 border-b border-border shrink-0">
+          <DialogTitle className="text-sm font-medium text-txt">
             {action ? "Edit Custom Action" : "New Custom Action"}
-          </h2>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-muted text-xl leading-none"
-            onClick={onClose}
-          >
-            {t("bugreportmodal.Times")}
-          </Button>
-        </div>
+          </DialogTitle>
+        </DialogHeader>
 
         {/* Body */}
         <div className="px-5 py-4 flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
@@ -905,9 +906,14 @@ export function CustomActionEditor({
                     {t("customactioneditor.HeadersOptional")}
                   </span>
                   <Button
+<<<<<<< Updated upstream
                     variant="ghost"
                     size="sm"
                     className="text-xs h-auto p-0"
+=======
+                    variant="link"
+                    className="h-auto p-0 text-xs text-txt"
+>>>>>>> Stashed changes
                     onClick={addHeader}
                   >
                     {t("customactioneditor.Add")}
@@ -934,8 +940,13 @@ export function CustomActionEditor({
                     />
                     <Button
                       variant="ghost"
+<<<<<<< Updated upstream
                       size="sm"
                       className="px-2 text-muted hover:text-txt h-auto"
+=======
+                      size="icon"
+                      className="h-8 w-8 text-muted hover:text-txt"
+>>>>>>> Stashed changes
                       onClick={() => removeHeader(i)}
                     >
                       {t("bugreportmodal.Times")}
@@ -1009,9 +1020,14 @@ export function CustomActionEditor({
                 {t("customactioneditor.Parameters")}
               </span>
               <Button
+<<<<<<< Updated upstream
                 variant="ghost"
                 size="sm"
                 className="text-xs h-auto p-0"
+=======
+                variant="link"
+                className="h-auto p-0 text-xs text-txt"
+>>>>>>> Stashed changes
                 onClick={addParameter}
               >
                 {t("customactioneditor.AddParameter")}
@@ -1052,8 +1068,13 @@ export function CustomActionEditor({
                 </span>
                 <Button
                   variant="ghost"
+<<<<<<< Updated upstream
                   size="sm"
                   className="px-2 text-muted hover:text-txt h-auto"
+=======
+                  size="icon"
+                  className="h-8 w-8 text-muted hover:text-txt"
+>>>>>>> Stashed changes
                   onClick={() => removeParameter(paramIdx)}
                 >
                   {t("bugreportmodal.Times")}
@@ -1066,7 +1087,11 @@ export function CustomActionEditor({
           <div className="flex flex-col gap-2 border-t border-border pt-3">
             <Button
               variant="ghost"
+<<<<<<< Updated upstream
               className="flex items-center justify-between text-xs text-muted hover:text-txt h-auto p-0 w-full"
+=======
+              className="flex items-center justify-between h-auto p-0 text-xs text-muted hover:text-txt w-full"
+>>>>>>> Stashed changes
               onClick={() => setTestExpanded((expanded) => !expanded)}
             >
               <span>{t("customactioneditor.TestAction")}</span>
@@ -1125,7 +1150,7 @@ export function CustomActionEditor({
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 px-5 py-3 border-t border-border">
+        <DialogFooter className="flex justify-end gap-2 px-5 py-3 border-t border-border">
           {testExpanded && (
             <Button
               variant="outline"
@@ -1147,8 +1172,8 @@ export function CustomActionEditor({
           >
             {saving ? "Saving..." : "Save"}
           </Button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -206,6 +206,8 @@
     "./services/update-checker": "./src/services/update-checker.ts",
     "./services/version-compat": "./src/services/version-compat.ts",
     "./services/whatsapp-pairing": "./src/services/whatsapp-pairing.ts",
+    "./test-support/route-test-helpers": "./src/test-support/route-test-helpers.ts",
+    "./test-support/test-helpers": "./src/test-support/test-helpers.ts",
     "./testing": "./src/testing/index.ts",
     "./utils/number-parsing": "./src/utils/number-parsing.ts",
     "./utils/spoken-text": "./src/utils/spoken-text.ts",

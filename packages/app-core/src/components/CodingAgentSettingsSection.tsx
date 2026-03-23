@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 import {
   Button,
   Select,
@@ -6,6 +7,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@miladyai/ui";
+=======
+import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@miladyai/ui";
+>>>>>>> Stashed changes
 import { useCallback, useEffect, useState } from "react";
 import type { AgentPreflightResult } from "../api";
 import { client } from "../api";
@@ -345,7 +349,11 @@ export function CodingAgentSettingsSection() {
             setPref("PARALLAX_AGENT_SELECTION_STRATEGY", value)
           }
         >
+<<<<<<< Updated upstream
           <SelectTrigger className="px-2.5 py-1.5 border border-border bg-card text-xs focus:border-accent focus:outline-none shadow-sm rounded-lg">
+=======
+          <SelectTrigger className="w-full">
+>>>>>>> Stashed changes
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -373,7 +381,11 @@ export function CodingAgentSettingsSection() {
               setPref("PARALLAX_DEFAULT_AGENT_TYPE", value)
             }
           >
+<<<<<<< Updated upstream
             <SelectTrigger className="px-2.5 py-1.5 border border-border bg-card text-xs focus:border-accent focus:outline-none shadow-sm rounded-lg">
+=======
+            <SelectTrigger className="w-full">
+>>>>>>> Stashed changes
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -400,7 +412,11 @@ export function CodingAgentSettingsSection() {
             setPref("PARALLAX_DEFAULT_APPROVAL_PRESET", value)
           }
         >
+<<<<<<< Updated upstream
           <SelectTrigger className="px-2.5 py-1.5 border border-border bg-card text-xs focus:border-accent focus:outline-none shadow-sm rounded-lg">
+=======
+          <SelectTrigger className="w-full">
+>>>>>>> Stashed changes
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -485,7 +501,11 @@ export function CodingAgentSettingsSection() {
               setPref("PARALLAX_AIDER_PROVIDER", value)
             }
           >
+<<<<<<< Updated upstream
             <SelectTrigger className="px-2.5 py-1.5 border border-border bg-card text-xs focus:border-accent focus:outline-none shadow-sm rounded-lg">
+=======
+            <SelectTrigger className="w-full">
+>>>>>>> Stashed changes
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -509,6 +529,7 @@ export function CodingAgentSettingsSection() {
             {t("codingagentsettingssection.PowerfulModel")}
           </span>
           <Select
+<<<<<<< Updated upstream
             value={powerfulValue || "__default__"}
             onValueChange={(value) =>
               setPref(`${prefix}_MODEL_POWERFUL`, value === "__default__" ? "" : value)
@@ -519,6 +540,18 @@ export function CodingAgentSettingsSection() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="__default__">{t("codingagentsettingssection.Default")}</SelectItem>
+=======
+            value={powerfulValue}
+            onValueChange={(value) =>
+              setPref(`${prefix}_MODEL_POWERFUL`, value)
+            }
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder={t("codingagentsettingssection.Default")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">{t("codingagentsettingssection.Default")}</SelectItem>
+>>>>>>> Stashed changes
               {modelOptions.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
@@ -532,6 +565,7 @@ export function CodingAgentSettingsSection() {
             {t("codingagentsettingssection.FastModel")}
           </span>
           <Select
+<<<<<<< Updated upstream
             value={fastValue || "__default__"}
             onValueChange={(value) =>
               setPref(`${prefix}_MODEL_FAST`, value === "__default__" ? "" : value)
@@ -542,6 +576,18 @@ export function CodingAgentSettingsSection() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="__default__">{t("codingagentsettingssection.Default")}</SelectItem>
+=======
+            value={fastValue}
+            onValueChange={(value) =>
+              setPref(`${prefix}_MODEL_FAST`, value)
+            }
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder={t("codingagentsettingssection.Default")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">{t("codingagentsettingssection.Default")}</SelectItem>
+>>>>>>> Stashed changes
               {modelOptions.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}

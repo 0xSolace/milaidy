@@ -7,7 +7,11 @@
  * - Explicit load order metadata
  */
 
+<<<<<<< Updated upstream
 import { Button, Input, Label } from "@miladyai/ui";
+=======
+import { Button } from "@miladyai/ui";
+>>>>>>> Stashed changes
 import { useCallback, useEffect, useState } from "react";
 import {
   client,
@@ -134,14 +138,14 @@ function TreeNode(props: {
         style={{ paddingLeft: `${depth * 14}px` }}
       >
         {canExpand ? (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            className="w-4 h-auto p-0 text-left text-muted hover:text-txt"
             onClick={() => onToggle(path)}
-            className="w-4 text-left text-muted hover:text-txt"
             title={open ? "Collapse" : "Expand"}
           >
             {open ? "▾" : "▸"}
-          </button>
+          </Button>
         ) : (
           <span className="inline-block w-4 text-muted">·</span>
         )}
@@ -326,6 +330,7 @@ export function RuntimeView() {
             }
             className="w-20 px-1.5 py-0.5 h-auto rounded-lg"
           />
+<<<<<<< Updated upstream
         </Label>
         <Button
           variant="outline"
@@ -334,10 +339,25 @@ export function RuntimeView() {
           disabled={loading}
         >
           {loading ? t("runtimeview.Refreshing") : t("common.refresh")}
+=======
+        </label>
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-xs rounded-lg"
+          onClick={() => void loadSnapshot()}
+          disabled={loading}
+        >
+          {loading ? "Refreshing..." : "Refresh"}
+>>>>>>> Stashed changes
         </Button>
         <Button
           variant="outline"
           size="sm"
+<<<<<<< Updated upstream
+=======
+          className="text-xs rounded-lg"
+>>>>>>> Stashed changes
           onClick={() => setExpandedPaths(new Set([rootPath]))}
         >
           {t("runtimeview.Collapse")}
@@ -345,6 +365,10 @@ export function RuntimeView() {
         <Button
           variant="outline"
           size="sm"
+<<<<<<< Updated upstream
+=======
+          className="text-xs rounded-lg"
+>>>>>>> Stashed changes
           onClick={() =>
             setExpandedPaths(buildInitialExpanded(rootPath, sectionData))
           }

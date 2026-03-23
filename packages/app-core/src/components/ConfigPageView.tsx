@@ -23,6 +23,7 @@ import {
   buildWalletRpcUpdateRequest,
   resolveInitialWalletRpcSelections,
 } from "../wallet-rpc";
+import { Button, Dialog, DialogContent, DialogHeader, DialogTitle } from "@miladyai/ui";
 import { SecretsView } from "./SecretsView";
 import { Button, Switch } from "@miladyai/ui";
 
@@ -89,8 +90,12 @@ function CloudRpcStatus({
             </span>
             <Button
               variant="link"
+<<<<<<< Updated upstream
               size="sm"
               className="ml-1.5 text-[10px] h-auto p-0 decoration-accent underline-offset-2"
+=======
+              className="ml-1.5 h-auto p-0 text-[10px] text-txt decoration-accent"
+>>>>>>> Stashed changes
               onClick={() => {
                 setState("cloudDashboardView", "billing");
                 setTab("settings");
@@ -117,7 +122,11 @@ function CloudRpcStatus({
       <Button
         variant="default"
         size="sm"
+<<<<<<< Updated upstream
         className="font-bold"
+=======
+        className="text-xs font-bold"
+>>>>>>> Stashed changes
         onClick={() => void onLogin()}
         disabled={loginBusy}
       >
@@ -368,7 +377,10 @@ function CloudServicesSection() {
         }
         setLoaded(true);
       })
-      .catch(() => setLoaded(true));
+      .catch((err) => {
+        console.warn("[config] Failed to load cloud services config:", err);
+        setLoaded(true);
+      });
     return () => {
       cancelled = true;
     };
@@ -815,7 +827,12 @@ export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
               </div>
               <Button
                 variant="default"
+<<<<<<< Updated upstream
                 className="font-bold px-5"
+=======
+                size="sm"
+                className="text-xs py-2 px-5 font-bold"
+>>>>>>> Stashed changes
                 onClick={() => void handleCloudLogin()}
                 disabled={elizaCloudLoginBusy}
               >
@@ -830,6 +847,10 @@ export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
             <Button
               variant="default"
               size="sm"
+<<<<<<< Updated upstream
+=======
+              className="text-[11px]"
+>>>>>>> Stashed changes
               onClick={handleWalletSaveAll}
               disabled={walletApiKeySaving}
             >
@@ -848,7 +869,12 @@ export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
             <div className="font-bold text-sm">Custom RPC Providers</div>
             <Button
               variant="outline"
+<<<<<<< Updated upstream
               className="min-h-[2.625rem] gap-1.5 text-[12px] text-muted hover:text-txt"
+=======
+              size="sm"
+              className="flex items-center gap-1.5 text-[12px] text-muted hover:text-txt rounded-lg"
+>>>>>>> Stashed changes
               onClick={() => setSecretsOpen(true)}
             >
               <svg
@@ -938,6 +964,10 @@ export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
             <Button
               variant="default"
               size="sm"
+<<<<<<< Updated upstream
+=======
+              className="text-[11px]"
+>>>>>>> Stashed changes
               onClick={handleWalletSaveAll}
               disabled={walletApiKeySaving}
             >
@@ -948,6 +978,7 @@ export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
       )}
 
       {/* ── Secrets modal ── */}
+<<<<<<< Updated upstream
       {secretsOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80"
@@ -997,9 +1028,37 @@ export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
             <div className="flex-1 min-h-0 overflow-y-auto">
               <SecretsView />
             </div>
+=======
+      <Dialog open={secretsOpen} onOpenChange={setSecretsOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] p-5 flex flex-col rounded-xl">
+          <DialogHeader className="mb-4 flex-shrink-0">
+            <DialogTitle className="flex items-center gap-2">
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-accent"
+              >
+                <title>{t("configpageview.SecretsVault")}</title>
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+              <span className="font-bold text-sm">
+                {t("configpageview.SecretsVault1")}
+              </span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <SecretsView />
+>>>>>>> Stashed changes
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

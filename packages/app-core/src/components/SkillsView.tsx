@@ -6,7 +6,18 @@
  * throughout the app (--bg, --card, --border, --accent, --muted, --txt, etc.).
  */
 
+<<<<<<< Updated upstream
 import { Button, ConfirmDelete, Dialog, DialogPortal, EmptyState, Input, StatusBadge, Switch } from "@miladyai/ui";
+=======
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  Input,
+} from "@miladyai/ui";
+>>>>>>> Stashed changes
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   SkillInfo,
@@ -340,36 +351,14 @@ function InstallModal({
   const [tab, setTab] = useState<InstallTab>("search");
 
   return (
-    <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Escape" || e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onClose();
-        }
-      }}
-      role="dialog"
-      aria-modal="true"
-    >
-      <div
-        className="w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden mx-4"
-        style={{
-          background: "var(--card)",
-          border: "1px solid var(--border)",
-          borderRadius: 16,
-          backdropFilter: "blur(20px) saturate(115%)",
-          boxShadow: "var(--shadow-lg)",
-          color: "var(--text)",
-        }}
-      >
+    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-2xl max-h-[80vh] p-0 flex flex-col overflow-hidden rounded-2xl">
         {/* Header */}
-        <div
-          className="flex items-center justify-between px-5 py-4"
+        <DialogHeader
+          className="px-5 py-4"
           style={{ borderBottom: "1px solid var(--border)" }}
         >
+<<<<<<< Updated upstream
           <div>
             <div
               style={{
@@ -401,6 +390,28 @@ function InstallModal({
             ×
           </Button>
         </div>
+=======
+          <DialogTitle
+            style={{
+              fontSize: 13,
+              fontWeight: 800,
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
+            }}
+          >
+            Install Skill
+          </DialogTitle>
+          <div
+            style={{
+              fontSize: 11,
+              color: "var(--muted)",
+              marginTop: 2,
+            }}
+          >
+            Add skills from the marketplace or a GitHub repository.
+          </div>
+        </DialogHeader>
+>>>>>>> Stashed changes
 
         {/* Tabs */}
         <div
@@ -571,8 +582,8 @@ function InstallModal({
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -727,42 +738,17 @@ function EditSkillModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Escape" || e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onClose();
-        }
-      }}
-      role="dialog"
-      aria-modal="true"
-    >
-      <div
-        className="w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden mx-4 rounded-xl"
-        style={{
-          background: "color-mix(in srgb, var(--bg) 96%, transparent)",
-          border:
-            "1px solid color-mix(in srgb, var(--accent) 18%, transparent)",
-          backdropFilter: "blur(24px)",
-          boxShadow: "var(--shadow-lg)",
-        }}
-      >
+    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-4xl h-[85vh] p-0 flex flex-col overflow-hidden rounded-xl">
         {/* Header */}
-        <div
-          className="flex items-center justify-between px-5 py-3 shrink-0"
+        <DialogHeader
+          className="flex items-center justify-between px-5 py-3 shrink-0 flex-row"
           style={{ borderBottom: "1px solid var(--border)" }}
         >
           <div className="flex items-center gap-3 min-w-0">
-            <div
-              className="font-semibold text-sm truncate"
-              style={{ color: "var(--text)" }}
-            >
+            <DialogTitle className="font-semibold text-sm truncate">
               {skillName}
-            </div>
+            </DialogTitle>
             <span
               className="text-[10px] font-mono px-1.5 py-0.5"
               style={{
@@ -791,13 +777,17 @@ function EditSkillModal({
             <Button
               variant="ghost"
               size="icon"
+<<<<<<< Updated upstream
               className="text-lg px-2 text-muted hover:text-txt"
+=======
+              className="h-6 w-6 text-lg text-muted hover:text-txt"
+>>>>>>> Stashed changes
               onClick={onClose}
             >
               ×
             </Button>
           </div>
-        </div>
+        </DialogHeader>
 
         {/* Editor body */}
         <div className="flex-1 overflow-hidden">
@@ -816,6 +806,10 @@ function EditSkillModal({
               <Button
                 variant="outline"
                 size="sm"
+<<<<<<< Updated upstream
+=======
+                className="text-xs"
+>>>>>>> Stashed changes
                 onClick={() => loadSource()}
               >
                 {t("common.retry")}
@@ -853,6 +847,10 @@ function EditSkillModal({
             <Button
               variant="outline"
               size="sm"
+<<<<<<< Updated upstream
+=======
+              className="text-xs"
+>>>>>>> Stashed changes
               onClick={onClose}
             >
               {hasChanges ? "Discard" : "Close"}
@@ -860,6 +858,14 @@ function EditSkillModal({
             <Button
               variant="default"
               size="sm"
+<<<<<<< Updated upstream
+=======
+              className="text-xs font-medium"
+              style={{
+                background: saveSuccess ? "#22c55e" : "#f0b232",
+                color: saveSuccess ? "#fff" : "#000",
+              }}
+>>>>>>> Stashed changes
               onClick={() => handleSave()}
               disabled={saving || !hasChanges}
             >
@@ -867,8 +873,8 @@ function EditSkillModal({
             </Button>
           </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -1316,7 +1322,7 @@ function SkillsFullView() {
             defaultValue: "Refresh Skills List",
           })}
         >
-          {t("skillsview.Refresh", { defaultValue: "Refresh" })}
+          {t("common.refresh")}
         </Button>
       </div>
 

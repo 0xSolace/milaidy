@@ -1,25 +1,19 @@
 import { Electroview } from "electrobun/view";
+import { ensureElectrobunGlobal } from "./electrobun-stub";
 
 type IpcListener = (...args: unknown[]) => void;
 
 const listenersByRpcMessage: Record<string, Set<IpcListener>> = {};
 const listenersByChannel: Record<string, Set<IpcListener>> = {};
 
-// Electrobun's native layer sets __electrobun before preloads run.
-// Stub it if the built-in preload hasn't fired yet.
-if (typeof window.__electrobun === "undefined") {
-  (
-    window as {
-      __electrobun: {
-        receiveMessageFromBun: (m: unknown) => void;
-        receiveInternalMessageFromBun: (m: unknown) => void;
-      };
-    }
-  ).__electrobun = {
-    receiveMessageFromBun: (_m: unknown) => {},
-    receiveInternalMessageFromBun: (_m: unknown) => {},
-  };
-}
+// ============================================================================
+// Electrobun RPC Setup
+// ============================================================================
+
+// Electrobun's native layer sets these globals before preloads run.
+// __electrobun must exist before Electroview.init() tries to write to it.
+// If the built-in preload hasn't fired yet (rare edge case), stub it.
+ensureElectrobunGlobal();
 
 function dispatchMessage(messageName: string, payload: unknown): void {
   if (messageName === "apiBaseUpdate") {

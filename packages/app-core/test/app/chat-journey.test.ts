@@ -853,6 +853,75 @@ describe("chat journey", () => {
       });
     });
 
+    it("falls back to requestGreeting when createConversation returns no inline greeting", async () => {
+      // Simulate server not returning inline greeting (e.g. old server version)
+      mockClient.createConversation.mockResolvedValue({
+        conversation: {
+          id: "conv-no-greeting",
+          title: "New Chat",
+          roomId: "room-no-greeting",
+          createdAt: "2026-02-01T00:00:00.000Z",
+          updatedAt: "2026-02-01T00:00:00.000Z",
+        },
+        // No greeting field at all
+      });
+
+      mockClient.requestGreeting.mockResolvedValue({
+        text: "hey there!",
+        agentName: "Milady",
+        generated: true,
+        persisted: true,
+      });
+
+      let api: ProbeApi | null = null;
+      let tree: TestRenderer.ReactTestRenderer;
+
+      await act(async () => {
+        tree = TestRenderer.create(
+          React.createElement(
+            AppProvider,
+            null,
+            React.createElement(Probe, {
+              onReady: (nextApi) => {
+                api = nextApi;
+              },
+            }),
+          ),
+        );
+      });
+
+      expect(api).not.toBeNull();
+
+      await act(async () => {
+        await api!.handleNewConversation();
+      });
+
+      // The fallback should have called requestGreeting since inline was missing
+      expect(mockClient.requestGreeting).toHaveBeenCalledWith(
+        "conv-no-greeting",
+        "en",
+      );
+
+      // Wait for the async fallback to populate messages
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      const snapshot = api!.snapshot();
+      expect(snapshot.activeConversationId).toBe("conv-no-greeting");
+      expect(snapshot.conversationMessages).toEqual([
+        expect.objectContaining({
+          role: "assistant",
+          text: "hey there!",
+          source: "agent_greeting",
+        }),
+      ]);
+
+      await act(async () => {
+        tree!.unmount();
+      });
+    });
+
     it("switches conversations and loads messages for selected conversation", async () => {
       // First call returns conv-1 messages with a user message (prevents deletion)
       mockClient.getConversationMessages

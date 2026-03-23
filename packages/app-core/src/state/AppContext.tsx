@@ -612,6 +612,7 @@ function AppProviderInner({
   const [pairingError, setPairingError] = useState<string | null>(null);
   const [pairingBusy, setPairingBusy] = useState(false);
 
+<<<<<<< Updated upstream
   // ── Chat state (consolidated from 18+ useState + 10 useEffect hooks) ──
   const chatState = useChatState();
   const {
@@ -683,6 +684,15 @@ function AppProviderInner({
       }
     },
     [chatState],
+=======
+  // --- Chat ---
+  const [chatInput, setChatInput] = useState("");
+  const [chatSending, setChatSending] = useState(false);
+  const [chatFirstTokenReceived, setChatFirstTokenReceived] = useState(false);
+  const [chatAwaitingGreeting, setChatAwaitingGreeting] = useState(false);
+  const [chatLastUsage, setChatLastUsage] = useState<ChatTurnUsage | null>(
+    null,
+>>>>>>> Stashed changes
   );
 
   // --- Triggers ---
@@ -2087,6 +2097,7 @@ function AppProviderInner({
       setElizaCloudAuthRejected(false);
       setElizaCloudCreditsError(null);
     }
+<<<<<<< Updated upstream
     lastElizaCloudPollConnectedRef.current = isConnected;
     // Ensure the recurring poll interval is running whenever cloud is connected.
     // This covers the case where cloud login happens after the initial mount poll
@@ -2101,6 +2112,19 @@ function AppProviderInner({
         }
         void pollCloudCredits();
       }, 60_000);
+=======
+    // Self-manage the recurring poll interval: start when connected, stop when not.
+    // This covers login during onboarding (interval wasn't started at mount) and
+    // disconnect (interval should stop to avoid useless API calls).
+    if (isConnected && !elizaCloudPollInterval.current) {
+      elizaCloudPollInterval.current = window.setInterval(
+        () => pollCloudCredits(),
+        60_000,
+      );
+    } else if (!isConnected && elizaCloudPollInterval.current) {
+      clearInterval(elizaCloudPollInterval.current);
+      elizaCloudPollInterval.current = null;
+>>>>>>> Stashed changes
     }
     return isConnected;
   }, []);
@@ -2123,6 +2147,7 @@ function AppProviderInner({
         return false;
       }
       greetingInFlightConversationRef.current = convId;
+      setChatAwaitingGreeting(true);
       try {
         const data = await client.requestGreeting(convId, uiLanguage);
         if (data.text) {
@@ -2161,6 +2186,7 @@ function AppProviderInner({
         greetingFiredRef.current = false;
         /* greeting failed silently — user can still chat */
       } finally {
+        setChatAwaitingGreeting(false);
         if (greetingInFlightConversationRef.current === convId) {
           greetingInFlightConversationRef.current = null;
         }
@@ -2966,6 +2992,10 @@ function AppProviderInner({
     [
       companionMessageCutoffTs,
       fetchGreeting,
+<<<<<<< Updated upstream
+=======
+      requestGreetingWhenRunning,
+>>>>>>> Stashed changes
       resetConversationDraftState,
       scheduleGreetingWaveForCompanion,
       uiLanguage,
@@ -5077,9 +5107,13 @@ function AppProviderInner({
         systemPrompt,
         style: style?.style,
         adjectives: style?.adjectives,
+<<<<<<< Updated upstream
         topics: (style as Record<string, unknown> | undefined)?.topics as
           | string[]
           | undefined,
+=======
+        topics: style?.topics,
+>>>>>>> Stashed changes
         postExamples: style?.postExamples,
         messageExamples: style?.messageExamples,
         connection,

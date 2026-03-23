@@ -1428,7 +1428,11 @@ export function CloudDashboard() {
                 ) : (
                   <Button
                     variant="ghost"
+<<<<<<< Updated upstream
                     className="flex items-center gap-2 w-full py-3 text-xs text-muted hover:text-txt h-auto justify-start"
+=======
+                    className="flex items-center gap-2 w-full py-3 h-auto text-xs text-muted hover:text-txt"
+>>>>>>> Stashed changes
                     onClick={() => setShowDeployForm(true)}
                   >
                     <Plus className="w-4 h-4" />
@@ -1553,7 +1557,11 @@ function AgentDetailSidebar({
         <Button
           variant="ghost"
           size="icon"
+<<<<<<< Updated upstream
           className="absolute top-4 right-4 p-1 rounded-full text-muted hover:text-txt-strong"
+=======
+          className="absolute top-4 right-4 h-7 w-7 rounded-full text-muted hover:text-txt-strong"
+>>>>>>> Stashed changes
           onClick={onClose}
         >
           <X className="w-5 h-5" />

@@ -212,4 +212,16 @@ describe("Discord Connector - Integration", () => {
     expect(CONNECTOR_PLUGINS.discord).toBe("@elizaos/plugin-discord");
   });
 
+<<<<<<< Updated upstream
 });
+=======
+  it("Discord is included in connector list", async () => {
+    const { CONNECTOR_PLUGINS } = await import(
+      "@miladyai/app-core/src/config/plugin-auto-enable"
+    );
+    const connectors = Object.keys(CONNECTOR_PLUGINS);
+    expect(connectors).toContain("discord");
+  });
+});
+
+>>>>>>> Stashed changes

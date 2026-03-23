@@ -1,4 +1,16 @@
+<<<<<<< Updated upstream
 import { Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@miladyai/ui";
+=======
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Input,
+} from "@miladyai/ui";
+>>>>>>> Stashed changes
 import { ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { client } from "../api";
@@ -170,21 +182,6 @@ export function BugReportModal() {
     await openExternalUrl(branding.bugReportUrl);
   }, [copyToClipboard, formatMarkdown, branding.bugReportUrl]);
 
-  // Close on Escape
-  useEffect(() => {
-    if (!isOpen || typeof window === "undefined") return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        close();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isOpen, close]);
-
-  if (!isOpen) return null;
-
   const labelClass = "block text-[11px] font-bold mb-1";
   const labelStyle = { color: "var(--muted)" };
   const inputClass =
@@ -204,46 +201,15 @@ export function BugReportModal() {
   const canSubmit =
     form.description.trim() && form.stepsToReproduce.trim() && !submitting;
 
-  const backdropProps = {
-    className: "fixed inset-0 z-50 flex items-center justify-center",
-    style: {
-      background: "color-mix(in srgb, var(--bg) 50%, transparent)",
-      backdropFilter: "blur(4px)",
-    } as React.CSSProperties,
-    onClick: (e: React.MouseEvent) => {
-      if (e.target === e.currentTarget) close();
-    },
-    onKeyDown: (e: React.KeyboardEvent) => {
-      if (e.key === "Escape") close();
-    },
-    role: "dialog" as const,
-    "aria-modal": true as const,
-    tabIndex: -1,
-  };
-
   // Success state
   if (resultUrl) {
     return (
-      <div {...backdropProps}>
-        <div
-          className="w-full max-w-md shadow-lg flex flex-col rounded-xl"
-          style={{
-            background: "color-mix(in srgb, var(--bg) 96%, transparent)",
-            border:
-              "1px solid color-mix(in srgb, var(--accent) 18%, transparent)",
-            backdropFilter: "blur(24px)",
-            boxShadow: "var(--shadow-lg)",
-          }}
-        >
-          <div
-            className="flex items-center px-5 py-3"
-            style={{ borderBottom: "1px solid var(--border)" }}
-          >
-            <span
-              className="font-bold text-sm flex-1"
-              style={{ color: "var(--text)" }}
-            >
+      <Dialog open={isOpen} onOpenChange={(v) => { if (!v) close(); }}>
+        <DialogContent className="max-w-md rounded-xl p-0">
+          <DialogHeader className="px-5 py-3" style={{ borderBottom: "1px solid var(--border)" }}>
+            <DialogTitle className="font-bold text-sm">
               {t("bugreportmodal.BugReportSubmitted")}
+<<<<<<< Updated upstream
             </span>
             <Button
               variant="ghost"
@@ -255,6 +221,10 @@ export function BugReportModal() {
               {t("bugreportmodal.Times")}
             </Button>
           </div>
+=======
+            </DialogTitle>
+          </DialogHeader>
+>>>>>>> Stashed changes
           <div className="px-5 py-6 text-center">
             <p className="text-sm mb-3" style={{ color: "var(--text)" }}>
               {t("bugreportmodal.YourBugReportHas")}
@@ -269,45 +239,41 @@ export function BugReportModal() {
               {resultUrl}
             </a>
           </div>
-          <div
+          <DialogFooter
             className="flex justify-end px-5 py-3"
             style={{ borderTop: "1px solid var(--border)" }}
           >
             <Button
               variant="outline"
               size="sm"
+<<<<<<< Updated upstream
+=======
+              className="text-xs"
+>>>>>>> Stashed changes
               onClick={close}
             >
               {t("bugreportmodal.Close")}
             </Button>
+<<<<<<< Updated upstream
           </div>
         </div>
       </div>
+=======
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+>>>>>>> Stashed changes
     );
   }
 
   return (
-    <div {...backdropProps}>
-      <div
-        className="w-full max-w-lg shadow-lg flex flex-col max-h-[85vh] rounded-xl"
-        style={{
-          background: "color-mix(in srgb, var(--bg) 96%, transparent)",
-          border:
-            "1px solid color-mix(in srgb, var(--accent) 18%, transparent)",
-          backdropFilter: "blur(24px)",
-          boxShadow: "var(--shadow-lg)",
-        }}
-      >
+    <Dialog open={isOpen} onOpenChange={(v) => { if (!v) close(); }}>
+      <DialogContent className="max-w-lg rounded-xl p-0 max-h-[85vh] flex flex-col">
         {/* Header */}
-        <div
-          className="flex items-center px-5 py-3 shrink-0"
-          style={{ borderBottom: "1px solid var(--border)" }}
-        >
-          <span
-            className="font-bold text-sm flex-1"
-            style={{ color: "var(--text)" }}
-          >
+        <DialogHeader className="px-5 py-3 shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
+          <DialogTitle className="font-bold text-sm">
             {t("bugreportmodal.ReportABug")}
+<<<<<<< Updated upstream
           </span>
           <Button
             variant="ghost"
@@ -319,6 +285,10 @@ export function BugReportModal() {
             {t("bugreportmodal.Times")}
           </Button>
         </div>
+=======
+          </DialogTitle>
+        </DialogHeader>
+>>>>>>> Stashed changes
 
         {/* Body */}
         <div className="px-5 py-4 flex flex-col gap-3 overflow-y-auto">
@@ -434,7 +404,10 @@ export function BugReportModal() {
             <Button
               variant="ghost"
               className="h-auto p-0 text-[11px] font-bold flex items-center gap-1"
+<<<<<<< Updated upstream
               style={{ color: "var(--muted)" }}
+=======
+>>>>>>> Stashed changes
               onClick={() => setShowLogs(!showLogs)}
             >
               <ChevronRight
@@ -458,37 +431,60 @@ export function BugReportModal() {
         </div>
 
         {/* Footer */}
-        <div
+        <DialogFooter
           className="flex items-center justify-between gap-2 px-5 py-3 shrink-0"
           style={{ borderTop: "1px solid var(--border)" }}
         >
           <Button
             variant="outline"
             size="sm"
+<<<<<<< Updated upstream
+=======
+            className="text-xs"
+>>>>>>> Stashed changes
             onClick={close}
           >
             {t("common.cancel")}
           </Button>
           <div className="flex items-center gap-2">
             <Button
+<<<<<<< Updated upstream
               variant="outline"
               size="sm"
               onClick={handleCopyAndOpen}
               disabled={!canSubmit}
             >
               {copied ? t("bugreportmodal.copied") : t("bugreportmodal.copyAndOpenGitHub")}
+=======
+              variant="secondary"
+              size="sm"
+              className="text-xs"
+              onClick={handleCopyAndOpen}
+              disabled={!canSubmit}
+            >
+              {copied ? "Copied!" : "Copy & Open GitHub"}
+>>>>>>> Stashed changes
             </Button>
             <Button
               variant="default"
               size="sm"
+<<<<<<< Updated upstream
               onClick={handleSubmit}
               disabled={!canSubmit}
             >
               {submitting ? t("bugreportmodal.submitting") : t("bugreportmodal.submit")}
+=======
+              className="text-xs font-medium"
+              style={{ background: "#f0b232", color: "#000" }}
+              onClick={handleSubmit}
+              disabled={!canSubmit}
+            >
+              {submitting ? "Submitting..." : "Submit"}
+>>>>>>> Stashed changes
             </Button>
           </div>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

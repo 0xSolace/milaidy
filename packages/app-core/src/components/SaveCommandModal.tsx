@@ -3,15 +3,23 @@
  */
 
 import {
+<<<<<<< Updated upstream
   Button,
   Dialog,
   DialogContent,
   DialogDescription,
+=======
+  Dialog,
+  DialogContent,
+>>>>>>> Stashed changes
   DialogFooter,
   DialogHeader,
   DialogTitle,
   Input,
+<<<<<<< Updated upstream
   Label,
+=======
+>>>>>>> Stashed changes
 } from "@miladyai/ui";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useApp } from "../state";
@@ -75,6 +83,7 @@ export function SaveCommandModal({
   const preview = text.length > 120 ? `${text.slice(0, 120)}...` : text;
 
   return (
+<<<<<<< Updated upstream
     <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
       <DialogContent className="w-full max-w-md p-0 overflow-hidden rounded-xl">
         <DialogHeader className="px-5 py-3 shrink-0 border-b border-border">
@@ -84,6 +93,17 @@ export function SaveCommandModal({
           <DialogDescription className="sr-only">
             {t("savecommandmodal.CommandName")}
           </DialogDescription>
+=======
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-md rounded-xl p-0 overflow-hidden">
+        <DialogHeader
+          className="px-5 py-3 shrink-0"
+          style={{ borderBottom: "1px solid var(--border)" }}
+        >
+          <DialogTitle className="font-bold text-sm">
+            {t("savecommandmodal.SaveAsCommand")}
+          </DialogTitle>
+>>>>>>> Stashed changes
         </DialogHeader>
 
         <div className="px-5 py-4 flex flex-col gap-3">
@@ -145,10 +165,25 @@ export function SaveCommandModal({
           </pre>
         </div>
 
+<<<<<<< Updated upstream
         <DialogFooter className="px-5 py-3 border-t border-border">
           <Button
             variant="outline"
             size="sm"
+=======
+        <DialogFooter
+          className="flex justify-end gap-2 px-5 py-3"
+          style={{ borderTop: "1px solid var(--border)" }}
+        >
+          <button
+            type="button"
+            className="px-3 py-1.5 h-8 text-xs font-medium rounded cursor-pointer transition-colors"
+            style={{
+              background: "transparent",
+              border: "1px solid var(--border)",
+              color: "var(--muted)",
+            }}
+>>>>>>> Stashed changes
             onClick={onClose}
           >
             {t("common.cancel")}
@@ -159,7 +194,11 @@ export function SaveCommandModal({
             onClick={handleSubmit}
           >
             {t("apikeyconfig.save")}
+<<<<<<< Updated upstream
           </Button>
+=======
+          </button>
+>>>>>>> Stashed changes
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -4643,7 +4643,13 @@ export class MiladyClient {
       method: "POST",
       body: JSON.stringify({
         title,
+<<<<<<< Updated upstream
         ...(options?.includeGreeting === true ? { includeGreeting: true } : {}),
+=======
+        ...(options?.includeGreeting === true
+          ? { includeGreeting: true }
+          : {}),
+>>>>>>> Stashed changes
         ...(typeof options?.lang === "string" && options.lang.trim()
           ? { lang: options.lang.trim() }
           : {}),

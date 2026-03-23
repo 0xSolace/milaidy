@@ -7,7 +7,11 @@
  * Toggle to a 2D scatter-plot graph view of embeddings.
  */
 
+<<<<<<< Updated upstream
 import { Button, EmptyState, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@miladyai/ui";
+=======
+import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input } from "@miladyai/ui";
+>>>>>>> Stashed changes
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { client, type QueryResult, type TableInfo } from "../api";
@@ -1050,35 +1054,14 @@ function MemoryDetailModal({
 }) {
   const { t } = useApp();
   return (
-    <div
-      className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-8"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Escape" || e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onClose();
-        }
-      }}
-      role="dialog"
-      aria-modal="true"
-    >
-      <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-2xl backdrop-blur-xl max-w-[700px] w-full max-h-[90vh] overflow-auto">
+    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-[700px] rounded-2xl p-0 max-h-[90vh] overflow-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-3 border-b border-[var(--border)]">
-          <div className="text-xs font-medium text-[var(--txt)]">
+        <DialogHeader className="p-3 border-b border-[var(--border)]">
+          <DialogTitle className="text-xs font-medium">
             {t("vectorbrowserview.MemoryDetail")}
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-[var(--muted)] hover:text-[var(--txt)] hover:bg-transparent h-6 w-6 text-lg"
-            onClick={onClose}
-          >
-            ×
-          </Button>
-        </div>
+          </DialogTitle>
+        </DialogHeader>
 
         {/* Content */}
         <div className="p-4">
@@ -1151,8 +1134,8 @@ function MemoryDetailModal({
             </div>
           </details>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

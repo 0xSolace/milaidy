@@ -85,8 +85,12 @@ function CodeBlock({ content, label }: { content: string; label: string }) {
           {lines > 20 && (
             <Button
               variant="link"
+<<<<<<< Updated upstream
               size="sm"
               className="text-[10px] h-auto p-0"
+=======
+              className="h-auto p-0 text-[10px] text-txt"
+>>>>>>> Stashed changes
               onClick={() => setExpanded(!expanded)}
             >
               {expanded
@@ -98,8 +102,12 @@ function CodeBlock({ content, label }: { content: string; label: string }) {
           )}
           <Button
             variant="ghost"
+<<<<<<< Updated upstream
             size="sm"
             className="text-[10px] text-muted hover:text-txt h-auto p-0"
+=======
+            className="h-auto p-0 text-[10px] text-muted hover:text-txt"
+>>>>>>> Stashed changes
             onClick={() => {
               void copyToClipboard(content);
             }}
@@ -179,9 +187,9 @@ function LlmCallCard({
       {/* System prompt toggle */}
       {call.systemPrompt && (
         <div className="border-b border-border">
-          <button
-            type="button"
-            className="w-full text-left px-3 py-1.5 text-[10px] text-muted hover:bg-muted/5"
+          <Button
+            variant="ghost"
+            className="w-full justify-start px-3 py-1.5 h-auto text-[10px] text-muted rounded-none"
             onClick={() => setShowSystem(!showSystem)}
           >
             {showSystem ? (
@@ -192,7 +200,7 @@ function LlmCallCard({
             {t("trajectorydetailview.SystemPrompt")}
             {call.systemPrompt.length.toLocaleString()}{" "}
             {t("trajectorydetailview.chars")}
-          </button>
+          </Button>
           {showSystem && (
             <div className="p-2">
               <CodeBlock
@@ -269,7 +277,16 @@ export function TrajectoryDetailView({
       <div className="flex flex-col items-center justify-center h-full gap-3">
         <div className="text-danger text-sm">{error}</div>
         {onBack && (
+<<<<<<< Updated upstream
           <Button variant="outline" size="sm" onClick={onBack}>
+=======
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs"
+            onClick={onBack}
+          >
+>>>>>>> Stashed changes
             {t("trajectorydetailview.GoBack")}
           </Button>
         )}
@@ -284,7 +301,16 @@ export function TrajectoryDetailView({
           {t("trajectorydetailview.TrajectoryNotFound")}
         </div>
         {onBack && (
+<<<<<<< Updated upstream
           <Button variant="outline" size="sm" onClick={onBack}>
+=======
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs"
+            onClick={onBack}
+          >
+>>>>>>> Stashed changes
             {t("trajectorydetailview.GoBack")}
           </Button>
         )}
@@ -307,7 +333,16 @@ export function TrajectoryDetailView({
       {/* Header */}
       <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-border mb-3">
         {onBack && (
+<<<<<<< Updated upstream
           <Button variant="outline" size="sm" onClick={onBack}>
+=======
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs px-2"
+            onClick={onBack}
+          >
+>>>>>>> Stashed changes
             {t("onboarding.back")}
           </Button>
         )}

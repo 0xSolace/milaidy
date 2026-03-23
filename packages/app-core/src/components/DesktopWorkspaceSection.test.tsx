@@ -60,7 +60,10 @@ vi.mock("@miladyai/ui", () => {
     CardHeader: passthrough,
     CardTitle: passthrough,
     CardDescription: passthrough,
+<<<<<<< Updated upstream
     SectionCard: passthrough,
+=======
+>>>>>>> Stashed changes
     Switch: passthrough,
   };
 });

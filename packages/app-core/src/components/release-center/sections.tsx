@@ -1,4 +1,4 @@
-import { Button, Input } from "@miladyai/ui";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from "@miladyai/ui";
 import { createElement } from "react";
 import {
   DefinitionRow,
@@ -50,53 +50,56 @@ export function ReleaseStatusSection({
       : "neutral";
 
   return (
-    <section className="rounded-2xl border border-border bg-bg-accent p-4">
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <StatusPill
-          label={`App: ${updateStatus?.currentVersion ?? "loading"}`}
-          tone={appReleaseTone}
-        />
-        <StatusPill
-          label={`Desktop: ${nativeUpdater?.currentVersion ?? "loading"}`}
-          tone={nativeReleaseTone}
-        />
-        {nativeUpdater?.channel ? (
+    <Card className="bg-bg-accent">
+      <CardHeader>
+        <div className="mb-2 flex flex-wrap items-center gap-2">
           <StatusPill
-            label={`Channel: ${nativeUpdater.channel}`}
-            tone="neutral"
+            label={`App: ${updateStatus?.currentVersion ?? "loading"}`}
+            tone={appReleaseTone}
           />
-        ) : null}
-      </div>
-
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div>
-          <h3 className="text-sm font-semibold text-txt">Release Status</h3>
-          <p className="mt-1 text-xs text-muted">
-            Compare backend release metadata with the native Electrobun updater
-            state.
-          </p>
+          <StatusPill
+            label={`Desktop: ${nativeUpdater?.currentVersion ?? "loading"}`}
+            tone={nativeReleaseTone}
+          />
+          {nativeUpdater?.channel ? (
+            <StatusPill
+              label={`Channel: ${nativeUpdater.channel}`}
+              tone="neutral"
+            />
+          ) : null}
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            size="sm"
-            disabled={busyAction === "refresh" || updateLoading}
-            onClick={onRefresh}
-          >
-            Refresh
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={busyAction === "detach-release"}
-            onClick={onDetach}
-          >
-            Open Detached Release Center
-          </Button>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <CardTitle className="text-sm">Release Status</CardTitle>
+            <CardDescription>
+              Compare backend release metadata with the native Electrobun updater
+              state.
+            </CardDescription>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              disabled={busyAction === "refresh" || updateLoading}
+              onClick={onRefresh}
+            >
+              Refresh
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busyAction === "detach-release"}
+              onClick={onDetach}
+            >
+              Open Detached Release Center
+            </Button>
+          </div>
         </div>
-      </div>
+      </CardHeader>
 
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="rounded-xl border border-border bg-bg p-3">
+      <CardContent>
+        <div className="grid gap-3 md:grid-cols-2">
+          <Card className="shadow-none">
+            <CardContent className="p-3">
           <div className="text-xs font-semibold text-txt">
             App Release Service
           </div>
@@ -117,61 +120,65 @@ export function ReleaseStatusSection({
                 : "Not yet"
             }
           />
-        </div>
+          </CardContent>
+          </Card>
 
-        <div className="rounded-xl border border-border bg-bg p-3">
-          <div className="mb-3 text-xs font-semibold text-txt">
-            Native Electrobun Updater
-          </div>
-          <DefinitionRow
-            label="Current version"
-            value={nativeUpdater?.currentVersion}
-          />
-          <DefinitionRow
-            label="Latest version"
-            value={nativeUpdater?.latestVersion ?? "Current"}
-          />
-          <DefinitionRow
-            label="App bundle"
-            value={nativeUpdater?.appBundlePath ?? "Unknown"}
-          />
-          <DefinitionRow
-            label="Last status"
-            value={nativeUpdater?.lastStatus?.message ?? "Idle"}
-          />
-          <DefinitionRow
-            label="Status time"
-            value={formatTimestamp(nativeUpdater?.lastStatus?.timestamp)}
-          />
-          {autoUpdateDisabled && nativeUpdater?.autoUpdateDisabledReason ? (
-            <div className="mt-3 rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning">
-              {nativeUpdater.autoUpdateDisabledReason}
-            </div>
-          ) : null}
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              disabled={busyAction === "check-updates" || autoUpdateDisabled}
-              onClick={onCheckForUpdates}
-            >
-              Check / Download Update
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={
-                busyAction === "apply-update" ||
-                autoUpdateDisabled ||
-                !nativeUpdater?.updateReady
-              }
-              onClick={onApplyUpdate}
-            >
-              Apply Downloaded Update
-            </Button>
-          </div>
+          <Card className="shadow-none">
+            <CardContent className="p-3">
+              <div className="mb-3 text-xs font-semibold text-txt">
+                Native Electrobun Updater
+              </div>
+              <DefinitionRow
+                label="Current version"
+                value={nativeUpdater?.currentVersion}
+              />
+              <DefinitionRow
+                label="Latest version"
+                value={nativeUpdater?.latestVersion ?? "Current"}
+              />
+              <DefinitionRow
+                label="App bundle"
+                value={nativeUpdater?.appBundlePath ?? "Unknown"}
+              />
+              <DefinitionRow
+                label="Last status"
+                value={nativeUpdater?.lastStatus?.message ?? "Idle"}
+              />
+              <DefinitionRow
+                label="Status time"
+                value={formatTimestamp(nativeUpdater?.lastStatus?.timestamp)}
+              />
+              {autoUpdateDisabled && nativeUpdater?.autoUpdateDisabledReason ? (
+                <div className="mt-3 rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning">
+                  {nativeUpdater.autoUpdateDisabledReason}
+                </div>
+              ) : null}
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  disabled={busyAction === "check-updates" || autoUpdateDisabled}
+                  onClick={onCheckForUpdates}
+                >
+                  Check / Download Update
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={
+                    busyAction === "apply-update" ||
+                    autoUpdateDisabled ||
+                    !nativeUpdater?.updateReady
+                  }
+                  onClick={onApplyUpdate}
+                >
+                  Apply Downloaded Update
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -196,18 +203,18 @@ export function ReleaseNotesSection({
   const defaultReleaseNotesUrl = `${appUrl}/releases/`;
 
   return (
-    <section className="rounded-2xl border border-border bg-bg-accent p-4">
-      <div className="mb-4">
-        <h3 className="text-sm font-semibold text-txt">
+    <Card className="bg-bg-accent">
+      <CardHeader>
+        <CardTitle className="text-sm">
           Release Notes BrowserView
-        </h3>
-        <p className="mt-1 text-xs text-muted">
+        </CardTitle>
+        <CardDescription>
           Opens release notes in a dedicated sandboxed BrowserView on its own
           persistent session.
-        </p>
-      </div>
+        </CardDescription>
+      </CardHeader>
 
-      <div className="space-y-3">
+      <CardContent className="space-y-3">
         <Input
           value={releaseNotesUrl}
           onChange={(event) => onReleaseNotesUrlChange(event.target.value)}
@@ -233,25 +240,36 @@ export function ReleaseNotesSection({
         </div>
 
         {releaseNotesWindow ? (
-          <div className="rounded-xl border border-border bg-bg p-3 text-xs text-txt">
-            <DefinitionRow
-              label="Window ID"
-              value={releaseNotesWindow.windowId}
-            />
-            <DefinitionRow
-              label="BrowserView ID"
-              value={releaseNotesWindow.webviewId}
-            />
-            <DefinitionRow label="URL" value={releaseNotesWindow.url} />
-          </div>
+          <Card className="shadow-none">
+            <CardContent className="p-3 text-xs text-txt">
+              <DefinitionRow
+                label="Window ID"
+                value={releaseNotesWindow.windowId}
+              />
+              <DefinitionRow
+                label="BrowserView ID"
+                value={releaseNotesWindow.webviewId}
+              />
+              <DefinitionRow label="URL" value={releaseNotesWindow.url} />
+            </CardContent>
+          </Card>
         ) : (
+<<<<<<< Updated upstream
           <div className="rounded-xl border border-border bg-bg p-3 text-xs text-muted">
             Using updater URL:{" "}
             {nativeUpdater?.baseUrl ?? defaultReleaseNotesUrl}
           </div>
+=======
+          <Card className="shadow-none">
+            <CardContent className="p-3 text-xs text-muted">
+              Using updater URL:{" "}
+              {nativeUpdater?.baseUrl ?? DEFAULT_RELEASE_NOTES_URL}
+            </CardContent>
+          </Card>
+>>>>>>> Stashed changes
         )}
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -272,17 +290,18 @@ export function BuildRuntimeSection({
   const defaultReleaseNotesUrl = `${appUrl}/releases/`;
 
   return (
-    <section className="rounded-2xl border border-border bg-bg-accent p-4">
-      <div className="mb-4">
-        <h3 className="text-sm font-semibold text-txt">
+    <Card className="bg-bg-accent">
+      <CardHeader>
+        <CardTitle className="text-sm">
           BuildConfig and Shell Runtime
-        </h3>
-        <p className="mt-1 text-xs text-muted">
+        </CardTitle>
+        <CardDescription>
           Native runtime metadata sourced directly from Electrobun BuildConfig
           and shell APIs.
-        </p>
-      </div>
+        </CardDescription>
+      </CardHeader>
 
+<<<<<<< Updated upstream
       <div className="rounded-xl border border-border bg-bg p-3">
         <DefinitionRow label="Platform" value={buildInfo?.platform} />
         <DefinitionRow label="Architecture" value={buildInfo?.arch} />
@@ -322,6 +341,51 @@ export function BuildRuntimeSection({
         </div>
       </div>
     </section>
+=======
+      <CardContent>
+        <Card className="shadow-none">
+          <CardContent className="p-3">
+            <DefinitionRow label="Platform" value={buildInfo?.platform} />
+            <DefinitionRow label="Architecture" value={buildInfo?.arch} />
+            <DefinitionRow
+              label="Default renderer"
+              value={buildInfo?.defaultRenderer}
+            />
+            <DefinitionRow
+              label="Available renderers"
+              value={buildInfo?.availableRenderers.join(", ")}
+            />
+            <DefinitionRow label="Bun version" value={buildInfo?.bunVersion} />
+            <DefinitionRow label="CEF version" value={buildInfo?.cefVersion} />
+            <DefinitionRow
+              label="Updater base URL"
+              value={nativeUpdater?.baseUrl ?? DEFAULT_RELEASE_NOTES_URL}
+            />
+            <DefinitionRow
+              label="Dock icon visible"
+              value={
+                buildInfo?.platform === "darwin"
+                  ? String(dockVisible)
+                  : "macOS only"
+              }
+            />
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={
+                  busyAction === "toggle-dock" || buildInfo?.platform !== "darwin"
+                }
+                onClick={onToggleDock}
+              >
+                {dockVisible ? "Hide Dock Icon" : "Show Dock Icon"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </CardContent>
+    </Card>
+>>>>>>> Stashed changes
   );
 }
 
@@ -337,24 +401,25 @@ export function SessionControlsSection({
   onClearSession: (partition: string) => void;
 }) {
   return (
-    <section className="rounded-2xl border border-border bg-bg-accent p-4">
-      <div className="mb-4">
-        <h3 className="text-sm font-semibold text-txt">
+    <Card className="bg-bg-accent">
+      <CardHeader>
+        <CardTitle className="text-sm">
           Session and Cookie Controls
-        </h3>
-        <p className="mt-1 text-xs text-muted">
+        </CardTitle>
+        <CardDescription>
           Explicit Session APIs for inspecting and clearing renderer storage.
-        </p>
-      </div>
+        </CardDescription>
+      </CardHeader>
 
-      <div className="space-y-3">
+      <CardContent className="space-y-3">
         {SESSION_PARTITIONS.map(({ label, partition }) => {
           const snapshot = sessionSnapshots[partition];
           return (
-            <div
+            <Card
               key={partition}
-              className="rounded-xl border border-border bg-bg p-3"
+              className="shadow-none"
             >
+              <CardContent className="p-3">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="text-xs font-semibold text-txt">{label}</div>
@@ -413,11 +478,12 @@ export function SessionControlsSection({
                   No cookies stored for this partition.
                 </div>
               )}
-            </div>
+              </CardContent>
+            </Card>
           );
         })}
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -447,32 +513,34 @@ export function WgpuSurfaceSection({
   onToggleTransparent: () => void;
 }) {
   return (
-    <section className="rounded-2xl border border-border bg-bg-accent p-4">
-      <div className="mb-4">
-        <h3 className="text-sm font-semibold text-txt">Browser WGPU Surface</h3>
-        <p className="mt-1 text-xs text-muted">
+    <Card className="bg-bg-accent">
+      <CardHeader>
+        <CardTitle className="text-sm">Browser WGPU Surface</CardTitle>
+        <CardDescription>
           Inline <code>&lt;electrobun-wgpu&gt;</code> preview plus browser
           WebGPU compatibility status from the active desktop renderer.
-        </p>
-      </div>
+        </CardDescription>
+      </CardHeader>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-3">
-          {wgpuTagAvailable ? (
-            <div className="overflow-hidden rounded-2xl border border-border bg-black/5">
-              {createElement("electrobun-wgpu", {
-                ref: (node: WgpuTagElement | null) => {
-                  wgpuRef.current = node;
-                },
-                className: "block h-56 w-full",
-              })}
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-dashed border-border px-4 py-12 text-center text-sm text-muted">
-              The WGPU custom element is not available in this renderer.
-            </div>
-          )}
+      <CardContent>
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="space-y-3">
+            {wgpuTagAvailable ? (
+              <div className="overflow-hidden rounded-2xl border border-border bg-black/5">
+                {createElement("electrobun-wgpu", {
+                  ref: (node: WgpuTagElement | null) => {
+                    wgpuRef.current = node;
+                  },
+                  className: "block h-56 w-full",
+                })}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-border px-4 py-12 text-center text-sm text-muted">
+                The WGPU custom element is not available in this renderer.
+              </div>
+            )}
 
+<<<<<<< Updated upstream
           <div className="flex flex-wrap gap-2">
             <Button size="sm" disabled={!wgpuTagAvailable} onClick={onRunTest}>
               Run Test
@@ -537,14 +605,77 @@ export function WgpuSurfaceSection({
                 href={webGpuStatus.downloadUrl}
                 target="_blank"
                 rel="noreferrer"
+=======
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" disabled={!wgpuTagAvailable} onClick={onRunTest}>
+                Run Test
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={!wgpuTagAvailable}
+                onClick={onToggleTransparent}
+>>>>>>> Stashed changes
               >
-                Download Chrome Beta fallback
-              </a>
+                {wgpuTransparent ? "Opaque" : "Transparent"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={!wgpuTagAvailable}
+                onClick={onTogglePassthrough}
+              >
+                {wgpuPassthrough ? "Passthrough Off" : "Passthrough On"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={!wgpuTagAvailable}
+                onClick={onToggleHidden}
+              >
+                {wgpuHidden ? "Show Surface" : "Hide Surface"}
+              </Button>
             </div>
-          ) : null}
+          </div>
+
+          <Card className="shadow-none">
+            <CardContent className="p-3">
+              <div className="mb-3 text-xs font-semibold text-txt">
+                Browser WebGPU Status
+              </div>
+              <DefinitionRow
+                label="Inline surface ready"
+                value={String(wgpuReady)}
+              />
+              <DefinitionRow
+                label="Renderer support"
+                value={webGpuStatus?.available ? "Available" : "Not available"}
+              />
+              <DefinitionRow label="Renderer type" value={webGpuStatus?.renderer} />
+              <DefinitionRow
+                label="Chrome Beta"
+                value={webGpuStatus?.chromeBetaPath ?? "Not detected"}
+              />
+              <div className="mt-3 rounded-lg border border-border bg-bg-accent px-3 py-2 text-xs text-muted">
+                {webGpuStatus?.reason ?? "Waiting for desktop renderer status."}
+              </div>
+              {webGpuStatus?.downloadUrl ? (
+                <div className="mt-3 text-xs">
+                  <a
+                    className="text-accent underline-offset-2 hover:underline"
+                    href={webGpuStatus.downloadUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Download Chrome Beta fallback
+                  </a>
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
         </div>
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 }
 import { useBranding } from "../../config/branding";

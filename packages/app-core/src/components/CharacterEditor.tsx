@@ -406,6 +406,7 @@ export function CharacterEditor({
     : characterData;
 
   /* ── Resolve active roster entry ────────────────────────────────── */
+<<<<<<< Updated upstream
   const activeCharacterRosterEntry: CharacterRosterEntry | null =
     useMemo(() => {
       if (selectedCharacterId) {
@@ -431,6 +432,27 @@ export function CharacterEditor({
       selectedCharacterId,
       selectedVrmIndex,
     ]);
+=======
+  const activeCharacterRosterEntry: CharacterRosterEntry | null = useMemo(() => {
+    if (selectedCharacterId) {
+      const found = characterRoster.find((e) => e.id === selectedCharacterId);
+      if (found) return found;
+    }
+    const byVrm = characterRoster.find(
+      (e) => e.avatarIndex === selectedVrmIndex,
+    );
+    if (byVrm) return byVrm;
+
+    if (!currentCharacter) return null;
+    const currentName =
+      typeof currentCharacter.name === "string"
+        ? currentCharacter.name.trim()
+        : "";
+    const byName = characterRoster.find((e) => e.name === currentName);
+    if (byName) return byName;
+    return null;
+  }, [characterRoster, currentCharacter, selectedCharacterId, selectedVrmIndex]);
+>>>>>>> Stashed changes
 
   /* ── Seed savedCharacterId from server data on first load ────────── */
   useEffect(() => {

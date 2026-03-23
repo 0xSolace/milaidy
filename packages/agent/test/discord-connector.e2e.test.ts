@@ -154,18 +154,6 @@ describeIfPluginAvailable("Discord Connector - Setup & Authentication", () => {
     });
 
     it(
-      "bot goes online after connection",
-      async () => {
-        // This test validates that the bot successfully connects to Discord gateway
-        // In a real scenario, we would check the bot's online status
-        // For now, we verify that the runtime is initialized
-        expect(runtime).not.toBeNull();
-        logger.info("[discord-connector] Bot connection test passed");
-      },
-      TEST_TIMEOUT,
-    );
-
-    it(
       "provides helpful error for invalid token",
       async () => {
         // Test with invalid token
@@ -207,6 +195,8 @@ describeIfPluginAvailable("Discord Connector - Setup & Authentication", () => {
   });
 });
 
+
+
 // ---------------------------------------------------------------------------
 // Integration Tests
 // ---------------------------------------------------------------------------
@@ -219,4 +209,12 @@ describe("Discord Connector - Integration", () => {
     expect(CONNECTOR_PLUGINS.discord).toBe("@elizaos/plugin-discord");
   });
 
+  it("Discord is included in connector list", async () => {
+    const { CONNECTOR_PLUGINS } = await import(
+      "../src/config/plugin-auto-enable"
+    );
+    const connectors = Object.keys(CONNECTOR_PLUGINS);
+    expect(connectors).toContain("discord");
+  });
 });
+
