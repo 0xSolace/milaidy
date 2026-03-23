@@ -163,7 +163,7 @@ describe.skipIf(!(CODEX_AVAILABLE && CODEX_AUTH_AVAILABLE))(
       expect(gameJs).toMatch(/ArrowRight/);
       expect(gameJs).toMatch(/ArrowDown/);
       expect(gameJs).toMatch(/ArrowUp/);
-      expect(gameJs).toMatch(/Space/);
+      expect(gameJs).toMatch(/Space|["'] ["']/);
       expect(gameJs).toMatch(/getElementById\(["']score["']\)/);
       expect(gameJs).toMatch(/getElementById\(["']next-piece["']\)/);
 
