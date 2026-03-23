@@ -96,7 +96,7 @@ export function CharacterRoster({
               border: "none",
               background: "none",
               padding: 0,
-              margin: "0 -5rem",
+              margin: "0 -0.75rem",
             }}
             onClick={() => onSelect(entry)}
             data-testid={`${testIdPrefix}-preset-${entry.id}`}
