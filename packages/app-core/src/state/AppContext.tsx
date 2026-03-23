@@ -281,6 +281,7 @@ import {
   useConfirm,
   usePrompt,
 } from "../components/ConfirmModal";
+import { TranslationProvider } from "./TranslationContext";
 import { buildWalletRpcUpdateRequest } from "../wallet-rpc";
 
 const GREETING_EMOTE_DELAY_MS = 1400;
@@ -6947,11 +6948,13 @@ export function AppProvider({
 
   return (
     <BrandingContext.Provider value={mergedBranding}>
-      <AppContext.Provider value={value}>
-        {children}
-        <ConfirmModal {...modalProps} />
-        <PromptModal {...promptModalProps} />
-      </AppContext.Provider>
+      <TranslationProvider uiLanguage={uiLanguage}>
+        <AppContext.Provider value={value}>
+          {children}
+          <ConfirmModal {...modalProps} />
+          <PromptModal {...promptModalProps} />
+        </AppContext.Provider>
+      </TranslationProvider>
     </BrandingContext.Provider>
   );
 }
