@@ -8,6 +8,8 @@ import {
   existsSync,
   readdirSync,
   readFileSync,
+  realpathSync,
+  renameSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -19,6 +21,43 @@ const ELIZA_CORE_RUNTIME_FILES = [
   "dist/browser/index.browser.js",
   "dist/node/index.node.js",
 ];
+
+function dedupeRealPaths(paths) {
+  const seen = new Set();
+  const unique = [];
+
+  for (const candidate of paths) {
+    let key = candidate;
+    try {
+      key = realpathSync(candidate);
+    } catch {
+      // Keep the original candidate if realpath resolution fails.
+    }
+
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(candidate);
+  }
+
+  return unique;
+}
+
+function writeFileAtomic(filePath, contents) {
+  const dir = dirname(filePath);
+  const tempPath = resolve(
+    dir,
+    `.tmp-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  );
+
+  writeFileSync(tempPath, contents, "utf8");
+  try {
+    renameSync(tempPath, filePath);
+  } catch {
+    // Windows can reject rename over an existing target; fall back to replace.
+    rmSync(filePath, { force: true });
+    renameSync(tempPath, filePath);
+  }
+}
 
 /**
  * Find all package.json paths for pkgName under root (main node_modules and
@@ -50,7 +89,7 @@ export function findPackageFilePaths(root, pkgName, relativePath) {
       if (existsSync(p)) candidates.push(p);
     }
   }
-  return candidates;
+  return dedupeRealPaths(candidates);
 }
 
 function hasRequiredFiles(dirPath, relativePaths) {
@@ -377,8 +416,7 @@ export function applyPatchToPackageJson(pkgPath) {
   if (dot.default?.endsWith("/src/index.ts")) {
     delete dot.default;
   }
-  rmSync(pkgPath, { force: true });
-  writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`, "utf8");
+  writeFileAtomic(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
   return true;
 }
 
@@ -411,8 +449,7 @@ export function applyExtensionlessJsExportAliases(pkgPath) {
 
   if (!patched) return false;
 
-  rmSync(pkgPath, { force: true });
-  writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`, "utf8");
+  writeFileAtomic(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
   return true;
 }
 
@@ -482,8 +519,7 @@ export function applyNobleHashesCompat(pkgPath) {
 
   if (!patched) return false;
 
-  rmSync(pkgPath, { force: true });
-  writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`, "utf8");
+  writeFileAtomic(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
   return true;
 }
 
@@ -520,8 +556,7 @@ export function applyMissingLifecycleScriptPatch(
     delete pkg.scripts;
   }
 
-  rmSync(pkgPath, { force: true });
-  writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`, "utf8");
+  writeFileAtomic(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
   return true;
 }
 
@@ -1006,6 +1041,93 @@ export function patchProperLockfileSignalExitCompat(root, log = console.log) {
 
 const PTY_MANAGER_CURSOR_POSITION_WRITE =
   '      this.ptyProcess.write("\\x1B[1;1R");';
+const PTY_MANAGER_ESM_CREATE_REQUIRE_MARKER =
+  "const __require = createRequire(import.meta.url);";
+const PTY_MANAGER_ESM_DIRNAME_MARKER =
+  "const __dirname = dirname(fileURLToPath(import.meta.url));";
+const PTY_MANAGER_ESM_REQUIRE_PROLOGUE = `var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
+  get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
+}) : x)(function(x) {
+  if (typeof require !== "undefined") return require.apply(this, arguments);
+  throw Error('Dynamic require of "' + x + '" is not supported');
+});
+`;
+
+/**
+ * pty-manager's published ESM bundle references __dirname but never defines it.
+ * That only blows up once Node executes spawn-time code paths, so patch it
+ * proactively to preserve Node + Bun parity.
+ */
+export function applyPtyManagerEsmDirnameCompat(filePath) {
+  if (!existsSync(filePath)) return false;
+
+  const compatSource = readFileSync(filePath, "utf8");
+  if (
+    compatSource.includes(PTY_MANAGER_ESM_DIRNAME_MARKER) &&
+    compatSource.includes(PTY_MANAGER_ESM_CREATE_REQUIRE_MARKER)
+  ) {
+    return false;
+  }
+
+  const pathImport = 'import { join, relative, dirname } from "path";';
+  const moduleImport = 'import { createRequire } from "module";';
+  const childProcessImport = 'import { execSync } from "child_process";';
+  if (
+    !compatSource.includes(pathImport) ||
+    !compatSource.includes(childProcessImport)
+  ) {
+    return false;
+  }
+
+  let next = compatSource;
+  if (next.includes(PTY_MANAGER_ESM_REQUIRE_PROLOGUE)) {
+    next = next.replace(
+      PTY_MANAGER_ESM_REQUIRE_PROLOGUE,
+      `${moduleImport}\n${PTY_MANAGER_ESM_CREATE_REQUIRE_MARKER}\n`,
+    );
+  } else if (!next.includes(PTY_MANAGER_ESM_CREATE_REQUIRE_MARKER)) {
+    next = `${moduleImport}\n${PTY_MANAGER_ESM_CREATE_REQUIRE_MARKER}\n${next}`;
+  }
+  if (!next.includes('import { fileURLToPath } from "url";')) {
+    next = next.replace(
+      pathImport,
+      `${pathImport}\nimport { fileURLToPath } from "url";`,
+    );
+  }
+  if (!next.includes(PTY_MANAGER_ESM_DIRNAME_MARKER)) {
+    next = next.replace(
+      childProcessImport,
+      `${childProcessImport}\n${PTY_MANAGER_ESM_DIRNAME_MARKER}`,
+    );
+  }
+
+  if (next === compatSource) return false;
+
+  writeFileSync(filePath, next, "utf8");
+  return true;
+}
+
+/**
+ * Patch all installed pty-manager ESM bundles so Node can execute spawn-time
+ * code paths without crashing on an undefined __dirname reference.
+ */
+export function patchPtyManagerEsmDirnameCompat(root, log = console.log) {
+  const candidates = findPackageFilePaths(
+    root,
+    "pty-manager",
+    "dist/index.mjs",
+  );
+  let patched = false;
+  for (const filePath of candidates) {
+    if (applyPtyManagerEsmDirnameCompat(filePath)) {
+      patched = true;
+      log(
+        `[patch-deps] Patched pty-manager ESM __dirname compatibility: ${filePath}`,
+      );
+    }
+  }
+  return patched;
+}
 
 /**
  * Codex asks the terminal emulator for cursor position via ESC[6n during TUI
@@ -1053,7 +1175,7 @@ export function applyPtyManagerCursorPositionCompat(filePath) {
       "      return data;",
       "    }",
       "    let requestCount = 0;",
-      '    const sanitizedData = data.replace(/\\x1B\\[6n/g, () => {',
+      "    const sanitizedData = data.replace(/\\x1B\\[6n/g, () => {",
       "      requestCount += 1;",
       '      return "";',
       "    });",
@@ -1083,12 +1205,10 @@ export function applyPtyManagerCursorPositionCompat(filePath) {
  * Patch all installed pty-manager copies so CPR requests get terminal-style
  * responses when coding-agent CLIs run under node-pty.
  */
-export function patchPtyManagerCursorPositionCompat(
-  root,
-  log = console.log,
-) {
+export function patchPtyManagerCursorPositionCompat(root, log = console.log) {
   const candidates = [
     ...findPackageFilePaths(root, "pty-manager", "dist/index.js"),
+    ...findPackageFilePaths(root, "pty-manager", "dist/index.mjs"),
     ...findPackageFilePaths(root, "pty-manager", "dist/pty-worker.js"),
   ];
   let patched = false;

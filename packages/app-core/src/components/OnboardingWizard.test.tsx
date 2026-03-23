@@ -113,6 +113,9 @@ describe("OnboardingWizard", () => {
     expect(root?.props.style["--onboarding-card-bg"]).toBe(
       root?.props.style["--onboarding-panel-bg"],
     );
+    expect(root?.props.style["--onboarding-accent-foreground"]).toBe(
+      "rgba(255,255,255,0.96)",
+    );
     expect(root?.props.style["--onboarding-nav-scrim"]).toBe(
       "linear-gradient(180deg, rgba(6,9,15,0.78), rgba(6,9,15,0.5))",
     );
@@ -155,6 +158,9 @@ describe("OnboardingWizard", () => {
     );
     expect(root?.props.style["--onboarding-card-bg"]).toBe(
       root?.props.style["--onboarding-panel-bg"],
+    );
+    expect(root?.props.style["--onboarding-accent-foreground"]).toBe(
+      "rgba(255,255,255,0.96)",
     );
     expect(root?.props.style["--onboarding-nav-scrim"]).toBe(
       "linear-gradient(180deg, rgba(6,9,15,0.72), rgba(6,9,15,0.44))",

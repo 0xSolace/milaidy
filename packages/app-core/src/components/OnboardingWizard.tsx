@@ -186,7 +186,7 @@ export function OnboardingWizard() {
         "--onboarding-accent-border-hover": isDarkTheme
           ? "rgba(240,185,11,0.6)"
           : "rgba(184,137,45,0.52)",
-        "--onboarding-accent-foreground": "#1a1f26",
+        "--onboarding-accent-foreground": "rgba(255,255,255,0.96)",
         "--onboarding-ripple": "rgba(240,185,11,0.3)",
         "--onboarding-field-bg": isDarkTheme
           ? "rgba(10,14,20,0.26)"

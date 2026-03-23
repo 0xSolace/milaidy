@@ -18,7 +18,7 @@ export interface CloudCompatRouteState {
 
 const PROXY_TIMEOUT_MS = 15_000;
 const MAX_BODY_BYTES = 1_048_576;
-const RETRY_BACKOFF_MS = 2_000;
+const JSON_CONTENT_TYPE_RE = /\b(?:application\/json|[^;\s]+\+json)\b/i;
 
 export function resolveCloudBaseUrl(config: CloudProxyConfigLike): string {
   return normalizeCloudSiteUrl(config.cloud?.baseUrl);
@@ -87,6 +87,76 @@ async function fetchUpstream(
   return res;
 }
 
+function summarizeUpstreamBody(bodyText: string): string {
+  const trimmed = bodyText.trim();
+  if (!trimmed) return "";
+  return trimmed.length > 300 ? `${trimmed.slice(0, 297)}...` : trimmed;
+}
+
+async function parseUpstreamJsonResponse(
+  upstreamRes: Response,
+  method: string,
+): Promise<
+  | { kind: "head" }
+  | { kind: "empty" }
+  | { kind: "json"; body: unknown }
+  | { kind: "invalid-json"; bodyText: string }
+  | { kind: "non-json"; bodyText: string }
+> {
+  if (method === "HEAD") {
+    return { kind: "head" };
+  }
+
+  const bodyText = await upstreamRes.text();
+  if (bodyText.trim().length === 0) {
+    return { kind: "empty" };
+  }
+
+  const contentType = upstreamRes.headers.get("content-type");
+  const expectsJson = JSON_CONTENT_TYPE_RE.test(contentType ?? "");
+
+  if (!expectsJson && !/^\s*[\[{]/.test(bodyText)) {
+    return { kind: "non-json", bodyText };
+  }
+
+  try {
+    return { kind: "json", body: JSON.parse(bodyText) };
+  } catch {
+    return expectsJson
+      ? { kind: "invalid-json", bodyText }
+      : { kind: "non-json", bodyText };
+  }
+}
+
+function handleUpstreamError(
+  error: unknown,
+  res: http.ServerResponse,
+): void {
+  if (error instanceof Error) {
+    const errorCode = (error as { code?: string }).code;
+    if (errorCode === "REDIRECT") {
+      sendJsonError(res, "Eliza Cloud returned an unexpected redirect.", 502);
+      return;
+    }
+    if (error.name === "TimeoutError" || error.name === "AbortError") {
+      sendJsonError(res, "Eliza Cloud request timed out.", 504);
+      return;
+    }
+    if (error.message === "Request body too large") {
+      sendJsonError(res, error.message, 413);
+      return;
+    }
+    sendJsonError(
+      res,
+      `Failed to reach Eliza Cloud: ${error.message || "Unknown error"}`,
+      502,
+    );
+    return;
+  }
+
+  sendJsonError(res, "Failed to reach Eliza Cloud.", 502);
+}
+
 export async function handleCloudCompatRoute(
   req: http.IncomingMessage,
   res: http.ServerResponse,
@@ -120,13 +190,51 @@ export async function handleCloudCompatRoute(
   const upstreamUrl = `${baseUrl}${compatPath}${queryString}`;
   const headers = buildAuthHeaders(state.config);
 
+  try {
     let body: string | undefined;
     if (method !== "GET" && method !== "HEAD") {
       body = await readBody(req);
     }
 
     const upstreamRes = await fetchUpstream(upstreamUrl, method, headers, body);
-    const responseData = await upstreamRes.json();
-    sendJson(res, responseData, upstreamRes.status);
+    const parsed = await parseUpstreamJsonResponse(upstreamRes, method);
+
+    if (parsed.kind === "head") {
+      res.statusCode = upstreamRes.status;
+      res.end();
+      return true;
+    }
+
+    if (parsed.kind === "json") {
+      sendJson(res, parsed.body, upstreamRes.status);
+      return true;
+    }
+
+    const upstreamStatus = upstreamRes.ok ? 502 : upstreamRes.status;
+    if (parsed.kind === "empty") {
+      const message = upstreamRes.ok
+        ? "Eliza Cloud returned an empty response."
+        : `Eliza Cloud returned HTTP ${upstreamRes.status} with an empty response body.`;
+      sendJsonError(res, message, upstreamStatus);
+      return true;
+    }
+
+    const message =
+      parsed.kind === "invalid-json"
+        ? "Eliza Cloud returned malformed JSON."
+        : "Eliza Cloud returned a non-JSON response.";
+    const detail = summarizeUpstreamBody(parsed.bodyText);
+    logger.warn(
+      `[cloud-compat] ${message} ${method} ${compatPath} (${upstreamRes.status})${detail ? `: ${detail}` : ""}`,
+    );
+    sendJsonError(
+      res,
+      detail ? `${message} ${detail}` : message,
+      upstreamStatus,
+    );
     return true;
+  } catch (error) {
+    handleUpstreamError(error, res);
+    return true;
+  }
 }

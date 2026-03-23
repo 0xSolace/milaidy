@@ -49,11 +49,15 @@ const providerOverrides: Record<
   },
   anthropic: { name: "Anthropic", description: "Claude API key" },
   openai: { name: "OpenAI", description: "GPT API key" },
-  openrouter: { name: "OpenRouter", description: "Multi-model API" },
+  openrouter: { name: "OpenRouter", description: "Many models" },
   gemini: { name: "Gemini", description: "Google AI" },
   grok: { name: "xAI (Grok)" },
   groq: { name: "Groq", description: "Fast inference" },
-  deepseek: { name: "DeepSeek" },
+  deepseek: { name: "DeepSeek", description: "DeepSeek models" },
+  mistral: { name: "Mistral", description: "Mistral models" },
+  together: { name: "Together AI", description: "OSS models" },
+  ollama: { name: "Ollama", description: "Local models" },
+  zai: { name: "z.ai", description: "GLM models" },
   "pi-ai": { name: "Pi Credentials", description: "Local auth" },
 };
 

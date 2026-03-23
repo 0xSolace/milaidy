@@ -205,16 +205,20 @@ describe("cloud-compat-routes", () => {
       });
       vi.mocked(fetch).mockResolvedValue(mockResponse);
 
-      // Upstream handler now throws for redirect errors
-      await expect(
-        handleCloudCompatRoute(
-          makeReq({}),
-          makeRes(),
-          "/api/cloud/compat/agents",
-          "GET",
-          makeState(),
-        ),
-      ).rejects.toThrow();
+      const result = await handleCloudCompatRoute(
+        makeReq({}),
+        makeRes(),
+        "/api/cloud/compat/agents",
+        "GET",
+        makeState(),
+      );
+
+      expect(result).toBe(true);
+      expect(sendJsonError).toHaveBeenCalledWith(
+        expect.anything(),
+        "Eliza Cloud returned an unexpected redirect.",
+        502,
+      );
     });
 
     it("returns 504 on timeout", async () => {
@@ -222,31 +226,39 @@ describe("cloud-compat-routes", () => {
       timeoutErr.name = "TimeoutError";
       vi.mocked(fetch).mockRejectedValue(timeoutErr);
 
-      // Upstream handler now throws for timeout errors
-      await expect(
-        handleCloudCompatRoute(
-          makeReq({}),
-          makeRes(),
-          "/api/cloud/compat/agents",
-          "GET",
-          makeState(),
-        ),
-      ).rejects.toThrow();
+      const result = await handleCloudCompatRoute(
+        makeReq({}),
+        makeRes(),
+        "/api/cloud/compat/agents",
+        "GET",
+        makeState(),
+      );
+
+      expect(result).toBe(true);
+      expect(sendJsonError).toHaveBeenCalledWith(
+        expect.anything(),
+        "Eliza Cloud request timed out.",
+        504,
+      );
     });
 
     it("returns 502 on network errors", async () => {
       vi.mocked(fetch).mockRejectedValue(new Error("ECONNREFUSED"));
 
-      // Upstream handler now throws for network errors
-      await expect(
-        handleCloudCompatRoute(
-          makeReq({}),
-          makeRes(),
-          "/api/cloud/compat/agents",
-          "GET",
-          makeState(),
-        ),
-      ).rejects.toThrow();
+      const result = await handleCloudCompatRoute(
+        makeReq({}),
+        makeRes(),
+        "/api/cloud/compat/agents",
+        "GET",
+        makeState(),
+      );
+
+      expect(result).toBe(true);
+      expect(sendJsonError).toHaveBeenCalledWith(
+        expect.anything(),
+        "Failed to reach Eliza Cloud: ECONNREFUSED",
+        502,
+      );
     });
 
     it("retries once on 503 response", async () => {
@@ -341,16 +353,43 @@ describe("cloud-compat-routes", () => {
       });
       vi.mocked(fetch).mockResolvedValue(mockResponse);
 
-      // Upstream handler calls res.json() on non-JSON body which throws
-      await expect(
-        handleCloudCompatRoute(
-          makeReq({}),
-          makeRes(),
-          "/api/cloud/compat/agents",
-          "GET",
-          makeState(),
-        ),
-      ).rejects.toThrow();
+      const result = await handleCloudCompatRoute(
+        makeReq({}),
+        makeRes(),
+        "/api/cloud/compat/agents",
+        "GET",
+        makeState(),
+      );
+
+      expect(result).toBe(true);
+      expect(sendJsonError).toHaveBeenCalledWith(
+        expect.anything(),
+        "Eliza Cloud returned a non-JSON response. Internal Server Error",
+        500,
+      );
+    });
+
+    it("handles invalid JSON upstream responses gracefully", async () => {
+      const mockResponse = new Response("{invalid", {
+        status: 502,
+        headers: { "Content-Type": "application/json" },
+      });
+      vi.mocked(fetch).mockResolvedValue(mockResponse);
+
+      const result = await handleCloudCompatRoute(
+        makeReq({}),
+        makeRes(),
+        "/api/cloud/compat/agents",
+        "GET",
+        makeState(),
+      );
+
+      expect(result).toBe(true);
+      expect(sendJsonError).toHaveBeenCalledWith(
+        expect.anything(),
+        "Eliza Cloud returned malformed JSON. {invalid",
+        502,
+      );
     });
 
     it("strips /api/cloud prefix to form correct upstream path", async () => {

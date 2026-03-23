@@ -18,6 +18,11 @@ export function OnboardingStepNav() {
   const activeSteps = getOnboardingNavMetas(onboardingStep, isCloudOnly);
 
   const currentIndex = activeSteps.findIndex((s) => s.id === onboardingStep);
+  const connectorCount = Math.max(activeSteps.length - 1, 1);
+  const connectorHeight =
+    currentIndex <= 0
+      ? "0px"
+      : `calc((100% - 52px) * ${Math.min(currentIndex, connectorCount)} / ${connectorCount})`;
 
   return (
     <div className="relative z-10 flex flex-col justify-center py-[48px] pl-[40px] pr-0 max-md:items-center max-md:px-4 max-md:pt-4 max-md:pb-2">
@@ -25,14 +30,11 @@ export function OnboardingStepNav() {
         <div
           style={
             {
-              "--tw-after-height":
-                currentIndex === 0
-                  ? "0px"
-                  : `calc((100% - 28px) * ${Math.min(currentIndex, 5)} / 5)`,
+              "--tw-after-height": connectorHeight,
             } as React.CSSProperties
           }
           {...{
-            className: `relative flex flex-col max-md:flex-row max-md:items-center max-md:justify-center max-md:gap-5 after:absolute after:left-[6px] after:top-[14px] after:z-0 after:h-[var(--tw-after-height)] after:w-[1px] after:bg-gradient-to-b after:from-accent/60 after:to-accent/15 after:transition-all after:duration-[800ms] after:ease-[cubic-bezier(0.25,0.46,0.45,0.94)] max-md:after:hidden`,
+            className: `relative flex flex-col max-md:flex-row max-md:items-center max-md:justify-center max-md:gap-5 before:absolute before:bottom-[26px] before:left-[7px] before:top-[26px] before:w-[1px] before:bg-gradient-to-b before:from-[rgba(255,255,255,0.08)] before:via-[rgba(255,255,255,0.14)] before:to-[rgba(255,255,255,0.06)] before:z-0 after:absolute after:left-[7px] after:top-[26px] after:z-0 after:h-[var(--tw-after-height)] after:w-[1px] after:bg-gradient-to-b after:from-accent/70 after:to-accent/18 after:transition-all after:duration-[800ms] after:ease-[cubic-bezier(0.25,0.46,0.45,0.94)] max-md:before:hidden max-md:after:hidden`,
           }}
         >
           {activeSteps.map((step, i) => {
@@ -40,7 +42,7 @@ export function OnboardingStepNav() {
             const isActive = i === currentIndex;
             const isClickable = isDone;
 
-            const rowClass = `relative group flex w-full items-center gap-[20px] py-[19px] max-md:w-auto max-md:gap-0 max-md:py-0 ${isClickable ? "cursor-pointer border-none bg-transparent m-0 text-left text-inherit hover:bg-transparent focus-visible:outline-2 focus-visible:outline-accent/60 focus-visible:outline-offset-3" : ""}`;
+            const rowClass = `relative group flex w-full items-center gap-[20px] py-[19px] max-md:w-auto max-md:gap-0 max-md:py-0 ${isClickable ? "m-0 h-auto cursor-pointer justify-start rounded-none border-none bg-transparent px-0 text-left text-inherit hover:bg-transparent focus-visible:outline-2 focus-visible:outline-accent/60 focus-visible:outline-offset-3" : ""}`;
 
             // Dot classes
             let dotClass =

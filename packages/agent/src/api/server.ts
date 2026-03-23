@@ -6146,9 +6146,64 @@ function normalizeTags(value: unknown, required: string[] = []): string[] {
   return [...next];
 }
 
+const todoTableAvailabilityCache = new WeakMap<AgentRuntime, Promise<boolean>>();
+
+async function hasTodoTable(runtime: AgentRuntime): Promise<boolean> {
+  const cached = todoTableAvailabilityCache.get(runtime);
+  if (cached) return cached;
+
+  const probe = (async () => {
+    const db = runtime.adapter?.db as
+      | {
+          execute: (query: { queryChunks: unknown[] }) => Promise<{
+            rows?: Record<string, unknown>[];
+          }>;
+        }
+      | undefined;
+    if (!db?.execute) {
+      return false;
+    }
+
+    try {
+      const { sql } = await import("drizzle-orm");
+      try {
+        const result = await db.execute(
+          sql.raw(`SELECT 1
+             FROM information_schema.tables
+            WHERE table_name = 'todos'
+              AND table_schema NOT IN ('pg_catalog', 'information_schema')
+              AND table_type = 'BASE TABLE'
+            LIMIT 1`),
+        );
+        if (Array.isArray(result.rows) && result.rows.length > 0) {
+          return true;
+        }
+      } catch {
+        // Fall through to PRAGMA for PGlite/SQLite compatibility.
+      }
+
+      try {
+        const result = await db.execute(sql.raw("PRAGMA table_info(todos)"));
+        return Array.isArray(result.rows) && result.rows.length > 0;
+      } catch {
+        return false;
+      }
+    } catch {
+      return false;
+    }
+  })();
+
+  todoTableAvailabilityCache.set(runtime, probe);
+  return probe;
+}
+
 async function getTodoDataService(
   runtime: AgentRuntime,
 ): Promise<TodoDataServiceLike | null> {
+  if (!(await hasTodoTable(runtime))) {
+    return null;
+  }
+
   try {
     const todoModule = (await import("@elizaos/plugin-todo")) as Record<
       string,
