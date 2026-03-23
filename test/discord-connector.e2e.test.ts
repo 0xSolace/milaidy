@@ -1,5 +1,5 @@
 /**
- * Discord Connector Validation Tests — GitHub Issue #143
+ * Discord Connector Validation Tests
  *
  * Comprehensive E2E tests for validating the Discord connector (@elizaos/plugin-discord).
  *
@@ -143,7 +143,7 @@ describeIfPluginAvailable("Discord Connector - Setup & Authentication", () => {
         character,
         plugins: [discordPlugin],
         token: process.env.DISCORD_BOT_TOKEN,
-        databaseAdapter: undefined as never, // Using in-memory for tests
+        databaseAdapter: undefined as never,
         serverUrl: "http://localhost:3000",
       });
     }, TEST_TIMEOUT);

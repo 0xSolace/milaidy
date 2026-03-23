@@ -532,7 +532,7 @@ export function DesktopMediaControlPanel() {
             </SelectTrigger>
             <SelectContent>
               {cameraDevices.length === 0 ? (
-                <SelectItem value="">No camera devices</SelectItem>
+                <SelectItem value="__none__">No camera devices</SelectItem>
               ) : (
                 cameraDevices.map((device) => (
                   <SelectItem key={device.deviceId} value={device.deviceId}>
@@ -721,7 +721,7 @@ export function DesktopMediaControlPanel() {
             </SelectTrigger>
             <SelectContent>
               {screenSources.length === 0 ? (
-                <SelectItem value="">No screen sources</SelectItem>
+                <SelectItem value="__none__">No screen sources</SelectItem>
               ) : (
                 screenSources.map((source) => (
                   <SelectItem key={source.id} value={source.id}>

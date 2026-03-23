@@ -315,8 +315,7 @@ export function StreamingPermissionsOnboardingView({
   const { t } = useApp();
   const { checking, permStates, requestPermission } =
     useStreamingPermissions(mode);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  void useAllPermissionsGranted(permStates);
+
 
   if (checking) {
     return (

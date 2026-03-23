@@ -388,14 +388,14 @@ export function BugReportModal() {
                 {t("bugreportmodal.Environment")}
               </span>
               <Select
-                value={form.environment}
-                onValueChange={(value) => updateField("environment", value)}
+                value={form.environment || "__none__"}
+                onValueChange={(value) => updateField("environment", value === "__none__" ? "" : value)}
               >
                 <SelectTrigger className={inputClass} style={inputStyle}>
                   <SelectValue placeholder={t("bugreportmodal.Select")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">{t("bugreportmodal.Select")}</SelectItem>
+                  <SelectItem value="__none__">{t("bugreportmodal.Select")}</SelectItem>
                   {ENV_OPTIONS.map((opt) => (
                     <SelectItem key={opt} value={opt}>
                       {opt}

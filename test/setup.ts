@@ -55,7 +55,6 @@ try {
   // React not available — skip deduplication patch (e.g. CI without react)
 }
 
-// Ensure Vitest environment is properly set
 process.env.VITEST = "true";
 // Keep test output focused on failures; individual tests can override.
 process.env.LOG_LEVEL ??= "error";

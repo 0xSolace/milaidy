@@ -1,8 +1,4 @@
-/**
- * ApiKeyConfig — Local AI provider settings (API key input forms).
- *
- * Extracted from SettingsView.tsx for decomposition (P2 §10).
- */
+/** ApiKeyConfig — Local AI provider settings (API key input forms). */
 
 import { useCallback, useState } from "react";
 import { client, type PluginParamDef } from "../api";

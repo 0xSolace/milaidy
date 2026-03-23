@@ -509,16 +509,16 @@ export function CodingAgentSettingsSection() {
             {t("codingagentsettingssection.PowerfulModel")}
           </span>
           <Select
-            value={powerfulValue}
+            value={powerfulValue || "__default__"}
             onValueChange={(value) =>
-              setPref(`${prefix}_MODEL_POWERFUL`, value)
+              setPref(`${prefix}_MODEL_POWERFUL`, value === "__default__" ? "" : value)
             }
           >
             <SelectTrigger className="px-2.5 py-1.5 border border-border bg-card text-xs focus:border-accent focus:outline-none shadow-sm rounded-lg">
               <SelectValue placeholder={t("codingagentsettingssection.Default")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">{t("codingagentsettingssection.Default")}</SelectItem>
+              <SelectItem value="__default__">{t("codingagentsettingssection.Default")}</SelectItem>
               {modelOptions.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
@@ -532,16 +532,16 @@ export function CodingAgentSettingsSection() {
             {t("codingagentsettingssection.FastModel")}
           </span>
           <Select
-            value={fastValue}
+            value={fastValue || "__default__"}
             onValueChange={(value) =>
-              setPref(`${prefix}_MODEL_FAST`, value)
+              setPref(`${prefix}_MODEL_FAST`, value === "__default__" ? "" : value)
             }
           >
             <SelectTrigger className="px-2.5 py-1.5 border border-border bg-card text-xs focus:border-accent focus:outline-none shadow-sm rounded-lg">
               <SelectValue placeholder={t("codingagentsettingssection.Default")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">{t("codingagentsettingssection.Default")}</SelectItem>
+              <SelectItem value="__default__">{t("codingagentsettingssection.Default")}</SelectItem>
               {modelOptions.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}

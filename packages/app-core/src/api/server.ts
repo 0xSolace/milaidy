@@ -2704,7 +2704,7 @@ async function handleMiladyCompatRoute(
 
     const pluginResponse = buildPluginListResponse(state.current);
     const manifestPath = resolvePluginManifestPath();
-    console.log(
+    logger.debug(
       `[api/plugins] manifest=${manifestPath ?? "NOT_FOUND"} total=${pluginResponse.plugins.length} runtime=${state.current ? "active" : "null"}`,
     );
     sendJsonResponse(res, 200, pluginResponse);

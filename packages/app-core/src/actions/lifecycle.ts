@@ -1,10 +1,4 @@
-/**
- * Lifecycle action helpers — extracted from AppContext.
- *
- * Provides pure-logic functions for agent lifecycle operations
- * (start, stop, restart, reset) that can be
- * called from any provider implementation.
- */
+/** Lifecycle action helpers — agent start, stop, restart, reset. */
 
 import type { MiladyClient as ElizaClient } from "../api/client";
 
@@ -68,8 +62,6 @@ export async function executeLifecycleAction(
     return null;
   }
   ctx.setBusy(true);
-  // Using LIFECYCLE_I18N_KEYS[action].progress for backward compatibility
-  // UI layer often expects standard string notices rather than translation keys here natively
   ctx.setNotice(LIFECYCLE_I18N_KEYS[action].progress, "info", 3000);
 
   try {
@@ -133,11 +125,7 @@ export interface StartupErrorState {
   path?: string;
 }
 
-/**
- * Simple error-to-string formatter (handles Error, string, and fallback JSON).
- * NOTE: An API-error-aware variant exists in `../state/parsers.ts` that also
- * extracts structured fields (path, status) from API-like error objects.
- */
+/** Simple error-to-string formatter (handles Error, string, and fallback JSON). */
 export function formatStartupErrorDetail(err: unknown): string {
   if (!err) return "";
   if (err instanceof Error) return err.message;

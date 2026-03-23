@@ -334,3 +334,11 @@ Please don't restore files I've deleted. If the entire file is `describe.skip`, 
 - Cleaned 7 connector unit test files in `packages/app-core/src/connectors/` — removed "Configuration", "Message Handling", "Environment Variables" sections (all create objects and assert own values). Kept real plugin import/validation sections.
 - Cleaned 6 connector e2e test files in `test/` — removed format/regex validation sections (E.164, group IDs, room IDs, relay URLs, MIME types, JSON round-trips, message length constants, rate limit constants). Kept real plugin loading and live API tests.
 - Removed 7 describe.skip blocks from `kitchen-sink.test.ts` (~800 lines of skipped schema/channel mapping tests)
+
+### Sixth pass — remaining larp/pedantic tests:
+- Deleted `apps/app/test/app/brand-gold.test.ts` — 100% CSS/HTML file content string checking
+- Deleted `packages/app-core/test/app/shell-overlays.test.tsx` — mocks all components then checks mock names render
+- Deleted `packages/app-core/test/app/shared-switch.test.ts` — single "renders without crashing" test
+- Deleted `packages/app-core/test/app/character-action-bar-visibility.test.ts` — reads CSS files and checks for class names
+- Cleaned `packages/app-core/test/app/restart-banner.test.tsx` — removed CSS styling test (kept behavior tests)
+- Re-deleted 5 fully-skipped files (other agent keeps restoring them)

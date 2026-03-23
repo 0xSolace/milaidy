@@ -516,9 +516,8 @@ export class GatewayElectrobun implements GatewayPlugin {
     };
   }
 
-  async removeAllListeners(): Promise<void> {
+  async removeAllListeners(): Promise<void> 
     this.listeners = [];
-  }
 }
 
 // Export the plugin instance

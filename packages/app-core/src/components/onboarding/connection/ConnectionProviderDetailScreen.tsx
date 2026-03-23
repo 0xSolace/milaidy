@@ -125,7 +125,7 @@ export function ConnectionProviderDetailScreen({
   );
   const piAiSelectValue =
     normalizedPrimaryModel.length === 0
-      ? ""
+      ? "__default__"
       : hasKnownPiAiModel
         ? normalizedPrimaryModel
         : "__custom__";
@@ -873,14 +873,14 @@ export function ConnectionProviderDetailScreen({
                     }
                     return;
                   }
-                  setState("onboardingPrimaryModel", next);
+                  setState("onboardingPrimaryModel", next === "__default__" ? "" : next);
                 }}
               >
                 <SelectTrigger className="onboarding-input">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">
+                  <SelectItem value="__default__">
                     {t("onboarding.useDefaultModel")}
                     {piAiDefaultModel ? ` (${piAiDefaultModel})` : ""}
                   </SelectItem>

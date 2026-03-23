@@ -789,14 +789,9 @@ function AppProviderInner({
   const [mintError, setMintError] = useState<string | null>(null);
   const [mintShiny, setMintShiny] = useState(false);
 
-  // --- Whitelist ---
   const [whitelistStatus, setWhitelistStatus] =
     useState<WhitelistStatus | null>(null);
   const [whitelistLoading, setWhitelistLoading] = useState(false);
-  // Dead state — setters were never destructured. These never change.
-  const twitterVerifyMessage: string | null = null;
-  const twitterVerifyUrl = "";
-  const twitterVerifying = false;
 
   // --- Character ---
   const [characterData, setCharacterData] = useState<CharacterData | null>(
@@ -7268,9 +7263,7 @@ function AppProviderInner({
     mintShiny,
     whitelistStatus,
     whitelistLoading,
-    twitterVerifyMessage,
-    twitterVerifyUrl,
-    twitterVerifying,
+
     characterData,
     characterLoading,
     characterSaving,
