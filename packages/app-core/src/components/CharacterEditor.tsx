@@ -237,8 +237,10 @@ export function CharacterEditor({
   const handleFieldEdit = useCallback(
     (field: string, value: unknown) => {
       if (!suppressDirtyRef.current) setFieldsEdited(true);
-      // biome-ignore lint/suspicious/noExplicitAny: typed field key interop
-      handleCharacterFieldInput(field as any, value as any);
+      handleCharacterFieldInput(
+        field as keyof CharacterData,
+        value as CharacterData[keyof CharacterData],
+      );
     },
     [handleCharacterFieldInput],
   );
@@ -246,8 +248,7 @@ export function CharacterEditor({
   const handleStyleEdit = useCallback(
     (key: string, value: string) => {
       if (!suppressDirtyRef.current) setFieldsEdited(true);
-      // biome-ignore lint/suspicious/noExplicitAny: typed field key interop
-      handleCharacterStyleInput(key as any, value);
+      handleCharacterStyleInput(key as "all" | "chat" | "post", value);
     },
     [handleCharacterStyleInput],
   );
@@ -325,7 +326,7 @@ export function CharacterEditor({
     cloudConnected: elizaCloudConnected,
     interruptOnSpeech: false,
     lang: "en-US",
-    voiceConfig: voiceConfig as any,
+    voiceConfig,
     onTranscript: () => {},
   });
 

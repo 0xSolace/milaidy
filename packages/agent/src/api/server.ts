@@ -240,24 +240,11 @@ import {
   handleWhatsAppRoute,
 } from "./whatsapp-routes.js";
 
-/**
- * Local stubs for types removed from @elizaos/plugin-agent-orchestrator 2.x.
- * These are only used as structural types for the SwarmCoordinator callbacks;
- * no runtime import is needed.
- */
-// biome-ignore lint/suspicious/noExplicitAny: legacy coordinator event payload
-type SwarmEvent = Record<string, any>;
-// biome-ignore lint/suspicious/noExplicitAny: legacy coordinator task context
-type TaskContext = Record<string, any>;
-interface TaskCompletionSummary {
-  sessionId: string;
-  label: string;
-  agentType: string;
-  originalTask: string;
-  status: string;
-  completionSummary: string;
-  [key: string]: unknown;
-}
+import type {
+  SwarmEvent,
+  TaskCompletionSummary,
+  TaskContext,
+} from "./coordinator-types.js";
 
 type PiAiPluginModule = typeof import("@elizaos/plugin-pi-ai");
 let _piAiPluginModule: PiAiPluginModule | null = null;
@@ -8236,8 +8223,7 @@ async function handleRequest(
             content: m.content,
           })),
         };
-        // biome-ignore lint/suspicious/noExplicitAny: mixed legacy/new formats
-      }) as any;
+      }) as unknown as typeof agent.messageExamples;
     }
 
     // ── Theme preference ──────────────────────────────────────────────────
@@ -14796,7 +14782,7 @@ async function handleRequest(
     if (!handled) {
       try {
         // biome-ignore lint/suspicious/noExplicitAny: legacy route handler may not exist in 2.x
-        const orchestratorPlugin: any = await import(
+        const orchestratorPlugin: Record<string, unknown> = await import(
           "@elizaos/plugin-agent-orchestrator"
         );
         if (orchestratorPlugin.createCodingAgentRouteHandler) {

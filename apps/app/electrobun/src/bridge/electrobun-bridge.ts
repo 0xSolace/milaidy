@@ -51,7 +51,7 @@ function dispatchMessage(messageName: string, payload: unknown): void {
 
 // Electrobun defaults outgoing RPC timeout to 1s; native dialogs need much longer.
 // biome-ignore lint/suspicious/noExplicitAny: schema types live on the Bun side and can't be imported in a browser bundle
-const rpc = Electroview.defineRPC<any>({
+const rpc = Electroview.defineRPC<unknown>({
   maxRequestTime: 600_000,
   handlers: {
     requests: {},
@@ -61,7 +61,7 @@ const rpc = Electroview.defineRPC<any>({
           dispatchMessage(messageName, payload);
         }
         // biome-ignore lint/suspicious/noExplicitAny: required for Electroview wildcard signature
-      }) as any,
+      }) as unknown,
     },
   },
 });
@@ -69,7 +69,7 @@ const rpc = Electroview.defineRPC<any>({
 new Electroview({ rpc });
 
 // biome-ignore lint/suspicious/noExplicitAny: request proxy is dynamically typed, schema only available on Bun side
-const rpcRequest = (rpc as any).request as Record<
+const rpcRequest = (rpc as Record<string, unknown>).request as Record<
   string,
   (params: unknown) => Promise<unknown>
 >;

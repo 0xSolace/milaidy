@@ -139,7 +139,7 @@ type RendererLike = Pick<
   toneMappingExposure?: number;
   xr?: THREE.WebGLRenderer["xr"];
   setAnimationLoop?: (
-    callback: ((time: number, frame?: any) => void) | null,
+    callback: ((time: number, frame?: XRFrame) => void) | null,
   ) => void;
 };
 
@@ -1069,9 +1069,12 @@ export class VrmEngine {
   ): Promise<WorldRevealController | null> {
     const dyno = (
       "dyno" in spark ? Reflect.get(spark as object, "dyno") : undefined
-    ) as any;
+    ) as Record<string, (...args: unknown[]) => unknown> | undefined;
 
-    const tsl = (await import("three/tsl").catch(() => null)) as any;
+    const tsl = (await import("three/tsl").catch(() => null)) as Record<
+      string,
+      (...args: unknown[]) => unknown
+    > | null;
 
     const math = {
       add: dyno?.add || tsl?.add,
@@ -1085,7 +1088,7 @@ export class VrmEngine {
       smoothstep: dyno?.smoothstep || tsl?.smoothstep,
       pow: dyno?.pow || tsl?.pow,
       length: dyno?.length || tsl?.length,
-      swizzle: dyno?.swizzle || ((a: any, s: string) => a[s] || a), // fallback to property access
+      swizzle: dyno?.swizzle || ((a: Record<string, unknown>, s: string) => a[s] || a), // fallback to property access
     };
 
     if (
@@ -1167,7 +1170,7 @@ export class VrmEngine {
     const modifier = dyno.dynoBlock(
       { gsplat: dyno.Gsplat },
       { gsplat: dyno.Gsplat },
-      ({ gsplat }: any) => {
+      ({ gsplat }: { gsplat: unknown }) => {
         if (!gsplat) {
           throw new Error("Missing gsplat input for world reveal");
         }
@@ -2755,15 +2758,17 @@ export class VrmEngine {
               glowIntensity.mul(10.0).mul(glowActive).mul(dissolveAlpha),
             );
 
-            const origOpacity = mat.opacityNode as any;
+            const origOpacity = mat.opacityNode as unknown;
             mat.opacityNode = origOpacity
-              ? ((origOpacity.mul(dissolveAlpha) as any) ?? dissolveAlpha)
+              ? ((origOpacity as { mul(v: unknown): unknown }).mul(dissolveAlpha) ?? dissolveAlpha)
               : dissolveAlpha;
 
-            const matWithEmissive = mat as any;
-            const origEmissive = matWithEmissive.emissiveNode as any;
+            const matWithEmissive = mat as unknown as {
+              emissiveNode?: unknown;
+            };
+            const origEmissive = matWithEmissive.emissiveNode;
             matWithEmissive.emissiveNode = origEmissive
-              ? (origEmissive.add(emissiveBoost) as any)
+              ? (origEmissive as { add(v: unknown): unknown }).add(emissiveBoost)
               : emissiveBoost;
 
             mat.alphaTest = 0.01;

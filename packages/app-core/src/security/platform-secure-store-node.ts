@@ -1,6 +1,7 @@
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 
+import { isEnvDisabled } from "../utils/env";
 import {
   keychainAccountForSecretKind,
   MILADY_AGENT_VAULT_SERVICE,
@@ -294,12 +295,5 @@ export function createNodePlatformSecureStore(): PlatformSecureStore {
 
 /** Opt out: `MILADY_WALLET_OS_STORE=0` / `false` / `off`. */
 export function isWalletOsStoreReadEnabled(): boolean {
-  const raw = process.env.MILADY_WALLET_OS_STORE?.trim().toLowerCase();
-  if (!raw) return true;
-  return !(
-    raw === "0" ||
-    raw === "false" ||
-    raw === "off" ||
-    raw === "no"
-  );
+  return !isEnvDisabled(process.env.MILADY_WALLET_OS_STORE);
 }

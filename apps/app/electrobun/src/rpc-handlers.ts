@@ -50,7 +50,7 @@ type SendToWebview = (message: string, payload?: unknown) => void;
  */
 type ElectrobunRpcWithHandlers = {
   // biome-ignore lint/suspicious/noExplicitAny: Electrobun doesn't export a typed setRequestHandler interface; individual handlers are typed at call-sites
-  setRequestHandler?: (handlers: Record<string, (params: any) => any>) => void;
+  setRequestHandler?: (handlers: Record<string, (params: unknown) => unknown>) => void;
 };
 
 /**

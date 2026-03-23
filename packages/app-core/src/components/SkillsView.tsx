@@ -6,7 +6,7 @@
  * throughout the app (--bg, --card, --border, --accent, --muted, --txt, etc.).
  */
 
-import { Button, Input, StatusBadge, Switch } from "@miladyai/ui";
+import { Button, ConfirmDelete, EmptyState, Input, StatusBadge, Switch } from "@miladyai/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import type {
@@ -17,7 +17,7 @@ import type {
 import { client } from "../api";
 import { useTimeout } from "../hooks";
 import { useApp } from "../state";
-import { ConfirmDeleteControl } from "./confirm-delete-control";
+
 
 /* ── Skill Card ─────────────────────────────────────────────────────── */
 
@@ -129,7 +129,7 @@ function SkillCard({
         >
           {t("triggersview.Edit")}
         </Button>
-        <ConfirmDeleteControl
+        <ConfirmDelete
           triggerClassName="h-7 px-3 text-[11px] font-bold text-danger hover:bg-danger/10 hover:text-danger-foreground transition-colors rounded-md"
           confirmClassName="px-3 py-1 text-[11px] font-bold bg-danger text-danger-foreground hover:bg-danger/90 transition-colors rounded-md shadow-sm"
           cancelClassName="px-3 py-1 text-[11px] font-bold text-muted border border-border/40 hover:text-txt transition-colors rounded-md"
@@ -1331,32 +1331,30 @@ function SkillsFullView() {
 
       {/* Skill grid — grouped by status */}
       {skills.length === 0 ? (
-        <div className="text-center py-16">
-          <div className="text-[var(--muted)] text-sm mb-2">
-            No Skills Installed
-          </div>
-          <div className="text-[var(--muted)] text-[11px] mb-4">
-            Install skills from the marketplace or create your own.
-          </div>
-          <div className="flex justify-center gap-3">
-            <Button
-              variant="default"
-              size="sm"
-              className="h-10 px-6 font-bold tracking-wide shadow-sm"
-              onClick={() => setInstallModalOpen(true)}
-            >
-              Browse Marketplace
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-10 px-6 font-bold text-muted hover:text-txt"
-              onClick={() => setState("skillCreateFormOpen", true)}
-            >
-              Create Skill
-            </Button>
-          </div>
-        </div>
+        <EmptyState
+          title={t("skillsview.NoSkillsInstalled", { defaultValue: "No Skills Installed" })}
+          description={t("skillsview.InstallSkillsFromThe", { defaultValue: "Install skills from the marketplace or create your own." })}
+          action={
+            <div className="flex gap-3">
+              <Button
+                variant="default"
+                size="sm"
+                className="h-10 px-6 font-bold tracking-wide shadow-sm"
+                onClick={() => setInstallModalOpen(true)}
+              >
+                Browse Marketplace
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-10 px-6 font-bold text-muted hover:text-txt"
+                onClick={() => setState("skillCreateFormOpen", true)}
+              >
+                Create Skill
+              </Button>
+            </div>
+          }
+        />
       ) : allVisible.length === 0 ? (
         <div className="text-center py-12 text-[var(--muted)] text-xs">
           No skills match filtering "{filterText}"

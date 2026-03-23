@@ -4,7 +4,7 @@
  * Renders a unified plugin list with searchable/filterable cards and per-plugin settings.
  */
 
-import { Button, Input } from "@miladyai/ui";
+import { Button, Input, StatusBadge } from "@miladyai/ui";
 import type { LucideIcon } from "lucide-react";
 import {
   Binary,
@@ -2271,15 +2271,11 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                               <span className="truncate text-sm font-semibold text-txt">
                                 {plugin.name}
                               </span>
-                              <span
-                                className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${
-                                  allParamsSet
-                                    ? "border-ok/30 bg-ok/10 text-ok"
-                                    : "border-warn/30 bg-warn/10 text-warn"
-                                }`}
-                              >
-                                {allParamsSet ? "Ready" : "Needs setup"}
-                              </span>
+                              <StatusBadge
+                                label={allParamsSet ? "Ready" : "Needs setup"}
+                                tone={allParamsSet ? "success" : "warning"}
+                                className="rounded-full tracking-[0.14em]"
+                              />
                               {plugin.version && (
                                 <span className="text-[11px] font-mono text-muted/80">
                                   v{plugin.version}
@@ -2296,17 +2292,11 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                                   : "No configuration needed"}
                               </span>
                               {plugin.enabled && !plugin.isActive && (
-                                <span
-                                  className={`rounded-full border px-2 py-0.5 ${
-                                    plugin.loadError
-                                      ? "border-danger/30 bg-danger/10 text-danger"
-                                      : "border-warn/30 bg-warn/10 text-warn"
-                                  }`}
-                                >
-                                  {plugin.loadError
-                                    ? "Load failed"
-                                    : "Not installed"}
-                                </span>
+                                <StatusBadge
+                                  label={plugin.loadError ? "Load failed" : "Not installed"}
+                                  tone={plugin.loadError ? "danger" : "warning"}
+                                  className="rounded-full"
+                                />
                               )}
                             </span>
                           </span>

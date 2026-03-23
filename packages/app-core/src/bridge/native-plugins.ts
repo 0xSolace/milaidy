@@ -2,17 +2,18 @@ import { Capacitor, type PluginListenerHandle } from "@capacitor/core";
 
 type NativePlugin = Record<string, unknown>;
 
-/** Capacitor.Plugins exists in Capacitor 3.x but is deprecated; type for compatibility. */
-interface CapacitorWithPlugins {
+/** Shape of the Capacitor object when legacy `.Plugins` bag is available. */
+interface CapacitorWithPluginsBag {
+  Plugins?: Record<string, unknown>;
 }
 
 /** Window may have Capacitor injected at runtime (Electron/native shells). */
 interface WindowWithCapacitor extends Window {
-  Capacitor?: any;
+  Capacitor?: CapacitorWithPluginsBag;
 }
 
 function getCapacitorPlugins(): Record<string, unknown> {
-  const capacitor = Capacitor as any;
+  const capacitor = Capacitor as unknown as CapacitorWithPluginsBag;
   if (capacitor.Plugins) {
     return capacitor.Plugins;
   }

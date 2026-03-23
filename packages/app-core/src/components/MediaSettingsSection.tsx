@@ -18,6 +18,7 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
+  StatusBadge,
 } from "@miladyai/ui";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -1236,17 +1237,11 @@ export function MediaSettingsSection() {
               />
 
               {/* Status badge */}
-              <span
-                className={`ml-auto rounded-full border px-2 py-0.5 text-[10px] ${
-                  configured
-                    ? "border-ok bg-ok/10 text-txt"
-                    : "border-warn bg-warn-subtle text-txt"
-                }`}
-              >
-                {configured
-                  ? t("config-field.Configured")
-                  : t("mediasettingssection.NeedsSetup")}
-              </span>
+              <StatusBadge
+                label={configured ? t("config-field.Configured") : t("mediasettingssection.NeedsSetup")}
+                tone={configured ? "success" : "warning"}
+                className="ml-auto rounded-full normal-case"
+              />
             </div>
 
             {/* Cloud mode status */}

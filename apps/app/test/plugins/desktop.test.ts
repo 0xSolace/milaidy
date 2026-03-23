@@ -51,7 +51,7 @@ describe("@miladyai/capacitor-desktop", () => {
     };
     gainNode.connect.mockReturnValue(gainNode);
     const dest = {};
-    (globalThis as unknown as Record<string, unknown>).AudioContext = class {
+    Object.assign(globalThis, { AudioContext: class {
       createOscillator() {
         const osc = {
           type: "sine",
@@ -71,16 +71,16 @@ describe("@miladyai/capacitor-desktop", () => {
       get currentTime() {
         return 0;
       }
-    };
+    } });
 
     // jsdom location.reload is read-only; replace location entirely
-    (window as unknown as Record<string, unknown>).location = new URL(
+    Object.assign(window, { location: new URL(
       "http://localhost/",
-    ) as Location;
-    (window as unknown as Record<string, unknown>).location = {
-      ...(window as unknown as Record<string, unknown>).location,
+    ) as Location });
+    Object.assign(window, { location: {
+      ...window.location,
       reload: vi.fn(),
-    };
+    } });
 
     d = new DesktopWeb();
   });

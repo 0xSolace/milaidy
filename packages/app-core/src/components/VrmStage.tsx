@@ -63,8 +63,8 @@ export const VrmStage = memo(function VrmStage({
   onLayerEngineReady?: (vrmPath: string, engine: VrmEngine) => void;
   onRevealStart?: () => void;
   playWaveOnAvatarChange?: boolean;
-  companionVrmPowerMode?: any;
-  companionHalfFramerateMode?: any;
+  companionVrmPowerMode?: CompanionVrmPowerMode;
+  companionHalfFramerateMode?: CompanionHalfFramerateMode;
   companionAnimateWhenHidden?: boolean;
   t: TranslateFn;
 }) {

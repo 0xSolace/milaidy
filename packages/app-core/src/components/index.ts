@@ -45,7 +45,7 @@ export * from "./CustomActionsPanel";
 export * from "./CustomActionsView";
 export * from "./chainConfig";
 export * from "./companion-shell-styles";
-export * from "./confirm-delete-control";
+
 export * from "./conversations/ConversationListItem";
 export * from "./conversations/conversation-utils";
 export * from "./DatabasePageView";

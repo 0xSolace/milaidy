@@ -17,13 +17,12 @@ import type {
 } from "@miladyai/app-core/api";
 import { client } from "@miladyai/app-core/api";
 import {
-  ConfirmDeleteControl,
   formatByteSize,
   formatShortDate,
 } from "@miladyai/app-core/components";
 import { useApp } from "@miladyai/app-core/state";
 import { confirmDesktopAction } from "@miladyai/app-core/utils";
-import { Button, Checkbox, Input, Spinner } from "@miladyai/ui";
+import { Button, Checkbox, ConfirmDelete, EmptyState, Input, Spinner } from "@miladyai/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   isKnowledgeImageFile,
@@ -371,7 +370,7 @@ function DocumentCard({
         </div>
       </button>
       <div className="flex items-center gap-2 ml-4 opacity-0 group-hover:opacity-100 transition-opacity focus-within:opacity-100">
-        <ConfirmDeleteControl
+        <ConfirmDelete
           triggerClassName="h-8 px-3 text-xs font-bold text-danger hover:bg-danger/10 hover:text-danger rounded-lg transition-all"
           confirmClassName="h-8 px-3 text-xs font-bold bg-danger/20 text-danger hover:bg-danger/30 rounded-lg transition-all"
           cancelClassName="h-8 px-3 text-xs font-bold text-muted hover:text-txt rounded-lg transition-all"
@@ -1119,14 +1118,11 @@ export function KnowledgeView({ inModal }: { inModal?: boolean } = {}) {
         )}
 
         {!loading && documents.length === 0 && (
-          <div className="text-center py-16 border-2 border-dashed border-border/40 rounded-2xl bg-card/20 backdrop-blur-sm shadow-inner">
-            <div className="text-muted/80 font-bold mb-2 tracking-wide text-[15px]">
-              {t("knowledgeview.NoDocumentsYet")}
-            </div>
-            <div className="text-xs text-muted/60 font-medium">
-              {t("knowledgeview.UploadFilesOrImpo")}
-            </div>
-          </div>
+          <EmptyState
+            title={t("knowledgeview.NoDocumentsYet")}
+            description={t("knowledgeview.UploadFilesOrImpo")}
+            className="border-2 border-dashed border-border/40 rounded-2xl bg-card/20 backdrop-blur-sm shadow-inner"
+          />
         )}
 
         <div className="space-y-2">

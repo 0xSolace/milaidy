@@ -53,7 +53,7 @@ function http$(
 describe("Plugin Management E2E", () => {
   let server: { port: number; close: () => Promise<void> };
   // biome-ignore lint/suspicious/noExplicitAny: mock type
-  let mockPluginManager: any;
+  let mockPluginManager: Record<string, unknown>;
 
   beforeAll(async () => {
     // Create a mock plugin manager

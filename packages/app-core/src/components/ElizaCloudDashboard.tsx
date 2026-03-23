@@ -6,6 +6,7 @@ import {
   DialogTitle,
   Input,
   SectionCard,
+  StatusBadge,
 } from "@miladyai/ui";
 import {
   AlertCircle,
@@ -1038,17 +1039,11 @@ export function CloudDashboard() {
                 <Loader2 className="h-4 w-4 animate-spin text-muted" />
               )}
             </div>
-            <span
-              className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
-                summaryCritical
-                  ? "border-danger/30 bg-danger/10 text-danger"
-                  : summaryLow
-                    ? "border-warn/30 bg-warn/10 text-warn"
-                    : "border-ok/30 bg-ok/10 text-ok"
-              }`}
-            >
-              {creditStatusTone}
-            </span>
+            <StatusBadge
+              label={creditStatusTone}
+              tone={summaryCritical ? "danger" : summaryLow ? "warning" : "success"}
+              className="rounded-full px-2.5 py-0.5 tracking-wider"
+            />
           </div>
 
           {billingError && (

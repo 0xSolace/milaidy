@@ -48,7 +48,7 @@ class FakeAgentRuntime implements IAgentRuntime {
   services: Map<ServiceTypeName, Service[]> = new Map();
   initPromise = Promise.resolve();
   enableAutonomy = false;
-  messageService = {} as unknown as unknown as IMessageService;
+  messageService = {} as unknown as IMessageService;
   routes: Route[] = [];
   stateCache = new Map<string, State>();
   logLevelOverrides = new Map<string, string>();

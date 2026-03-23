@@ -2282,6 +2282,13 @@ async function resetPgliteDataDir(dataDir: string): Promise<void> {
   await fs.mkdir(normalized, { recursive: true });
 }
 
+/** Call whichever init method the adapter exposes (.init or .initialize). */
+async function callAdapterInit(adapter: AgentRuntime["adapter"]): Promise<void> {
+  const fn =
+    (adapter as unknown as Record<string, unknown>).init ?? adapter.initialize;
+  if (typeof fn === "function") await fn.call(adapter);
+}
+
 async function initializeDatabaseAdapter(
   runtime: AgentRuntime,
   config: ElizaConfig,
@@ -2289,11 +2296,7 @@ async function initializeDatabaseAdapter(
   if (!runtime.adapter || (await runtime.adapter.isReady())) return;
 
   try {
-    const adapterInit =
-      (runtime.adapter as unknown as Record<string, unknown>).init ??
-      runtime.adapter.initialize;
-    if (typeof adapterInit === "function")
-      await adapterInit.call(runtime.adapter);
+    await callAdapterInit(runtime.adapter);
     logger.info(
       "[eliza] Database adapter initialized early (before plugin inits)",
     );
@@ -2323,11 +2326,7 @@ async function initializeDatabaseAdapter(
       process.env.PGLITE_DATA_DIR = pgliteDataDir;
     }
 
-    const adapterInit2 =
-      (runtime.adapter as unknown as Record<string, unknown>).init ??
-      runtime.adapter.initialize;
-    if (typeof adapterInit2 === "function")
-      await adapterInit2.call(runtime.adapter);
+    await callAdapterInit(runtime.adapter);
     logger.info(
       recoveryAction === "retry-without-reset"
         ? "[eliza] Database adapter recovered after clearing a stale PGLite lock"
@@ -3631,7 +3630,9 @@ export const logToChatListener = (entry: LogEntry) => {
             isLog: "true",
           },
         )
-        .catch(() => {});
+        .catch((err) => {
+          logger.debug(`[runtime] failed to send log message to target: ${err}`);
+        });
     }
   }
 };

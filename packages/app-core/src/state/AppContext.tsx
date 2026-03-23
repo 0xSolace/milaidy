@@ -2500,7 +2500,7 @@ function AppProviderInner({
   const notifyHeartbeatEvent = useCallback(
     (event: StreamEventEnvelope) => {
       // biome-ignore lint/suspicious/noExplicitAny: heartbeat payloads are loosely typed
-      const payload = event.payload as any;
+      const payload = event.payload as Record<string, unknown>;
       const status =
         typeof payload.status === "string"
           ? payload.status.trim().toLowerCase()
@@ -4866,10 +4866,10 @@ function AppProviderInner({
             `You are ${onboardingName || defaultName}, an autonomous AI agent powered by elizaOS.`,
           style: style?.style,
           adjectives: style?.adjectives,
-          postExamples: (style as any)?.postExamples,
-          postExamples_zhCN: (style as any)?.postExamples_zhCN,
-          messageExamples: (style as any)?.messageExamples,
-          topics: (style as any)?.topics,
+          postExamples: (style as Record<string, unknown>)?.postExamples,
+          postExamples_zhCN: (style as Record<string, unknown>)?.postExamples_zhCN,
+          messageExamples: (style as Record<string, unknown>)?.messageExamples,
+          topics: (style as Record<string, unknown>)?.topics,
           // Cloud onboarding: the API key was already persisted server-side
           // by handleCloudLogin → persistCloudLoginStatus. We just need to
           // tell the backend to enable cloud mode with default models.
