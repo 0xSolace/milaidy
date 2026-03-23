@@ -5,7 +5,7 @@ import type {
   GatewayEndpoint,
 } from "../rpc-schema";
 
-type SendToWebview = (message: string, payload?: unknown) => void;
+import type { SendToWebview } from "../types.js";
 
 interface BonjourService {
   name: string;

@@ -20,7 +20,7 @@ const TALKMODE_AUDIO_BUFFER_THRESHOLD =
 const TALKMODE_MIN_FLUSH_BYTES =
   TALKMODE_SAMPLE_RATE * TALKMODE_MIN_FLUSH_SECONDS * FLOAT32_BYTES_PER_SAMPLE;
 
-type SendToWebview = (message: string, payload?: unknown) => void;
+import type { SendToWebview } from "../types.js";
 
 export class TalkModeManager {
   private sendToWebview: SendToWebview | null = null;

@@ -37,7 +37,7 @@ async function syncPermissionsToRestApi(): Promise<void> {
   }
 }
 
-type SendToWebview = (message: string, payload?: unknown) => void;
+import type { SendToWebview } from "./types.js";
 
 /**
  * Structural type for the Electrobun RPC instance used in rpc-handlers.

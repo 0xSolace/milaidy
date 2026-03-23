@@ -22,6 +22,7 @@ export * from "./CloudSourceControls";
 export * from "./CodingAgentSettingsSection";
 export * from "./CommandPalette";
 export * from "./CompanionSceneHost";
+export * from "./confirm-delete-control";
 export * from "./CompanionShell";
 export * from "./CompanionView";
 export * from "./ConfigPageView";

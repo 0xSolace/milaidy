@@ -30,7 +30,7 @@ export interface ExistingElizaInstallInfo {
   source: ExistingElizaInstallSource;
 }
 
-type SendToWebview = (message: string, payload?: unknown) => void;
+import type { SendToWebview } from "../types.js";
 
 // Subprocess type from Bun.spawn
 type BunSubprocess = ReturnType<typeof Bun.spawn>;

@@ -8,7 +8,7 @@ import {
   writeWavFile,
 } from "./whisper";
 
-type SendToWebview = (message: string, payload?: unknown) => void;
+import type { SendToWebview } from "../types.js";
 
 interface SwabbleConfig {
   triggers: string[];

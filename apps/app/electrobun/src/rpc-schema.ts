@@ -197,26 +197,8 @@ export interface DiscoveryResult {
 }
 
 // -- Permissions --
-export type SystemPermissionId =
-  | "accessibility"
-  | "screen-recording"
-  | "microphone"
-  | "camera"
-  | "shell";
-
-export type PermissionStatus =
-  | "granted"
-  | "denied"
-  | "not-determined"
-  | "restricted"
-  | "not-applicable";
-
-export interface PermissionState {
-  id: SystemPermissionId;
-  status: PermissionStatus;
-  lastChecked: number;
-  canRequest: boolean;
-}
+export type { SystemPermissionId, PermissionStatus, PermissionState } from "@miladyai/app-core/contracts/permissions";
+import type { SystemPermissionId, PermissionState } from "@miladyai/app-core/contracts/permissions";
 
 export interface AllPermissionsState {
   [key: string]: PermissionState;

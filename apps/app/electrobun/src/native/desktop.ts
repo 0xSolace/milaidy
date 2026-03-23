@@ -49,8 +49,7 @@ import {
   parseWindowsPowerLineOutput,
 } from "./power-state";
 import { checkWebGpuSupport } from "./webgpu-browser-support";
-
-type SendToWebview = (message: string, payload?: unknown) => void;
+import type { SendToWebview } from "../types.js";
 
 interface SetAlwaysOnTopOptions {
   flag: boolean;

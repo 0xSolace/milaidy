@@ -10,8 +10,7 @@ import { getPermissionManager } from "./permissions";
 import { getScreenCaptureManager } from "./screencapture";
 import { getSwabbleManager } from "./swabble";
 import { getTalkModeManager } from "./talkmode";
-
-type SendToWebview = (message: string, payload?: unknown) => void;
+import type { SendToWebview } from "../types.js";
 
 export function initializeNativeModules(
   mainWindow: BrowserWindow,

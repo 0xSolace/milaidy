@@ -24,17 +24,9 @@ function isAllowedCaptureUrl(url: string): boolean {
   }
 }
 
-type WebviewEvalRpc = {
-  requestProxy?: {
-    evaluateJavascriptWithResponse?: (params: {
-      script: string;
-    }) => Promise<unknown>;
-  };
-};
+import type { SendToWebview, WebviewEvalRpc } from "../types.js";
 
 type Webview = { rpc?: unknown };
-
-type SendToWebview = (message: string, payload?: unknown) => void;
 
 export class ScreenCaptureManager {
   private frameCaptureActive = false;

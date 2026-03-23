@@ -78,9 +78,11 @@ export async function loadIdleClip(
 
   gltf.scene.updateMatrixWorld(true);
   vrm.scene.updateMatrixWorld(true);
+  // Cast vrm to satisfy @miladyai/vrm-utils' VRM type which may resolve
+  // to a different @pixiv/three-vrm version than the one used here.
   const clip = retargetMixamoGltfToVrm(
     { scene: gltf.scene, animations: gltf.animations },
-    vrm,
+    vrm as any,
   );
 
   if (!clip) {

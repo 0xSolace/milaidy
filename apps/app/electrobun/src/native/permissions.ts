@@ -27,7 +27,7 @@ async function getPlatformModule(): Promise<PlatformModule | null> {
   }
 }
 
-type SendToWebview = (message: string, payload?: unknown) => void;
+import type { SendToWebview } from "../types.js";
 
 const platform = process.platform as "darwin" | "win32" | "linux";
 const DEFAULT_CACHE_TIMEOUT_MS = 30000;
