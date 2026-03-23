@@ -1376,49 +1376,49 @@ export const CHARACTER_PRESETS = [
   {
     id: "chen",
     name: "Chen",
-    catchphrase: "I'm here to help you.",
+    catchphrase: "Let's get to work!",
     description: "Cute, playful, supportive energy",
     style: "kawaii",
   },
   {
     id: "jin",
     name: "Jin",
-    catchphrase: "I'm here to get things done.",
+    catchphrase: "Anything you need, boss!",
     description: "Confident, energetic, hype beast",
     style: "bold",
   },
   {
     id: "kei",
     name: "Kei",
-    catchphrase: "I'm online and ready.",
+    catchphrase: "Hey sure. Why not?",
     description: "Chill, sarcastic, lowkey genius",
     style: "deadpan",
   },
   {
     id: "momo",
     name: "Momo",
-    catchphrase: "I'm ready to assist.",
+    catchphrase: "I can't wait!",
     description: "Precise, professional, organized",
     style: "corporate",
   },
   {
     id: "rin",
     name: "Rin",
-    catchphrase: "Let's build something fun.",
+    catchphrase: "I won't let you down.",
     description: "Sweet, mischievous, creative",
     style: "playful",
   },
   {
     id: "ryu",
     name: "Ryu",
-    catchphrase: "I am ready when you are.",
+    catchphrase: "Let me think about it.",
     description: "Mysterious, minimal, deep thinker",
     style: "stoic",
   },
   {
     id: "satoshi",
     name: "Satoshi",
-    catchphrase: "Show me what we're building.",
+    catchphrase: "I'll handle it.",
     description: "Edgy, self-deprecating, crypto degen",
     style: "degen",
   },
@@ -1440,47 +1440,47 @@ export const CHARACTER_PRESET_META: Record<
     catchphrase: string;
   }
 > = {
-  "I'm here to help you.": {
+  "Let's get to work!": {
     name: "Chen",
     avatarIndex: 1,
     voicePresetId: "sarah",
-    catchphrase: "I'm here to help you.",
+    catchphrase: "Let's get to work!",
   },
-  "I'm here to get things done.": {
+  "Anything you need, boss!": {
     name: "Jin",
     avatarIndex: 2,
     voicePresetId: "adam",
-    catchphrase: "I'm here to get things done.",
+    catchphrase: "Anything you need, boss!",
   },
-  "I'm online and ready.": {
+  "Hey sure. Why not?": {
     name: "Kei",
     avatarIndex: 3,
     voicePresetId: "lily",
-    catchphrase: "I'm online and ready.",
+    catchphrase: "Hey sure. Why not?",
   },
-  "I'm ready to assist.": {
+  "I can't wait!": {
     name: "Momo",
     avatarIndex: 4,
     voicePresetId: "alice",
-    catchphrase: "I'm ready to assist.",
+    catchphrase: "I can't wait!",
   },
-  "Let's build something fun.": {
+  "I won't let you down.": {
     name: "Rin",
     avatarIndex: 5,
     voicePresetId: "gigi",
-    catchphrase: "Let's build something fun.",
+    catchphrase: "I won't let you down.",
   },
-  "I am ready when you are.": {
+  "Let me think about it.": {
     name: "Ryu",
     avatarIndex: 6,
     voicePresetId: "daniel",
-    catchphrase: "I am ready when you are.",
+    catchphrase: "Let me think about it.",
   },
-  "Show me what we're building.": {
+  "I'll handle it.": {
     name: "Satoshi",
     avatarIndex: 7,
     voicePresetId: "callum",
-    catchphrase: "Show me what we're building.",
+    catchphrase: "I'll handle it.",
   },
   "Are you thinking what I'm thinking?": {
     name: "Yuki",

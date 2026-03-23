@@ -171,20 +171,20 @@ describe("getElizaPackageLinks", () => {
             targetPath: path.join(elizaRoot, "packages/autonomous"),
           },
           {
-            linkPath: path.join(miladyRoot, "node_modules/@miladyai/ui"),
+            linkPath: path.join(miladyRoot, "node_modules/@elizaos/ui"),
             targetPath: path.join(elizaRoot, "packages/ui"),
           },
           {
             linkPath: path.join(
               miladyRoot,
-              "apps/app/node_modules/@miladyai/ui",
+              "apps/app/node_modules/@elizaos/ui",
             ),
             targetPath: path.join(elizaRoot, "packages/ui"),
           },
           {
             linkPath: path.join(
               miladyRoot,
-              "apps/home/node_modules/@miladyai/ui",
+              "apps/home/node_modules/@elizaos/ui",
             ),
             targetPath: path.join(elizaRoot, "packages/ui"),
           },
