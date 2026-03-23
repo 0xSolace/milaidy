@@ -1,4 +1,4 @@
-/** Unit tests for onboarding `flow.ts` — unified 5-step flow. */
+/** Unit tests for onboarding `flow.ts` — unified 6-step flow. */
 import { describe, expect, it } from "vitest";
 import {
   canRevertOnboardingTo,
@@ -11,12 +11,13 @@ import {
 
 describe("onboarding flow", () => {
   describe("getStepOrder", () => {
-    it("returns unified 5-step order", () => {
+    it("returns unified 6-step order", () => {
       expect(getStepOrder()).toEqual([
         "welcome",
         "hosting",
         "providers",
         "permissions",
+        "identity",
         "launch",
       ]);
     });
@@ -27,7 +28,8 @@ describe("onboarding flow", () => {
       expect(resolveOnboardingNextStep("welcome")).toBe("hosting");
       expect(resolveOnboardingNextStep("hosting")).toBe("providers");
       expect(resolveOnboardingNextStep("providers")).toBe("permissions");
-      expect(resolveOnboardingNextStep("permissions")).toBe("launch");
+      expect(resolveOnboardingNextStep("permissions")).toBe("identity");
+      expect(resolveOnboardingNextStep("identity")).toBe("launch");
       expect(resolveOnboardingNextStep("launch")).toBe(null);
     });
   });
@@ -38,7 +40,8 @@ describe("onboarding flow", () => {
       expect(resolveOnboardingPreviousStep("hosting")).toBe("welcome");
       expect(resolveOnboardingPreviousStep("providers")).toBe("hosting");
       expect(resolveOnboardingPreviousStep("permissions")).toBe("providers");
-      expect(resolveOnboardingPreviousStep("launch")).toBe("permissions");
+      expect(resolveOnboardingPreviousStep("identity")).toBe("permissions");
+      expect(resolveOnboardingPreviousStep("launch")).toBe("identity");
     });
   });
 
@@ -64,13 +67,14 @@ describe("onboarding flow", () => {
   });
 
   describe("getOnboardingNavMetas", () => {
-    it("returns all 5 steps regardless of current step", () => {
+    it("returns all 6 steps regardless of current step", () => {
       const metas = getOnboardingNavMetas("providers", false);
       expect(metas.map((m) => m.id)).toEqual([
         "welcome",
         "hosting",
         "providers",
         "permissions",
+        "identity",
         "launch",
       ]);
     });
@@ -81,6 +85,7 @@ describe("onboarding flow", () => {
         "hosting",
         "providers",
         "permissions",
+        "identity",
         "launch",
       ]);
     });
@@ -94,6 +99,7 @@ describe("onboarding flow", () => {
       );
       expect(getFlaminaTopicForOnboardingStep("welcome")).toBe(null);
       expect(getFlaminaTopicForOnboardingStep("hosting")).toBe(null);
+      expect(getFlaminaTopicForOnboardingStep("identity")).toBe(null);
       expect(getFlaminaTopicForOnboardingStep("launch")).toBe(null);
     });
   });

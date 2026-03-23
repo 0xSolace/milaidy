@@ -1,4 +1,5 @@
 import { Button, Input } from "@miladyai/ui";
+import { Pencil, Trash2 } from "lucide-react";
 import type React from "react";
 import { useRef } from "react";
 import { getLocalizedConversationTitle } from "./conversation-utils";
@@ -30,6 +31,8 @@ interface ConversationListItemProps {
       | React.TouchEvent<HTMLButtonElement | HTMLDivElement>,
     conv: { id: string; title: string },
   ) => void;
+  onStartEdit: () => void;
+  onStartDelete: () => void;
 }
 
 export function ConversationListItem({
@@ -51,6 +54,8 @@ export function ConversationListItem({
   onConfirmDelete,
   onCancelDelete,
   onOpenActions,
+  onStartEdit,
+  onStartDelete,
 }: ConversationListItemProps) {
   const longPressTimerRef = useRef<number | null>(null);
   const suppressClickRef = useRef(false);
@@ -81,7 +86,7 @@ export function ConversationListItem({
       key={conv.id}
       data-testid="conv-item"
       data-active={isActive || undefined}
-      className={`w-full ${
+      className={`group w-full ${
         isGameModal
           ? "group relative flex items-start gap-3 w-full p-2.5 rounded-xl cursor-pointer transition-all border border-transparent"
           : "flex items-center pl-3 pr-2 py-2 gap-1 cursor-pointer transition-colors border-l-[3px]"
@@ -153,6 +158,26 @@ export function ConversationListItem({
             </span>
           </Button>
 
+          {!confirmDeleteId && !isEditing && (
+            <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                type="button"
+                className="p-1 rounded hover:bg-white/10 text-muted hover:text-txt transition-colors"
+                onClick={(e) => { e.stopPropagation(); onStartEdit(); }}
+                title={t("conversations.rename")}
+              >
+                <Pencil className="w-3 h-3" />
+              </button>
+              <button
+                type="button"
+                className="p-1 rounded hover:bg-white/10 text-muted hover:text-danger transition-colors"
+                onClick={(e) => { e.stopPropagation(); onStartDelete(); }}
+                title={t("conversations.delete")}
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            </div>
+          )}
           {confirmDeleteId === conv.id ? (
             <div className="flex items-center gap-1.5 flex-shrink-0">
               <span className="text-[10px] text-danger">

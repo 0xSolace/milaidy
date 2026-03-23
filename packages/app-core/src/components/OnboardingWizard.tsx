@@ -14,6 +14,7 @@ import { COMPANION_ENABLED } from "../navigation";
 import { VrmStage } from "./companion/VrmStage";
 import { ActivateStep } from "./onboarding/ActivateStep";
 import { ConnectionStep } from "./onboarding/ConnectionStep";
+import { IdentityStep } from "./onboarding/IdentityStep";
 import { OnboardingPanel } from "./onboarding/OnboardingPanel";
 import { OnboardingStepNav } from "./onboarding/OnboardingStepNav";
 import { PermissionsStep } from "./onboarding/PermissionsStep";
@@ -92,6 +93,8 @@ export function OnboardingWizard() {
         return <ConnectionStep />;
       case "permissions":
         return <PermissionsStep />;
+      case "identity":
+        return <IdentityStep />;
       case "launch":
         return <ActivateStep />;
       default:
@@ -225,12 +228,18 @@ export function OnboardingWizard() {
         </div>
 
         {/* ── Standard overlaid UI — step nav + content panel ── */}
-        <div className="onboarding-ui-overlay">
-          <OnboardingStepNav />
-          <OnboardingPanel step={onboardingStep}>
-            {renderStep()}
-          </OnboardingPanel>
-        </div>
+        {onboardingStep === "identity" ? (
+          <div className="absolute inset-0 z-20 flex flex-col justify-end pointer-events-none [&>*]:pointer-events-auto">
+            <IdentityStep />
+          </div>
+        ) : (
+          <div className="onboarding-ui-overlay">
+            <OnboardingStepNav />
+            <OnboardingPanel step={onboardingStep}>
+              {renderStep()}
+            </OnboardingPanel>
+          </div>
+        )}
       </div>
     </div>
   );

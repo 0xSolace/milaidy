@@ -271,6 +271,8 @@ export function ConversationsSidebar({
               onConfirmDelete={(id) => void handleConfirmDelete(id)}
               onCancelDelete={() => setConfirmDeleteId(null)}
               onOpenActions={openActionsMenu}
+              onStartEdit={() => handleStartEdit(conv)}
+              onStartDelete={() => setConfirmDeleteId(conv.id)}
             />
           ))
         )}

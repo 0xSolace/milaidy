@@ -2689,19 +2689,29 @@ export function AppProvider({
       resetConversationDraftState();
 
       try {
-        const { conversation, greeting } = await client.createConversation(
-          title,
-          {
+        const { conversation, greeting: inlineGreeting } =
+          await client.createConversation(title, {
             bootstrapGreeting: true,
             lang: uiLanguage,
-          },
-        );
+          });
         const nextCutoffTs = Date.now();
         setConversations((prev) => [conversation, ...prev]);
         setActiveConversationId(conversation.id);
         activeConversationIdRef.current = conversation.id;
         setCompanionMessageCutoffTs(nextCutoffTs);
-        const greetingText = greeting?.text?.trim() || "";
+        // Try inline greeting first; fall back to dedicated greeting endpoint
+        let greetingText = inlineGreeting?.text?.trim() || "";
+        if (!greetingText) {
+          try {
+            const resp = await client.requestGreeting(
+              conversation.id,
+              uiLanguage,
+            );
+            greetingText = resp.text?.trim() || "";
+          } catch {
+            // Greeting generation failed — continue without greeting
+          }
+        }
 
         if (greetingText) {
           greetingFiredRef.current = true;
@@ -4878,8 +4888,7 @@ export function AppProvider({
       if (onboardingStep === "permissions") {
         if (options?.allowPermissionBypass) {
           if (options.skipTask) addDeferredOnboardingTask(options.skipTask);
-          await handleOnboardingFinish();
-          return;
+          // Don't finish yet — advance to identity step for avatar selection
         }
       }
 
