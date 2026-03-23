@@ -890,7 +890,7 @@ export function ProviderSwitcher(props: ProviderSwitcherProps = {}) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">
+                  <SelectItem value="__default__">
                     {t("providerswitcher.usePiDefaultModel")}
                     {piAiDefaultModelSpec ? ` (${piAiDefaultModelSpec})` : ""}
                   </SelectItem>

@@ -520,7 +520,7 @@ export function CodingAgentSettingsSection() {
               />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">
+              <SelectItem value="__default__">
                 {t("codingagentsettingssection.Default")}
               </SelectItem>
               {modelOptions.map((option) => (
@@ -545,7 +545,7 @@ export function CodingAgentSettingsSection() {
               />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">
+              <SelectItem value="__default__">
                 {t("codingagentsettingssection.Default")}
               </SelectItem>
               {modelOptions.map((option) => (

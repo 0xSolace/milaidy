@@ -405,7 +405,7 @@ export function BugReportModal() {
                   <SelectValue placeholder={t("bugreportmodal.Select")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">{t("bugreportmodal.Select")}</SelectItem>
+                  <SelectItem value="__none__" disabled>{t("bugreportmodal.Select")}</SelectItem>
                   {ENV_OPTIONS.map((opt) => (
                     <SelectItem key={opt} value={opt}>
                       {opt}
