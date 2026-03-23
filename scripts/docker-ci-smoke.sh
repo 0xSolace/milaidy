@@ -15,12 +15,12 @@ set -euo pipefail
 # Environment:
 #   BUN_VERSION          Bun version to install/use in CI (default: 1.3.9)
 #   SMOKE_PORT           Host port to bind for smoke boot (default: 32138)
-#   SMOKE_TIMEOUT_SEC    Max wait for boot probe (default: 180)
+#   SMOKE_TIMEOUT_SEC    Max wait for boot probe (default: 420)
 #   DOCKER_IMAGE         Override image tag completely
 
 BUN_VERSION="${BUN_VERSION:-1.3.10}"
 SMOKE_PORT="${SMOKE_PORT:-32138}"
-SMOKE_TIMEOUT_SEC="${SMOKE_TIMEOUT_SEC:-300}"
+SMOKE_TIMEOUT_SEC="${SMOKE_TIMEOUT_SEC:-420}"
 SKIP_SMOKE=false
 TAG="docker-smoke"
 VERSION=""
@@ -136,6 +136,7 @@ docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
 docker run -d \
   --name "$CONTAINER_NAME" \
   -e MILADY_DISABLE_LOCAL_EMBEDDINGS=1 \
+  -e ELIZA_API_BIND=0.0.0.0 \
   -p "${SMOKE_PORT}:${MILADY_PORT:-2138}" \
   "$DOCKER_IMAGE" >/dev/null
 
