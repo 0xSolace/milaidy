@@ -2,15 +2,7 @@ import { useCallback, useState } from "react";
 import type { CodingAgentSession } from "../api";
 import "@xterm/xterm/css/xterm.css";
 import { PtyTerminalPane } from "./PtyTerminalPane";
-
-const STATUS_DOT: Record<string, string> = {
-  active: "bg-ok",
-  tool_running: "bg-accent",
-  blocked: "bg-warn",
-  error: "bg-danger",
-};
-
-const PULSE_STATUSES = new Set(["active", "tool_running"]);
+import { PULSE_STATUSES, STATUS_DOT } from "./pty-status-dots";
 
 interface PtyConsoleSidePanelProps {
   activeSessionId: string;

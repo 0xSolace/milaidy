@@ -41,10 +41,10 @@ export function PtyTerminalPane({
         scrollback: 5000,
         cursorBlink: true,
         theme: {
-          background: "#0a0a0a",
-          foreground: "#e4e4e7",
-          cursor: "#5a9a2a",
-          selectionBackground: "rgba(90, 154, 42, 0.3)",
+          background: "var(--bg-deep, #0a0a0a)",
+          foreground: "var(--txt, #e4e4e7)",
+          cursor: "var(--accent, #5a9a2a)",
+          selectionBackground: "var(--accent-muted, rgba(90, 154, 42, 0.3))",
         },
       });
 
@@ -103,7 +103,9 @@ export function PtyTerminalPane({
         },
       );
 
-      // Forward keyboard input for manual interjection
+      // Forward keyboard input so users can manually interject with running
+      // coding agents through the terminal (e.g. answering prompts, sending
+      // Ctrl-C to cancel, or typing follow-up commands).
       term.onData((data: string) => {
         if (!disposed) {
           try {

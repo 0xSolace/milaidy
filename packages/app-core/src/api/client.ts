@@ -5360,7 +5360,12 @@ export class MiladyClient {
                   ? ("active" as const)
                   : s.status === "error"
                     ? ("error" as const)
-                    : ("active" as const),
+                    : s.status === "stopped" ||
+                        s.status === "done" ||
+                        s.status === "completed" ||
+                        s.status === "exited"
+                      ? ("stopped" as const)
+                      : ("active" as const),
               decisionCount: 0,
               autoResolvedCount: 0,
             }));
