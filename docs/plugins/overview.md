@@ -24,11 +24,11 @@ A plugin is a self-contained module that registers one or more of:
 </Card>
 
 <Card title="Model Providers" icon="brain" href="/plugin-registry/llm/openai">
-  LLM integrations for OpenAI, Anthropic, Google Gemini, Google Antigravity, Groq, Ollama, OpenRouter, DeepSeek, xAI, Mistral, Cohere, Together, Qwen, Minimax, Pi AI, Perplexity, and Vercel AI Gateway.
+  LLM integrations for OpenAI, Anthropic, Google Gemini, Google Antigravity, Groq, Ollama, OpenRouter, DeepSeek, xAI, Mistral, Cohere, Together, Qwen, Minimax, Pi AI, Perplexity, Zai, and Vercel AI Gateway.
 </Card>
 
 <Card title="Platform Connectors" icon="plug" href="/plugin-registry/platform/discord">
-  Bridges to messaging platforms — Discord, Telegram, Twitter, Slack, WhatsApp, Signal, iMessage, BlueBubbles, MS Teams, Google Chat, Mattermost, Farcaster, WeChat, Twitch, Feishu, Matrix, Nostr, Lens, Retake, and Blooio.
+  Bridges to 30+ messaging platforms — Discord, Telegram, Twitter, Slack, WhatsApp, Signal, iMessage, BlueBubbles, Blooio, MS Teams, Google Chat, Mattermost, Farcaster, Bluesky, Instagram, Twitch, WeChat, Feishu, Matrix, Nostr, LINE, Zalo, Twilio, GitHub, Gmail Watch, Nextcloud Talk, Tlon, Lens, Retake, and more.
 </Card>
 
 <Card title="DeFi & Blockchain" icon="wallet" href="/plugin-registry/defi/evm">
@@ -36,7 +36,7 @@ A plugin is a self-contained module that registers one or more of:
 </Card>
 
 <Card title="Feature Plugins" icon="wand-magic-sparkles" href="/plugin-registry/browser">
-  Extended capabilities — browser control, image generation, text-to-speech, computer use, and cron scheduling.
+  Extended capabilities — browser control, image generation, text-to-speech, speech-to-text, computer use, cron scheduling, vision, shell, webhooks, FAL media generation, Suno music, and more.
 </Card>
 
 </CardGroup>
