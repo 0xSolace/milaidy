@@ -80,27 +80,40 @@ export function TrajectoriesView({
   const loadTrajectories = useCallback(async () => {
     setLoading(true);
     setError(null);
-    try {
-      const [trajResult, statsResult, configResult] = await Promise.all([
-        client.getTrajectories({
-          limit: pageSize,
-          offset: page * pageSize,
-          status: statusFilter || undefined,
-          source: sourceFilter || undefined,
-          search: searchQuery || undefined,
-        }),
-        client.getTrajectoryStats(),
-        client.getTrajectoryConfig(),
-      ]);
-      setResult(trajResult);
-      setStats(statsResult);
-      setConfig(configResult);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : t("trajectoriesview.FailedToLoad"),
-      );
-    } finally {
-      setLoading(false);
+
+    for (let attempt = 0; attempt <= 3; attempt++) {
+      try {
+        const [trajResult, statsResult, configResult] = await Promise.all([
+          client.getTrajectories({
+            limit: pageSize,
+            offset: page * pageSize,
+            status: statusFilter || undefined,
+            source: sourceFilter || undefined,
+            search: searchQuery || undefined,
+          }),
+          client.getTrajectoryStats(),
+          client.getTrajectoryConfig(),
+        ]);
+        setResult(trajResult);
+        setStats(statsResult);
+        setConfig(configResult);
+        setLoading(false);
+        return;
+      } catch (err) {
+        // Auto-retry on 503 (trajectory logger service still starting)
+        const status = (err as { status?: number }).status;
+        if (status === 503 && attempt < 3) {
+          await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+          continue;
+        }
+        setError(
+          err instanceof Error
+            ? err.message
+            : t("trajectoriesview.FailedToLoad"),
+        );
+        setLoading(false);
+        return;
+      }
     }
   }, [page, statusFilter, sourceFilter, searchQuery, t]);
 
