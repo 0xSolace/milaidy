@@ -5428,11 +5428,6 @@ function ensureWalletKeysInEnvAndConfig(config: ElizaConfig): boolean {
 // Trade permission helpers (exported for use by awareness contributors)
 // ---------------------------------------------------------------------------
 
-export type TradePermissionMode =
-  | "user-sign-only"
-  | "manual-local-key"
-  | "agent-auto";
-
 /**
  * Resolve the active trade permission mode from config.
  * Falls back to "user-sign-only" when not configured.
@@ -5453,18 +5448,27 @@ export function resolveTradePermissionMode(
 }
 
 /**
- * Returns true if local-key execution is permitted for the given actor.
- * @param mode    The resolved trade permission mode.
- * @param isAgent True when the caller is the agent (autonomous), false for user-initiated flows.
+ * Maximum number of autonomous agent trades allowed per calendar day.
+ * Acts as a safety rail when `agent-auto` mode is enabled.
  */
-export function canUseLocalTradeExecution(
-  mode: TradePermissionMode,
-  isAgent: boolean,
-): boolean {
-  if (mode === "agent-auto") return true;
-  if (mode === "manual-local-key") return !isAgent;
-  return false;
-}
+// Trade safety utilities (defined in trade-safety.ts for testability)
+import {
+  type TradePermissionMode,
+  assertQuoteFresh,
+  canUseLocalTradeExecution,
+  recordAgentAutoTrade,
+} from "./trade-safety.js";
+
+export {
+  AGENT_AUTO_MAX_DAILY_TRADES,
+  QUOTE_MAX_AGE_MS,
+  type TradePermissionMode,
+  agentAutoDailyTrades,
+  assertQuoteFresh,
+  canUseLocalTradeExecution,
+  getAgentAutoTradeDate,
+  recordAgentAutoTrade,
+} from "./trade-safety.js";
 
 // ---------------------------------------------------------------------------
 // Automation & agent permission helpers
@@ -8389,6 +8393,10 @@ async function handleRequest(
       return;
     }
 
+    logger.warn(
+      `[eliza-api] Wallet keys requested during onboarding (ip=${req.socket?.remoteAddress ?? "unknown"})`,
+    );
+
     // Ensure keys exist (generates if missing)
     ensureWalletKeysInEnvAndConfig(state.config);
     try {
@@ -8403,10 +8411,17 @@ async function handleRequest(
     // Derive addresses from keys
     const addresses = getWalletAddresses();
 
+    // Mask private keys — only expose last 4 chars for verification.
+    // Full keys should never be returned over the API.
+    const maskKey = (key: string): string => {
+      if (!key || key.length <= 4) return key ? "****" : "";
+      return "****" + key.slice(-4);
+    };
+
     json(res, {
-      evmPrivateKey,
+      evmPrivateKey: maskKey(evmPrivateKey),
       evmAddress: addresses.evmAddress ?? "",
-      solanaPrivateKey,
+      solanaPrivateKey: maskKey(solanaPrivateKey),
       solanaAddress: addresses.solanaAddress ?? "",
     });
     return;
@@ -12795,6 +12810,9 @@ async function handleRequest(
         provider,
       );
 
+      // Check quote freshness before executing
+      assertQuoteFresh(quote.quotedAt);
+
       const nonce = await provider.getTransactionCount(
         wallet.address,
         "pending",
@@ -12813,19 +12831,26 @@ async function handleRequest(
         const approvalResponse = await wallet.sendTransaction(approvalTxReq);
         approvalHash = approvalResponse.hash;
         // Wait for approval to be mined before submitting trade
-        await approvalResponse.wait(1);
+        const approvalReceipt = await approvalResponse.wait(1);
+        if (!approvalReceipt || approvalReceipt.status === 0) {
+          throw new Error("Token approval transaction reverted on-chain");
+        }
       }
+
+      // Fetch fresh nonce for the trade tx (avoids stale nonce after approval)
+      const tradeNonce = requiresApproval
+        ? await provider.getTransactionCount(wallet.address, "pending")
+        : nonce;
 
       const tradeTxReq: ethers.TransactionRequest = {
         to: unsignedTx.to,
         data: unsignedTx.data,
         value: BigInt(unsignedTx.valueWei),
         chainId: unsignedTx.chainId,
-        nonce: requiresApproval ? nonce + 1 : nonce,
+        nonce: tradeNonce,
       };
 
       const tradeTxResponse = await wallet.sendTransaction(tradeTxReq);
-      const tradeNonce = requiresApproval ? nonce + 1 : nonce;
 
       const executionResult = {
         hash: tradeTxResponse.hash,
@@ -12834,7 +12859,7 @@ async function handleRequest(
         valueWei: unsignedTx.valueWei,
         explorerUrl: `https://bscscan.com/tx/${tradeTxResponse.hash}`,
         blockNumber: null as number | null,
-        status: "pending" as "pending" | "success",
+        status: "submitted" as "submitted" | "success",
         approvalHash,
       };
 
@@ -12868,8 +12893,40 @@ async function handleRequest(
         });
       } catch (ledgerErr) {
         logger.warn(
-          `[api] Failed to record trade ledger entry: ${ledgerErr instanceof Error ? ledgerErr.message : ledgerErr}`,
+          `[api] Failed to record trade ledger entry (attempt 1): ${ledgerErr instanceof Error ? ledgerErr.message : ledgerErr}`,
         );
+        // Retry once — ledger writes are important for audit trail.
+        try {
+          recordWalletTradeLedgerEntry({
+            hash: tradeTxResponse.hash,
+            source,
+            side: quote.side,
+            tokenAddress: quote.tokenAddress,
+            slippageBps: quote.slippageBps,
+            route: quote.route,
+            quoteIn: {
+              symbol: quote.quoteIn.symbol,
+              amount: quote.quoteIn.amount,
+              amountWei: quote.quoteIn.amountWei,
+            },
+            quoteOut: {
+              symbol: quote.quoteOut.symbol,
+              amount: quote.quoteOut.amount,
+              amountWei: quote.quoteOut.amountWei,
+            },
+            status: "pending",
+            confirmations: 0,
+            nonce: tradeNonce,
+            blockNumber: null,
+            gasUsed: null,
+            effectiveGasPriceWei: null,
+            explorerUrl: executionResult.explorerUrl,
+          });
+        } catch (retryErr) {
+          logger.error(
+            `[api] Ledger entry retry also failed: ${retryErr instanceof Error ? retryErr.message : retryErr}`,
+          );
+        }
       }
 
       provider.destroy();
@@ -16948,6 +17005,28 @@ export async function startApiServer(opts?: {
     } catch (err) {
       logger.warn(
         `[eliza-api] Failed to persist generated wallet keys: ${err instanceof Error ? err.message : err}`,
+      );
+    }
+  }
+
+  // Warn when wallet private keys live in plaintext config and the OS secure
+  // store is not enabled.  This nudges operators toward MILADY_WALLET_OS_STORE=1.
+  {
+    const hasPlaintextKeys =
+      (typeof persistedEnv?.EVM_PRIVATE_KEY === "string" &&
+        persistedEnv.EVM_PRIVATE_KEY.trim()) ||
+      (typeof persistedEnv?.SOLANA_PRIVATE_KEY === "string" &&
+        persistedEnv.SOLANA_PRIVATE_KEY.trim());
+    const osStoreRaw = process.env.MILADY_WALLET_OS_STORE?.trim().toLowerCase();
+    const osStoreEnabled =
+      osStoreRaw === "1" ||
+      osStoreRaw === "true" ||
+      osStoreRaw === "on" ||
+      osStoreRaw === "yes";
+    if (hasPlaintextKeys && !osStoreEnabled) {
+      logger.warn(
+        "[wallet] Private keys are stored in plaintext config. " +
+          "Set MILADY_WALLET_OS_STORE=1 to use the OS secure store instead.",
       );
     }
   }

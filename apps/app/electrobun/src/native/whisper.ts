@@ -53,8 +53,22 @@ const WHISPER_MODEL = resolveWhisperPath(
   "node_modules/whisper-node/lib/whisper.cpp/models/ggml-base.en.bin",
 );
 
+let whisperBinaryChecked = false;
+let whisperBinaryResult = false;
+
 export function isWhisperBinaryAvailable(): boolean {
-  return fs.existsSync(WHISPER_BIN) && fs.existsSync(WHISPER_MODEL);
+  if (!whisperBinaryChecked) {
+    whisperBinaryResult =
+      fs.existsSync(WHISPER_BIN) && fs.existsSync(WHISPER_MODEL);
+    whisperBinaryChecked = true;
+  }
+  return whisperBinaryResult;
+}
+
+/** Reset the cached result — only for testing. */
+export function _resetWhisperCache(): void {
+  whisperBinaryChecked = false;
+  whisperBinaryResult = false;
 }
 
 /**
