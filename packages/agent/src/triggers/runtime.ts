@@ -219,10 +219,32 @@ async function dispatchInstruction(
     "messages",
   );
 
-  // For inject_now: the memory is already in the autonomy room. The
-  // AutonomyService loop will pick it up on its next cycle. We don't
-  // call processActions here to avoid double-dispatch — the loop is
-  // the single execution path for all autonomous instructions.
+  // For inject_now: immediately process the instruction rather than
+  // waiting for the next autonomy cycle. The memory is already persisted
+  // above, so if processActions fails the loop will pick it up later.
+  if (trigger.wakeMode === "inject_now") {
+    try {
+      const state = await runtime.composeState({
+        entityId: runtime.agentId,
+        roomId,
+        content: { text: instructionText },
+      });
+      await runtime.processActions(
+        {
+          entityId: runtime.agentId,
+          roomId,
+          content: { text: instructionText, source: "trigger-runtime" },
+        },
+        [],
+        state,
+      );
+    } catch (err) {
+      // Non-fatal — memory is persisted, autonomy loop will handle it
+      runtime.logger.warn?.(
+        `[trigger-runtime] inject_now processActions failed (will retry on next cycle): ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
 }
 
 export async function executeTriggerTask(

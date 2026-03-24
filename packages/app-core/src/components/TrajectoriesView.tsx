@@ -77,10 +77,11 @@ export function TrajectoriesView({
   const [clearing, setClearing] = useState(false);
   const [updatingLogging, setUpdatingLogging] = useState(false);
 
-  const loadTrajectories = useCallback(
-    async (retryCount = 0) => {
-      setLoading(true);
-      setError(null);
+  const loadTrajectories = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    for (let attempt = 0; attempt <= 3; attempt++) {
       try {
         const [trajResult, statsResult, configResult] = await Promise.all([
           client.getTrajectories({
@@ -96,24 +97,25 @@ export function TrajectoriesView({
         setResult(trajResult);
         setStats(statsResult);
         setConfig(configResult);
+        setLoading(false);
+        return;
       } catch (err) {
         // Auto-retry on 503 (trajectory logger service still starting)
         const status = (err as { status?: number }).status;
-        if (status === 503 && retryCount < 3) {
-          await new Promise((r) => setTimeout(r, 1000 * (retryCount + 1)));
-          return loadTrajectories(retryCount + 1);
+        if (status === 503 && attempt < 3) {
+          await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+          continue;
         }
         setError(
           err instanceof Error
             ? err.message
             : t("trajectoriesview.FailedToLoad"),
         );
-      } finally {
         setLoading(false);
+        return;
       }
-    },
-    [page, statusFilter, sourceFilter, searchQuery, t],
-  );
+    }
+  }, [page, statusFilter, sourceFilter, searchQuery, t]);
 
   useEffect(() => {
     void loadTrajectories();
