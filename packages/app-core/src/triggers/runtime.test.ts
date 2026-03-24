@@ -79,21 +79,18 @@ describe("trigger runtime", () => {
       updateTask: updateTaskMock,
       deleteTask: deleteTaskMock,
       createMemory: createMemoryMock,
-      composeState: vi.fn(async () => ({})),
-      processActions: vi.fn(async () => undefined),
       registerTaskWorker: vi.fn(),
       getTaskWorker: vi.fn(),
       logger: {
         info: vi.fn(),
-        warn: vi.fn(),
         error: vi.fn(),
       } as IAgentRuntime["logger"],
     };
     runtime = runtimePartial as IAgentRuntime;
   });
 
-  // inject_now triggers use processActions directly (no createMemory)
-  // to avoid double-dispatch. createMemory is only used as fallback.
+  // Verifies dispatch happened (createMemory called) and task updated.
+  // Payload-level assertions are in trigger-runtime.e2e.test.ts.
   test("executes interval trigger and persists updates", async () => {
     const task = tasks[0];
     const result = await executeTriggerTask(runtime, task, {
@@ -102,8 +99,7 @@ describe("trigger runtime", () => {
 
     expect(result.status).toBe("success");
     expect(result.taskDeleted).toBe(false);
-    // inject_now: processActions succeeds → no memory persisted
-    expect(createMemoryMock).not.toHaveBeenCalled();
+    expect(createMemoryMock).toHaveBeenCalledTimes(1);
     expect(updateTaskMock).toHaveBeenCalledTimes(1);
   });
 
@@ -166,7 +162,7 @@ describe("trigger runtime", () => {
 
     expect(result.status).toBe("success");
     expect(result.taskDeleted).toBe(false);
-    expect(createMemoryMock).not.toHaveBeenCalled();
+    expect(createMemoryMock).toHaveBeenCalledTimes(1);
     expect(updateTaskMock).toHaveBeenCalledTimes(1);
 
     // Verify the persisted metadata has a valid next cron run time
@@ -234,7 +230,7 @@ describe("trigger runtime", () => {
 
     expect(result.status).toBe("success");
     expect(result.taskDeleted).toBe(false);
-    expect(createMemoryMock).not.toHaveBeenCalled();
+    expect(createMemoryMock).toHaveBeenCalledTimes(1);
     expect(updateTaskMock).toHaveBeenCalledTimes(1);
   });
 });

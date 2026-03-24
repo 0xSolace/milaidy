@@ -13,6 +13,7 @@ const { mockUseApp, mockVrmStage } = vi.hoisted(() => ({
 vi.mock("@miladyai/app-core/state", () => ({
   getVrmPreviewUrl: () => "/vrms/previews/eliza-1.png",
   getVrmUrl: () => "/vrms/eliza-1.vrm.gz",
+  applyUiTheme: vi.fn(),
   ONBOARDING_STEPS: [
     {
       id: "hosting",

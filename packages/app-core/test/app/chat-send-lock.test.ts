@@ -1087,7 +1087,7 @@ describe("chat send locking", () => {
       }),
     );
     expect(mockClient.createConversation).toHaveBeenCalledWith(undefined, {
-      includeGreeting: true,
+      bootstrapGreeting: true,
       lang: "en",
     });
 
