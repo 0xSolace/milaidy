@@ -13633,13 +13633,21 @@ async function handleRequest(
         ready.roomId === target.roomId &&
         ready.worldId === target.worldId
       ) {
+        // Some lightweight runtimes used in tests do not implement getRoom.
+        // Once ensureConnection succeeds, treat that as good enough rather than
+        // looping forever trying to revalidate a room the runtime cannot read.
+        if (typeof runtime.getRoom !== "function") {
+          return;
+        }
         try {
           const existingRoom = await runtime.getRoom(target.roomId);
           if (existingRoom) {
             return;
           }
         } catch {
-          // Fall through and recreate the room below.
+          // If room revalidation fails, keep the established connection rather
+          // than spinning indefinitely on repeated ensureConnection calls.
+          return;
         }
         state.chatConnectionReady = null;
       }

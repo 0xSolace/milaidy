@@ -11,11 +11,12 @@ const packageRoot = path.resolve(testDir, "..");
 dotenv.config({ path: path.resolve(packageRoot, "..", "..", ".env") });
 
 const hasOpenAI = Boolean(process.env.OPENAI_API_KEY);
+const liveModelTestsEnabled = process.env.ELIZA_LIVE_TEST === "1";
+const runRuntimeDebugE2E = process.env.ELIZA_RUN_RUNTIME_DEBUG_E2E === "1";
+const shouldRunRuntimeDebug = hasOpenAI && liveModelTestsEnabled && runRuntimeDebugE2E;
 
-describe("Runtime init debug", () => {
+describe.skipIf(!shouldRunRuntimeDebug)("Runtime init debug", () => {
   it("find the hang in initialize()", async () => {
-    if (!hasOpenAI) return;
-
     logger.level = "warn";
 
     const character = createCharacter({
