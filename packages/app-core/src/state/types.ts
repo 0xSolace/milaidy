@@ -93,6 +93,7 @@ export type OnboardingStep =
   | "hosting"
   | "providers"
   | "permissions"
+  | "identity"
   | "launch";
 
 export interface OnboardingStepMeta {
@@ -122,6 +123,11 @@ export const ONBOARDING_STEPS: OnboardingStepMeta[] = [
     id: "permissions",
     name: "onboarding.stepName.permissions",
     subtitle: "onboarding.stepSub.permissions",
+  },
+  {
+    id: "identity",
+    name: "onboarding.stepName.identity",
+    subtitle: "onboarding.stepSub.identity",
   },
   {
     id: "launch",

@@ -192,6 +192,66 @@ function patchPluginSqlUUID() {
 patchPluginSqlUUID();
 
 /**
+ * Patch @elizaos/plugin-trajectory-logger JSONB array decoding.
+ *
+ * PGlite/Postgres can return JSONB arrays as native JS arrays. The published
+ * logger only accepted strings and plain objects, so `steps_json` decoded to
+ * `[]` and the Trajectories detail view appeared blank even when call counts
+ * were present.
+ *
+ * Remove once upstream accepts native JSON arrays in rowToTrajectory().
+ */
+function patchTrajectoryLoggerJsonArrayDecode() {
+  const relPaths = ["dist/node/index.node.js", "dist/index.js"];
+  const searchDirs = [
+    resolve(root, "node_modules/@elizaos/plugin-trajectory-logger"),
+  ];
+  const bunCacheDir = resolve(root, "node_modules/.bun");
+  if (existsSync(bunCacheDir)) {
+    try {
+      for (const entry of readdirSync(bunCacheDir)) {
+        if (entry.startsWith("@elizaos+plugin-trajectory-logger@")) {
+          searchDirs.push(
+            resolve(
+              bunCacheDir,
+              entry,
+              "node_modules/@elizaos/plugin-trajectory-logger",
+            ),
+          );
+        }
+      }
+    } catch {}
+  }
+
+  let patched = 0;
+  const brokenGuard =
+    'if (typeof cell === "object" && cell !== null && !Array.isArray(cell)) {';
+  const fixedGuard = 'if (typeof cell === "object" && cell !== null) {';
+
+  for (const dir of searchDirs) {
+    for (const relPath of relPaths) {
+      const target = resolve(dir, relPath);
+      if (!existsSync(target)) continue;
+      let src = readFileSync(target, "utf8");
+      if (!src.includes(brokenGuard)) continue;
+      src = src.replaceAll(brokenGuard, fixedGuard);
+      writeFileSync(target, src, "utf8");
+      patched++;
+      console.log(
+        `[patch-deps] Applied trajectory logger JSON array decode fix: ${target}`,
+      );
+    }
+  }
+
+  if (patched > 0) {
+    console.log(
+      `[patch-deps] plugin-trajectory-logger: fixed ${patched} JSON decode guard(s).`,
+    );
+  }
+}
+patchTrajectoryLoggerJsonArrayDecode();
+
+/**
  * Patch @miladyai/agent ensureBrowserServerLink() file extension.
  *
  * The upstream code checks for `dist/index` without `.js` extension, but
