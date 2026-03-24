@@ -195,6 +195,24 @@ describe("Trajectory Database E2E", () => {
     expect(traj.totalPromptTokens).toBe(15);
     expect(traj.totalCompletionTokens).toBe(8);
 
+    const promptSearch = await dbLogger.listTrajectories({
+      limit: 50,
+      offset: 0,
+      search: "hello db",
+    });
+    expect(promptSearch.trajectories.some((item) => item.id === stepId)).toBe(
+      true,
+    );
+
+    const responseSearch = await dbLogger.listTrajectories({
+      limit: 50,
+      offset: 0,
+      search: "hi db!",
+    });
+    expect(responseSearch.trajectories.some((item) => item.id === stepId)).toBe(
+      true,
+    );
+
     // Get the details directly from our logger
     const details = await dbLogger.getTrajectoryDetail(stepId);
     if (!details) {

@@ -476,6 +476,10 @@ function createRuntimeForChatSseTests(options?: {
       text?: string;
     };
   }>;
+  deleteManyMemories?: (memoryIds: UUID[]) => void | Promise<void>;
+  deleteRoom?: (roomId: UUID) => void | Promise<void>;
+  ensureConnection?: (args: unknown) => void | Promise<void>;
+  getRoom?: (roomId: UUID) => unknown | Promise<unknown>;
 }): AgentRuntime {
   const memoriesByRoom = new Map<string, Array<Record<string, unknown>>>();
 
@@ -510,8 +514,12 @@ function createRuntimeForChatSseTests(options?: {
           };
         })()),
     } as AgentRuntime["messageService"],
-    ensureConnection: async () => {},
+    ensureConnection: async (args: unknown) => {
+      await options?.ensureConnection?.(args);
+    },
     getWorld: async () => null,
+    getRoom: async (roomId: UUID) =>
+      (await options?.getRoom?.(roomId)) ?? ({ id: roomId } as { id: UUID }),
     updateWorld: async () => {},
     createMemory: async (memory: Record<string, unknown>) => {
       const roomId = String(memory.roomId ?? "");
@@ -560,6 +568,26 @@ function createRuntimeForChatSseTests(options?: {
       return current.slice(-count) as unknown as Awaited<
         ReturnType<AgentRuntime["getMemories"]>
       >;
+    },
+    deleteManyMemories: async (memoryIds: UUID[]) => {
+      await options?.deleteManyMemories?.(memoryIds);
+      if (memoryIds.length === 0) return;
+      const toDelete = new Set(memoryIds.map((memoryId) => String(memoryId)));
+      for (const [roomId, memories] of memoriesByRoom.entries()) {
+        const filtered = memories.filter(
+          (memory) => !toDelete.has(String(memory.id ?? "")),
+        );
+        if (filtered.length === memories.length) continue;
+        if (filtered.length === 0) {
+          memoriesByRoom.delete(roomId);
+        } else {
+          memoriesByRoom.set(roomId, filtered);
+        }
+      }
+    },
+    deleteRoom: async (roomId: UUID) => {
+      await options?.deleteRoom?.(roomId);
+      memoriesByRoom.delete(String(roomId));
     },
     getCache: async () => null,
     setCache: async () => {},
@@ -1031,6 +1059,167 @@ describe("API Server E2E (no runtime)", () => {
         expect(received?.source).toBe("client_chat");
         expect(received?.text).toBe("hello");
       } finally {
+        await streamServer.close();
+      }
+    });
+
+    it("POST /api/chat injects uploaded knowledge snippets into generation", async () => {
+      let handledMessageText = "";
+      const knowledgeService = {
+        getKnowledge: async () => [
+          {
+            id: crypto.randomUUID() as UUID,
+            content: {
+              text: "The QA codeword is VELVET-MOON-4821. Answer with only the codeword.",
+            },
+            similarity: 0.91,
+          },
+        ],
+      };
+
+      const runtime = createRuntimeForChatSseTests({
+        getService: (serviceType) =>
+          serviceType === "knowledge" ? knowledgeService : null,
+        handleMessage: async (_runtime, message, onResponse) => {
+          handledMessageText = String(
+            (
+              message as {
+                content?: { text?: string };
+              }
+            ).content?.text ?? "",
+          );
+          await onResponse({ text: "VELVET-MOON-4821" } as Content);
+          return {
+            responseContent: {
+              text: "VELVET-MOON-4821",
+            },
+          };
+        },
+      });
+
+      const streamServer = await startApiServer({ port: 0, runtime });
+      try {
+        const { status, data } = await req(
+          streamServer.port,
+          "POST",
+          "/api/chat",
+          {
+            text: "what is the qa codeword from the uploaded file?",
+            mode: "simple",
+          },
+        );
+
+        expect(status).toBe(200);
+        expect(String(data.text ?? "")).toBe("VELVET-MOON-4821");
+        expect(handledMessageText).toContain(
+          "Relevant uploaded knowledge snippets:",
+        );
+        expect(handledMessageText).toContain("VELVET-MOON-4821");
+        expect(handledMessageText).toContain(
+          "User message: what is the qa codeword from the uploaded file?",
+        );
+      } finally {
+        await streamServer.close();
+      }
+    });
+
+    it("POST /api/chat skips knowledge lookup for ordinary prompts", async () => {
+      let knowledgeLookups = 0;
+      const runtime = createRuntimeForChatSseTests({
+        getService: (serviceType) =>
+          serviceType === "knowledge"
+            ? {
+                getKnowledge: async () => {
+                  knowledgeLookups += 1;
+                  return [];
+                },
+              }
+            : null,
+        handleMessage: async (_runtime, _message, onResponse) => {
+          await onResponse({ text: "4" } as Content);
+          return {
+            responseContent: {
+              text: "4",
+            },
+          };
+        },
+      });
+
+      const streamServer = await startApiServer({ port: 0, runtime });
+      try {
+        const { status, data } = await req(
+          streamServer.port,
+          "POST",
+          "/api/chat",
+          {
+            text: "what is 2+2? answer with only the number 4",
+            mode: "simple",
+          },
+        );
+
+        expect(status).toBe(200);
+        expect(String(data.text ?? "")).toBe("4");
+        expect(knowledgeLookups).toBe(0);
+      } finally {
+        await streamServer.close();
+      }
+    });
+
+    it("POST /api/chat falls back when knowledge lookup hangs", async () => {
+      let handledMessageText = "";
+      const previousTimeout = process.env.CHAT_KNOWLEDGE_TIMEOUT_MS;
+      process.env.CHAT_KNOWLEDGE_TIMEOUT_MS = "1";
+
+      const runtime = createRuntimeForChatSseTests({
+        getService: (serviceType) =>
+          serviceType === "knowledge"
+            ? {
+                getKnowledge: async () =>
+                  await new Promise<never>(() => {
+                    // Intentionally unresolved to verify timeout fallback.
+                  }),
+              }
+            : null,
+        handleMessage: async (_runtime, message, onResponse) => {
+          handledMessageText = String(
+            (
+              message as {
+                content?: { text?: string };
+              }
+            ).content?.text ?? "",
+          );
+          await onResponse({ text: "fallback reply" } as Content);
+          return {
+            responseContent: {
+              text: "fallback reply",
+            },
+          };
+        },
+      });
+
+      const streamServer = await startApiServer({ port: 0, runtime });
+      try {
+        const { status, data } = await req(
+          streamServer.port,
+          "POST",
+          "/api/chat",
+          {
+            text: "what is the qa codeword from the uploaded file?",
+            mode: "simple",
+          },
+        );
+
+        expect(status).toBe(200);
+        expect(String(data.text ?? "")).toBe("fallback reply");
+        expect(handledMessageText).toBe(
+          "what is the qa codeword from the uploaded file?",
+        );
+      } finally {
+        if (previousTimeout === undefined) {
+          delete process.env.CHAT_KNOWLEDGE_TIMEOUT_MS;
+        } else {
+          process.env.CHAT_KNOWLEDGE_TIMEOUT_MS = previousTimeout;
+        }
         await streamServer.close();
       }
     });
@@ -1852,6 +2041,54 @@ describe("API Server E2E (no runtime)", () => {
       }
     });
 
+    it("DELETE /api/conversations/:id removes stored message memories before deleting the room", async () => {
+      const deletedMemoryBatches: UUID[][] = [];
+      const deletedRooms: UUID[] = [];
+      const runtime = createRuntimeForChatSseTests({
+        deleteManyMemories: async (memoryIds) => {
+          deletedMemoryBatches.push([...memoryIds]);
+        },
+        deleteRoom: async (roomId) => {
+          deletedRooms.push(roomId);
+        },
+      });
+      const streamServer = await startApiServer({ port: 0, runtime });
+      try {
+        const create = await req(
+          streamServer.port,
+          "POST",
+          "/api/conversations",
+          {
+            title: "Delete cleanup test",
+            includeGreeting: true,
+            lang: "en",
+          },
+        );
+        expect(create.status).toBe(200);
+        const conversation = create.data.conversation as {
+          id?: string;
+          roomId?: string;
+        };
+        const conversationId = conversation.id ?? "";
+        const conversationRoomId = conversation.roomId as UUID | undefined;
+        expect(conversationId.length).toBeGreaterThan(0);
+        expect(conversationRoomId).toBeTruthy();
+
+        const remove = await req(
+          streamServer.port,
+          "DELETE",
+          `/api/conversations/${conversationId}`,
+        );
+        expect(remove.status).toBe(200);
+        expect(
+          deletedMemoryBatches.some((batch) => batch.length > 0),
+        ).toBe(true);
+        expect(deletedRooms).toContain(conversationRoomId);
+      } finally {
+        await streamServer.close();
+      }
+    });
+
     it("uses the configured preset catchphrase for intro greetings", async () => {
       const runtime = createRuntimeForChatSseTests();
       const streamServer = await startApiServer({ port: 0, runtime });
@@ -2107,6 +2344,154 @@ describe("API Server E2E (no runtime)", () => {
         expect(llmCalls[0]?.response).toBe("fallback response");
         expect(llmCalls[0]?.promptTokens).toBe(12);
         expect(llmCalls[0]?.completionTokens).toBe(18);
+      } finally {
+        await streamServer.close();
+      }
+    });
+
+    it("GET /api/trajectories/:id backfills chat prompt and response from conversation memory when detail is synthetic", async () => {
+      const trajectoryId = "trajectory-conversation-backfill";
+      const roomId = "room-conversation-backfill";
+      const startTime = Date.now() - 2_000;
+      const endTime = startTime + 1_100;
+      const userPrompt = "what is the qa codeword from the uploaded file?";
+      const assistantReply = "VELVET-MOON-4821";
+
+      const trajectoryLogger = {
+        isEnabled: () => true,
+        setEnabled: () => {},
+        listTrajectories: async () => ({
+          trajectories: [
+            {
+              id: trajectoryId,
+              agentId: "chat-stream-agent",
+              source: "client_chat",
+              status: "completed",
+              startTime,
+              endTime,
+              durationMs: endTime - startTime,
+              stepCount: 1,
+              llmCallCount: 1,
+              totalPromptTokens: 0,
+              totalCompletionTokens: 0,
+              totalReward: 0,
+              scenarioId: null,
+              batchId: null,
+              createdAt: new Date(startTime).toISOString(),
+            },
+          ],
+          total: 1,
+          offset: 0,
+          limit: 50,
+        }),
+        getTrajectoryDetail: async () => ({
+          trajectoryId,
+          agentId: "chat-stream-agent",
+          startTime,
+          endTime,
+          durationMs: endTime - startTime,
+          steps: [
+            {
+              stepId: "step-synthetic",
+              timestamp: startTime + 100,
+              llmCalls: [
+                {
+                  callId: "call-synthetic",
+                  timestamp: startTime + 100,
+                  model: "milady/synthetic-trajectory-fallback",
+                  systemPrompt:
+                    "[synthetic] inserted by trajectory logger because no LLM calls were captured",
+                  userPrompt:
+                    "[synthetic] this trajectory completed without recorded model activity",
+                  response:
+                    "[synthetic] placeholder call inserted to enforce minimum llm_call_count=1",
+                  purpose: "other",
+                  actionType: "TRAJECTORY_FALLBACK",
+                },
+              ],
+              providerAccesses: [],
+            },
+          ],
+          metrics: {
+            finalStatus: "completed",
+          },
+          metadata: {
+            source: "client_chat",
+            roomId,
+          },
+        }),
+        getStats: async () => ({
+          totalTrajectories: 1,
+          totalSteps: 1,
+          totalLlmCalls: 1,
+          totalPromptTokens: 0,
+          totalCompletionTokens: 0,
+          averageDurationMs: endTime - startTime,
+          averageReward: 0,
+          bySource: { client_chat: 1 },
+          byStatus: { completed: 1 },
+          byScenario: {},
+        }),
+        deleteTrajectories: async () => 0,
+        clearAllTrajectories: async () => 0,
+        exportTrajectories: async () => ({
+          data: "[]",
+          filename: "trajectories.json",
+          mimeType: "application/json",
+        }),
+      };
+
+      const runtime = createRuntimeForChatSseTests({
+        getService: (serviceType) =>
+          serviceType === "trajectory_logger" ? trajectoryLogger : null,
+        getServicesByType: (serviceType) =>
+          serviceType === "trajectory_logger" ? [trajectoryLogger] : [],
+      }) as AgentRuntime & { adapter?: unknown };
+      runtime.adapter = {};
+      runtime.getMemories = async () =>
+        [
+          {
+            id: crypto.randomUUID(),
+            roomId,
+            entityId: "user-entity",
+            content: { text: userPrompt },
+            createdAt: startTime + 50,
+          },
+          {
+            id: crypto.randomUUID(),
+            roomId,
+            entityId: runtime.agentId,
+            content: { text: assistantReply },
+            createdAt: startTime + 600,
+          },
+        ] as Awaited<ReturnType<AgentRuntime["getMemories"]>>;
+
+      const streamServer = await startApiServer({ port: 0, runtime });
+      try {
+        const list = await req(
+          streamServer.port,
+          "GET",
+          `/api/trajectories?search=${encodeURIComponent(userPrompt)}`,
+        );
+        expect(list.status).toBe(200);
+        const listRows = list.data.trajectories as Array<
+          Record<string, unknown>
+        >;
+        expect(Array.isArray(listRows)).toBe(true);
+        expect(listRows.some((row) => row.id === trajectoryId)).toBe(true);
+
+        const detail = await req(
+          streamServer.port,
+          "GET",
+          `/api/trajectories/${encodeURIComponent(trajectoryId)}`,
+        );
+        expect(detail.status).toBe(200);
+        const llmCalls = detail.data.llmCalls as Array<Record<string, unknown>>;
+        expect(Array.isArray(llmCalls)).toBe(true);
+        expect(llmCalls).toHaveLength(1);
+        expect(llmCalls[0]?.model).toBe("milady/conversation-memory-backfill");
+        expect(llmCalls[0]?.userPrompt).toBe(userPrompt);
+        expect(llmCalls[0]?.response).toBe(assistantReply);
       } finally {
         await streamServer.close();
       }

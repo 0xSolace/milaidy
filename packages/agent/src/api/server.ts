@@ -182,6 +182,7 @@ import {
   sendJson,
   sendJsonError,
 } from "./http-helpers.js";
+import { getKnowledgeService } from "./knowledge-service-loader.js";
 import { handleKnowledgeRoutes } from "./knowledge-routes.js";
 import {
   evictOldestConversation,
@@ -3126,6 +3127,153 @@ function writeSseJson(
   writeSseData(res, JSON.stringify(payload), event);
 }
 
+const CHAT_KNOWLEDGE_MIN_SIMILARITY = 0.2;
+const CHAT_KNOWLEDGE_MAX_SNIPPETS = 3;
+const CHAT_KNOWLEDGE_MAX_CHARS = 900;
+const DEFAULT_CHAT_KNOWLEDGE_TIMEOUT_MS = 4_000;
+const MAX_CHAT_KNOWLEDGE_TIMEOUT_MS = 15_000;
+
+function getChatKnowledgeTimeoutMs(): number {
+  const raw = process.env.CHAT_KNOWLEDGE_TIMEOUT_MS;
+  if (!raw) return DEFAULT_CHAT_KNOWLEDGE_TIMEOUT_MS;
+  const parsed = Number.parseInt(raw, 10);
+  if (Number.isNaN(parsed) || parsed <= 0) {
+    return DEFAULT_CHAT_KNOWLEDGE_TIMEOUT_MS;
+  }
+  return Math.min(parsed, MAX_CHAT_KNOWLEDGE_TIMEOUT_MS);
+}
+
+function shouldAugmentChatMessageWithKnowledge(userPrompt: string): boolean {
+  const normalizedPrompt = userPrompt.toLowerCase();
+  return [
+    "uploaded",
+    "file",
+    "document",
+    "knowledge",
+    "codeword",
+    "attachment",
+  ].some((token) => normalizedPrompt.includes(token));
+}
+
+async function getChatKnowledgeMatchesWithTimeout(
+  lookup: Promise<
+    Array<{
+      id: UUID;
+      content: { text?: string };
+      similarity?: number;
+      metadata?: Record<string, unknown>;
+    }>
+  >,
+): Promise<
+  Array<{
+    id: UUID;
+    content: { text?: string };
+    similarity?: number;
+    metadata?: Record<string, unknown>;
+  }>
+> {
+  const timeoutMs = getChatKnowledgeTimeoutMs();
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  try {
+    return await Promise.race([
+      lookup,
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => {
+          reject(new Error("Chat knowledge lookup timed out"));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+function normalizeChatKnowledgeSnippet(text: string): string {
+  return text.replace(/\s+/g, " ").trim().slice(0, CHAT_KNOWLEDGE_MAX_CHARS);
+}
+
+function buildChatKnowledgePrompt(
+  userPrompt: string,
+  snippets: string[],
+): string {
+  return [
+    "Relevant uploaded knowledge snippets:",
+    ...snippets.map((snippet, index) => `[K${index + 1}] ${snippet}`),
+    "",
+    "Use the uploaded knowledge when it is relevant to the user's request. Ignore it when it is not relevant.",
+    "",
+    `User message: ${userPrompt}`,
+  ].join("\n");
+}
+
+async function maybeAugmentChatMessageWithKnowledge(
+  runtime: AgentRuntime,
+  message: ReturnType<typeof createMessageMemory>,
+): Promise<ReturnType<typeof createMessageMemory>> {
+  const userPrompt = extractCompatTextContent(message.content)?.trim();
+  if (!userPrompt || !runtime.agentId) {
+    return message;
+  }
+  if (!shouldAugmentChatMessageWithKnowledge(userPrompt)) {
+    return message;
+  }
+
+  try {
+    const knowledge = await getKnowledgeService(runtime);
+    if (!knowledge.service) {
+      return message;
+    }
+
+    const searchMessage = {
+      ...message,
+      id: crypto.randomUUID() as UUID,
+      agentId: runtime.agentId,
+      entityId: runtime.agentId,
+      roomId: runtime.agentId,
+      content: { text: userPrompt },
+      createdAt: Date.now(),
+    } as ReturnType<typeof createMessageMemory>;
+
+    const snippets = (
+      await getChatKnowledgeMatchesWithTimeout(
+        knowledge.service.getKnowledge(searchMessage, {
+          roomId: runtime.agentId,
+        }),
+      )
+    )
+      .filter(
+        (match) => (match.similarity ?? 0) >= CHAT_KNOWLEDGE_MIN_SIMILARITY,
+      )
+      .slice(0, CHAT_KNOWLEDGE_MAX_SNIPPETS)
+      .map((match) => normalizeChatKnowledgeSnippet(match.content?.text ?? ""))
+      .filter((snippet) => snippet.length > 0);
+
+    if (snippets.length === 0) {
+      return message;
+    }
+
+    return {
+      ...message,
+      content: {
+        ...message.content,
+        text: buildChatKnowledgePrompt(userPrompt, snippets),
+      },
+    };
+  } catch (err) {
+    runtime.logger?.warn(
+      {
+        err,
+        src: "eliza-api",
+        messageId: message.id,
+        roomId: message.roomId,
+      },
+      "Failed to augment chat message with uploaded knowledge",
+    );
+    return message;
+  }
+}
+
 async function generateChatResponse(
   runtime: AgentRuntime,
   message: ReturnType<typeof createMessageMemory>,
@@ -3200,9 +3348,13 @@ async function generateChatResponse(
     | undefined;
   let _handlerError: unknown = null;
   try {
-    result = await runtime.messageService?.handleMessage(
+    const generationMessage = await maybeAugmentChatMessageWithKnowledge(
       runtime,
       message,
+    );
+    result = await runtime.messageService?.handleMessage(
+      runtime,
+      generationMessage,
       async (content: Content) => {
         if (opts?.isAborted?.()) {
           throw new Error("client_disconnected");
@@ -6926,7 +7078,10 @@ function wireCoordinatorEventRouting(st: ServerState): boolean {
           // We inline the setup here because ensureLegacyChatConnection is
           // closure-scoped in the route handler and not accessible at module level.
           const agentName = runtime.character.name ?? "Eliza";
-          if (!st.chatUserId || !st.chatRoomId) {
+          const existingLegacyChatRoom = st.chatRoomId
+            ? await runtime.getRoom(st.chatRoomId).catch(() => null)
+            : null;
+          if (!st.chatUserId || !st.chatRoomId || !existingLegacyChatRoom) {
             const adminId =
               st.adminEntityId ??
               (stringToUuid(`${st.agentName}-admin-entity`) as UUID);
@@ -13478,7 +13633,23 @@ async function handleRequest(
         ready.roomId === target.roomId &&
         ready.worldId === target.worldId
       ) {
-        return;
+        // Some lightweight runtimes used in tests do not implement getRoom.
+        // Once ensureConnection succeeds, treat that as good enough rather than
+        // looping forever trying to revalidate a room the runtime cannot read.
+        if (typeof runtime.getRoom !== "function") {
+          return;
+        }
+        try {
+          const existingRoom = await runtime.getRoom(target.roomId);
+          if (existingRoom) {
+            return;
+          }
+        } catch {
+          // If room revalidation fails, keep the established connection rather
+          // than spinning indefinitely on repeated ensureConnection calls.
+          return;
+        }
+        state.chatConnectionReady = null;
       }
 
       if (!state.chatConnectionPromise) {
@@ -14689,6 +14860,26 @@ async function handleRequest(
     const convId = decodeURIComponent(pathname.split("/")[3]);
     const conv = await getConversationWithRestore(convId);
     if (conv?.roomId && state.runtime) {
+      try {
+        const memories = await state.runtime.getMemories({
+          roomId: conv.roomId,
+          tableName: "messages",
+          count: 1000,
+        });
+        const memoryIds = memories
+          .map((memory) => memory.id)
+          .filter(
+            (memoryId): memoryId is UUID =>
+              typeof memoryId === "string" && memoryId.trim().length > 0,
+          );
+        if (memoryIds.length > 0) {
+          await deleteConversationMemories(state.runtime, memoryIds);
+        }
+      } catch (err) {
+        logger.debug(
+          `[conversations] Failed to delete messages for ${convId}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
       try {
         await deleteConversationRoomData(state.runtime, conv.roomId);
       } catch (err) {

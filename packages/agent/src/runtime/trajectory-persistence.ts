@@ -1709,8 +1709,15 @@ export async function installDatabaseTrajectoryLogger(
       }
     }
     if (options.search) {
-      const searchPattern = `%${options.search.replace(/[%_]/g, "\\$&")}%`;
-      whereClauses.push(`id LIKE ${sqlQuote(searchPattern)}`);
+      const searchPattern = `%${options.search.toLowerCase().replace(/[%_]/g, "\\$&")}%`;
+      const quotedPattern = sqlQuote(searchPattern);
+      whereClauses.push(
+        `(
+          LOWER(COALESCE(id, '')) LIKE ${quotedPattern}
+          OR LOWER(COALESCE(metadata, '')) LIKE ${quotedPattern}
+          OR LOWER(COALESCE(steps_json, '')) LIKE ${quotedPattern}
+        )`,
+      );
     }
 
     const whereClause =
@@ -2566,8 +2573,15 @@ export class DatabaseTrajectoryLogger extends Service {
       }
     }
     if (options.search) {
-      const searchPattern = `%${options.search.replace(/[%_]/g, "\\$&")}%`;
-      whereClauses.push(`id LIKE ${sqlQuote(searchPattern)}`);
+      const searchPattern = `%${options.search.toLowerCase().replace(/[%_]/g, "\\$&")}%`;
+      const quotedPattern = sqlQuote(searchPattern);
+      whereClauses.push(
+        `(
+          LOWER(COALESCE(id, '')) LIKE ${quotedPattern}
+          OR LOWER(COALESCE(metadata, '')) LIKE ${quotedPattern}
+          OR LOWER(COALESCE(steps_json, '')) LIKE ${quotedPattern}
+        )`,
+      );
     }
 
     const whereClause =

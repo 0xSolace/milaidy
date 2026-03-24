@@ -1,5 +1,5 @@
 diff --git a/dist/browser/index.browser.js b/dist/browser/index.browser.js
-index d2a9b42534b2aac933a0c5842849b21ae2488e41..ed77b775df2ebcbd4d40151e382d5535636ef932 100644
+index d2a9b42534b2aac933a0c5842849b21ae2488e41..127d2b9b8 100644
 --- a/dist/browser/index.browser.js
 +++ b/dist/browser/index.browser.js
 @@ -3688,7 +3688,7 @@ class BaseDrizzleAdapter extends DatabaseAdapter {
@@ -11,6 +11,46 @@ index d2a9b42534b2aac933a0c5842849b21ae2488e41..ed77b775df2ebcbd4d40151e382d5535
    }
    normalizeWorldData(world) {
      const worldData = {
+@@ -4510,10 +4510,28 @@ class BaseDrizzleAdapter extends DatabaseAdapter {
+   }
+   async log(params) {
+     return this.withDatabase(async () => {
++      const warnMissingRoom = () => {
++        logger9.warn({
++          src: "plugin:sql",
++          type: params.type,
++          roomId: params.roomId,
++          entityId: params.entityId
++        }, "Skipping log entry for deleted room");
++      };
++      const isMissingRoomForeignKey = (error) => {
++        const errorCode = typeof error === "object" && error !== null && "code" in error ? String(error.code) : "";
++        const errorMessage = error instanceof Error ? error.message : String(error);
++        return errorCode === "23503" && errorMessage.includes("logs_room_id_rooms_id_fk") || errorMessage.includes('violates foreign key constraint "logs_room_id_rooms_id_fk"') || errorMessage.includes("Key (room_id)=") && errorMessage.includes('is not present in table "rooms"');
++      };
+       try {
+         const sanitizedBody = this.sanitizeJsonObject(params.body);
+         const jsonString = JSON.stringify(sanitizedBody);
+         await this.withEntityContext(params.entityId, async (tx) => {
++          const existingRoom = await tx.select({ id: roomTable.id }).from(roomTable).where(eq2(roomTable.id, params.roomId)).limit(1);
++          if (existingRoom.length === 0) {
++            warnMissingRoom();
++            return;
++          }
+           await tx.insert(logTable).values({
+             body: sql27`${jsonString}::jsonb`,
+             entityId: params.entityId,
+@@ -4522,6 +4540,10 @@ class BaseDrizzleAdapter extends DatabaseAdapter {
+           });
+         });
+       } catch (error) {
++        if (isMissingRoomForeignKey(error)) {
++          warnMissingRoom();
++          return;
++        }
+         logger9.error({
+           src: "plugin:sql",
+           type: params.type,
 diff --git a/dist/node/index.node.js b/dist/node/index.node.js
 index c231d59de7256f318174b602923538346d4c61b6..a0deeea8485c78f313cdcad711bc627d08bd6229 100644
 --- a/dist/node/index.node.js
@@ -24,3 +64,86 @@ index c231d59de7256f318174b602923538346d4c61b6..a0deeea8485c78f313cdcad711bc627d
    }
    normalizeWorldData(world) {
      const worldData = {
+@@ -4604,10 +4604,28 @@ class BaseDrizzleAdapter extends DatabaseAdapter {
+   }
+   async log(params) {
+     return this.withDatabase(async () => {
++      const warnMissingRoom = () => {
++        logger9.warn({
++          src: "plugin:sql",
++          type: params.type,
++          roomId: params.roomId,
++          entityId: params.entityId
++        }, "Skipping log entry for deleted room");
++      };
++      const isMissingRoomForeignKey = (error) => {
++        const errorCode = typeof error === "object" && error !== null && "code" in error ? String(error.code) : "";
++        const errorMessage = error instanceof Error ? error.message : String(error);
++        return errorCode === "23503" && errorMessage.includes("logs_room_id_rooms_id_fk") || errorMessage.includes('violates foreign key constraint "logs_room_id_rooms_id_fk"') || errorMessage.includes("Key (room_id)=") && errorMessage.includes('is not present in table "rooms"');
++      };
+       try {
+         const sanitizedBody = this.sanitizeJsonObject(params.body);
+         const jsonString = JSON.stringify(sanitizedBody);
+         await this.withEntityContext(params.entityId, async (tx) => {
++          const existingRoom = await tx.select({ id: roomTable.id }).from(roomTable).where(eq2(roomTable.id, params.roomId)).limit(1);
++          if (existingRoom.length === 0) {
++            warnMissingRoom();
++            return;
++          }
+           await tx.insert(logTable).values({
+             body: sql27`${jsonString}::jsonb`,
+             entityId: params.entityId,
+@@ -4616,6 +4634,10 @@ class BaseDrizzleAdapter extends DatabaseAdapter {
+           });
+         });
+       } catch (error) {
++        if (isMissingRoomForeignKey(error)) {
++          warnMissingRoom();
++          return;
++        }
+         logger9.error({
+           src: "plugin:sql",
+           type: params.type,
+diff --git a/dist/cjs/index.node.cjs b/dist/cjs/index.node.cjs
+--- a/dist/cjs/index.node.cjs
++++ b/dist/cjs/index.node.cjs
+@@ -4644,10 +4644,28 @@
+   }
+   async log(params) {
+     return this.withDatabase(async () => {
++      const warnMissingRoom = () => {
++        import_core10.logger.warn({
++          src: "plugin:sql",
++          type: params.type,
++          roomId: params.roomId,
++          entityId: params.entityId
++        }, "Skipping log entry for deleted room");
++      };
++      const isMissingRoomForeignKey = (error) => {
++        const errorCode = typeof error === "object" && error !== null && "code" in error ? String(error.code) : "";
++        const errorMessage = error instanceof Error ? error.message : String(error);
++        return errorCode === "23503" && errorMessage.includes("logs_room_id_rooms_id_fk") || errorMessage.includes('violates foreign key constraint "logs_room_id_rooms_id_fk"') || errorMessage.includes("Key (room_id)=") && errorMessage.includes('is not present in table "rooms"');
++      };
+       try {
+         const sanitizedBody = this.sanitizeJsonObject(params.body);
+         const jsonString = JSON.stringify(sanitizedBody);
+         await this.withEntityContext(params.entityId, async (tx) => {
++          const existingRoom = await tx.select({ id: roomTable.id }).from(roomTable).where(import_drizzle_orm28.eq(roomTable.id, params.roomId)).limit(1);
++          if (existingRoom.length === 0) {
++            warnMissingRoom();
++            return;
++          }
+           await tx.insert(logTable).values({
+             body: import_drizzle_orm28.sql`${jsonString}::jsonb`,
+             entityId: params.entityId,
+@@ -4656,6 +4674,10 @@
+           });
+         });
+       } catch (error) {
++        if (isMissingRoomForeignKey(error)) {
++          warnMissingRoom();
++          return;
++        }
+         import_core10.logger.error({
+           src: "plugin:sql",
+           type: params.type,
