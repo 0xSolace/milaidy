@@ -42,6 +42,14 @@ vi.mock("../../src/components/ChatModalView", () => ({
     ),
 }));
 
+vi.mock("../../src/components/PtyConsoleDrawer", () => ({
+  PtyConsoleDrawer: () => React.createElement("div", null, "PtyConsoleDrawer"),
+}));
+
+vi.mock("../../src/components/PtyConsoleSidePanel", () => ({
+  PtyConsoleSidePanel: () => React.createElement("div", null, "PtyConsoleSidePanel"),
+}));
+
 const mockUploadCustomVrm = vi.fn(async () => {});
 const mockUploadCustomBackground = vi.fn(async () => {});
 
@@ -89,6 +97,9 @@ function createContext(overrides: Record<string, unknown> = {}) {
     walletLoading: false,
     walletNftsLoading: false,
     walletError: null,
+    ptySessions: [],
+    ptySidePanelSessionId: null,
+    setPtySidePanelSessionId: vi.fn(),
     loadBalances: vi.fn(async () => {}),
     loadNfts: vi.fn(async () => {}),
     getBscTradePreflight: vi.fn(async () => ({
