@@ -197,32 +197,27 @@ async function dispatchInstruction(
     );
   }
 
-  // Create a memory in the autonomy room with the trigger instruction.
-  // The AutonomyService loop picks this up as an autonomous action.
   const instructionText = `[Heartbeat: ${trigger.displayName}]\n${trigger.instructions}`;
-
-  await runtime.createMemory(
-    {
-      entityId: runtime.agentId,
-      roomId,
-      content: {
-        text: instructionText,
-        source: "trigger-runtime",
-        metadata: {
-          triggerId: trigger.triggerId,
-          triggerTaskId: taskId,
-          wakeMode: trigger.wakeMode,
-          isAutonomousInstruction: true,
-        },
+  const memoryPayload = {
+    entityId: runtime.agentId,
+    roomId,
+    content: {
+      text: instructionText,
+      source: "trigger-runtime",
+      metadata: {
+        triggerId: trigger.triggerId,
+        triggerTaskId: taskId,
+        wakeMode: trigger.wakeMode,
+        isAutonomousInstruction: true,
       },
     },
-    "messages",
-  );
+  };
 
-  // For inject_now: immediately process the instruction rather than
-  // waiting for the next autonomy cycle. The memory is already persisted
-  // above, so if processActions fails the loop will pick it up later.
   if (trigger.wakeMode === "inject_now") {
+    // inject_now: execute immediately via processActions. We do NOT
+    // persist a memory first to avoid double-dispatch — the autonomy
+    // loop would also pick it up and re-execute. If processActions
+    // fails, we fall back to persisting a memory so the loop retries.
     try {
       const state = await runtime.composeState({
         entityId: runtime.agentId,
@@ -238,13 +233,19 @@ async function dispatchInstruction(
         [],
         state,
       );
+      return; // Success — no memory persisted, no double-dispatch risk
     } catch (err) {
-      // Non-fatal — memory is persisted, autonomy loop will handle it
       runtime.logger.warn?.(
-        `[trigger-runtime] inject_now processActions failed (will retry on next cycle): ${err instanceof Error ? err.message : String(err)}`,
+        `[trigger-runtime] inject_now processActions failed, falling back to memory dispatch: ${err instanceof Error ? err.message : String(err)}`,
       );
+      // Fall through to persist memory for autonomy loop pickup
     }
   }
+
+  // next_autonomy_cycle (or inject_now fallback): persist a memory in
+  // the autonomy room. The AutonomyService loop picks it up on its
+  // next cycle.
+  await runtime.createMemory(memoryPayload, "messages");
 }
 
 export async function executeTriggerTask(

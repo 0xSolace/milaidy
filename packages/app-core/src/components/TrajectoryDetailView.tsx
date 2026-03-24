@@ -14,6 +14,7 @@ import { useApp } from "@miladyai/app-core/state";
 import { Button } from "@miladyai/ui";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { estimateTokenCost } from "./conversations/conversation-utils";
 import {
   formatTrajectoryDuration,
   formatTrajectoryTimestamp,
@@ -24,10 +25,6 @@ interface TrajectoryDetailViewProps {
   trajectoryId: string;
   onBack?: () => void;
 }
-
-// Use the shared cost estimator which has a more complete pricing table
-// (GPT-5, Claude 4, Gemini, DeepSeek, Qwen, etc.)
-import { estimateTokenCost } from "./conversations/conversation-utils";
 
 function estimateCost(
   promptTokens: number,
