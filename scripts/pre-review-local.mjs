@@ -136,9 +136,7 @@ export function scopeVerdictFor(classification) {
 }
 
 export function decisionFromFindings({ classification, issues }) {
-  return classification === "aesthetic" || issues.length > 0
-    ? "REQUEST CHANGES"
-    : "APPROVE";
+  return issues.length > 0 ? "REQUEST CHANGES" : "APPROVE";
 }
 
 export function scanDiffTextForBlockedPatterns(diffChunks) {

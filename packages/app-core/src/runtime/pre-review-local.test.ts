@@ -93,6 +93,13 @@ describe("pre-review-local helpers", () => {
         classification: "aesthetic",
         issues: [],
       }),
+    ).toBe("APPROVE");
+
+    expect(
+      decisionFromFindings({
+        classification: "aesthetic",
+        issues: ["lint failed"],
+      }),
     ).toBe("REQUEST CHANGES");
   });
 

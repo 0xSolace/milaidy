@@ -20,7 +20,12 @@ function getSiblingElizaPackageRoot(
 
   const candidate = packageMap[packageName];
   if (candidate && existsSync(path.join(candidate, "package.json"))) {
-    return candidate;
+    // Only use sibling if it's actually built — otherwise the alias
+    // points to a missing file and all tests that import this package fail.
+    const hasDistOutput = existsSync(
+      path.join(candidate, "dist", "node", "index.node.js"),
+    );
+    if (hasDistOutput) return candidate;
   }
   return undefined;
 }
