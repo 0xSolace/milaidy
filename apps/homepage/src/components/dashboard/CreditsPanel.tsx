@@ -6,6 +6,11 @@ import {
   formatMoney,
 } from "../../lib/billing-types";
 import { CloudClient, type CreditBalance } from "../../lib/cloud-api";
+import {
+  MIN_DEPOSIT_DISPLAY,
+  PRICE_IDLE_PER_HR,
+  PRICE_RUNNING_PER_HR,
+} from "../../lib/pricing-constants";
 import { useAuth } from "../../lib/useAuth";
 
 export function CreditsPanel() {
@@ -151,7 +156,7 @@ export function CreditsPanel() {
                 RUNNING AGENT
               </p>
               <p className="font-mono text-lg font-semibold text-brand tabular-nums">
-                $0.01
+                {PRICE_RUNNING_PER_HR}
                 <span className="text-xs font-normal text-text-muted">/hr</span>
               </p>
               <p className="font-mono text-[10px] text-text-subtle mt-0.5">
@@ -163,7 +168,7 @@ export function CreditsPanel() {
                 IDLE AGENT
               </p>
               <p className="font-mono text-lg font-semibold text-text-light tabular-nums">
-                $0.0025
+                {PRICE_IDLE_PER_HR}
                 <span className="text-xs font-normal text-text-muted">/hr</span>
               </p>
               <p className="font-mono text-[10px] text-text-subtle mt-0.5">
@@ -217,7 +222,10 @@ export function CreditsPanel() {
           </div>
 
           <p className="font-mono text-[10px] text-text-subtle pt-1">
-            Minimum deposit: $5.00
+            Minimum deposit:{" "}
+            {pricing?.minimumTopUp != null
+              ? `$${pricing.minimumTopUp.toFixed(2)}`
+              : MIN_DEPOSIT_DISPLAY}
           </p>
         </div>
       </div>

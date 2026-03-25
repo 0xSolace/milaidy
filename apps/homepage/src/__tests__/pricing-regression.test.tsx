@@ -149,4 +149,76 @@ describe("homepage pricing regression coverage", () => {
     expect(screen.getByText("$5.00")).toBeTruthy();
     expect(screen.getByText("+ CREATE CLOUD AGENT")).toBeTruthy();
   });
+
+  it("shows the API-provided minimumTopUp in the credits panel pricing section", async () => {
+    useAgentsMock.mockReturnValue({ agents: [] });
+    useAuthMock.mockReturnValue({
+      isAuthenticated: true,
+      token: "tok",
+      signOut: vi.fn(),
+    });
+    vi.spyOn(CloudClient.prototype, "getCreditsBalance").mockResolvedValue({
+      balance: 100,
+      currency: "credits",
+    });
+    vi.spyOn(CloudClient.prototype, "getCurrentSession").mockResolvedValue(
+      null,
+    );
+    vi.spyOn(CloudClient.prototype, "getBillingSettings").mockResolvedValue(
+      null,
+    );
+    vi.spyOn(CloudClient.prototype, "getCreditsSummary").mockResolvedValue({
+      organization: null,
+      agentsSummary: null,
+      pricing: { creditsPerDollar: 100, minimumTopUp: 10 },
+    });
+
+    render(<CreditsPanel />);
+
+    await waitFor(() => {
+      // API returned minimumTopUp: 10 → should render $10.00, not the fallback $5.00
+      expect(screen.getByText(/Minimum deposit:.*\$10\.00/)).toBeTruthy();
+    });
+  });
+
+  it("falls back to the static minimum deposit when pricing.minimumTopUp is absent", async () => {
+    useAgentsMock.mockReturnValue({ agents: [] });
+    useAuthMock.mockReturnValue({
+      isAuthenticated: true,
+      token: "tok",
+      signOut: vi.fn(),
+    });
+    vi.spyOn(CloudClient.prototype, "getCreditsBalance").mockResolvedValue({
+      balance: 100,
+      currency: "credits",
+    });
+    vi.spyOn(CloudClient.prototype, "getCurrentSession").mockResolvedValue(
+      null,
+    );
+    vi.spyOn(CloudClient.prototype, "getBillingSettings").mockResolvedValue(
+      null,
+    );
+    vi.spyOn(CloudClient.prototype, "getCreditsSummary").mockResolvedValue({
+      organization: null,
+      agentsSummary: null,
+      pricing: { creditsPerDollar: 100 },
+    });
+
+    render(<CreditsPanel />);
+
+    await waitFor(() => {
+      // No minimumTopUp in API response → falls back to hardcoded $5.00
+      expect(screen.getByText(/Minimum deposit:.*\$5\.00/)).toBeTruthy();
+    });
+  });
+
+  it("renders running and idle rate labels from shared constants in the create form", () => {
+    render(<CreateAgentForm onCreated={vi.fn()} onCancel={vi.fn()} />);
+
+    // Verify the pricing note renders the correct rates from pricing-constants
+    const pricingNote = screen.getByText(/\$0\.01\/hr running/);
+    expect(pricingNote).toBeTruthy();
+    expect(pricingNote.textContent).toContain("$0.0025/hr idle");
+    expect(pricingNote.textContent).toContain("min. balance $5.00");
+  });
 });
