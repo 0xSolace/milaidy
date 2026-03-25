@@ -177,7 +177,15 @@ ENV PGLITE_DATA_DIR="/data/.milady/workspace/.eliza/.elizadb"
 
 # Railway volume mount target. If /data is backed by a persistent volume,
 # onboarding/config/database survive redeploys.
-RUN mkdir -p /data/.milady/workspace/.eliza/.elizadb
+RUN mkdir -p /data/.milady/workspace/.eliza/.elizadb && \
+    chown -R node:node /app /data
+
+USER node
+
+EXPOSE 31337
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+  CMD sh -lc 'code="$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${MILADY_API_PORT:-31337}/api/health")" && [ "$code" = "200" -o "$code" = "401" ]'
 
 # Railway sets $PORT dynamically. Map it to MILADY_API_PORT at runtime.
 CMD ["sh", "-lc", "MILADY_API_PORT=${PORT:-31337} node milady.mjs start"]
