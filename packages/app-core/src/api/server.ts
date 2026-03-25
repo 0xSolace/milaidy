@@ -144,6 +144,20 @@ function syncElizaEnvToMilady(): void {
   if (aliases) syncElizaEnvToBrand(aliases);
 }
 
+export function isLoopbackRemoteAddress(
+  remoteAddress: string | null | undefined,
+): boolean {
+  if (!remoteAddress) return false;
+  const normalized = remoteAddress.trim().toLowerCase();
+  return (
+    normalized === "127.0.0.1" ||
+    normalized === "::1" ||
+    normalized === "0:0:0:0:0:0:0:1" ||
+    normalized === "::ffff:127.0.0.1" ||
+    normalized === "::ffff:0:127.0.0.1"
+  );
+}
+
 function resolveWalletExecutionMode(
   canSign: boolean,
   canExecuteLocally: boolean,
@@ -2021,10 +2035,7 @@ async function handleMiladyCompatRoute(
   // window; these endpoints mirror orchestrator state (stack JSON), proxied screenshot, and log
   // tail — see docs/apps/desktop-local-development.md and dev-stack.ts / dev-console-log.ts.
   if (method === "GET" && url.pathname === "/api/dev/stack") {
-    const ra = req.socket.remoteAddress;
-    const loopback =
-      ra === "127.0.0.1" || ra === "::1" || ra === "::ffff:127.0.0.1";
-    if (!loopback) {
+    if (!isLoopbackRemoteAddress(req.socket.remoteAddress)) {
       sendJsonErrorResponse(res, 403, "loopback only");
       return true;
     }
@@ -2043,10 +2054,7 @@ async function handleMiladyCompatRoute(
 
   // Proxies Electrobun dev screenshot server (full-screen PNG via OS capture tools).
   if (method === "GET" && url.pathname === "/api/dev/cursor-screenshot") {
-    const ra = req.socket.remoteAddress;
-    const loopback =
-      ra === "127.0.0.1" || ra === "::1" || ra === "::ffff:127.0.0.1";
-    if (!loopback) {
+    if (!isLoopbackRemoteAddress(req.socket.remoteAddress)) {
       sendJsonErrorResponse(res, 403, "loopback only");
       return true;
     }
@@ -2114,10 +2122,7 @@ async function handleMiladyCompatRoute(
 
   // Tail of desktop dev orchestrator log (vite / api / electrobun), loopback only.
   if (method === "GET" && url.pathname === "/api/dev/console-log") {
-    const ra = req.socket.remoteAddress;
-    const loopback =
-      ra === "127.0.0.1" || ra === "::1" || ra === "::ffff:127.0.0.1";
-    if (!loopback) {
+    if (!isLoopbackRemoteAddress(req.socket.remoteAddress)) {
       sendJsonErrorResponse(res, 403, "loopback only");
       return true;
     }
