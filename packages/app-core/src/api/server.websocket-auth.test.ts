@@ -52,13 +52,13 @@ describe("resolveWebSocketUpgradeRejection", () => {
     expect(rejection).toEqual({ status: 403, reason: "Origin not allowed" });
   });
 
-  it("rejects unauthenticated upgrades when API token is enabled", () => {
+  it("allows upgrades without handshake auth so clients can authenticate after open", () => {
     process.env.ELIZA_API_TOKEN = "test-token";
     const rejection = resolveWebSocketUpgradeRejection(
       mockReq() as http.IncomingMessage,
       new URL("ws://localhost/ws"),
     );
-    expect(rejection).toEqual({ status: 401, reason: "Unauthorized" });
+    expect(rejection).toBeNull();
   });
 
   it("accepts valid bearer token", () => {

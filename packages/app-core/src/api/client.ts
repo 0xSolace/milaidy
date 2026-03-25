@@ -4253,13 +4253,15 @@ export class MiladyClient {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     let url = `${protocol}//${host}/ws`;
     const params = new URLSearchParams({ clientId: this.clientId });
-    const token = this.apiToken;
-    if (token) params.set("token", token);
     url += `?${params.toString()}`;
 
     this.ws = new WebSocket(url);
 
     this.ws.onopen = () => {
+      const token = this.apiToken;
+      if (token && this.ws?.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify({ type: "auth", token }));
+      }
       this.backoffMs = 500;
       // Reset connection state on successful connection
       this.reconnectAttempt = 0;

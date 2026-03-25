@@ -429,12 +429,9 @@ describe("Token auth gate (ELIZA_API_TOKEN set)", () => {
     expect(status).toBe(200);
   });
 
-  it("rejects WebSocket upgrade without token", async () => {
+  it("allows WebSocket upgrade without handshake token so clients can authenticate after open", async () => {
     const result = await connectWs(`ws://127.0.0.1:${port}/ws`);
-    expect(result.kind).toBe("rejected");
-    if (result.kind === "rejected") {
-      expect(result.status).toBe(401);
-    }
+    expect(result.kind).toBe("open");
   });
 
   it("rejects WebSocket query-token auth by default", async () => {
@@ -457,6 +454,35 @@ describe("Token auth gate (ELIZA_API_TOKEN set)", () => {
     } finally {
       delete process.env.ELIZA_ALLOW_WS_QUERY_TOKEN;
     }
+  });
+
+  it("accepts auth as the first WebSocket message", async () => {
+    const outcome = await new Promise<"authenticated" | "closed">((resolve) => {
+      const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`);
+
+      const finish = (value: "authenticated" | "closed") => {
+        try {
+          ws.terminate();
+        } catch {
+          // noop
+        }
+        resolve(value);
+      };
+
+      ws.on("open", () => {
+        ws.send(JSON.stringify({ type: "auth", token: TEST_TOKEN }));
+      });
+      ws.on("message", (data) => {
+        const msg = JSON.parse(data.toString()) as { type?: string };
+        if (msg.type === "auth-ok" || msg.type === "status") {
+          finish("authenticated");
+        }
+      });
+      ws.on("close", () => finish("closed"));
+      ws.on("error", () => finish("closed"));
+    });
+
+    expect(outcome).toBe("authenticated");
   });
 
   // ── Auth endpoints exempt from token ───────────────────────────────────
