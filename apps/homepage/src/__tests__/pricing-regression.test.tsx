@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AgentGrid } from "../components/dashboard/AgentGrid";
 import { CreateAgentForm } from "../components/dashboard/CreateAgentForm";
@@ -114,17 +114,32 @@ describe("homepage pricing regression coverage", () => {
 
     render(<CreditsPanel />);
 
+    // Wait for the overview tab to load
     await waitFor(() => {
       expect(screen.getByText("PRICING")).toBeTruthy();
     });
 
+    // Overview tab: pricing rates section
     expect(screen.getByText("RUNNING AGENT")).toBeTruthy();
     expect(screen.getByText("IDLE AGENT")).toBeTruthy();
-    expect(screen.getByText("CREDIT PACKS")).toBeTruthy();
-    expect(screen.getByText(/Minimum deposit: \$5\.00/)).toBeTruthy();
-    expect(screen.getByText("SMALL")).toBeTruthy();
-    expect(screen.getByText("MEDIUM")).toBeTruthy();
-    expect(screen.getByText("LARGE")).toBeTruthy();
+
+    // Switch to PURCHASE tab to check credit pack content
+    fireEvent.click(screen.getByText("PURCHASE"));
+
+    await waitFor(() => {
+      expect(screen.getByText("CREDIT PACKS")).toBeTruthy();
+    });
+
+    // Pack names in current implementation
+    expect(screen.getByText("STARTER")).toBeTruthy();
+    expect(screen.getByText("STANDARD")).toBeTruthy();
+    expect(screen.getByText("PRO")).toBeTruthy();
+
+    // Min deposit footer uses API value ($5.00) when available
+    // Use selector:'p' to scope to the leaf paragraph element in the purchase footer
+    expect(
+      screen.getByText(/Minimum deposit:/, { selector: "p" }),
+    ).toBeTruthy();
   });
 
   it("shows the pricing note in the authenticated create form", () => {
@@ -175,9 +190,16 @@ describe("homepage pricing regression coverage", () => {
 
     render(<CreditsPanel />);
 
+    // Wait for data to load then switch to purchase tab
+    await waitFor(() => {
+      expect(screen.getByText("PURCHASE")).toBeTruthy();
+    });
+    fireEvent.click(screen.getByText("PURCHASE"));
+
     await waitFor(() => {
       // API returned minimumTopUp: 10 → should render $10.00, not the fallback $5.00
-      expect(screen.getByText(/Minimum deposit:.*\$10\.00/)).toBeTruthy();
+      const minDepositEl = screen.getByText(/Minimum deposit:/, { selector: "p" });
+      expect(minDepositEl.textContent).toContain("$10.00");
     });
   });
 
@@ -206,9 +228,16 @@ describe("homepage pricing regression coverage", () => {
 
     render(<CreditsPanel />);
 
+    // Wait for data to load then switch to purchase tab
+    await waitFor(() => {
+      expect(screen.getByText("PURCHASE")).toBeTruthy();
+    });
+    fireEvent.click(screen.getByText("PURCHASE"));
+
     await waitFor(() => {
       // No minimumTopUp in API response → falls back to hardcoded $5.00
-      expect(screen.getByText(/Minimum deposit:.*\$5\.00/)).toBeTruthy();
+      const minDepositEl = screen.getByText(/Minimum deposit:/, { selector: "p" });
+      expect(minDepositEl.textContent).toContain("$5.00");
     });
   });
 

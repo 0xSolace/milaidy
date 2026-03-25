@@ -1,6 +1,11 @@
 import { useCallback, useState } from "react";
 import { useAgents } from "../../lib/AgentProvider";
 import { openWebUI } from "../../lib/open-web-ui";
+import {
+  MIN_DEPOSIT_DISPLAY,
+  PRICE_IDLE_PER_HR,
+  PRICE_RUNNING_PER_HR,
+} from "../../lib/pricing-constants";
 import { useAuth } from "../../lib/useAuth";
 import { AgentCard } from "./AgentCard";
 import { AgentDetail } from "./AgentDetail";
@@ -333,6 +338,29 @@ function EmptyState({ onCreateClick }: { onCreateClick: () => void }) {
                 </>
               )}
         </p>
+
+        {/* Pricing preview */}
+        <div className="grid grid-cols-3 gap-2 max-w-xs mx-auto mb-6">
+          {(
+            [
+              { label: "RUNNING", value: `${PRICE_RUNNING_PER_HR}/hr` },
+              { label: "IDLE", value: `${PRICE_IDLE_PER_HR}/hr` },
+              { label: "MIN. DEPOSIT", value: MIN_DEPOSIT_DISPLAY },
+            ] as const
+          ).map(({ label, value }) => (
+            <div
+              key={label}
+              className="border border-border-subtle bg-dark p-2 text-center"
+            >
+              <p className="font-mono text-[9px] tracking-wider text-text-subtle mb-1">
+                {label}
+              </p>
+              <p className="font-mono text-xs font-semibold text-text-light tabular-nums">
+                {value}
+              </p>
+            </div>
+          ))}
+        </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           <a
