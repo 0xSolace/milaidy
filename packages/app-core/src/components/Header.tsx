@@ -217,127 +217,144 @@ export function Header({
   return (
     <>
       <header
-        className={`sticky top-0 z-20 w-full px-3 py-2.5 select-none transition-all sm:px-4 sm:py-3 ${
-          useMinimalHeaderChrome
-            ? "border-b border-transparent bg-transparent backdrop-blur-0 shadow-none"
-            : "border-b border-border/50 bg-bg/82 backdrop-blur-xl"
-        }`}
+        className="sticky top-0 z-20 w-full select-none overflow-visible"
         style={{ WebkitUserSelect: "none", userSelect: "none" }}
+        data-no-camera-drag="true"
       >
-        <ShellHeaderControls
-          activeShellView={activeShellView}
-          onShellViewChange={handleShellViewChange}
-          uiLanguage={uiLanguage}
-          setUiLanguage={setUiLanguage}
-          uiTheme={uiTheme}
-          setUiTheme={setUiTheme}
-          t={t}
-          languageDropdownClassName={
-            showNavigationMenu ? "hidden sm:inline-flex" : undefined
-          }
-          languageDropdownWrapperTestId={
-            showNavigationMenu ? "header-language-dropdown-desktop" : undefined
-          }
-          themeToggleWrapperClassName={
-            showNavigationMenu ? "hidden sm:flex" : undefined
-          }
-          themeToggleWrapperTestId={
-            showNavigationMenu ? "header-theme-toggle-desktop" : undefined
-          }
-          rightExtras={
-            <>
-              {chatInferenceNotice ? (
-                <InferenceCloudAlertButton
-                  notice={chatInferenceNotice}
-                  onClick={handleChatInferenceAlertClick}
-                />
-              ) : null}
-              {showCloudStatus ? (
-                <CloudStatusBadge
-                  connected={elizaCloudConnected}
-                  credits={elizaCloudCredits}
-                  creditsLow={elizaCloudCreditsLow}
-                  creditsCritical={elizaCloudCreditsCritical}
-                  authRejected={elizaCloudAuthRejected}
-                  creditsError={elizaCloudCreditsError}
-                  t={t}
-                  onClick={openCloudBilling}
-                  dataTestId="header-cloud-status"
-                />
-              ) : null}
-            </>
-          }
-          showCompanionControls={
-            activeShellView === "companion" || activeShellView === "character"
-          }
-          chatAgentVoiceMuted={chatAgentVoiceMuted}
-          onToggleVoiceMute={() =>
-            setState("chatAgentVoiceMuted", !chatAgentVoiceMuted)
-          }
-          onNewChat={
-            activeShellView === "character"
-              ? undefined
-              : () => void handleNewConversation()
-          }
-          onSave={
-            activeShellView === "character" ? handleSaveCharacter : undefined
-          }
-          isSaving={activeShellView === "character" ? characterSaving : false}
-          saveSuccess={
-            activeShellView === "character"
-              ? Boolean(characterSaveSuccess)
-              : false
-          }
-          trailingExtras={
-            showNavigationMenu ? (
-              <Button
-                size="icon"
-                variant="outline"
-                className={`sm:hidden ${HEADER_ICON_BUTTON_CLASSNAME}`}
-                onClick={() => setMobileMenuOpen(true)}
-                aria-label={t("aria.openNavMenu")}
-                aria-expanded={mobileMenuOpen}
-                style={HEADER_BUTTON_STYLE}
-              >
-                <Menu className="pointer-events-none w-5 h-5" />
-              </Button>
-            ) : null
-          }
+        <div
+          className={`px-1.5 pt-1.5 sm:px-4 sm:pt-3 ${useMinimalHeaderChrome ? "" : "pb-1.5 sm:pb-3"}`}
         >
-          {mobileLeft ? (
-            <div className="flex sm:hidden">{mobileLeft}</div>
-          ) : null}
-          {showNavigationMenu ? (
-            <nav className="scrollbar-hide hidden flex-1 items-center justify-start gap-1.5 overflow-x-auto whitespace-nowrap px-2 sm:flex sm:pl-4">
-              {tabGroups.map((group: TabGroup) => {
-                const primaryTab = group.tabs[0];
-                const isActive = group.tabs.includes(tab);
-                return (
+          <div
+            className={`pointer-events-auto relative mx-auto w-full rounded-[20px] border bg-clip-padding shadow ring-1 ring-inset ring-white/10 backdrop-blur-2xl sm:rounded-[22px] transition-all ${
+              useMinimalHeaderChrome
+                ? "max-w-5xl border-[rgba(255,255,255,0.12)] bg-[image:linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02)),linear-gradient(180deg,rgba(8,11,18,0.52),rgba(5,7,12,0.3))] shadow-[inset_0_1px_0_rgba(255,255,255,0.12),inset_0_-1px_0_rgba(255,255,255,0.04),0_24px_50px_rgba(2,4,8,0.28)]"
+                : "border-[rgba(255,255,255,0.12)] bg-[image:linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02)),linear-gradient(180deg,rgba(8,11,18,0.52),rgba(5,7,12,0.3))] shadow-[inset_0_1px_0_rgba(255,255,255,0.12),inset_0_-1px_0_rgba(255,255,255,0.04),0_24px_50px_rgba(2,4,8,0.28)]"
+            }`}
+            data-testid="header-glass-shell"
+          >
+            <ShellHeaderControls
+              activeShellView={activeShellView}
+              onShellViewChange={handleShellViewChange}
+              uiLanguage={uiLanguage}
+              setUiLanguage={setUiLanguage}
+              uiTheme={uiTheme}
+              setUiTheme={setUiTheme}
+              t={t}
+              languageDropdownClassName={
+                showNavigationMenu ? "hidden sm:inline-flex" : undefined
+              }
+              languageDropdownWrapperTestId={
+                showNavigationMenu
+                  ? "header-language-dropdown-desktop"
+                  : undefined
+              }
+              themeToggleWrapperClassName={
+                showNavigationMenu ? "hidden sm:flex" : undefined
+              }
+              themeToggleWrapperTestId={
+                showNavigationMenu ? "header-theme-toggle-desktop" : undefined
+              }
+              rightExtras={
+                <>
+                  {chatInferenceNotice ? (
+                    <InferenceCloudAlertButton
+                      notice={chatInferenceNotice}
+                      onClick={handleChatInferenceAlertClick}
+                    />
+                  ) : null}
+                  {showCloudStatus ? (
+                    <CloudStatusBadge
+                      connected={elizaCloudConnected}
+                      credits={elizaCloudCredits}
+                      creditsLow={elizaCloudCreditsLow}
+                      creditsCritical={elizaCloudCreditsCritical}
+                      authRejected={elizaCloudAuthRejected}
+                      creditsError={elizaCloudCreditsError}
+                      t={t}
+                      onClick={openCloudBilling}
+                      dataTestId="header-cloud-status"
+                    />
+                  ) : null}
+                </>
+              }
+              showCompanionControls={
+                activeShellView === "companion" ||
+                activeShellView === "character"
+              }
+              chatAgentVoiceMuted={chatAgentVoiceMuted}
+              onToggleVoiceMute={() =>
+                setState("chatAgentVoiceMuted", !chatAgentVoiceMuted)
+              }
+              onNewChat={
+                activeShellView === "character"
+                  ? undefined
+                  : () => void handleNewConversation()
+              }
+              onSave={
+                activeShellView === "character"
+                  ? handleSaveCharacter
+                  : undefined
+              }
+              isSaving={
+                activeShellView === "character" ? characterSaving : false
+              }
+              saveSuccess={
+                activeShellView === "character"
+                  ? Boolean(characterSaveSuccess)
+                  : false
+              }
+              trailingExtras={
+                showNavigationMenu ? (
                   <Button
-                    variant={isActive ? "default" : "ghost"}
-                    key={group.label}
-                    data-testid={`header-nav-button-${primaryTab}`}
-                    className={`${HEADER_NAV_BUTTON_BASE_CLASSNAME} ${
-                      isActive
-                        ? HEADER_NAV_BUTTON_ACTIVE_CLASSNAME
-                        : HEADER_NAV_BUTTON_INACTIVE_CLASSNAME
-                    }`}
-                    onClick={() => setTab(primaryTab)}
-                    title={group.description}
+                    size="icon"
+                    variant="outline"
+                    className={`sm:hidden ${HEADER_ICON_BUTTON_CLASSNAME}`}
+                    onClick={() => setMobileMenuOpen(true)}
+                    aria-label={t("aria.openNavMenu")}
+                    aria-expanded={mobileMenuOpen}
                     style={HEADER_BUTTON_STYLE}
                   >
-                    <span
-                      data-testid={`header-nav-label-${primaryTab}`}
-                      className="pointer-events-none inline"
-                    >
-                      {t(NAV_LABEL_I18N_KEY[group.label] ?? group.label)}
-                    </span>
+                    <Menu className="pointer-events-none w-5 h-5" />
                   </Button>
-                );
-              })}
-            </nav>
-          ) : null}
-        </ShellHeaderControls>
+                ) : null
+              }
+            >
+              {mobileLeft ? (
+                <div className="flex sm:hidden">{mobileLeft}</div>
+              ) : null}
+              {showNavigationMenu ? (
+                <nav className="scrollbar-hide hidden flex-1 items-center justify-start gap-1.5 overflow-x-auto whitespace-nowrap px-2 sm:flex sm:pl-4">
+                  {tabGroups.map((group: TabGroup) => {
+                    const primaryTab = group.tabs[0];
+                    const isActive = group.tabs.includes(tab);
+                    return (
+                      <Button
+                        variant={isActive ? "default" : "ghost"}
+                        key={group.label}
+                        data-testid={`header-nav-button-${primaryTab}`}
+                        className={`${HEADER_NAV_BUTTON_BASE_CLASSNAME} ${
+                          isActive
+                            ? HEADER_NAV_BUTTON_ACTIVE_CLASSNAME
+                            : HEADER_NAV_BUTTON_INACTIVE_CLASSNAME
+                        }`}
+                        onClick={() => setTab(primaryTab)}
+                        title={group.description}
+                        style={HEADER_BUTTON_STYLE}
+                      >
+                        <span
+                          data-testid={`header-nav-label-${primaryTab}`}
+                          className="pointer-events-none inline"
+                        >
+                          {t(NAV_LABEL_I18N_KEY[group.label] ?? group.label)}
+                        </span>
+                      </Button>
+                    );
+                  })}
+                </nav>
+              ) : null}
+            </ShellHeaderControls>
+          </div>
+        </div>
       </header>
 
       {/* Mobile Menu Overlay */}
