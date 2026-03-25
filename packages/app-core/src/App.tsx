@@ -42,6 +42,7 @@ import {
   StreamView,
   SystemWarningBanner,
 } from "./components";
+import { CompanionHeader } from "./components/companion/CompanionHeader";
 import { DeferredSetupChecklist } from "./components/FlaminaGuide";
 import {
   BugReportProvider,
@@ -241,12 +242,23 @@ export function App() {
     retryStartup,
     tab,
     setTab,
+    setState,
     actionNotice,
     uiShellMode,
+    switchShellView,
+    uiLanguage,
+    setUiLanguage,
+    uiTheme,
+    setUiTheme,
+    chatAgentVoiceMuted,
+    handleSaveCharacter,
+    characterSaving,
+    characterSaveSuccess,
     agentStatus,
     unreadConversations,
     activeGameViewerUrl,
     gameOverlayEnabled,
+    t,
   } = useApp();
 
   const isPopout = useIsPopout();
@@ -534,19 +546,34 @@ export function App() {
         />
       </div>
     </div>
+  ) : characterSceneVisible ? (
+    <div className="relative flex flex-col flex-1 min-h-0 w-full font-body text-txt bg-transparent">
+      <CompanionHeader
+        activeShellView="character"
+        onShellViewChange={(view) => switchShellView(view)}
+        uiLanguage={uiLanguage}
+        setUiLanguage={setUiLanguage}
+        uiTheme={uiTheme}
+        setUiTheme={setUiTheme}
+        t={t}
+        showCompanionControls
+        chatAgentVoiceMuted={chatAgentVoiceMuted}
+        onToggleVoiceMute={() =>
+          setState("chatAgentVoiceMuted", !chatAgentVoiceMuted)
+        }
+        onSave={handleSaveCharacter}
+        isSaving={characterSaving}
+        saveSuccess={Boolean(characterSaveSuccess)}
+      />
+      <main className="flex flex-1 min-h-0 min-w-0 overflow-hidden px-3 xl:px-5 pb-4 pt-2 xl:pb-6">
+        <ViewRouter characterSceneVisible />
+      </main>
+    </div>
   ) : (
-    <div
-      className={`flex flex-col flex-1 min-h-0 w-full font-body text-txt ${
-        characterSceneVisible ? "bg-transparent" : "bg-bg"
-      }`}
-    >
-      <Header transparent={characterSceneVisible} />
-      <main
-        className={`flex flex-1 min-h-0 min-w-0 overflow-hidden px-3 xl:px-5 ${
-          characterSceneVisible ? "pb-4 pt-2 xl:pb-6" : "py-4 xl:py-6"
-        }`}
-      >
-        <ViewRouter characterSceneVisible={characterSceneVisible} />
+    <div className="flex flex-col flex-1 min-h-0 w-full font-body text-txt bg-bg">
+      <Header />
+      <main className="flex flex-1 min-h-0 min-w-0 overflow-hidden px-3 xl:px-5 py-4 xl:py-6">
+        <ViewRouter />
       </main>
     </div>
   );
