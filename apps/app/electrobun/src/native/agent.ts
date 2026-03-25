@@ -1196,6 +1196,7 @@ export class AgentManager {
             `[Agent] Child process exited unexpectedly with code ${exitCode} (pid: ${proc.pid})`,
           );
           this.childProcess = null;
+          if (this.childProcess !== null) return;
 
           // Auto-recover from PGLite migration failures by deleting the DB
           // and spawning a fresh process (new process = fresh WASM state).
