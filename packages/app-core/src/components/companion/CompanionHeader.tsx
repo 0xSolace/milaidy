@@ -17,6 +17,9 @@ export interface CompanionHeaderProps {
   chatAgentVoiceMuted?: boolean;
   onToggleVoiceMute?: () => void;
   onNewChat?: () => void;
+  onSave?: () => void;
+  isSaving?: boolean;
+  saveSuccess?: boolean;
   /** Shown in the shell header right cluster (e.g. inference / cloud alert). */
   rightExtras?: ReactNode;
   rightTrailingExtras?: ReactNode;
@@ -38,6 +41,9 @@ export const CompanionHeader = memo(function CompanionHeader(
     chatAgentVoiceMuted,
     onToggleVoiceMute,
     onNewChat,
+    onSave,
+    isSaving,
+    saveSuccess,
     rightExtras,
     rightTrailingExtras,
   } = props;
@@ -81,6 +87,9 @@ export const CompanionHeader = memo(function CompanionHeader(
             chatAgentVoiceMuted={chatAgentVoiceMuted}
             onToggleVoiceMute={onToggleVoiceMute}
             onNewChat={onNewChat}
+            onSave={onSave}
+            isSaving={isSaving}
+            saveSuccess={saveSuccess}
             rightExtras={rightExtras}
             rightTrailingExtras={rightTrailingExtras}
           >
