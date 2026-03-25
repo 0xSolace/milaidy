@@ -22,4 +22,18 @@ describe("/api/dev/stack auth guard", () => {
     const nearbyCode = source.slice(devStackIdx, devStackIdx + 200);
     expect(nearbyCode).toContain("ensureCompatApiAuthorized");
   });
+
+  it("route handler includes a loopback-only socket guard", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const serverPath = path.resolve(import.meta.dirname, "..", "server.ts");
+    const source = fs.readFileSync(serverPath, "utf-8");
+
+    const devStackIdx = source.indexOf('"/api/dev/stack"');
+    expect(devStackIdx).toBeGreaterThan(-1);
+
+    const nearbyCode = source.slice(devStackIdx, devStackIdx + 350);
+    expect(nearbyCode).toContain('req.socket.remoteAddress');
+    expect(nearbyCode).toContain('"loopback only"');
+  });
 });

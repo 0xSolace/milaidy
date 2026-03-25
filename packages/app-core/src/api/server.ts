@@ -2021,6 +2021,13 @@ async function handleMiladyCompatRoute(
   // window; these endpoints mirror orchestrator state (stack JSON), proxied screenshot, and log
   // tail — see docs/apps/desktop-local-development.md and dev-stack.ts / dev-console-log.ts.
   if (method === "GET" && url.pathname === "/api/dev/stack") {
+    const ra = req.socket.remoteAddress;
+    const loopback =
+      ra === "127.0.0.1" || ra === "::1" || ra === "::ffff:127.0.0.1";
+    if (!loopback) {
+      sendJsonErrorResponse(res, 403, "loopback only");
+      return true;
+    }
     if (!ensureCompatApiAuthorized(req, res)) {
       return true;
     }
