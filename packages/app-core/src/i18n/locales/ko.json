@@ -120,6 +120,7 @@
   "charactereditor.Reset": "초기화",
   "charactereditor.ResetToDefaults": "기본값으로 초기화",
   "charactereditor.Save": "저장",
+  "charactereditor.Saved": "저장됨",
   "charactereditor.Saving": "저장 중...",
   "charactereditor.SelectAVoice": "음성 선택",
   "charactereditor.SelectBtn": "선택",

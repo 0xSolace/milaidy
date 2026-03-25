@@ -482,6 +482,9 @@ function expectShellForTab(text: string, tab: Tab): void {
   expect(text).toContain(expectedToken);
   if (tab === "companion") {
     expect(text).not.toContain("Header");
+  } else if (tab === "character" || tab === "character-select") {
+    expect(text).not.toContain("Header");
+    expect(text).toContain("Save");
   } else {
     expect(text).toContain("Header");
   }
