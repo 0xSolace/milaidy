@@ -66,7 +66,11 @@ describe("pairing code logging", () => {
     const server = await startApiServer({ port: 0 });
 
     try {
-      const { status, data } = await req(server.port, "GET", "/api/auth/status");
+      const { status, data } = await req(
+        server.port,
+        "GET",
+        "/api/auth/status",
+      );
       expect(status).toBe(200);
       expect(data.pairingEnabled).toBe(true);
 
