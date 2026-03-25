@@ -381,8 +381,15 @@ async function refreshHeartbeatMenuSnapshot(): Promise<void> {
 function startHeartbeatMenuRefresh(): void {
   if (heartbeatMenuRefreshTimer) return;
   void refreshHeartbeatMenuSnapshot();
+  let heartbeatRefreshInProgress = false;
   heartbeatMenuRefreshTimer = setInterval(() => {
-    void refreshHeartbeatMenuSnapshot();
+    if (heartbeatRefreshInProgress) {
+      return;
+    }
+    heartbeatRefreshInProgress = true;
+    void refreshHeartbeatMenuSnapshot().finally(() => {
+      heartbeatRefreshInProgress = false;
+    });
   }, HEARTBEAT_MENU_REFRESH_MS);
 }
 
