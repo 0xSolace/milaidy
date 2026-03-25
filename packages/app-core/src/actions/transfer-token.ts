@@ -46,7 +46,13 @@ export const transferTokenAction: Action = {
     );
   },
 
-  handler: async (_runtime, _message, _state, options, callback?: HandlerCallback) => {
+  handler: async (
+    _runtime,
+    _message,
+    _state,
+    options,
+    callback?: HandlerCallback,
+  ) => {
     try {
       const params = (options as HandlerOptions | undefined)?.parameters;
 
