@@ -12615,7 +12615,9 @@ async function handleRequest(
     json(res, {
       tradePermissionMode: mode,
       canUserLocalExecute: canUseLocalTradeExecution(mode, false),
-      canAgentAutoTrade: canUseLocalTradeExecution(mode, true),
+      canAgentAutoTrade: canUseLocalTradeExecution(mode, true, undefined, {
+        consumeAgentQuota: false,
+      }),
     });
     return;
   }
@@ -12658,7 +12660,14 @@ async function handleRequest(
       ok: true,
       tradePermissionMode: newMode,
       canUserLocalExecute: canUseLocalTradeExecution(newMode, false),
-      canAgentAutoTrade: canUseLocalTradeExecution(newMode, true),
+      canAgentAutoTrade: canUseLocalTradeExecution(
+        newMode,
+        true,
+        undefined,
+        {
+          consumeAgentQuota: false,
+        },
+      ),
     });
     return;
   }
@@ -12698,6 +12707,10 @@ async function handleRequest(
     const canAgentAutoTrade = canUseLocalTradeExecution(
       tradePermissionMode,
       true,
+      undefined,
+      {
+        consumeAgentQuota: false,
+      },
     );
     const canTrade = Boolean(evmAddress) && bscRpcReady;
     const automationMode: "connectors-only" | "full" =

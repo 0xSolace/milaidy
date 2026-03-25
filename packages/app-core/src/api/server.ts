@@ -341,8 +341,10 @@ function ensurePairingCode(): string | null {
   if (!pairingCode || now > pairingExpiresAt) {
     pairingCode = generatePairingCode();
     pairingExpiresAt = now + PAIRING_TTL_MS;
+    // Pairing still requires an operator to read the server logs and enter the
+    // full code, so masking it here breaks auth bootstrap.
     console.warn(
-      `[milady-api] Pairing code: ${pairingCode.slice(0, 4)}**** (valid for 10 minutes)`,
+      `[milady-api] Pairing code: ${pairingCode} (valid for 10 minutes)`,
     );
   }
 

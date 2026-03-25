@@ -26,6 +26,7 @@ import type { AgentRuntime, Content, Task, UUID } from "@elizaos/core";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { WebSocket } from "ws";
 import { startApiServer } from "../src/api/server";
+import { agentAutoDailyTrades } from "../src/api/trade-safety";
 import { AGENT_NAME_POOL } from "../src/runtime/onboarding-names";
 import { req } from "../../../test/helpers/http";
 import { createDeferred } from "../../../test/helpers/test-utils";
@@ -886,6 +887,36 @@ describe("API Server E2E (no runtime)", () => {
         nextRetryAt: undefined,
         state: "not_started",
       });
+    });
+  });
+
+  describe("trade-mode capability routes", () => {
+    it("does not consume agent-auto quota when reporting permissions", async () => {
+      agentAutoDailyTrades.count = 0;
+      agentAutoDailyTrades.resetDate = new Date().toISOString().slice(0, 10);
+
+      try {
+        const putResponse = await req(port, "PUT", "/api/permissions/trade-mode", {
+          mode: "agent-auto",
+        });
+        expect(putResponse.status).toBe(200);
+        expect(putResponse.data.canAgentAutoTrade).toBe(true);
+        expect(agentAutoDailyTrades.count).toBe(0);
+
+        for (let i = 0; i < 3; i += 1) {
+          const getResponse = await req(port, "GET", "/api/permissions/trade-mode");
+          expect(getResponse.status).toBe(200);
+          expect(getResponse.data.canAgentAutoTrade).toBe(true);
+        }
+
+        expect(agentAutoDailyTrades.count).toBe(0);
+      } finally {
+        await req(port, "PUT", "/api/permissions/trade-mode", {
+          mode: "user-sign-only",
+        });
+        agentAutoDailyTrades.count = 0;
+        agentAutoDailyTrades.resetDate = "";
+      }
     });
   });
 
