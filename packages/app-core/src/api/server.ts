@@ -2034,6 +2034,13 @@ async function handleMiladyCompatRoute(
   // Milady dev observability routes (loopback where noted). WHY: agents cannot see the Electrobun
   // window; these endpoints mirror orchestrator state (stack JSON), proxied screenshot, and log
   // tail — see docs/apps/desktop-local-development.md and dev-stack.ts / dev-console-log.ts.
+  if (url.pathname.startsWith("/api/dev/")) {
+    if (process.env.NODE_ENV === "production") {
+      sendJsonErrorResponse(res, 404, "Not found");
+      return true;
+    }
+  }
+
   if (method === "GET" && url.pathname === "/api/dev/stack") {
     if (!isLoopbackRemoteAddress(req.socket.remoteAddress)) {
       sendJsonErrorResponse(res, 403, "loopback only");
