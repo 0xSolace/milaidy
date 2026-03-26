@@ -1,6 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
 import { expect, test } from "@playwright/test";
-import fs from "fs";
-import path from "path";
 
 test("Traverse all views, screenshot, and ensure no crashes or onboarding kicks", async ({
   page,
@@ -14,7 +14,7 @@ test("Traverse all views, screenshot, and ensure no crashes or onboarding kicks"
       const json = await response.json();
       json.onboardingComplete = true;
       await route.fulfill({ response, json });
-    } catch (e) {
+    } catch (_e) {
       // Backend might be down or request failed, fallback to mock
       await route.fulfill({
         json: { onboardingComplete: true, status: "running" },
@@ -54,7 +54,7 @@ test("Traverse all views, screenshot, and ensure no crashes or onboarding kicks"
       if (res.ok()) {
         break;
       }
-    } catch (e) {
+    } catch (_e) {
       // not ready
     }
     await page.waitForTimeout(1000);
@@ -64,7 +64,10 @@ test("Traverse all views, screenshot, and ensure no crashes or onboarding kicks"
   await page.addInitScript(() => {
     localStorage.setItem("eliza:onboarding-complete", "1");
     localStorage.setItem("eliza:onboarding:step", "activate");
-    localStorage.setItem("eliza:connection-mode", JSON.stringify({ runMode: "local" }));
+    localStorage.setItem(
+      "eliza:connection-mode",
+      JSON.stringify({ runMode: "local" }),
+    );
     // Force native shell mode to reveal standard navigation tabs
     localStorage.setItem("eliza:ui-shell-mode", "native");
   });
@@ -95,7 +98,7 @@ test("Traverse all views, screenshot, and ensure no crashes or onboarding kicks"
     "Connectors",
     "Settings",
     "Heartbeats",
-    "Advanced"
+    "Advanced",
   ];
 
   const advancedSubViews = [
@@ -105,11 +108,15 @@ test("Traverse all views, screenshot, and ensure no crashes or onboarding kicks"
     "Runtime",
     "Database",
     "Desktop",
-    "Logs"
+    "Logs",
   ];
 
   // Try to toggle out of Companion Mode if we are stuck in it
-  const toggleNativeBtn = page.locator('button:has(svg.lucide-monitor), button:has(svg.lucide-smartphone)').first();
+  const toggleNativeBtn = page
+    .locator(
+      "button:has(svg.lucide-monitor), button:has(svg.lucide-smartphone)",
+    )
+    .first();
   if (await toggleNativeBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
     await toggleNativeBtn.click({ force: true });
     await page.waitForTimeout(2000); // Wait for transition
@@ -120,21 +127,30 @@ test("Traverse all views, screenshot, and ensure no crashes or onboarding kicks"
     if (await btn.isVisible()) {
       await btn.click({ force: true });
       await page.waitForTimeout(1500); // Wait for animations and fetches
-      
+
       // Ensure we didn't crash or get kicked to onboarding
       expect(page.url()).not.toContain("/onboarding");
-      
-      await page.screenshot({ path: path.join(screenshotsDir, `view_${viewName.toLowerCase()}.png`), fullPage: true });
+
+      await page.screenshot({
+        path: path.join(screenshotsDir, `view_${viewName.toLowerCase()}.png`),
+        fullPage: true,
+      });
 
       if (viewName === "Advanced") {
         for (const sub of advancedSubViews) {
-           const subBtn = page.locator(`text="${sub}"`).first();
-           if (await subBtn.isVisible()) {
-             await subBtn.click({ force: true });
-             await page.waitForTimeout(1000);
-             expect(page.url()).not.toContain("/onboarding");
-             await page.screenshot({ path: path.join(screenshotsDir, `view_advanced_${sub.toLowerCase()}.png`), fullPage: true });
-           }
+          const subBtn = page.locator(`text="${sub}"`).first();
+          if (await subBtn.isVisible()) {
+            await subBtn.click({ force: true });
+            await page.waitForTimeout(1000);
+            expect(page.url()).not.toContain("/onboarding");
+            await page.screenshot({
+              path: path.join(
+                screenshotsDir,
+                `view_advanced_${sub.toLowerCase()}.png`,
+              ),
+              fullPage: true,
+            });
+          }
         }
       }
     }

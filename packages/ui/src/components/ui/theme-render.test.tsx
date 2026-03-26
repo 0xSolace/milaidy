@@ -45,7 +45,7 @@ describe.each(["light", "dark"] as const)("theme %s", (theme) => {
     );
 
     expect(screen.getByRole("button", { name: "Proceed" }).className).toContain(
-      "text-accent-fg",
+      "bg-warn/92",
     );
   });
 
@@ -65,10 +65,10 @@ describe.each(["light", "dark"] as const)("theme %s", (theme) => {
       />,
     );
 
-    await user.click(screen.getByRole("button"));
+    await user.click(screen.getByRole("combobox"));
 
     expect(screen.getByText("Providers").className).toContain("bg-bg-accent");
-    expect(screen.getByRole("button", { name: /OpenAI/ }).className).toContain(
+    expect(screen.getByRole("option", { name: /OpenAI/ }).className).toContain(
       "text-txt",
     );
   });

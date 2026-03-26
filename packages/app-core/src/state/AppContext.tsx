@@ -5,7 +5,6 @@
  */
 
 import { ONBOARDING_PROVIDER_CATALOG } from "@miladyai/shared/contracts/onboarding";
-import { replaceNameTokens } from "../components/character-editor-helpers";
 import {
   getDefaultStylePreset,
   getStylePresets,
@@ -32,7 +31,6 @@ import {
   type BscTradeTxStatusResponse,
   type BscTransferExecuteRequest,
   type BscTransferExecuteResponse,
-  type StewardStatusResponse,
   type CatalogSkill,
   type CharacterData,
   type CodingAgentSession,
@@ -101,6 +99,7 @@ import {
   normalizeSlashCommandName,
 } from "../chat";
 import { mapServerTasksToSessions } from "../coding";
+import { replaceNameTokens } from "../components/character-editor-helpers";
 import { getBootConfig, setBootConfig } from "../config/boot-config";
 import { BrandingContext, DEFAULT_BRANDING } from "../config/branding";
 import { type AppEmoteEventDetail, dispatchAppEmoteEvent } from "../events";
@@ -142,9 +141,9 @@ import {
   asApiLikeError,
   type CompanionHalfFramerateMode,
   type CompanionVrmPowerMode,
+  clearAvatarIndex,
   clearPersistedConnectionMode,
   clearPersistedOnboardingStep,
-  clearAvatarIndex,
   deriveOnboardingResumeConnection,
   deriveOnboardingResumeFields,
   formatSearchBullet,
@@ -438,26 +437,6 @@ function normalizeRemoteApiBaseInput(rawValue: string): string {
   return parsed.toString().replace(/\/+$/, "");
 }
 
-function _loadSessionApiBase(): string {
-  if (typeof window === "undefined") return "";
-  return window.sessionStorage.getItem("milady_api_base")?.trim() ?? "";
-}
-
-function _isRemoteApiBase(baseUrl: string): boolean {
-  if (!baseUrl || typeof window === "undefined") return false;
-  try {
-    const parsed = new URL(baseUrl);
-    return (
-      parsed.hostname !== window.location.hostname &&
-      parsed.hostname !== "localhost" &&
-      parsed.hostname !== "127.0.0.1" &&
-      parsed.hostname !== "::1"
-    );
-  } catch {
-    return false;
-  }
-}
-
 /** Verbose trace for Settings / menu “Reset agent” — filter DevTools by `[milady][reset]`. */
 const RESET_LOG_PREFIX = "[milady][reset]";
 
@@ -722,7 +701,7 @@ function AppProviderInner({
     for (const turn of queued) {
       turn.resolve();
     }
-  }, [chatSendQueueRef]);
+  }, []);
   const interruptActiveChatPipeline = useCallback(() => {
     resolveQueuedChatSends();
     chatAbortRef.current?.abort();
@@ -731,7 +710,6 @@ function AppProviderInner({
     setChatFirstTokenReceived(false);
   }, [
     chatAbortRef,
-    chatSendQueueRef,
     resolveQueuedChatSends,
     setChatFirstTokenReceived,
     setChatSending,
@@ -907,6 +885,9 @@ function AppProviderInner({
   const [elizaCloudTopUpUrl, setElizaCloudTopUpUrl] =
     useState("/cloud/billing");
   const [elizaCloudUserId, setElizaCloudUserId] = useState<string | null>(null);
+  const [elizaCloudStatusReason, setElizaCloudStatusReason] = useState<
+    string | null
+  >(null);
   const [cloudDashboardView, setCloudDashboardView] = useState<
     "billing" | "agents"
   >("billing");
@@ -2154,6 +2135,7 @@ function AppProviderInner({
       setElizaCloudCreditsCritical(false);
       setElizaCloudAuthRejected(false);
       setElizaCloudCreditsError(null);
+      setElizaCloudStatusReason(null);
       lastElizaCloudPollConnectedRef.current = false;
       return false;
     }
@@ -2169,6 +2151,13 @@ function AppProviderInner({
     setElizaCloudEnabled(Boolean(cloudStatus.enabled ?? false));
     setElizaCloudConnected(isConnected);
     setElizaCloudUserId(cloudStatus.userId ?? null);
+    setElizaCloudStatusReason(
+      isConnected &&
+        typeof cloudStatus.reason === "string" &&
+        cloudStatus.reason.trim()
+        ? cloudStatus.reason.trim()
+        : null,
+    );
     if (cloudStatus.topUpUrl) setElizaCloudTopUpUrl(cloudStatus.topUpUrl);
     if (isConnected) {
       const credits = await client.getCloudCredits().catch(() => null);
@@ -2210,6 +2199,7 @@ function AppProviderInner({
       setElizaCloudCreditsCritical(false);
       setElizaCloudAuthRejected(false);
       setElizaCloudCreditsError(null);
+      setElizaCloudStatusReason(null);
     }
     lastElizaCloudPollConnectedRef.current = isConnected;
     // Self-manage the recurring poll interval: start when connected, stop when not.
@@ -2759,6 +2749,7 @@ function AppProviderInner({
           setElizaCloudCreditsError(null);
           setElizaCloudTopUpUrl("/cloud/billing");
           setElizaCloudUserId(null);
+          setElizaCloudStatusReason(null);
           setElizaCloudLoginError(null);
         },
         markOnboardingReset: () => {
@@ -2837,8 +2828,6 @@ function AppProviderInner({
       onboardingCompletionCommittedRef,
       onboardingResumeConnectionRef,
       setSelectedVrmIndex,
-      setCustomVrmUrl,
-      setCustomBackgroundUrl,
     ],
   );
 
@@ -3716,7 +3705,6 @@ function AppProviderInner({
     }
   }, [
     chatSendBusyRef,
-    chatSendQueueRef,
     runQueuedChatSend,
     setChatFirstTokenReceived,
     setChatSending,
@@ -3749,7 +3737,7 @@ function AppProviderInner({
         void flushQueuedChatSends();
       });
     },
-    [chatSendQueueRef, flushQueuedChatSends, setChatSending],
+    [flushQueuedChatSends, setChatSending],
   );
 
   const handleChatSend = useCallback(
@@ -5425,6 +5413,7 @@ function AppProviderInner({
     setOnboardingStyle,
     setPostOnboardingChecklistDismissed,
     setSelectedVrmIndex,
+    loadCharacter,
   ]);
 
   // ── Onboarding motion (flow graph: packages/app-core/src/onboarding/flow.ts) ──
@@ -5941,6 +5930,7 @@ function AppProviderInner({
       setElizaCloudAuthRejected(false);
       setElizaCloudCreditsError(null);
       setElizaCloudUserId(null);
+      setElizaCloudStatusReason(null);
       lastElizaCloudPollConnectedRef.current = false;
       elizaCloudPreferDisconnectedUntilLoginRef.current = true;
       setActionNotice("Disconnected from Eliza Cloud.", "success");
@@ -7545,6 +7535,7 @@ function AppProviderInner({
     elizaCloudCreditsError,
     elizaCloudTopUpUrl,
     elizaCloudUserId,
+    elizaCloudStatusReason,
     cloudDashboardView,
     elizaCloudLoginBusy,
     elizaCloudLoginError,

@@ -375,21 +375,13 @@ export function IdentityStep() {
       </div>
 
       {/* ── Roster bar ── */}
-      <div
-        className="flex flex-nowrap items-end justify-center gap-0 w-full max-w-[900px] px-2 max-md:px-1 max-md:max-w-full border-t border-[var(--onboarding-roster-border)] bg-[var(--onboarding-roster-bg)] p-4 pb-8 backdrop-blur-md"
-        style={{
-          animation:
-            "ob-roster-slide-up 0.5s cubic-bezier(0.25,0.46,0.45,0.94) 0.15s both",
-        }}
-      >
-        <CharacterRoster
-          entries={entries}
-          selectedId={selectedId}
-          onSelect={(entry) => handleSelect(entry, true)}
-          variant="onboarding"
-          testIdPrefix="onboarding"
-        />
-      </div>
+      <CharacterRoster
+        entries={entries}
+        selectedId={selectedId}
+        onSelect={(entry) => handleSelect(entry, true)}
+        variant="onboarding"
+        testIdPrefix="onboarding"
+      />
 
       <div
         className="flex flex-col items-center gap-2 pb-6 max-md:pb-4"
@@ -403,9 +395,9 @@ export function IdentityStep() {
               event?.currentTarget ?? null,
               event
                 ? {
-                    x: event.clientX,
-                    y: event.clientY,
-                  }
+                  x: event.clientX,
+                  y: event.clientY,
+                }
                 : undefined,
             );
             handleOnboardingNext();
