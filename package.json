@@ -220,6 +220,7 @@
     "@types/react-test-renderer": "^19.1.0",
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^4.1.0",
+    "@vitest/utils": "4.1.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-test-renderer": "^19.2.4",
@@ -227,8 +228,8 @@
     "tsdown": "^0.20.3",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.0",
-    "@vitest/utils": "4.1.0"
+    "vite": "^7.1.12",
+    "vitest": "^4.1.0"
   },
   "overrides": {
     "@elizaos/core": "2.0.0-alpha.106",
