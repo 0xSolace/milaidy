@@ -2,6 +2,8 @@
 
 Use this checklist for the manual desktop behaviors that still require human judgment before an Electrobun release is published. The canonical inventory lives in `test/regression-matrix.json`; this document is the human signoff companion for those manual-only items.
 
+Automated packaged UI validation remains a Windows CI gate via `bun run test:desktop:playwright`. Local macOS validation should rely on desktop contract tests plus the packaged smoke test instead of expecting Playwright parity.
+
 ## Tray Icon And Menu
 
 - Tray icon appears in the macOS menu bar after app launch (visual)

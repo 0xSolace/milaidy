@@ -163,6 +163,19 @@ describe("Electrobun release workflow drift", () => {
     expect(releaseCheckIndex).toBeGreaterThan(liveCloudIndex);
   });
 
+  it("requires an explicit tag for manual non-tag runs", () => {
+    const workflow = fs.readFileSync(WORKFLOW_PATH, "utf8");
+
+    expect(workflow).toContain('if [[ -n "${{ inputs.tag }}" ]]; then');
+    expect(workflow).toContain('elif [[ "${{ github.ref_type }}" == "tag" ]]; then');
+    expect(workflow).toContain(
+      "Manual branch dispatches must provide inputs.tag; refusing to derive a release tag from package.json.",
+    );
+    expect(workflow).not.toContain(
+      `TAG="v$(node -p "require('./package.json').version")"`,
+    );
+  });
+
   it("retries bun install before failing the desktop build matrix", () => {
     const workflow = fs.readFileSync(WORKFLOW_PATH, "utf8");
 

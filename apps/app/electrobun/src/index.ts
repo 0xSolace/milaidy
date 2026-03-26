@@ -57,6 +57,10 @@ import { resolveRendererAsset } from "./renderer-static";
 import { registerRpcHandlers } from "./rpc-handlers";
 import { startScreenshotDevServer } from "./screenshot-dev-server";
 import {
+  recordStartupPhase,
+  resolveStartupBundlePath,
+} from "./startup-trace";
+import {
   isDetachedSurface,
   type ManagedWindowLike,
   SurfaceWindowManager,
@@ -1126,12 +1130,17 @@ async function _startAgent(win: BrowserWindow): Promise<void> {
   }
 
   const agent = getAgentManager();
-  const apiToken = configureDesktopLocalApiAuth();
+  recordStartupPhase("autostart_requested", {
+    pid: process.pid,
+    exec_path: process.execPath,
+    bundle_path: resolveStartupBundlePath(process.execPath),
+  });
 
   try {
     const status = await agent.start();
 
     if (status.state === "running" && status.port) {
+      const apiToken = resolveApiToken(process.env) ?? undefined;
       pushApiBaseToRenderer(
         win,
         resolveRendererFacingApiBase(
@@ -1426,6 +1435,11 @@ function checkWebGpuBrowserSupport(): void {
 }
 
 async function main(): Promise<void> {
+  recordStartupPhase("main_start", {
+    pid: process.pid,
+    exec_path: process.execPath,
+    bundle_path: resolveStartupBundlePath(process.execPath),
+  });
   await loadMiladyEnvFilesForMain();
   console.log("[Main] Starting Milady (Electrobun)");
   const normalizedModuleDir = import.meta.dir.replaceAll("\\", "/");
@@ -1516,6 +1530,9 @@ async function main(): Promise<void> {
   // running before any synchronous FFI calls like setApplicationMenu().
   // Calling setupApplicationMenu() before createMainWindow() deadlocks.
   const mainWin = attachMainWindow(await createMainWindow());
+  recordStartupPhase("window_ready", {
+    pid: process.pid,
+  });
 
   surfaceWindowManager = new SurfaceWindowManager({
     createWindow: (options) =>
@@ -1810,6 +1827,12 @@ main().catch((err) => {
   persistStartupCrashReport({
     source: "fatal-startup",
     error: msg,
+  });
+  recordStartupPhase("fatal", {
+    pid: process.pid,
+    exec_path: process.execPath,
+    bundle_path: resolveStartupBundlePath(process.execPath),
+    error: err instanceof Error ? err.stack || err.message : String(err),
   });
   // Write to startup log so it's visible even without a console
   try {
