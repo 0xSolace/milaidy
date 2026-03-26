@@ -1,15 +1,17 @@
 import { dispatchAppEmoteEvent } from "@miladyai/app-core/events";
 import { useApp } from "@miladyai/app-core/state";
-import { PREMADE_VOICES } from "../../voice/types";
-import { getElizaApiToken, resolveApiUrl } from "../../utils";
 import { getStylePresets } from "@miladyai/shared/onboarding-presets";
 import { Button, Input } from "@miladyai/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { getElizaApiToken, resolveApiUrl } from "../../utils";
+import { PREMADE_VOICES } from "../../voice/types";
 import {
   CharacterRoster,
   type CharacterRosterEntry,
   resolveRosterEntries,
 } from "../CharacterRoster";
+import { resolvePreviewTtsEndpoints } from "./identity-preview-tts";
+import { onboardingRosterRailClassName } from "./onboarding-form-primitives";
 import {
   OnboardingStepHeader,
   onboardingBodyTextShadowStyle,
@@ -21,7 +23,6 @@ import {
   onboardingSecondaryActionTextShadowStyle,
   spawnOnboardingRipple,
 } from "./onboarding-step-chrome";
-import { resolvePreviewTtsEndpoints } from "./identity-preview-tts";
 
 export function IdentityStep() {
   const { onboardingStyle, handleOnboardingNext, setState, t, uiLanguage } =
@@ -349,7 +350,7 @@ export function IdentityStep() {
 
   return (
     <div
-      className="flex flex-col items-center gap-3 w-full"
+      className="flex w-full flex-col items-center gap-3 max-md:max-h-[calc(100dvh-6.5rem)] max-md:overflow-y-auto max-md:px-4 max-md:pb-2"
       style={{ animation: "onboarding-content-fade-in 0.6s ease both" }}
     >
       {/* Selected character info — floats above the roster */}
@@ -357,26 +358,30 @@ export function IdentityStep() {
         className="w-full text-center"
         style={{ animation: "onboarding-content-fade-in 0.5s ease 0.1s both" }}
       >
-        <div
-          className="mb-2 text-xs font-semibold uppercase tracking-[0.3em] text-[var(--onboarding-text-muted)]"
-          style={onboardingBodyTextShadowStyle}
-        >
-          {t("onboarding.stepSub.identity")}
-        </div>
-        <div
-          className="text-[28px] font-bold tracking-[0.12em] uppercase text-[var(--onboarding-text-strong)] transition-all duration-300 max-md:text-xl"
-          style={{
-            textShadow:
-              "0 0 30px rgba(240,185,11,0.3), 0 2px 12px rgba(3,5,10,0.65)",
-          }}
-        >
-          {selected?.name ?? ""}
+        <div className="mx-auto inline-flex min-w-[15rem] max-w-[min(100%,28rem)] flex-col items-center rounded-[24px] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.16),rgba(255,255,255,0.03)_48%,transparent_78%)] px-6 py-4 shadow-[0_18px_40px_rgba(0,0,0,0.16)] backdrop-blur-[8px] max-md:min-w-0 max-md:px-4 max-md:py-3">
+          <div
+            className="mb-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--onboarding-text-primary)]"
+            style={{
+              textShadow: "0 2px 12px rgba(3,5,10,0.58)",
+            }}
+          >
+            {t("onboarding.stepSub.identity")}
+          </div>
+          <div
+            className="text-[32px] font-bold tracking-[0.12em] uppercase text-[var(--onboarding-text-strong)] transition-all duration-300 max-md:text-[1.7rem]"
+            style={{
+              textShadow:
+                "0 0 34px rgba(240,185,11,0.22), 0 4px 18px rgba(3,5,10,0.72)",
+            }}
+          >
+            {selected?.name ?? ""}
+          </div>
         </div>
       </div>
 
       {/* ── Roster bar ── */}
       <div
-        className="flex flex-nowrap items-end justify-center gap-0 w-full max-w-[900px] px-2 max-md:px-1 max-md:max-w-full border-t border-[var(--onboarding-roster-border)] bg-[var(--onboarding-roster-bg)] p-4 pb-8 backdrop-blur-md"
+        className={onboardingRosterRailClassName}
         style={{
           animation:
             "ob-roster-slide-up 0.5s cubic-bezier(0.25,0.46,0.45,0.94) 0.15s both",
@@ -392,7 +397,7 @@ export function IdentityStep() {
       </div>
 
       <div
-        className="flex flex-col items-center gap-2 pb-6 max-md:pb-4"
+        className="flex flex-col items-center gap-2 pb-6 max-md:pb-2"
         style={{ animation: "onboarding-content-fade-in 0.5s ease 0.3s both" }}
       >
         <Button
