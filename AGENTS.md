@@ -64,7 +64,7 @@
 
 ## Testing Guidelines
 
-- Framework: Vitest with V8 coverage thresholds (25% lines/functions/statements, 15% branches)
+- Framework: Vitest with V8 coverage thresholds (25% lines/functions/statements, 15% branches; canonical policy in `scripts/coverage-policy.mjs`)
 - Naming: match source names with `*.test.ts`; e2e in `*.e2e.test.ts`; live in `*.live.test.ts`
 - Run `bun run test` before pushing when you touch logic
 

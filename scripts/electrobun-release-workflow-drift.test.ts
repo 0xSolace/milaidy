@@ -148,6 +148,21 @@ describe("Electrobun release workflow drift", () => {
     expect(workflow).toContain("needs: [prepare, validate-release]");
   });
 
+  it("runs the release regression contract before release-check", () => {
+    const workflow = fs.readFileSync(WORKFLOW_PATH, "utf8");
+    const regressionIndex = workflow.indexOf(
+      "run: bun run test:regression-matrix:release",
+    );
+    const heavyE2EIndex = workflow.indexOf("run: bun run test:e2e:heavy");
+    const liveCloudIndex = workflow.indexOf("run: bun run test:live:cloud");
+    const releaseCheckIndex = workflow.indexOf("run: bun run release:check");
+
+    expect(regressionIndex).toBeGreaterThan(-1);
+    expect(heavyE2EIndex).toBeGreaterThan(regressionIndex);
+    expect(liveCloudIndex).toBeGreaterThan(heavyE2EIndex);
+    expect(releaseCheckIndex).toBeGreaterThan(liveCloudIndex);
+  });
+
   it("retries bun install before failing the desktop build matrix", () => {
     const workflow = fs.readFileSync(WORKFLOW_PATH, "utf8");
 
@@ -741,9 +756,7 @@ describe("Electrobun release workflow drift", () => {
     expect(workflow).toContain(
       "name: Run Windows packaged renderer bootstrap check",
     );
-    expect(workflow).toContain(
-      "bunx playwright test --config playwright.electrobun.packaged.config.ts test/electrobun-packaged/electrobun-windows-startup.e2e.spec.ts",
-    );
+    expect(workflow).toContain("bun run test:desktop:playwright");
     expect(workflow).toContain('MILADY_DISABLE_LOCAL_EMBEDDINGS: "1"');
     expect(workflow).not.toContain(
       "name: Install Playwright Chromium (Windows)",

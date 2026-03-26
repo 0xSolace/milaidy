@@ -195,7 +195,7 @@ bun run dev:desktop
 
 ### Testing
 
-Coverage thresholds are enforced in `vitest.config.ts`: 25% lines/functions/statements, 15% branches. CI fails when coverage falls below these floors.
+Coverage thresholds are enforced from `scripts/coverage-policy.mjs`: 25% lines/functions/statements, 15% branches. CI fails when coverage falls below these floors.
 
 ```bash
 # Run all tests (parallel)
