@@ -20,7 +20,10 @@ function createTraceEnv(rootDir: string, sessionId: string): NodeJS.ProcessEnv {
 }
 
 function readJson(filePath: string) {
-  return JSON.parse(fs.readFileSync(filePath, "utf8")) as Record<string, unknown>;
+  return JSON.parse(fs.readFileSync(filePath, "utf8")) as Record<
+    string,
+    unknown
+  >;
 }
 
 describe("startup trace", () => {
@@ -49,14 +52,14 @@ describe("startup trace", () => {
     );
 
     expect(snapshot?.phase).toBe("main_start");
-    const state = readJson(env.MILADY_STARTUP_STATE_FILE!);
+    const state = readJson(env.MILADY_STARTUP_STATE_FILE as string);
     expect(state.session_id).toBe("session-a");
     expect(state.phase).toBe("main_start");
     expect(state.pid).toBe(123);
     expect(state.bundle_path).toBe("/Applications/Milady-canary.app");
 
     const events = fs
-      .readFileSync(env.MILADY_STARTUP_EVENTS_FILE!, "utf8")
+      .readFileSync(env.MILADY_STARTUP_EVENTS_FILE as string, "utf8")
       .trim()
       .split("\n");
     expect(events).toHaveLength(1);
@@ -76,16 +79,24 @@ describe("startup trace", () => {
     recordStartupPhase("main_start", { pid: 222 }, envB);
     recordStartupPhase("window_ready", { pid: 111 }, envA);
 
-    expect(readJson(envA.MILADY_STARTUP_STATE_FILE!).phase).toBe("window_ready");
-    expect(readJson(envA.MILADY_STARTUP_STATE_FILE!).pid).toBe(111);
-    expect(readJson(envB.MILADY_STARTUP_STATE_FILE!).phase).toBe("main_start");
-    expect(readJson(envB.MILADY_STARTUP_STATE_FILE!).pid).toBe(222);
+    expect(readJson(envA.MILADY_STARTUP_STATE_FILE as string).phase).toBe(
+      "window_ready",
+    );
+    expect(readJson(envA.MILADY_STARTUP_STATE_FILE as string).pid).toBe(111);
+    expect(readJson(envB.MILADY_STARTUP_STATE_FILE as string).phase).toBe(
+      "main_start",
+    );
+    expect(readJson(envB.MILADY_STARTUP_STATE_FILE as string).pid).toBe(222);
   });
 
   it("overwrites the latest state when startup reaches fatal", () => {
     const env = createTraceEnv(tempDir, "session-fatal");
 
-    recordStartupPhase("runtime_ready", { pid: 321, child_pid: 654, port: 31337 }, env);
+    recordStartupPhase(
+      "runtime_ready",
+      { pid: 321, child_pid: 654, port: 31337 },
+      env,
+    );
     recordStartupPhase(
       "fatal",
       {
@@ -98,13 +109,13 @@ describe("startup trace", () => {
       env,
     );
 
-    const state = readJson(env.MILADY_STARTUP_STATE_FILE!);
+    const state = readJson(env.MILADY_STARTUP_STATE_FILE as string);
     expect(state.phase).toBe("fatal");
     expect(state.error).toBe("Child process exited unexpectedly with code 9");
     expect(state.exit_code).toBe(9);
 
     const events = fs
-      .readFileSync(env.MILADY_STARTUP_EVENTS_FILE!, "utf8")
+      .readFileSync(env.MILADY_STARTUP_EVENTS_FILE as string, "utf8")
       .trim()
       .split("\n")
       .map((line) => JSON.parse(line));
@@ -138,7 +149,9 @@ describe("startup trace", () => {
       ),
     );
     if (!bootstrapFile) {
-      throw new Error("expected packaged exec path to resolve a bootstrap file");
+      throw new Error(
+        "expected packaged exec path to resolve a bootstrap file",
+      );
     }
     fs.mkdirSync(path.dirname(bootstrapFile), { recursive: true });
     fs.writeFileSync(
@@ -162,7 +175,12 @@ describe("startup trace", () => {
     expect(config.stateFile).toBe(stateFile);
     expect(config.eventsFile).toBe(eventsFile);
 
-    const snapshot = recordStartupPhase("main_start", { pid: 777 }, env, execPath);
+    const snapshot = recordStartupPhase(
+      "main_start",
+      { pid: 777 },
+      env,
+      execPath,
+    );
     expect(snapshot?.session_id).toBe(sessionId);
     expect(readJson(stateFile).pid).toBe(777);
   });
@@ -202,7 +220,12 @@ describe("startup trace", () => {
       eventsFile: null,
     });
     expect(
-      recordStartupPhase("main_start", { pid: 111 }, {} as NodeJS.ProcessEnv, execPath),
+      recordStartupPhase(
+        "main_start",
+        { pid: 111 },
+        {} as NodeJS.ProcessEnv,
+        execPath,
+      ),
     ).toBeNull();
   });
 });

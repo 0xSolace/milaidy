@@ -297,8 +297,7 @@ describe("AgentManager", () => {
             env: process.env,
             moduleDir:
               "/Applications/Milady-canary.app/Contents/Resources/app/bun",
-            execPath:
-              "/Applications/Milady-canary.app/Contents/MacOS/launcher",
+            execPath: "/Applications/Milady-canary.app/Contents/MacOS/launcher",
           }),
         ).toBe(
           "/Applications/Milady-canary.app/Contents/Resources/app/milady-dist",
@@ -520,9 +519,9 @@ describe("AgentManager", () => {
         const traceEvents = appendFileSync.mock.calls
           .map(([, line]) => String(line))
           .filter((line) => line.includes('"session_id":"test-session"'));
-        expect(traceEvents.some((line) => line.includes('"phase":"fatal"'))).toBe(
-          true,
-        );
+        expect(
+          traceEvents.some((line) => line.includes('"phase":"fatal"')),
+        ).toBe(true);
         expect(
           traceEvents.some((line) => line.includes('"exit_code":23')),
         ).toBe(true);
@@ -1202,9 +1201,11 @@ describe("AgentManager", () => {
   describe("onStatusChange()", () => {
     it("notifies listeners and supports unsubscribe", async () => {
       const states: string[] = [];
-      const unsubscribe = manager.onStatusChange((status: { state: string }) => {
-        states.push(status.state);
-      });
+      const unsubscribe = manager.onStatusChange(
+        (status: { state: string }) => {
+          states.push(status.state);
+        },
+      );
 
       const existsSync = await getExistsSyncMock();
       existsSync.mockImplementation((p: string) => {

@@ -71,7 +71,7 @@ function trimEnv(value: string | undefined): string | null {
 }
 
 function hasOwn<T extends object>(value: T, key: keyof T): boolean {
-  return Object.prototype.hasOwnProperty.call(value, key);
+  return Object.hasOwn(value, key);
 }
 
 function ensureParentDir(filePath: string): void {
@@ -131,14 +131,10 @@ function resolveStartupTraceControlDir(
   env: NodeJS.ProcessEnv = process.env,
   platform: NodeJS.Platform = process.platform,
 ): string {
-  const homeDir =
-    trimEnv(env.HOME) ??
-    trimEnv(env.USERPROFILE) ??
-    os.homedir();
+  const homeDir = trimEnv(env.HOME) ?? trimEnv(env.USERPROFILE) ?? os.homedir();
   if (platform === "win32") {
     const appData =
-      trimEnv(env.APPDATA) ??
-      path.join(homeDir, "AppData", "Roaming");
+      trimEnv(env.APPDATA) ?? path.join(homeDir, "AppData", "Roaming");
     return path.join(appData, "Milady");
   }
 
@@ -261,27 +257,28 @@ export function recordStartupPhase(
   const stateExecPath =
     hasOwn(update, "exec_path") && update.exec_path !== undefined
       ? update.exec_path
-      : previous?.exec_path ?? process.execPath ?? null;
+      : (previous?.exec_path ?? process.execPath ?? null);
   const nextState: StartupTraceState = {
     session_id: config.sessionId,
     phase,
     pid:
       hasOwn(update, "pid") && update.pid !== undefined
         ? update.pid
-        : previous?.pid ?? process.pid,
+        : (previous?.pid ?? process.pid),
     child_pid:
       hasOwn(update, "child_pid") && update.child_pid !== undefined
         ? update.child_pid
-        : previous?.child_pid ?? null,
+        : (previous?.child_pid ?? null),
     port:
       hasOwn(update, "port") && update.port !== undefined
         ? update.port
-        : previous?.port ?? null,
+        : (previous?.port ?? null),
     exec_path: stateExecPath,
     bundle_path:
       hasOwn(update, "bundle_path") && update.bundle_path !== undefined
         ? update.bundle_path
-        : previous?.bundle_path ?? resolveStartupBundlePath(stateExecPath ?? ""),
+        : (previous?.bundle_path ??
+          resolveStartupBundlePath(stateExecPath ?? "")),
     elapsed_ms: now - startedAt,
     error:
       hasOwn(update, "error") && update.error !== undefined

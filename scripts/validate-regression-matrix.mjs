@@ -29,10 +29,10 @@ function normalisePath(filePath) {
 function globToRegExp(glob) {
   const escaped = glob
     .replace(/[.+^${}()|[\]\\]/g, "\\$&")
-    .replace(/\*\*/g, "\u0000")
+    .replace(/\*\*/g, "__GLOB_STAR__")
     .replace(/\*/g, "[^/]*")
     .replace(/\?/g, "[^/]")
-    .replace(/\u0000/g, ".*");
+    .replace(/__GLOB_STAR__/g, ".*");
   return new RegExp(`^${escaped}$`);
 }
 
@@ -106,12 +106,16 @@ function ensureWorkflowContracts(workflowName, failures) {
   for (const suiteId of workflowContract.scheduledSuites) {
     const suite = manifest.suites[suiteId];
     if (!suite) {
-      failures.push(`Workflow "${workflowName}" references unknown suite "${suiteId}".`);
+      failures.push(
+        `Workflow "${workflowName}" references unknown suite "${suiteId}".`,
+      );
       continue;
     }
 
     if (suite.command) {
-      const present = workflowTexts.some(({ text }) => text.includes(suite.command));
+      const present = workflowTexts.some(({ text }) =>
+        text.includes(suite.command),
+      );
       if (!present) {
         failures.push(
           `Workflow "${workflowName}" does not schedule "${suiteId}" via "${suite.command}".`,
@@ -210,7 +214,9 @@ function ensureDesktopInventory(failures) {
   const seenIds = new Set();
   for (const item of items) {
     if (seenIds.has(item.id)) {
-      failures.push(`Desktop regression inventory item id is duplicated: ${item.id}`);
+      failures.push(
+        `Desktop regression inventory item id is duplicated: ${item.id}`,
+      );
       continue;
     }
     seenIds.add(item.id);
@@ -234,7 +240,8 @@ function ensureDesktopInventory(failures) {
   }
 
   for (const { relativePath, text } of inventoryTexts) {
-    for (const marker of manifest.guards.forbiddenDesktopInventoryMarkers ?? []) {
+    for (const marker of manifest.guards.forbiddenDesktopInventoryMarkers ??
+      []) {
       if (text.includes(marker)) {
         failures.push(
           `${relativePath} still contains forbidden desktop inventory marker "${marker}".`,
@@ -244,10 +251,17 @@ function ensureDesktopInventory(failures) {
   }
 }
 
-function ensureChangedFileCoverage(workflowName, scheduledSuites, failures, args) {
+function ensureChangedFileCoverage(
+  workflowName,
+  scheduledSuites,
+  failures,
+  args,
+) {
   const changedFiles = collectChangedFiles(args);
   if (changedFiles.length === 0) {
-    console.log(`No changed-file diff available for workflow "${workflowName}". Static contract checks only.`);
+    console.log(
+      `No changed-file diff available for workflow "${workflowName}". Static contract checks only.`,
+    );
     return;
   }
 
@@ -283,7 +297,10 @@ function ensureChangedFileCoverage(workflowName, scheduledSuites, failures, args
 const args = parseArgs(process.argv.slice(2));
 const workflowName = args.get("workflow");
 
-if (typeof workflowName !== "string" || !manifest.workflowContracts[workflowName]) {
+if (
+  typeof workflowName !== "string" ||
+  !manifest.workflowContracts[workflowName]
+) {
   console.error(
     `Usage: node scripts/validate-regression-matrix.mjs --workflow <${Object.keys(
       manifest.workflowContracts,
@@ -306,4 +323,6 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log(`Regression matrix validation passed for workflow "${workflowName}".`);
+console.log(
+  `Regression matrix validation passed for workflow "${workflowName}".`,
+);

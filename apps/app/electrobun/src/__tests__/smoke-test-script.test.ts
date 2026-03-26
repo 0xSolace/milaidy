@@ -7,7 +7,10 @@ const SMOKE_TEST_PATH = path.resolve(
   import.meta.dirname,
   "../../scripts/smoke-test.sh",
 );
-const ROOT_PACKAGE_JSON_PATH = path.resolve(import.meta.dirname, "../../../../../package.json");
+const ROOT_PACKAGE_JSON_PATH = path.resolve(
+  import.meta.dirname,
+  "../../../../../package.json",
+);
 
 describe("smoke-test.sh", () => {
   it("waits for packaged app handoff after the launcher exits", () => {
@@ -64,16 +67,16 @@ describe("smoke-test.sh", () => {
     const script = fs.readFileSync(SMOKE_TEST_PATH, "utf8");
 
     expect(script).toContain("build_launcher_command() {");
-    expect(script).toContain(
-      'if [[ "$(uname)" == "Darwin" ]]; then',
-    );
+    expect(script).toContain('if [[ "$(uname)" == "Darwin" ]]; then');
     expect(script).toContain("/usr/bin/env");
     expect(script).toContain("-i");
     expect(script).toContain('HOME="$HOME"');
     expect(script).toContain('TERM="$' + "{TERM:-dumb}" + '"');
     expect(script).toContain('MILADY_STARTUP_SESSION_ID="$STARTUP_SESSION_ID"');
     expect(script).toContain('MILADY_STARTUP_STATE_FILE="$STARTUP_STATE_FILE"');
-    expect(script).toContain('MILADY_STARTUP_EVENTS_FILE="$STARTUP_EVENTS_FILE"');
+    expect(script).toContain(
+      'MILADY_STARTUP_EVENTS_FILE="$STARTUP_EVENTS_FILE"',
+    );
     expect(script).toContain(
       '"$' + "{LAUNCH_COMMAND[@]}" + '" >"$LAUNCHER_STDOUT"',
     );
@@ -83,29 +86,41 @@ describe("smoke-test.sh", () => {
     const script = fs.readFileSync(SMOKE_TEST_PATH, "utf8");
 
     expect(script).toContain(
-      'MAC_LAUNCH_MODE="${MILADY_SMOKE_MAC_LAUNCH_MODE:-auto}"',
+      `MAC_LAUNCH_MODE="\${MILADY_SMOKE_MAC_LAUNCH_MODE:-auto}"`,
     );
     expect(script).toContain("probe_macos_bundle_exec_support() {");
-    expect(script).toContain('probe_exec="$probe_root/Probe.app/Contents/MacOS/hello"');
-    expect(script).toContain('const { spawnSync } = require("node:child_process");');
-    expect(script).toContain('process.stdout.write(String(128 + signalCode));');
-    expect(script).toContain('launch_packaged_app_with_open() {');
+    expect(script).toContain(
+      'probe_exec="$probe_root/Probe.app/Contents/MacOS/hello"',
+    );
+    expect(script).toContain(
+      'const { spawnSync } = require("node:child_process");',
+    );
+    expect(script).toContain("process.stdout.write(String(128 + signalCode));");
+    expect(script).toContain("launch_packaged_app_with_open() {");
     expect(script).toContain('/usr/bin/open -n "$LAUNCH_APP_BUNDLE"');
     expect(script).toContain('OPEN_LAUNCH_ATTEMPTED="1"');
     expect(script).toContain('OPEN_LAUNCH_EXIT_CODE="$?"');
     expect(script).toContain(
       'dump_failure_diagnostics "open(1) failed to launch packaged app"',
     );
-    expect(script).toContain('echo "Mac launch mode: ${MAC_LAUNCH_MODE:-<unset>}"');
-    expect(script).toContain('echo "open(1) attempted: ${OPEN_LAUNCH_ATTEMPTED:-0}"');
-    expect(script).toContain('echo "open(1) exit code: ${OPEN_LAUNCH_EXIT_CODE:-<unset>}"');
     expect(script).toContain(
-      'echo "Mac direct bundle exec probe rc: ${MAC_DIRECT_EXEC_PROBE_RC:-<unset>}"',
+      `echo "Mac launch mode: \${MAC_LAUNCH_MODE:-<unset>}"`,
+    );
+    expect(script).toContain(
+      `echo "open(1) attempted: \${OPEN_LAUNCH_ATTEMPTED:-0}"`,
+    );
+    expect(script).toContain(
+      `echo "open(1) exit code: \${OPEN_LAUNCH_EXIT_CODE:-<unset>}"`,
+    );
+    expect(script).toContain(
+      `echo "Mac direct bundle exec probe rc: \${MAC_DIRECT_EXEC_PROBE_RC:-<unset>}"`,
     );
     expect(script).toContain(
       'FAILURE_REASON="macOS direct app-bundle exec probe returned SIGKILL (137) before startup trace began"',
     );
-    expect(script).toContain('FAILURE_REASON="open(1) launch produced no startup trace"');
+    expect(script).toContain(
+      'FAILURE_REASON="open(1) launch produced no startup trace"',
+    );
   });
 
   it("strips macOS provenance xattrs from the copied local smoke bundle", () => {
@@ -124,20 +139,30 @@ describe("smoke-test.sh", () => {
     const script = fs.readFileSync(SMOKE_TEST_PATH, "utf8");
 
     expect(script).toContain("init_startup_session() {");
-    expect(script).toContain('STARTUP_STATE_FILE="$SMOKE_DIAGNOSTICS_DIR/startup-state.json"');
-    expect(script).toContain('STARTUP_EVENTS_FILE="$SMOKE_DIAGNOSTICS_DIR/startup-events.jsonl"');
+    expect(script).toContain(
+      'STARTUP_STATE_FILE="$SMOKE_DIAGNOSTICS_DIR/startup-state.json"',
+    );
+    expect(script).toContain(
+      'STARTUP_EVENTS_FILE="$SMOKE_DIAGNOSTICS_DIR/startup-events.jsonl"',
+    );
     expect(script).toContain(
       'STARTUP_BOOTSTRAP_FILE="$LAUNCH_APP_BUNDLE/Contents/Resources/startup-session.json"',
     );
     expect(script).toContain('mv "$bootstrap_temp" "$STARTUP_BOOTSTRAP_FILE"');
     expect(script).toContain("load_startup_state() {");
-    expect(script).toContain('const [filePath, expectedSession] = process.argv.slice(1);');
-    expect(script).toContain('if ((data.session_id ?? "") !== expectedSession) {');
+    expect(script).toContain(
+      "const [filePath, expectedSession] = process.argv.slice(1);",
+    );
+    expect(script).toContain(
+      'if ((data.session_id ?? "") !== expectedSession) {',
+    );
     expect(script).toContain('if [[ "$STATE_PHASE" == "fatal" ]]');
     expect(script).toContain(
       'if [[ "$STATE_PHASE" == "runtime_ready" || "$STATE_PHASE" == "metadata_ready" ]]',
     );
-    expect(script).toContain('FAILURE_REASON="startup trace never reached runtime_ready"');
+    expect(script).toContain(
+      'FAILURE_REASON="startup trace never reached runtime_ready"',
+    );
     expect(script).toContain('dump_failure_diagnostics "$FAILURE_REASON"');
     expect(script).toContain("Startup bootstrap snapshot:");
     expect(script).toContain("Startup state snapshot:");
@@ -172,13 +197,13 @@ describe("smoke-test.sh", () => {
 
   it("keeps strict packaged smoke separate from explicit unsigned local smoke", () => {
     const script = fs.readFileSync(SMOKE_TEST_PATH, "utf8");
-    const pkg = JSON.parse(
-      fs.readFileSync(ROOT_PACKAGE_JSON_PATH, "utf8"),
-    ) as {
+    const pkg = JSON.parse(fs.readFileSync(ROOT_PACKAGE_JSON_PATH, "utf8")) as {
       scripts?: Record<string, string>;
     };
 
-    expect(script).toContain("ERROR: No Developer ID Application identity found.");
+    expect(script).toContain(
+      "ERROR: No Developer ID Application identity found.",
+    );
     expect(script).toContain(
       "WARNING: Running unsigned/ad-hoc packaged smoke. This is not a release-grade signing/notarization check.",
     );

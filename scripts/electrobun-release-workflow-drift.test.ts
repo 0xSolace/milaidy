@@ -166,8 +166,10 @@ describe("Electrobun release workflow drift", () => {
   it("requires an explicit tag for manual non-tag runs", () => {
     const workflow = fs.readFileSync(WORKFLOW_PATH, "utf8");
 
-    expect(workflow).toContain('if [[ -n "${{ inputs.tag }}" ]]; then');
-    expect(workflow).toContain('elif [[ "${{ github.ref_type }}" == "tag" ]]; then');
+    expect(workflow).toContain(`if [[ -n "\${{ inputs.tag }}" ]]; then`);
+    expect(workflow).toContain(
+      `elif [[ "\${{ github.ref_type }}" == "tag" ]]; then`,
+    );
     expect(workflow).toContain(
       "Manual branch dispatches must provide inputs.tag; refusing to derive a release tag from package.json.",
     );
@@ -605,11 +607,19 @@ describe("Electrobun release workflow drift", () => {
     const smokeScript = fs.readFileSync(WINDOWS_SMOKE_PATH, "utf8");
 
     expect(smokeScript).toContain("Cleared stale startup log:");
-    expect(smokeScript).toContain('$startupSessionId = "milady-windows-smoke-"');
-    expect(smokeScript).toContain('$startupStateFile = Join-Path $env:RUNNER_TEMP');
-    expect(smokeScript).toContain('$startupBootstrapFile = Join-Path $startupBundleRoot "startup-session.json"');
+    expect(smokeScript).toContain(
+      '$startupSessionId = "milady-windows-smoke-"',
+    );
+    expect(smokeScript).toContain(
+      "$startupStateFile = Join-Path $env:RUNNER_TEMP",
+    );
+    expect(smokeScript).toContain(
+      '$startupBootstrapFile = Join-Path $startupBundleRoot "startup-session.json"',
+    );
     expect(smokeScript).toContain("Write-StartupBootstrap");
-    expect(smokeScript).toContain('if ($state.session_id -ne $startupSessionId)');
+    expect(smokeScript).toContain(
+      "if ($state.session_id -ne $startupSessionId)",
+    );
   });
 
   it("bundles plugins.json and package.json into milady-dist for packaged builds", () => {

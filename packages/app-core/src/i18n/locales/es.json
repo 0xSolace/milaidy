@@ -1308,5 +1308,11 @@
   "bugreportmodal.copiedDiagnostics": "Diagnostics Copied!",
   "bugreportmodal.openLogsFolder": "Open Logs Folder",
   "bugreportmodal.saveBundle": "Save Report Bundle",
-  "bugreportmodal.savingBundle": "Saving Bundle..."
+  "bugreportmodal.savingBundle": "Saving Bundle...",
+  "providerswitcher.cloudInferenceToggleHint": "Cloud can stay connected while inference runs on your own key. Disable cloud inference when using BYOK providers.",
+  "providerswitcher.restartRequiredHint": "Some provider changes apply after restart. Milady restarts automatically after save.",
+  "providerswitcher.reportIssueWithTemplate": "Report this issue with a prefilled template",
+  "onboarding.cloudProviderBehaviorHint": "Cloud login enables managed services. You can still switch model inference to your own provider key later.",
+  "onboarding.restartAfterProviderChangeHint": "After onboarding, changing provider or cloud service routing may require a restart to fully apply.",
+  "onboarding.reportIssue": "Report issue"
 }

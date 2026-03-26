@@ -36,10 +36,7 @@ import {
 
 import { resolveDesktopRuntimeMode } from "../api-base";
 import { DEFAULT_PORT } from "../constants";
-import {
-  recordStartupPhase,
-  resolveStartupBundlePath,
-} from "../startup-trace";
+import { recordStartupPhase, resolveStartupBundlePath } from "../startup-trace";
 import type { SendToWebview } from "../types.js";
 import { findFirstAvailableLoopbackPort } from "./loopback-port";
 
@@ -564,10 +561,7 @@ export function isPackagedDesktopRuntime(
     normalizedExecPath.includes("/self-extraction/") ||
     normalizedExecPath.endsWith("/launcher") ||
     normalizedExecPath.endsWith("/launcher.exe");
-  if (
-    process.env.MILADY_DIST_PATH?.trim() &&
-    !looksLikePackagedExec
-  ) {
+  if (process.env.MILADY_DIST_PATH?.trim() && !looksLikePackagedExec) {
     return false;
   }
   if (!normalizedModuleDir.includes("/src/")) {
@@ -593,13 +587,23 @@ export function resolveBunExecutablePath(opts?: {
   const packagedCandidates = [
     execPath,
     execDir ? joinPortable(execDir, executableName) : "",
-    execDir ? resolveRelativePortable(execDir, `../Resources/app/bun/${executableName}`) : "",
     execDir
-      ? resolveRelativePortable(execDir, `../Resources/app/bun/bin/${executableName}`)
+      ? resolveRelativePortable(
+          execDir,
+          `../Resources/app/bun/${executableName}`,
+        )
+      : "",
+    execDir
+      ? resolveRelativePortable(
+          execDir,
+          `../Resources/app/bun/bin/${executableName}`,
+        )
       : "",
     moduleDir ? joinPortable(moduleDir, executableName) : "",
     moduleDir ? joinPortable(moduleDir, "bin", executableName) : "",
-    moduleDir ? resolveRelativePortable(moduleDir, `../bun/${executableName}`) : "",
+    moduleDir
+      ? resolveRelativePortable(moduleDir, `../bun/${executableName}`)
+      : "",
     moduleDir
       ? resolveRelativePortable(moduleDir, `../bun/bin/${executableName}`)
       : "",
@@ -624,9 +628,10 @@ export function resolveBunExecutablePath(opts?: {
     );
   }
 
-  const candidates = [execPath, execDir ? joinPortable(execDir, executableName) : ""].filter(
-    Boolean,
-  );
+  const _candidates = [
+    execPath,
+    execDir ? joinPortable(execDir, executableName) : "",
+  ].filter(Boolean);
 
   const bunGlobal = Bun as { which?: (binary: string) => string | null };
   const whichCandidate =
@@ -661,7 +666,10 @@ export function resolveMiladyDistPath(opts?: {
   const moduleDir = opts?.moduleDir ?? getDefaultModuleDir();
   const execPath = opts?.execPath ?? process.execPath;
   const packagedRuntime = isPackagedDesktopRuntime(moduleDir, execPath);
-  const fallbackCandidates = getMiladyDistFallbackCandidates(moduleDir, execPath);
+  const fallbackCandidates = getMiladyDistFallbackCandidates(
+    moduleDir,
+    execPath,
+  );
 
   if (packagedRuntime) {
     for (const candidate of fallbackCandidates) {
@@ -1360,9 +1368,6 @@ export class AgentManager {
 
       const startedAt = Date.now();
       const startupMs = startedAt - spawnTime;
-      // Fetch agent name from the running server
-      this.setStartupPhase("fetching_agent_metadata");
-      const agentName = await this.fetchAgentName(apiPort);
 
       this.status = {
         state: "running",
@@ -1372,9 +1377,6 @@ export class AgentManager {
         error: null,
       };
 
-      process.env.MILADY_PORT = String(apiPort);
-      process.env.MILADY_API_PORT = String(apiPort);
-      process.env.ELIZA_PORT = String(apiPort);
       this.setStartupPhase("ready", null);
       this.emitStatus();
       diagnosticLog(
@@ -1614,6 +1616,7 @@ export class AgentManager {
             exit_code: exitCode,
           });
           this.childProcess = null;
+          if (this.childProcess !== null) return;
 
           // Auto-recover from PGLite migration failures by deleting the DB
           // and spawning a fresh process (new process = fresh WASM state).

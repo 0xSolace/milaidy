@@ -8,7 +8,6 @@
  * Test environment: Vitest (Node), electrobun/bun is always vi.mocked().
  */
 
-import fs from "node:fs";
 import path from "node:path";
 import {
   afterEach,
@@ -3717,9 +3716,7 @@ describe("Auto-launch (automated)", () => {
   documentHeavyDesktopRegression(
     "App launches automatically after system restart (e2e)",
   );
-  documentHeavyDesktopRegression(
-    "Auto-launch survives app updates (e2e)",
-  );
+  documentHeavyDesktopRegression("Auto-launch survives app updates (e2e)");
 });
 
 describe("Clipboard round-trip (automated)", () => {
@@ -3849,9 +3846,7 @@ describe("Application menu (automated)", () => {
     expect(indexSource).toContain("menu-reset-milady-applied");
   });
 
-  documentHeavyDesktopRegression(
-    "Keyboard shortcut Cmd+Q triggers quit (e2e)",
-  );
+  documentHeavyDesktopRegression("Keyboard shortcut Cmd+Q triggers quit (e2e)");
   documentHeavyDesktopRegression(
     "Keyboard shortcut Cmd+R triggers reload (e2e)",
   );
@@ -4092,9 +4087,7 @@ describe("Updater (automated)", () => {
   documentHeavyDesktopRegression(
     "Check for updates contacts the release server (network)",
   );
-  documentHeavyDesktopRegression(
-    "Applying update relaunches the app (e2e)",
-  );
+  documentHeavyDesktopRegression("Applying update relaunches the app (e2e)");
   documentHeavyDesktopRegression(
     "Update check works on both canary and stable channels (network)",
   );

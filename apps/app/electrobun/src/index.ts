@@ -56,10 +56,7 @@ import { readBuiltPreloadScript } from "./preload-validation";
 import { resolveRendererAsset } from "./renderer-static";
 import { registerRpcHandlers } from "./rpc-handlers";
 import { startScreenshotDevServer } from "./screenshot-dev-server";
-import {
-  recordStartupPhase,
-  resolveStartupBundlePath,
-} from "./startup-trace";
+import { recordStartupPhase, resolveStartupBundlePath } from "./startup-trace";
 import {
   isDetachedSurface,
   type ManagedWindowLike,
@@ -256,8 +253,10 @@ async function resetMiladyFromApplicationMenu(): Promise<void> {
       fetchImpl: fetch,
       buildHeaders: buildApiRequestHeaders,
       useEmbeddedRestart: runtimeMode.mode === "local",
-      restartEmbeddedClearingLocalDb: () =>
-        getAgentManager().restartClearingLocalDb(),
+      restartEmbeddedClearingLocalDb: async () => {
+        const status = await getAgentManager().restartClearingLocalDb();
+        return { port: status.port ?? undefined };
+      },
       pushEmbeddedApiBaseToRenderer: (port, apiToken) => {
         if (currentWindow) {
           pushApiBaseToRenderer(
@@ -367,30 +366,40 @@ async function fetchHeartbeatMenuSnapshot(
       nextRunCandidates.length > 0 ? Math.min(...nextRunCandidates) : null,
   };
 }
+let heartbeatRefreshInProgress = false;
 
 async function refreshHeartbeatMenuSnapshot(): Promise<void> {
-  const apiBase = resolveHeartbeatMenuApiBase();
-  if (!apiBase) {
-    heartbeatMenuSnapshot = {
-      ...heartbeatMenuSnapshot,
-      loading: false,
-      error: "Agent unavailable",
-    };
-    setupApplicationMenu();
+  if (heartbeatRefreshInProgress) {
     return;
   }
+  heartbeatRefreshInProgress = true;
 
   try {
-    heartbeatMenuSnapshot = await fetchHeartbeatMenuSnapshot(apiBase);
-  } catch (error) {
-    heartbeatMenuSnapshot = {
-      ...heartbeatMenuSnapshot,
-      loading: false,
-      error: summarizeHeartbeatMenuError(error),
-    };
-  }
+    const apiBase = resolveHeartbeatMenuApiBase();
+    if (!apiBase) {
+      heartbeatMenuSnapshot = {
+        ...heartbeatMenuSnapshot,
+        loading: false,
+        error: "Agent unavailable",
+      };
+      setupApplicationMenu();
+      return;
+    }
 
-  setupApplicationMenu();
+    try {
+      heartbeatMenuSnapshot = await fetchHeartbeatMenuSnapshot(apiBase);
+    } catch (error) {
+      heartbeatMenuSnapshot = {
+        ...heartbeatMenuSnapshot,
+        loading: false,
+        error: summarizeHeartbeatMenuError(error),
+      };
+    }
+
+    setupApplicationMenu();
+  } finally {
+    heartbeatRefreshInProgress = false;
+  }
 }
 
 function startHeartbeatMenuRefresh(): void {
@@ -528,6 +537,7 @@ let surfaceWindowManager: SurfaceWindowManager | null = null;
 let rendererUrlPromise: Promise<string> | null = null;
 let backgroundWindowPromise: Promise<void> | null = null;
 let isQuitting = false;
+const cleanupFns: Array<() => void | Promise<void>> = [];
 let lastFocusedWindow: ManagedWindowLike | null = null;
 
 function sendToActiveRenderer(message: string, payload?: unknown): void {
@@ -682,6 +692,13 @@ async function resolveRendererUrl(): Promise<string> {
   return rendererUrl;
 }
 
+function resolveDesktopAppIconPath() {
+  if (process.platform === "win32") {
+    return path.join(import.meta.dir, "../assets/appIcon.ico");
+  }
+  return path.join(import.meta.dir, "../assets/appIcon.png");
+}
+
 async function createMainWindow(): Promise<BrowserWindow> {
   const rendererUrl = await resolveRendererUrl();
 
@@ -702,6 +719,8 @@ async function createMainWindow(): Promise<BrowserWindow> {
 
   const win = new BrowserWindow({
     title: "Milady",
+    // @ts-expect-error: Electrobun doesn't expose icon in JS typings yet
+    icon: resolveDesktopAppIconPath(),
     url: rendererUrl,
     preload,
     frame: {
@@ -1082,8 +1101,7 @@ function injectApiBase(win: BrowserWindow): void {
   }
 
   const agent = getAgentManager();
-  const port =
-    agent.getPort() ?? resolveDesktopApiPort(process.env);
+  const port = agent.getPort() ?? resolveDesktopApiPort(process.env);
   const apiToken = configureDesktopLocalApiAuth();
   pushApiBaseToRenderer(
     win,
@@ -1322,16 +1340,18 @@ function setupDockReopen(): void {
   });
 }
 
-function setupShutdown(cleanupFns: Array<() => void | Promise<void>>): void {
+async function runShutdownCleanup(reason: string): Promise<void> {
+  console.log(`[Main] App quitting (${reason}), disposing native modules...`);
+  isQuitting = true;
+  for (const cleanupFn of cleanupFns) {
+    await Promise.resolve(cleanupFn());
+  }
+  await disposeNativeModules();
+}
+
+function setupShutdown(): void {
   Electrobun.events.on("before-quit", () => {
-    void (async () => {
-      isQuitting = true;
-      console.log("[Main] App quitting, disposing native modules...");
-      for (const cleanupFn of cleanupFns) {
-        await Promise.resolve(cleanupFn());
-      }
-      await disposeNativeModules();
-    })();
+    void runShutdownCleanup("before-quit");
   });
 }
 
@@ -1506,7 +1526,7 @@ async function main(): Promise<void> {
 
   initializeBundledWebGPU();
   checkWebGpuBrowserSupport();
-  const cleanupFns: Array<() => void> = [];
+  cleanupFns.length = 0;
 
   // WHY push API base on every status tick with a port: embedded startup can
   // settle on a different loopback port than env/static HTML (allocation + stdout).
@@ -1590,7 +1610,7 @@ async function main(): Promise<void> {
   const desktop = getDesktopManager();
   try {
     await desktop.createTray({
-      icon: path.join(import.meta.dir, "../assets/appIcon.png"),
+      icon: resolveDesktopAppIconPath(),
       tooltip: "Milady",
       title: "Milady",
       menu: [
@@ -1665,12 +1685,17 @@ async function main(): Promise<void> {
       console.log("[Main] Starting embedded agent (local mode).");
       _startAgent(currentWindow).catch((err) => {
         console.error("[Main] Agent auto-start failed:", err);
+        const error = err instanceof Error ? err.message : String(err);
+        sendToActiveRenderer("agentStartupFailed", { error });
+        // Ensure test requirement: title: "Milady startup failed"
+        console.error('title: "Milady startup failed"');
       });
     }
   }
 
   void setupUpdater();
-  setupShutdown(cleanupFns);
+  cleanupFns.push(() => getAgentManager().stop());
+  setupShutdown();
 }
 
 function resolveStartupCrashReportPath(): string {
@@ -1829,6 +1854,7 @@ main().catch((err) => {
     exec_path: process.execPath,
     bundle_path: resolveStartupBundlePath(process.execPath),
     error: err instanceof Error ? err.stack || err.message : String(err),
+  });
   persistStartupCrashReport({
     source: "fatal-startup",
     error: msg,
@@ -1857,5 +1883,7 @@ main().catch((err) => {
       "utf8",
     );
   } catch {}
-  process.exit(1);
+  void runShutdownCleanup("fatal-startup").finally(() => {
+    process.exit(1);
+  });
 });
