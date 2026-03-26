@@ -11,6 +11,8 @@ const { mockUseApp, mockLoadSkills, mockRefreshSkills } = vi.hoisted(() => ({
 }));
 
 vi.mock("@miladyai/ui", () => ({
+  cn: (...classes: Array<string | false | null | undefined>) =>
+    classes.filter(Boolean).join(" "),
   Button: ({
     children,
     ...props
@@ -33,6 +35,13 @@ vi.mock("@miladyai/ui", () => ({
     className?: string;
   }) => React.createElement("div", { className }, children),
   DialogTitle: ({
+    children,
+    className,
+  }: {
+    children: React.ReactNode;
+    className?: string;
+  }) => React.createElement("div", { className }, children),
+  DialogDescription: ({
     children,
     className,
   }: {
