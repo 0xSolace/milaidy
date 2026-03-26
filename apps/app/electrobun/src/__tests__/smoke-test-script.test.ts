@@ -59,22 +59,81 @@ describe("smoke-test.sh", () => {
     );
   });
 
-  it("uses a minimal launcher environment on macOS GitHub Actions", () => {
+  it("uses a minimal launcher environment on macOS smoke runs", () => {
     const script = fs.readFileSync(SMOKE_TEST_PATH, "utf8");
 
     expect(script).toContain("build_launcher_command() {");
     expect(script).toContain(
-      'if [[ "$(uname)" == "Darwin" && -n "$' +
-        "{GITHUB_ACTIONS:-}" +
-        '" ]]; then',
+      'if [[ "$(uname)" == "Darwin" ]]; then',
     );
     expect(script).toContain("/usr/bin/env");
     expect(script).toContain("-i");
     expect(script).toContain('HOME="$HOME"');
     expect(script).toContain('TERM="$' + "{TERM:-dumb}" + '"');
+    expect(script).toContain('MILADY_STARTUP_SESSION_ID="$STARTUP_SESSION_ID"');
+    expect(script).toContain('MILADY_STARTUP_STATE_FILE="$STARTUP_STATE_FILE"');
+    expect(script).toContain('MILADY_STARTUP_EVENTS_FILE="$STARTUP_EVENTS_FILE"');
     expect(script).toContain(
       '"$' + "{LAUNCH_COMMAND[@]}" + '" >"$LAUNCHER_STDOUT"',
     );
+  });
+
+  it("records host-level macOS bundle-exec failures instead of masking them as missing ports", () => {
+    const script = fs.readFileSync(SMOKE_TEST_PATH, "utf8");
+
+    expect(script).toContain(
+      'MAC_LAUNCH_MODE="${MILADY_SMOKE_MAC_LAUNCH_MODE:-auto}"',
+    );
+    expect(script).toContain("probe_macos_bundle_exec_support() {");
+    expect(script).toContain('probe_exec="$probe_root/Probe.app/Contents/MacOS/hello"');
+    expect(script).toContain('const { spawnSync } = require("node:child_process");');
+    expect(script).toContain('process.stdout.write(String(128 + signalCode));');
+    expect(script).toContain('launch_packaged_app_with_open() {');
+    expect(script).toContain('/usr/bin/open -n "$LAUNCH_APP_BUNDLE"');
+    expect(script).toContain('echo "Mac launch mode: ${MAC_LAUNCH_MODE:-<unset>}"');
+    expect(script).toContain(
+      'echo "Mac direct bundle exec probe rc: ${MAC_DIRECT_EXEC_PROBE_RC:-<unset>}"',
+    );
+    expect(script).toContain(
+      'FAILURE_REASON="macOS direct app-bundle exec probe returned SIGKILL (137) before startup trace began"',
+    );
+  });
+
+  it("strips macOS provenance xattrs from the copied local smoke bundle", () => {
+    const script = fs.readFileSync(SMOKE_TEST_PATH, "utf8");
+
+    expect(script).toContain('ditto "$APP_BUNDLE" "$LAUNCH_APP_BUNDLE"');
+    expect(script).toContain(
+      'xattr -dr com.apple.provenance "$LAUNCH_APP_BUNDLE" 2>/dev/null || true',
+    );
+    expect(script).toContain(
+      'xattr -dr com.apple.quarantine "$LAUNCH_APP_BUNDLE" 2>/dev/null || true',
+    );
+  });
+
+  it("treats the startup state file as the packaged readiness source of truth", () => {
+    const script = fs.readFileSync(SMOKE_TEST_PATH, "utf8");
+
+    expect(script).toContain("init_startup_session() {");
+    expect(script).toContain('STARTUP_STATE_FILE="$SMOKE_DIAGNOSTICS_DIR/startup-state.json"');
+    expect(script).toContain('STARTUP_EVENTS_FILE="$SMOKE_DIAGNOSTICS_DIR/startup-events.jsonl"');
+    expect(script).toContain('STARTUP_BOOTSTRAP_FILE="$HOME/.config/Milady/startup-session.json"');
+    expect(script).toContain('STARTUP_FALLBACK_STATE_FILE="$HOME/.config/Milady/milady-startup-state.json"');
+    expect(script).toContain('STARTUP_FALLBACK_EVENTS_FILE="$HOME/.config/Milady/milady-startup-events.jsonl"');
+    expect(script).toContain('mv "$bootstrap_temp" "$STARTUP_BOOTSTRAP_FILE"');
+    expect(script).toContain("load_startup_state() {");
+    expect(script).toContain('startup_state_file="$STARTUP_FALLBACK_STATE_FILE"');
+    expect(script).toContain('if [[ "$STATE_PHASE" == "fatal" ]]');
+    expect(script).toContain(
+      'if [[ "$STATE_PHASE" == "runtime_ready" || "$STATE_PHASE" == "metadata_ready" ]]',
+    );
+    expect(script).toContain('FAILURE_REASON="startup trace never reached runtime_ready"');
+    expect(script).toContain('dump_failure_diagnostics "$FAILURE_REASON"');
+    expect(script).toContain("Startup bootstrap snapshot:");
+    expect(script).toContain("Startup fallback state snapshot:");
+    expect(script).toContain("Startup state snapshot:");
+    expect(script).toContain("Startup session events:");
+    expect(script).toContain("Startup fallback events:");
   });
 
   it("treats auth-protected health probes as proof the packaged backend is alive", () => {

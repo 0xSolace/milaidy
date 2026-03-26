@@ -87,7 +87,8 @@ jobs:
           elif [[ "${{ github.ref_type }}" == "tag" ]]; then
             TAG="${{ github.ref_name }}"
           else
-            TAG="v$(node -p "require('./package.json').version")"
+            echo "Manual branch dispatches must provide inputs.tag; refusing to derive a release tag from package.json." >&2
+            exit 1
           fi
           VERSION="${TAG#v}"
           # canary for pre-release tags, stable for everything else

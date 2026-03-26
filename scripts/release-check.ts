@@ -31,6 +31,7 @@ const requiredWorkflowSnippets = [
   'BUN_VERSION: "1.3.9"',
   "workflow_call:",
   "name: Validate Release Inputs",
+  "Manual branch dispatches must provide inputs.tag; refusing to derive a release tag from package.json.",
   "bun-version: $" + "{{ env.BUN_VERSION }}",
   "name: Regression matrix contract",
   "run: bun run test:regression-matrix:release",
@@ -149,6 +150,7 @@ const forbiddenWorkflowSnippets = [
     "{{ matrix.platform.artifact-name }}" +
     "-$" +
     "{{ hashFiles('bun.lock') }}",
+  `TAG="v$(node -p "require('./package.json').version")"`,
 ];
 const requiredElectrobunPrWorkflowSnippets = [
   "name: Validate Electrobun Release Workflow",
@@ -690,6 +692,7 @@ function assertWindowsSmokeScriptHasLeadingParamBlock() {
     "Using packaged tarball:",
     "Find-Launcher $selfExtractionRoot",
     "Started extracted launcher:",
+    "Runtime ready -- port: ",
     "Runtime started -- agent: .* port:",
     "Waiting for health endpoint at http://(?:localhost|127\\.0\\.0\\.1):",
     "$handler.UseProxy = $false",
