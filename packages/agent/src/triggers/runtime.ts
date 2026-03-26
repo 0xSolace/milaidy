@@ -272,7 +272,7 @@ export async function executeTriggerTask(
   }
 
   const startedAt = Date.now();
-  let status: TriggerExecutionResult["status"] = "queued";
+  let status: TriggerExecutionResult["status"] = "success";
   let errorMessage = "";
 
   try {
@@ -292,7 +292,7 @@ export async function executeTriggerTask(
     );
   }
 
-  if (status === "queued") {
+  if (status === "success") {
     runtime.logger.info(
       {
         src: "trigger-runtime",
@@ -302,7 +302,7 @@ export async function executeTriggerTask(
         source: options.source,
         latencyMs: Date.now() - startedAt,
       },
-      `Trigger "${trigger.displayName}" queued for autonomy execution`,
+      `Trigger "${trigger.displayName}" executed successfully`,
     );
   }
 

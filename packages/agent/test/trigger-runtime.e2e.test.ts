@@ -130,7 +130,7 @@ describe("Trigger runtime E2E", () => {
     expect(executeResponse.status).toBe(200);
     const executeBody = executeResponse.data as Record<string, unknown>;
     const executeResult = (executeBody.result ?? {}) as Record<string, unknown>;
-    expect(executeResult.status).toBe("queued");
+    expect(executeResult.status).toBe("success");
     expect(harness.createMemoryMock).toHaveBeenCalledTimes(1);
     // Verify the memory payload contains the trigger instruction
     const memoryCall = harness.createMemoryMock.mock.calls[0];
@@ -150,7 +150,7 @@ describe("Trigger runtime E2E", () => {
     const runs = (runsBody.runs ?? []) as unknown[];
     expect(runs.length).toBe(1);
     const run = (runs[0] ?? {}) as Record<string, unknown>;
-    expect(run.status).toBe("queued");
+    expect(run.status).toBe("success");
     expect(run.source).toBe("manual");
 
     const healthResponse = await req(
