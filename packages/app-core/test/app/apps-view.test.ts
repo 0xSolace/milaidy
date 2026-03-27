@@ -13,6 +13,7 @@ import {
   flush,
   text,
 } from "../../../../test/helpers/react-test";
+import * as electrobunRpc from "@miladyai/app-core/bridge/electrobun-rpc";
 
 interface AppsContextStub {
   setState: (
@@ -157,9 +158,7 @@ async function _waitFor(
 describe("AppsView", () => {
   beforeEach(() => {
     // Prevent jsdom mock leakages between files
-    // @ts-expect-error - mock property
-    delete window.__MILADY_ELECTROBUN_RPC__;
-    delete (globalThis as any).__MILADY_ELECTROBUN_RPC__;
+    delete (window as Window & { __MILADY_ELECTROBUN_RPC__?: unknown }).__MILADY_ELECTROBUN_RPC__;
     mockClientFns.listApps.mockReset();
     mockClientFns.listInstalledApps.mockReset();
     mockClientFns.launchApp.mockReset();
@@ -212,9 +211,7 @@ describe("AppsView", () => {
   const tStub = (k: string) => k;
 
   afterEach(() => {
-    // @ts-expect-error - mock property
-    delete window.__MILADY_ELECTROBUN_RPC__;
-    delete (globalThis as any).__MILADY_ELECTROBUN_RPC__;
+    delete (window as Window & { __MILADY_ELECTROBUN_RPC__?: unknown }).__MILADY_ELECTROBUN_RPC__;
     vi.restoreAllMocks();
   });
 
@@ -468,8 +465,11 @@ describe("AppsView", () => {
         viewer: null,
       }),
     );
-    delete (window as any).__MILADY_ELECTROBUN_RPC__;
-    delete (globalThis as any).__MILADY_ELECTROBUN_RPC__;
+    vi.stubGlobal("__MILADY_ELECTROBUN_RPC__", {
+      request: { desktopOpenExternal: request },
+      onMessage: vi.fn(),
+      offMessage: vi.fn(),
+    });
     const popupSpy = vi.spyOn(window, "open");
 
     let tree: TestRenderer.ReactTestRenderer;
@@ -491,6 +491,8 @@ describe("AppsView", () => {
       "success",
       2600,
     );
+    delete (window as any).__MILADY_ELECTROBUN_RPC__;
+    delete (globalThis as any).__MILADY_ELECTROBUN_RPC__;
   });
 
   it("refreshes list and applies search filtering", async () => {
