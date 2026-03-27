@@ -191,11 +191,10 @@ jobs:
       tag: ${{ needs.version.outputs.tag }}
       draft: true
       publish_release: false
-      publish_docker: false
     secrets: inherit
 
   build-docker:
-    name: Docker image build
+    name: Agent image build
     needs: [version]
     uses: ./.github/workflows/build-docker.yml
     with:
@@ -440,18 +439,63 @@ jobs:
           git tag -a "$TAG" -m "Release $TAG — all builds verified"
           git push origin "$TAG"
 
+      - name: Generate release changelog
+        id: changelog
+        env:
+          TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          PREVIOUS_TAG="$(git tag --sort=-creatordate | grep '^v' | grep -vx "$TAG" | head -1 || true)"
+          CHANGELOG_FILE="$RUNNER_TEMP/full-release-changelog.md"
+          {
+            echo "## Full changelog"
+            echo
+            if [ -n "$PREVIOUS_TAG" ]; then
+              echo "- Previous tag: \`$PREVIOUS_TAG\`"
+              echo "- Compare: https://github.com/${{ github.repository }}/compare/$PREVIOUS_TAG...$TAG"
+            else
+              echo "- Previous tag: none"
+            fi
+            echo
+            if [ -n "$PREVIOUS_TAG" ]; then
+              git log --date=short --pretty=format:'- %s (%h, %ad)' "$PREVIOUS_TAG..HEAD"
+            else
+              git log --date=short --pretty=format:'- %s (%h, %ad)'
+            fi
+            echo
+          } > "$CHANGELOG_FILE"
+          echo "previous_tag=$PREVIOUS_TAG" >> "$GITHUB_OUTPUT"
+          echo "file=$CHANGELOG_FILE" >> "$GITHUB_OUTPUT"
+
       - name: Create GitHub release
         uses: actions/github-script@v7
         env:
           TAG: ${{ needs.version.outputs.tag }}
           PRERELEASE: ${{ needs.version.outputs.prerelease }}
           NPM_RESULT: ${{ needs.build-npm.result }}
+          PREVIOUS_TAG: ${{ steps.changelog.outputs.previous_tag }}
+          CHANGELOG_FILE: ${{ steps.changelog.outputs.file }}
         with:
           github-token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
           script: |
+            const fs = require('fs');
             const tag = process.env.TAG;
             const prerelease = process.env.PRERELEASE === 'true';
             const npmOk = process.env.NPM_RESULT === 'success';
+            const previousTag = process.env.PREVIOUS_TAG || '';
+            const fullChangelog = fs.readFileSync(process.env.CHANGELOG_FILE, 'utf8').trim();
+
+            let generatedNotes = '';
+            try {
+              const notesResponse = await github.rest.repos.generateReleaseNotes({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag_name: tag,
+                ...(previousTag ? { previous_tag_name: previousTag } : {}),
+              });
+              generatedNotes = notesResponse.data.body?.trim() ?? '';
+            } catch (error) {
+              core.warning(`Could not generate GitHub release notes: ${error.message}`);
+            }
 
             const { data: release } = await github.rest.repos.createRelease({
               owner: context.repo.owner,
@@ -463,23 +507,31 @@ jobs:
                 '',
                 prerelease ? '⚠️ Pre-release (alpha)' : '✅ Stable release',
                 '',
+                previousTag ? `**Previous tag:** ${previousTag}` : '**Previous tag:** none',
+                `**Triggered by:** @${context.actor}`,
+                '',
                 '### Pre-release verification',
                 '- ✅ Electrobun desktop — full matrix (macOS ARM, macOS Intel, Windows, Linux)',
-                '- ✅ Docker image — built successfully',
+                '- ✅ Canonical agent image — built successfully',
                 npmOk ? '- ✅ npm package — built and validated' : '- ⚠️ npm package — build failed (non-blocking)',
+                '',
+                generatedNotes ? '## Release notes' : null,
+                generatedNotes || null,
+                generatedNotes ? '' : null,
+                fullChangelog,
                 '',
                 '### Publishing pipelines (triggered by this release)',
                 '- [ ] Electrobun artifacts upload + updater channel',
                 '- [ ] npm publish',
+                '- [ ] PyPI publish',
                 '- [ ] Docker push to GHCR',
                 '- [ ] Android / iOS / macOS App Store',
                 '- [ ] Snap / Flatpak / Debian',
                 '- [ ] Homebrew / Homepage',
-                '',
-                `Triggered by @${context.actor}`,
-              ].join('\n'),
+              ].filter(Boolean).join('\n'),
               prerelease,
               draft: false,
+              generate_release_notes: false,
             });
 
             core.info(`Created release: ${release.html_url}`);

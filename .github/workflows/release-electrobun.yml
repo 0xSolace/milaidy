@@ -38,11 +38,6 @@ on:
         required: false
         type: boolean
         default: false
-      publish_docker:
-        description: "Publish the Docker image after the release step"
-        required: false
-        type: boolean
-        default: false
   workflow_dispatch:
     inputs:
       tag:
@@ -1172,18 +1167,3 @@ jobs:
             update-channel/ \
             releases@milady.ai:/var/www/releases/
           rm -f /tmp/release_key
-
-  publish-docker:
-    name: Publish Docker Image
-    if: ${{ github.event_name != 'workflow_call' || inputs.publish_docker }}
-    needs: [prepare, release]
-    permissions:
-      contents: read
-      packages: write
-    uses: ./.github/workflows/build-docker.yml
-    with:
-      version: ${{ needs.prepare.outputs.tag }}
-      push_image: true
-      tag_latest: true
-      source_sha: ${{ needs.prepare.outputs.source_sha }}
-    secrets: inherit

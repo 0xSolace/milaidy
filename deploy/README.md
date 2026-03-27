@@ -1,26 +1,29 @@
-# Milady Cloud Image — Build & Deploy
+# Milady Agent Image — Cloud Deploys
 
 ## Overview
 
-The `milady/agent:cloud-agent` Docker image bundles the Milady runtime (agent + bridge) into a single container. It's used by Milady Cloud to run agent instances on Docker nodes.
+The canonical Milady agent image is the same image used for both generic agent
+deploys and cloud-deployed agents. Cloud behavior is selected at runtime by
+`scripts/container-entrypoint.mjs`, which switches to the cloud bridge
+entrypoint when `MILADY_CONTAINER_MODE=cloud-agent` or bridge-specific env vars
+are present.
 
 ### Image Architecture
 
 ```
 ┌─────────────────────────────────────────┐
-│  milady/agent:cloud-agent             │
+│  milady/agent:latest                   │
 │                                         │
 │  ┌──────────────────────────────────┐   │
-│  │  cloud-agent-entrypoint.ts     │   │
+│  │  container-entrypoint.mjs       │   │
 │  │                                  │   │
-│  │  ├─ node milady.mjs start    :2138/2139  (UI + API)
-│  │  └─ tsx cloud-agent-entrypoint.ts        │
-│  │     ├─ Dev API + WebSocket   :31337      │
-│  │     └─ Compat listener       :18790      │
+│  │  ├─ node milady.mjs start            │
+│  │  └─ tsx deploy/cloud-agent-entrypoint.ts │
+│  │     └─ Compat bridge             :18790 │
 │  └──────────────────────────────────┘   │
 │                                         │
-│  Base: node:22-bookworm + bun           │
-│  Size: ~14 GB (full build with deps)    │
+│  Base: node:22-slim + tsx               │
+│  Build: Dockerfile.ci                   │
 └─────────────────────────────────────────┘
 ```
 
@@ -40,14 +43,14 @@ The `milady/agent:cloud-agent` Docker image bundles the Milady runtime (agent + 
 ### Build a new image
 
 ```bash
-# Build the cloud agent image
-docker build -f deploy/Dockerfile.cloud-agent -t milady/agent:cloud-agent .
+# Build the canonical agent image
+docker build -f Dockerfile.ci -t milady/agent:latest .
 
 # Build with a specific version tag
-docker build -f deploy/Dockerfile.cloud-agent -t milady/agent:cloud-agent-2.0.0-alpha.92 .
+docker build -f Dockerfile.ci -t milady/agent:v2.0.0-alpha.92 .
 
 # Build without cache
-docker build --no-cache -f deploy/Dockerfile.cloud-agent -t milady/agent:cloud-agent .
+docker build --no-cache -f Dockerfile.ci -t milady/agent:latest .
 ```
 
 ### Deploy to nodes
@@ -78,22 +81,20 @@ docker build --no-cache -f deploy/Dockerfile.cloud-agent -t milady/agent:cloud-a
 
 ### What the build does
 
-1. Starts from `node:22-bookworm`
-2. Installs `bun` (via `bun.sh/install`)
-3. Copies the entire Milaidy repo into `/app`
-4. Runs `bun install --frozen-lockfile`
-5. Runs `bun run build`
-6. Installs `tsx` globally (for the bridge entrypoint)
-7. Sets up health check on `/health`
+1. Starts from `node:22-slim`
+2. Copies the prebuilt workspace into `/app`
+3. Installs `tsx`
+4. Starts through `scripts/container-entrypoint.mjs`
+5. Uses `/health` in cloud mode and `/api/health` in normal mode
 
 ### Dockerfile
 
-The build uses `deploy/Dockerfile.cloud-agent`. Key points:
+The build uses `Dockerfile.ci`. Key points:
 
-- **Full repo copy** — the entire Milaidy monorepo is copied in
-- **Production build** — runs `bun run build` to compile everything
-- **Non-root** — runs as `node` user
-- **Health check** — `curl http://localhost:$PORT/health` every 30s
+- **Single canonical image** — generic and cloud deploys share the same build
+- **Runtime-selected mode** — normal agent vs cloud bridge chosen from env
+- **Cloud-compatible** — includes `deploy/cloud-agent-entrypoint.ts`
+- **Health check** — tries `/health` first, then falls back to `/api/health`
 
 ### Build args
 
@@ -171,26 +172,26 @@ $SSH "docker stop -t 30 $CONTAINER && docker rm $CONTAINER"
 
 ### Version relationship
 
-- Milaidy releases create git tags like `v2.0.0-alpha.81`
-- Cloud images are tagged: `cloud-agent` (latest) + `cloud-agent-2.0.0-alpha.81` (versioned)
-- Not every Milaidy release needs a new cloud image
-- Cloud images are rebuilt when there are relevant changes to the runtime/UI/bridge
+- Milady releases create git tags like `v2.0.0-alpha.81`
+- The canonical image is published to `ghcr.io/milady-ai/agent`
+- Cloud deploys use the same published image with cloud-mode env vars
+- There is no separate cloud-only or steward-only image on the release path
 
 ### GitHub Actions (CI)
 
-The `build-cloud-image.yml` workflow:
-- **Auto-triggers** on `v*` tag pushes
-- **Manual trigger** via workflow_dispatch with optional version
-- Builds and pushes to GitHub Container Registry (ghcr.io)
+The `build-docker.yml` workflow:
+- **Auto-triggers** on release tags and `develop`
+- **Runs inside `Agent Release`** as the canonical image validation job
+- Builds and pushes the shared agent image to GitHub Container Registry
 - Uses Docker layer caching for faster rebuilds
 
 To use the CI-built image on nodes:
 ```bash
 # Pull from GHCR (requires login)
-docker pull ghcr.io/milady-ai/milaidy/agent:cloud-agent
+docker pull ghcr.io/milady-ai/agent:latest
 
 # Or build locally and transfer via SSH
-docker build -f deploy/Dockerfile.cloud-agent -t milady/agent:cloud-agent .
+docker build -f Dockerfile.ci -t milady/agent:latest .
 ```
 
 ### Typical update flow
@@ -198,8 +199,8 @@ docker build -f deploy/Dockerfile.cloud-agent -t milady/agent:cloud-agent .
 ```
 git tag v2.0.0-alpha.82
 git push origin v2.0.0-alpha.82
-  → CI builds and pushes to GHCR (automatic)
-  → OR: docker build -f deploy/Dockerfile.cloud-agent -t milady/agent:cloud-agent . (manual)
+  → CI builds and pushes the canonical image to GHCR (automatic)
+  → OR: docker build -f Dockerfile.ci -t milady/agent:latest . (manual)
 ./deploy/deploy-to-nodes.sh --restart --rolling
 ```
 
@@ -232,7 +233,7 @@ The image is ~14 GB because it includes the full monorepo build. To reduce:
 For large images over slow connections:
 ```bash
 # Compress during transfer
-docker save milady/agent:cloud-agent | gzip | \
+docker save milady/agent:latest | gzip | \
   ssh -i ~/.ssh/clawdnet_nodes root@37.27.190.196 "gunzip | docker load"
 ```
 
@@ -242,7 +243,8 @@ docker save milady/agent:cloud-agent | gzip | \
 
 | File | Description |
 |------|-------------|
-| `Dockerfile.cloud-agent` | Docker build file for the cloud image |
+| `../Dockerfile.ci` | Canonical Docker build file for Milady agent containers |
+| `../scripts/container-entrypoint.mjs` | Runtime selector for generic vs cloud agent mode |
 | `cloud-agent-entrypoint.ts` | Cloud agent entrypoint (bridge server + runtime) |
 | `deploy-to-nodes.sh` | Deploy script (push to nodes, restart containers) |
-| `.github/workflows/build-cloud-image.yml` | CI workflow for automated builds |
+| `../.github/workflows/build-docker.yml` | CI workflow for canonical image builds |

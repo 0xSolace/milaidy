@@ -8,6 +8,14 @@ const AGENT_RELEASE_WORKFLOW = path.join(
   ROOT,
   ".github/workflows/agent-release.yml",
 );
+const LEGACY_CLOUD_IMAGE_WORKFLOW = path.join(
+  ROOT,
+  ".github/workflows/build-cloud-image.yml",
+);
+const LEGACY_STEWARD_IMAGE_WORKFLOW = path.join(
+  ROOT,
+  ".github/workflows/build-steward-image.yml",
+);
 const CANONICAL_IMAGE_DOCKERFILE = path.join(ROOT, "Dockerfile.ci");
 const CI_DOCKERIGNORE = path.join(ROOT, ".dockerignore.ci");
 const BUILD_IMAGE_SCRIPT = path.join(ROOT, "scripts/build-image.sh");
@@ -36,6 +44,23 @@ describe("release support workflow drift", () => {
     expect(workflow).not.toContain("build-steward-image:");
     expect(workflow).not.toContain("R_CLOUD_IMAGE");
     expect(workflow).not.toContain("R_STEWARD_IMAGE");
+    expect(workflow).not.toContain("publish_docker: false");
+  });
+
+  it("removes the legacy cloud and steward image workflows", () => {
+    expect(fs.existsSync(LEGACY_CLOUD_IMAGE_WORKFLOW)).toBe(false);
+    expect(fs.existsSync(LEGACY_STEWARD_IMAGE_WORKFLOW)).toBe(false);
+  });
+
+  it("generates full release changelog content for the GitHub release page", () => {
+    const workflow = fs.readFileSync(AGENT_RELEASE_WORKFLOW, "utf8");
+
+    expect(workflow).toContain("name: Generate release changelog");
+    expect(workflow).toContain("full-release-changelog.md");
+    expect(workflow).toContain("git log --date=short --pretty=format");
+    expect(workflow).toContain("repos.generateReleaseNotes");
+    expect(workflow).toContain("## Full changelog");
+    expect(workflow).toContain("- [ ] PyPI publish");
   });
 
   it("uses the canonical image runtime selector for both agent and cloud launches", () => {

@@ -26,7 +26,7 @@ describe("CI workflow audit regressions", () => {
       const content = readWorkflow(f);
       const match = content.match(/BUN_VERSION:\s*"([^"]+)"/);
       expect(match, `${f} should declare BUN_VERSION`).toBeTruthy();
-      expect(match![1]).toBe("1.3.9");
+      expect(match?.[1]).toBe("1.3.9");
     }
   });
 
@@ -42,16 +42,20 @@ describe("CI workflow audit regressions", () => {
   });
 
   it("Docker build workflows use pinned Blacksmith runners", () => {
-    const files = [
-      "build-docker.yml",
-      "build-cloud-image.yml",
-      "build-steward-image.yml",
-      "docker-ci-smoke.yml",
-    ];
+    const files = ["build-docker.yml", "docker-ci-smoke.yml"];
     for (const f of files) {
       const content = readWorkflow(f);
       expect(content).not.toMatch(/runs-on:\s*ubuntu-latest/);
     }
+  });
+
+  it("legacy cloud and steward image workflows are removed", () => {
+    expect(
+      fs.existsSync(path.join(WORKFLOWS_DIR, "build-cloud-image.yml")),
+    ).toBe(false);
+    expect(
+      fs.existsSync(path.join(WORKFLOWS_DIR, "build-steward-image.yml")),
+    ).toBe(false);
   });
 
   it("publish-packages.yml does not have an update-homebrew job", () => {
