@@ -556,8 +556,8 @@ function DocumentViewer({ documentId }: { documentId: string | null }) {
                   </span>
                 </div>
                 {previewText ? (
-                  <pre className="max-h-[18rem] overflow-auto whitespace-pre-wrap break-words text-[13px] leading-relaxed text-txt/88">
-                    {previewText.slice(0, 3000)}
+                  <pre className="max-h-[12rem] overflow-auto whitespace-pre-wrap break-words text-[13px] leading-relaxed text-txt/88 custom-scrollbar">
+                    {previewText.slice(0, 1200)}
                   </pre>
                 ) : (
                   <DesktopInsetEmptyStatePanel
@@ -647,7 +647,7 @@ function DocumentViewer({ documentId }: { documentId: string | null }) {
                         </span>
                       )}
                     </div>
-                    <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-txt/90">
+                    <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-txt/90 line-clamp-6">
                       {fragment.text}
                     </p>
                   </div>
@@ -1352,8 +1352,8 @@ export function KnowledgeView({ inModal }: { inModal?: boolean } = {}) {
                   </h1>
                   <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
                     {selectedDoc
-                      ? `${getKnowledgeDocumentSummary(selectedDoc)}. Open search results, inspect fragments, and keep uploads close at hand in the sidebar.`
-                      : "Keep uploads, search, and document review in one workspace so the knowledge base is easier to manage and inspect."}
+                      ? getKnowledgeDocumentSummary(selectedDoc)
+                      : "Upload, search, and review documents."}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 lg:justify-end">
