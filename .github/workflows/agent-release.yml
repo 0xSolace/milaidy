@@ -18,6 +18,9 @@ name: Agent Release
 on:
   issues:
     types: [labeled]
+  pull_request:
+    types: [closed]
+    branches: [develop]
   workflow_dispatch:
     inputs:
       stable:
@@ -42,11 +45,92 @@ env:
   BUN_VERSION: "1.3.10"
 
 jobs:
+  evaluate:
+    name: Evaluate release need
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.merged == true
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    permissions:
+      contents: read
+    outputs:
+      should_release: ${{ steps.eval.outputs.should_release }}
+      reason: ${{ steps.eval.outputs.reason }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Evaluate changes since last release
+        id: eval
+        run: |
+          # Find the latest release tag
+          LATEST_TAG=$(git tag --sort=-creatordate | grep '^v' | head -1)
+          if [ -z "$LATEST_TAG" ]; then
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "reason=No prior release tag found" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Latest release: $LATEST_TAG"
+
+          # Count commits since last release
+          COMMIT_COUNT=$(git rev-list --count "${LATEST_TAG}..HEAD")
+          echo "Commits since $LATEST_TAG: $COMMIT_COUNT"
+
+          # Get changed files since last release
+          CHANGED_FILES=$(git diff --name-only "$LATEST_TAG"..HEAD)
+          CHANGED_COUNT=$(echo "$CHANGED_FILES" | grep -c '.' || true)
+
+          # Categorize changes
+          SRC_CHANGES=$(echo "$CHANGED_FILES" | grep -cE '^(packages/|apps/|scripts/)' || true)
+          DOC_ONLY=$([ "$SRC_CHANGES" -eq 0 ] && echo true || echo false)
+          HAS_AGENT=$(echo "$CHANGED_FILES" | grep -cE '^packages/agent/' || true)
+          HAS_APP_CORE=$(echo "$CHANGED_FILES" | grep -cE '^packages/app-core/' || true)
+          HAS_ELECTROBUN=$(echo "$CHANGED_FILES" | grep -cE '^apps/app/electrobun/' || true)
+          HAS_UI=$(echo "$CHANGED_FILES" | grep -cE '^packages/ui/' || true)
+
+          echo "Source changes: $SRC_CHANGES | Doc-only: $DOC_ONLY"
+          echo "Agent: $HAS_AGENT | App-core: $HAS_APP_CORE | Electrobun: $HAS_ELECTROBUN | UI: $HAS_UI"
+
+          # Decision logic:
+          # - Skip if doc-only changes
+          # - Skip if fewer than 5 source commits since last release
+          # - Release if 10+ source file changes across core packages
+          # - Release if any electrobun changes (desktop builds need fresh releases)
+          # - Release if 15+ commits accumulated
+          if [ "$DOC_ONLY" = "true" ]; then
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            echo "reason=Doc-only changes since $LATEST_TAG" >> "$GITHUB_OUTPUT"
+          elif [ "$COMMIT_COUNT" -lt 5 ]; then
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            echo "reason=Only $COMMIT_COUNT commits since $LATEST_TAG (threshold: 5)" >> "$GITHUB_OUTPUT"
+          elif [ "$HAS_ELECTROBUN" -gt 0 ]; then
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "reason=Electrobun changes detected ($HAS_ELECTROBUN files). $COMMIT_COUNT commits, $SRC_CHANGES source files since $LATEST_TAG" >> "$GITHUB_OUTPUT"
+          elif [ "$SRC_CHANGES" -ge 10 ]; then
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "reason=$SRC_CHANGES source files changed across $COMMIT_COUNT commits since $LATEST_TAG" >> "$GITHUB_OUTPUT"
+          elif [ "$COMMIT_COUNT" -ge 15 ]; then
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "reason=$COMMIT_COUNT commits accumulated since $LATEST_TAG (threshold: 15)" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            echo "reason=$COMMIT_COUNT commits, $SRC_CHANGES source files since $LATEST_TAG — below thresholds" >> "$GITHUB_OUTPUT"
+          fi
+
   gate:
     name: Trust gate
+    # Run for manual/label triggers (evaluate is skipped), or when evaluate says yes.
+    # `always()` ensures this job isn't blocked when evaluate is skipped.
     if: >-
-      (github.event_name == 'workflow_dispatch') ||
-      (github.event_name == 'issues' && github.event.label.name == 'release-ready')
+      always() && (
+        (github.event_name == 'workflow_dispatch') ||
+        (github.event_name == 'issues' && github.event.label.name == 'release-ready') ||
+        (needs.evaluate.result == 'success' && needs.evaluate.outputs.should_release == 'true')
+      )
+    needs: [evaluate]
     runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
       contents: read
