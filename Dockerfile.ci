@@ -1,4 +1,4 @@
-# Milady Agent — CI Docker Image
+# Milady Agent — canonical container image
 # Pre-built artifacts come from GHA (bun install + tsdown + vite build done before docker)
 ARG VERSION=""
 ARG VERSION_CLEAN=""
@@ -55,14 +55,12 @@ ENV NODE_ENV=production
 # MILADY_PORT is the canonical name; ELIZA_PORT kept for backward compat
 ENV MILADY_PORT=2138
 ENV ELIZA_PORT=${MILADY_PORT}
-# CI smoke images only need local in-container access for the healthcheck.
-# Keep loopback bind + normal token defaults so this image does not ship an
-# unauthenticated network-exposed API surface.
-ENV MILADY_API_BIND=127.0.0.1
+ENV MILADY_API_BIND=0.0.0.0
 ENV ELIZA_ALLOWED_HOSTS=*
 EXPOSE 2138
+EXPOSE 18790
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
-  CMD sh -lc 'code="$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${MILADY_PORT}/api/health")" && [ "$code" = "200" -o "$code" = "401" ]'
+  CMD sh -lc 'curl -fsS "http://localhost:${PORT:-$MILADY_PORT}/health" >/dev/null 2>&1 || { code="$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${MILADY_PORT}/api/health")" && [ "$code" = "200" -o "$code" = "401" ]; }'
 
-CMD ["node", "--import", "tsx", "milady.mjs", "start"]
+CMD ["node", "scripts/container-entrypoint.mjs"]

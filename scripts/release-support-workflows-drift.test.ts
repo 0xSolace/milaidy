@@ -4,12 +4,14 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const BUILD_CLOUD_IMAGE_WORKFLOW = path.join(
+const AGENT_RELEASE_WORKFLOW = path.join(
   ROOT,
-  ".github/workflows/build-cloud-image.yml",
+  ".github/workflows/agent-release.yml",
 );
-const CLOUD_IMAGE_DOCKERFILE = path.join(ROOT, "deploy/Dockerfile");
-const ROOT_DOCKERIGNORE = path.join(ROOT, ".dockerignore");
+const CANONICAL_IMAGE_DOCKERFILE = path.join(ROOT, "Dockerfile.ci");
+const CI_DOCKERIGNORE = path.join(ROOT, ".dockerignore.ci");
+const BUILD_IMAGE_SCRIPT = path.join(ROOT, "scripts/build-image.sh");
+const DEPLOY_TO_NODES_SCRIPT = path.join(ROOT, "deploy/deploy-to-nodes.sh");
 const DEBIAN_CONTROL = path.join(ROOT, "packaging/debian/control");
 const DEBIAN_COMPAT = path.join(ROOT, "packaging/debian/compat");
 const ANDROID_RELEASE_WORKFLOW = path.join(
@@ -26,38 +28,50 @@ const UPDATE_HOMEBREW_WORKFLOW = path.join(
 );
 
 describe("release support workflow drift", () => {
-  it("builds the cloud full-ui image from the checked-in full app Dockerfile", () => {
-    const workflow = fs.readFileSync(BUILD_CLOUD_IMAGE_WORKFLOW, "utf8");
+  it("keeps Agent Release on the single canonical docker validation path", () => {
+    const workflow = fs.readFileSync(AGENT_RELEASE_WORKFLOW, "utf8");
 
-    expect(workflow).toContain("type=raw,value=cloud-full-ui");
-    expect(workflow).toContain("file: ./deploy/Dockerfile");
-    expect(workflow).not.toContain("Dockerfile.cloud-full-ui");
+    expect(workflow).toContain("build-docker");
+    expect(workflow).not.toContain("build-cloud-image:");
+    expect(workflow).not.toContain("build-steward-image:");
+    expect(workflow).not.toContain("R_CLOUD_IMAGE");
+    expect(workflow).not.toContain("R_STEWARD_IMAGE");
   });
 
-  it("does not require a checked-in .npmrc for the cloud image build", () => {
-    const dockerfile = fs.readFileSync(CLOUD_IMAGE_DOCKERFILE, "utf8");
+  it("uses the canonical image runtime selector for both agent and cloud launches", () => {
+    const dockerfile = fs.readFileSync(CANONICAL_IMAGE_DOCKERFILE, "utf8");
 
-    expect(dockerfile).toContain("COPY package.json bun.lock* ./");
-    expect(dockerfile).toContain("COPY patches ./patches");
     expect(dockerfile).toContain(
-      "COPY apps/app/electrobun/package.json ./apps/app/electrobun/package.json",
+      'CMD ["node", "scripts/container-entrypoint.mjs"]',
+    );
+    expect(dockerfile).toContain("EXPOSE 18790");
+    expect(dockerfile).toContain(
+      "http://localhost:$" + "{PORT:-$MILADY_PORT}/health",
     );
     expect(dockerfile).toContain(
-      "COPY deploy/cloud-agent-template/package.json ./deploy/cloud-agent-template/package.json",
+      "http://localhost:$" + "{MILADY_PORT}/api/health",
     );
-    expect(dockerfile).not.toContain("COPY package.json bun.lock* .npmrc ./");
   });
 
-  it("keeps full cloud image workspace inputs in the default docker context", () => {
+  it("keeps deploy runtime files in the canonical docker build context", () => {
     const dockerignoreEntries = fs
-      .readFileSync(ROOT_DOCKERIGNORE, "utf8")
+      .readFileSync(CI_DOCKERIGNORE, "utf8")
       .split(/\r?\n/)
       .map((line) => line.trim())
       .filter((line) => line.length > 0 && !line.startsWith("#"));
 
-    expect(dockerignoreEntries).not.toContain("apps/app/electrobun");
-    expect(dockerignoreEntries).not.toContain("apps/homepage");
     expect(dockerignoreEntries).not.toContain("deploy/");
+  });
+
+  it("points local build and deploy scripts at the canonical agent image", () => {
+    const buildScript = fs.readFileSync(BUILD_IMAGE_SCRIPT, "utf8");
+    const deployScript = fs.readFileSync(DEPLOY_TO_NODES_SCRIPT, "utf8");
+
+    expect(buildScript).toContain('DOCKERFILE="Dockerfile.ci"');
+    expect(buildScript).toContain("cp .dockerignore.ci .dockerignore");
+    expect(buildScript).toContain("--build-arg VERSION=v$" + "{VERSION#v}");
+    expect(deployScript).toContain('DEFAULT_IMAGE="milady/agent:latest"');
+    expect(deployScript).not.toContain("cloud-full-ui");
   });
 
   it("declares the Debian debhelper compat level exactly once", () => {

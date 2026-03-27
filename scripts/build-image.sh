@@ -33,7 +33,7 @@
 #   3. Runs npx tsdown to compile TypeScript → dist/
 #   4. Builds the Vite UI → apps/app/dist/
 #   5. Reverts the vite.config.ts patch (git checkout)
-#   6. Runs docker build with the selected Dockerfile
+#   6. Runs docker build with the canonical container Dockerfile
 #   7. Tags the image as milady/agent:{tag}
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
@@ -110,13 +110,16 @@ log "Tag:     ${YELLOW}${IMAGE_NAME}${NC}"
 $DRY_RUN && warn "DRY RUN mode — commands will be shown but not executed"
 
 # ── Select Dockerfile ─────────────────────────────────────────────────────────
-# Preference: cloud-slim (multi-stage optimised) → full builder → root fallback
-if [[ -f "deploy/Dockerfile.cloud-slim" ]]; then
+# Preference: Dockerfile.ci (canonical generic agent image) → legacy fallbacks
+if [[ -f "Dockerfile.ci" ]]; then
+  DOCKERFILE="Dockerfile.ci"
+  log "Dockerfile: ${YELLOW}${DOCKERFILE}${NC} (canonical generic agent image)"
+elif [[ -f "deploy/Dockerfile.cloud-slim" ]]; then
   DOCKERFILE="deploy/Dockerfile.cloud-slim"
-  log "Dockerfile: ${YELLOW}${DOCKERFILE}${NC} (optimised slim)"
+  log "Dockerfile: ${YELLOW}${DOCKERFILE}${NC} (legacy slim fallback)"
 elif [[ -f "deploy/Dockerfile" ]]; then
   DOCKERFILE="deploy/Dockerfile"
-  log "Dockerfile: ${YELLOW}${DOCKERFILE}${NC} (standard)"
+  log "Dockerfile: ${YELLOW}${DOCKERFILE}${NC} (legacy standard fallback)"
 elif [[ -f "Dockerfile.alpha89" ]]; then
   DOCKERFILE="Dockerfile.alpha89"
   log "Dockerfile: ${YELLOW}${DOCKERFILE}${NC} (alpha89 working copy)"
@@ -124,7 +127,7 @@ elif [[ -f "Dockerfile" ]]; then
   DOCKERFILE="Dockerfile"
   log "Dockerfile: ${YELLOW}${DOCKERFILE}${NC} (root)"
 else
-  die "No Dockerfile found. Expected deploy/Dockerfile.cloud-slim or deploy/Dockerfile"
+  die "No Dockerfile found. Expected Dockerfile.ci or a legacy deploy/Dockerfile fallback"
 fi
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -204,8 +207,14 @@ else
 fi
 
 # Set up cleanup trap: always revert the vite config patch, even on error
+DOCKERIGNORE_BACKUP=""
 cleanup() {
   local exit_code=$?
+  if [[ -n "$DOCKERIGNORE_BACKUP" ]] && [[ -f "$DOCKERIGNORE_BACKUP" ]] && ! $DRY_RUN; then
+    log "Restoring .dockerignore..."
+    cp "$DOCKERIGNORE_BACKUP" .dockerignore 2>/dev/null || warn "Could not restore .dockerignore"
+    rm -f "$DOCKERIGNORE_BACKUP" 2>/dev/null || true
+  fi
   if [[ -f "apps/app/vite.config.ts" ]] && ! $DRY_RUN; then
     log "Reverting vite.config.ts patch..."
     git checkout apps/app/vite.config.ts 2>/dev/null || warn "Could not revert vite.config.ts — run: git checkout apps/app/vite.config.ts"
@@ -282,9 +291,21 @@ hdr "Step 6: Docker build → ${IMAGE_NAME}"
 
 # Stamp the version into build-args so the image knows its own version
 BUILD_ARGS=(
-  "--build-arg" "MILADY_BUNDLED_VERSION=${VERSION}"
-  "--build-arg" "ELIZA_BUNDLED_VERSION=${VERSION}"
+  "--build-arg" "VERSION=v${VERSION#v}"
+  "--build-arg" "VERSION_CLEAN=${VERSION#v}"
 )
+
+if [[ "$DOCKERFILE" == "Dockerfile.ci" ]]; then
+  [[ -f ".dockerignore.ci" ]] || die ".dockerignore.ci is required for Dockerfile.ci builds"
+  if $DRY_RUN; then
+    warn "[dry-run] Would swap .dockerignore → .dockerignore.ci for Dockerfile.ci"
+  else
+    DOCKERIGNORE_BACKUP="$(mktemp)"
+    cp .dockerignore "$DOCKERIGNORE_BACKUP"
+    cp .dockerignore.ci .dockerignore
+    ok "Using .dockerignore.ci for canonical image build"
+  fi
+fi
 
 if $REMOTE; then
   # ── Remote build on milady-core-1 ───────────────────────────────────────
@@ -324,8 +345,8 @@ tar -xzf build.tar.gz
 rm build.tar.gz
 echo "[remote] Extracted build context"
 docker build -f ${DOCKERFILE} \
-  --build-arg MILADY_BUNDLED_VERSION=${VERSION} \
-  --build-arg ELIZA_BUNDLED_VERSION=${VERSION} \
+  --build-arg VERSION=v${VERSION#v} \
+  --build-arg VERSION_CLEAN=${VERSION#v} \
   -t '${IMAGE_NAME}' \
   . 2>&1 | tail -30
 echo "[remote] Build complete"
