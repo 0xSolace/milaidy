@@ -408,11 +408,11 @@ export function registerTriggerTaskWorker(runtime: IAgentRuntime): void {
     name: TRIGGER_TASK_NAME,
     validate: async () => true,
     execute: async (rt, options, task) => {
-      const res = await executeTriggerTask(rt, task, {
+      await executeTriggerTask(rt, task, {
         source: options.source === "manual" ? "manual" : "scheduler",
         force: options.force === true,
       });
-      return res as any;
+      return undefined;
     },
   });
 }

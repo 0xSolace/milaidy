@@ -86,28 +86,38 @@ describe("Docker contract", () => {
     const entrypoint = read(path.join(ROOT, "scripts/docker-entrypoint.sh"));
 
     expect(entrypoint).toContain(
-      `resolved_port="\${PORT:-\${MILADY_PORT:-2138}}"`,
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: shell variable assertion
+      'resolved_port="${PORT:-${MILADY_PORT:-2138}}"',
     );
     expect(entrypoint).toContain('export MILADY_PORT="$resolved_port"');
     expect(entrypoint).toContain(
-      `export ELIZA_PORT="\${ELIZA_PORT:-$resolved_port}"`,
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: shell variable assertion
+      'export ELIZA_PORT="${ELIZA_PORT:-$resolved_port}"',
     );
     expect(entrypoint).toContain(
-      `export MILADY_API_PORT="\${MILADY_API_PORT:-$resolved_port}"`,
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: shell variable assertion
+      'export MILADY_API_PORT="${MILADY_API_PORT:-$resolved_port}"',
     );
     expect(entrypoint).toContain(
-      `export ELIZA_API_PORT="\${ELIZA_API_PORT:-$resolved_port}"`,
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: shell variable assertion
+      'export ELIZA_API_PORT="${ELIZA_API_PORT:-$resolved_port}"',
     );
   });
 
   it("uses the Docker smoke script to validate the PORT override contract", () => {
     const smokeScript = read(path.join(ROOT, "scripts/docker-ci-smoke.sh"));
 
-    expect(smokeScript).toContain(`CONTAINER_PORT="\${CONTAINER_PORT:-42138}"`);
+    expect(smokeScript).toContain(
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: shell variable assertion
+      'CONTAINER_PORT="${CONTAINER_PORT:-42138}"',
+    );
     expect(smokeScript).toContain('--build-arg "BUN_VERSION=$BUN_VERSION"');
     expect(smokeScript).toContain('--build-arg "REVISION=$SOURCE_SHA"');
     expect(smokeScript).toContain('-e PORT="$CONTAINER_PORT"');
     expect(smokeScript).toContain("-e MILADY_API_BIND=0.0.0.0");
-    expect(smokeScript).toContain(`-p "\${SMOKE_PORT}:\${CONTAINER_PORT}"`);
+    expect(smokeScript).toContain(
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: shell variable assertion
+      '-p "${SMOKE_PORT}:${CONTAINER_PORT}"',
+    );
   });
 });

@@ -106,22 +106,22 @@ export function ShellHeaderControls({
     label: string;
     Icon: LucideIcon;
   }> = [
-      {
-        view: "companion",
-        label: t("header.companionMode"),
-        Icon: UserRound,
-      },
-      {
-        view: "character",
-        label: t("header.characterMode"),
-        Icon: PencilLine,
-      },
-      {
-        view: "desktop",
-        label: t("header.nativeMode"),
-        Icon: isMobileViewport ? Smartphone : Monitor,
-      },
-    ];
+    {
+      view: "companion",
+      label: t("header.companionMode"),
+      Icon: UserRound,
+    },
+    {
+      view: "character",
+      label: t("header.characterMode"),
+      Icon: PencilLine,
+    },
+    {
+      view: "desktop",
+      label: t("header.nativeMode"),
+      Icon: isMobileViewport ? Smartphone : Monitor,
+    },
+  ];
   const voiceToggleLabel = chatAgentVoiceMuted
     ? t("companion.agentVoiceOff")
     : t("companion.agentVoiceOn");
@@ -222,10 +222,11 @@ export function ShellHeaderControls({
 
   return (
     <div
-      className={`min-w-0 w-full overflow-visible gap-2 ${shouldSplitCompanionMobileActions
-        ? "grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-2.5"
-        : "flex items-center"
-        } ${className ?? ""}`}
+      className={`min-w-0 w-full overflow-visible gap-2 ${
+        shouldSplitCompanionMobileActions
+          ? "grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-2.5"
+          : "flex items-center"
+      } ${className ?? ""}`}
       data-no-camera-drag="true"
     >
       {/* Left: shell view toggle */}
@@ -257,10 +258,11 @@ export function ShellHeaderControls({
                 size="icon"
                 onClick={() => onShellViewChange(view)}
                 onPointerDown={(event) => event.stopPropagation()}
-                className={`h-11 min-h-[44px] min-w-[44px] px-3 transition-all duration-200 ${edgeClass} ${selected
-                  ? SHELL_SEGMENT_ACTIVE_CLASSNAME
-                  : SHELL_SEGMENT_INACTIVE_CLASSNAME
-                  }`}
+                className={`h-11 min-h-[44px] min-w-[44px] px-3 transition-all duration-200 ${edgeClass} ${
+                  selected
+                    ? SHELL_SEGMENT_ACTIVE_CLASSNAME
+                    : SHELL_SEGMENT_INACTIVE_CLASSNAME
+                }`}
                 style={HEADER_BUTTON_STYLE}
                 aria-label={label}
                 aria-pressed={selected}
@@ -309,10 +311,11 @@ export function ShellHeaderControls({
 
       {/* Right: controls */}
       <div
-        className={`flex min-w-0 items-center justify-end gap-2 overflow-visible ${shouldSplitCompanionMobileActions
-          ? "col-start-2 row-start-1 ml-auto shrink-0"
-          : "shrink-0"
-          }`}
+        className={`flex min-w-0 items-center justify-end gap-2 overflow-visible ${
+          shouldSplitCompanionMobileActions
+            ? "col-start-2 row-start-1 ml-auto shrink-0"
+            : "shrink-0"
+        }`}
         data-testid="shell-header-right-controls"
         data-no-camera-drag="true"
       >

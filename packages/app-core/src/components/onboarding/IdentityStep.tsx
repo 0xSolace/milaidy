@@ -317,8 +317,6 @@ export function IdentityStep({
           className="w-full px-[20px] py-[16px] bg-[var(--onboarding-card-bg)] border border-[var(--onboarding-card-border)] rounded-[6px] text-[var(--onboarding-text-primary)] font-inherit outline-none tracking-[0.03em] text-center transition-all duration-300 focus:border-[var(--onboarding-field-focus-border)] focus:shadow-[var(--onboarding-field-focus-shadow)] placeholder:text-[var(--onboarding-text-faint)]"
         />
 
-
-
         <div className={`${onboardingFooterClass} mt-2 w-full border-t-0 pt-0`}>
           <Button
             variant="ghost"
@@ -381,9 +379,9 @@ export function IdentityStep({
               event?.currentTarget ?? null,
               event
                 ? {
-                  x: event.clientX,
-                  y: event.clientY,
-                }
+                    x: event.clientX,
+                    y: event.clientY,
+                  }
                 : undefined,
             );
             handleOnboardingNext();

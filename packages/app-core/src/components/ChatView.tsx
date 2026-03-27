@@ -51,6 +51,25 @@ function nowMs(): number {
   return typeof performance !== "undefined" ? performance.now() : Date.now();
 }
 
+function mapUiLanguageToSpeechLocale(uiLanguage: string): string {
+  switch (uiLanguage) {
+    case "zh-CN":
+      return "zh-CN";
+    case "ko":
+      return "ko-KR";
+    case "es":
+      return "es-ES";
+    case "pt":
+      return "pt-BR";
+    case "vi":
+      return "vi-VN";
+    case "tl":
+      return "fil-PH";
+    default:
+      return "en-US";
+  }
+}
+
 const CHAT_INPUT_MIN_HEIGHT_PX = 46;
 const CHAT_INPUT_MAX_HEIGHT_PX = 200;
 const COMPANION_VISIBLE_MESSAGE_LIMIT = 2;
@@ -331,7 +350,7 @@ function useChatVoiceController(options: {
   const voice = useVoiceChat({
     cloudConnected: cloudVoiceAvailable,
     interruptOnSpeech: isGameModal,
-    lang: uiLanguage === "zh-CN" ? "zh-CN" : "en-US",
+    lang: mapUiLanguageToSpeechLocale(uiLanguage),
     onPlaybackStart: handleVoicePlaybackStart,
     onTranscript: handleVoiceTranscript,
     onTranscriptPreview: handleVoiceTranscriptPreview,
@@ -621,7 +640,7 @@ function useGameModalMessages(options: {
     const tick = () => setCompanionNowMs(Date.now());
     tick();
 
-    if (!docVisible) return () => { };
+    if (!docVisible) return () => {};
 
     const intervalId = window.setInterval(tick, 250);
     return () => window.clearInterval(intervalId);
@@ -910,8 +929,9 @@ export function ChatView({
   return (
     <section
       aria-label={t("aria.chatWorkspace")}
-      className={`flex flex-col flex-1 min-h-0 relative ${isGameModal ? "overflow-visible pointer-events-none" : "bg-transparent"
-        }${imageDragOver ? " ring-2 ring-accent ring-inset" : ""}`}
+      className={`flex flex-col flex-1 min-h-0 relative ${
+        isGameModal ? "overflow-visible pointer-events-none" : "bg-transparent"
+      }${imageDragOver ? " ring-2 ring-accent ring-inset" : ""}`}
       onDragOver={(e) => {
         e.preventDefault();
         setImageDragOver(true);
@@ -919,8 +939,7 @@ export function ChatView({
       onDragLeave={() => setImageDragOver(false)}
       onDrop={handleImageDrop}
     >
-<<<<<<< Updated upstream
-<div
+      <div
         ref={messagesRef}
         data-testid="chat-messages-scroll"
         data-no-window-drag={false}
@@ -1072,11 +1091,6 @@ export function ChatView({
         )}
       </div>
 
-
-      {/* Agent activity box — sticky status per active coding-agent task (default layout) */}
-      {!isGameModal && (
-
-=======
       {/* Agent activity box — sticky status per active coding-agent task */}
       {isGameModal ? (
         <div className="pointer-events-auto">
@@ -1088,7 +1102,6 @@ export function ChatView({
           />
         </div>
       ) : (
->>>>>>> Stashed changes
         <AgentActivityBox
           sessions={ptySessions}
           onSessionClick={(id) =>
@@ -1096,14 +1109,14 @@ export function ChatView({
           }
         />
       )}
-{ptyDrawerSessionId && ptySessions.length > 0 && (
+      {ptyDrawerSessionId && ptySessions.length > 0 && (
         <PtyConsoleDrawer
           activeSessionId={ptyDrawerSessionId}
           sessions={ptySessions}
           onClose={() => setPtyDrawerSessionId(null)}
         />
       )}
-{shareIngestNotice && (
+      {shareIngestNotice && (
         <div
           className={`text-xs text-ok py-1 relative${isGameModal ? " pointer-events-auto" : ""}`}
           style={{ zIndex: 1 }}
@@ -1111,7 +1124,7 @@ export function ChatView({
           {shareIngestNotice}
         </div>
       )}
-{droppedFiles.length > 0 && (
+      {droppedFiles.length > 0 && (
         <div
           className={`text-xs text-muted py-0.5 flex gap-2 relative${isGameModal ? " pointer-events-auto" : ""}`}
           style={{ zIndex: 1 }}
@@ -1121,7 +1134,7 @@ export function ChatView({
           ))}
         </div>
       )}
-{chatPendingImages.length > 0 && (
+      {chatPendingImages.length > 0 && (
         <div
           className={`flex gap-2 flex-wrap py-1 relative${isGameModal ? " pointer-events-auto" : ""}`}
           data-no-camera-drag={isGameModal || undefined}
@@ -1169,7 +1182,7 @@ export function ChatView({
               : "uncached"}
         </div>
       )}
-<input
+      <input
         ref={fileInputRef}
         type="file"
         accept="image/*"

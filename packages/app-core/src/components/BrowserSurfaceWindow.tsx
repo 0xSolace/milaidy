@@ -188,7 +188,6 @@ export function BrowserSurfaceWindow() {
     navigateTo(addressValue);
   };
 
-
   return (
     <div
       className="flex min-h-full flex-col gap-3.5 p-4 text-[color:var(--text-strong,#f5f7fa)]"

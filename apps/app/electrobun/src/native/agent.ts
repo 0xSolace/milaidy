@@ -1056,6 +1056,11 @@ export class AgentManager {
       bundle_path: resolveStartupBundlePath(process.execPath),
     });
     this.setStartupPhase("start_requested");
+    recordStartupPhase("agent_start_entered", {
+      pid: process.pid,
+      exec_path: process.execPath,
+      bundle_path: resolveStartupBundlePath(process.execPath),
+    });
     diagnosticLog(
       `[Agent] start() called, current state: ${this.status.state}`,
     );
@@ -1112,6 +1117,10 @@ export class AgentManager {
         error: msg,
       });
       this.setStartupPhase("port_allocation_failed", msg);
+      recordStartupPhase("fatal", {
+        port: null,
+        error: msg,
+      });
       this.emitStatus();
       return this.status;
     }
@@ -1167,6 +1176,10 @@ export class AgentManager {
           error: errMsg,
         });
         this.setStartupPhase("runtime_entry_missing", errMsg);
+        recordStartupPhase("fatal", {
+          port: apiPort,
+          error: errMsg,
+        });
         this.emitStatus();
         return this.status;
       }
@@ -1351,6 +1364,12 @@ export class AgentManager {
             exit_code: proc.exitCode,
           });
           this.setStartupPhase("startup_failed", errMsg);
+          recordStartupPhase("fatal", {
+            port: apiPort,
+            child_pid: proc.pid,
+            error: errMsg,
+            exit_code: proc.exitCode,
+          });
           this.emitStatus();
           return this.status;
         }
@@ -1372,6 +1391,11 @@ export class AgentManager {
           error: errMsg,
         });
         this.setStartupPhase("startup_failed", errMsg);
+        recordStartupPhase("fatal", {
+          port: apiPort,
+          child_pid: proc.pid,
+          error: errMsg,
+        });
         this.emitStatus();
         return this.status;
       }
@@ -1380,6 +1404,7 @@ export class AgentManager {
         child_pid: proc.pid,
       });
 
+      this.setStartupPhase("fetching_agent_metadata");
       const startedAt = Date.now();
       const startupMs = startedAt - spawnTime;
 
@@ -1628,7 +1653,6 @@ export class AgentManager {
             exit_code: exitCode,
           });
           this.childProcess = null;
-          if (this.childProcess !== null) return;
 
           // Auto-recover from PGLite migration failures by deleting the DB
           // and spawning a fresh process (new process = fresh WASM state).

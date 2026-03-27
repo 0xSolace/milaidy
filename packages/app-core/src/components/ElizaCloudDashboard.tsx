@@ -821,7 +821,7 @@ export function CloudDashboard() {
           "success",
         );
       } else if (result.mode === "steward" && !result.requiresUserSignature) {
-const execStatus = result.execution?.status;
+        const execStatus = result.execution?.status;
         if (execStatus === "pending_approval") {
           setCryptoPayResult(
             "Transfer is waiting for Steward policy approval.",
@@ -1096,7 +1096,7 @@ const execStatus = result.execution?.status;
 
       {activeView === "billing" ? (
         <div className="mx-auto max-w-3xl space-y-0">
-<div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-baseline gap-3">
               <span
                 className={`text-3xl font-bold tracking-tight ${creditStatusColor}`}
@@ -1135,7 +1135,7 @@ const execStatus = result.execution?.status;
           )}
 
           <hr className="border-border/40" />
-<div className="py-5">
+          <div className="py-5">
             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <h3 className="text-sm font-semibold text-txt-strong">
                 {t("elizaclouddashboard.TopUpCredits")}
@@ -1154,7 +1154,7 @@ const execStatus = result.execution?.status;
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-<div className={CLOUD_INSET_PANEL_CLASSNAME}>
+              <div className={CLOUD_INSET_PANEL_CLASSNAME}>
                 <div className="flex items-center gap-2 mb-3">
                   <CreditCard className="h-4 w-4 text-muted" />
                   <span className="text-xs font-semibold">
@@ -1205,7 +1205,7 @@ const execStatus = result.execution?.status;
                   </Button>
                 </div>
               </div>
-<div className={CLOUD_INSET_PANEL_CLASSNAME}>
+              <div className={CLOUD_INSET_PANEL_CLASSNAME}>
                 <div className="flex items-center gap-2 mb-3">
                   <Wallet className="h-4 w-4 text-muted" />
                   <span className="text-xs font-semibold">
@@ -1297,7 +1297,7 @@ const execStatus = result.execution?.status;
           </div>
 
           <hr className="border-border/40" />
-<div className="py-5">
+          <div className="py-5">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-sm font-semibold text-txt-strong">
@@ -1381,7 +1381,7 @@ const execStatus = result.execution?.status;
           </div>
 
           <hr className="border-border/40" />
-<div className="flex flex-col gap-3 py-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 py-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
               <div className="flex items-center gap-2">
                 <Shield className="w-4 h-4 text-ok shrink-0" />
@@ -1412,7 +1412,7 @@ const execStatus = result.execution?.status;
         </div>
       ) : (
         <div className="mx-auto max-w-3xl space-y-0">
-{cloudNotReady && (
+          {cloudNotReady && (
             <div className="flex flex-col items-center justify-center py-12 animate-in fade-in slide-in-from-bottom-2 duration-500">
               <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center mb-4 border border-accent/20">
                 <Server className="w-5 h-5 text-accent" />
@@ -1426,13 +1426,13 @@ const execStatus = result.execution?.status;
               </p>
             </div>
           )}
-{agentsError && !cloudNotReady && (
+          {agentsError && !cloudNotReady && (
             <div className="flex items-center gap-2 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger mb-3">
               <AlertCircle className="w-3.5 h-3.5 shrink-0" />
               {agentsError}
             </div>
           )}
-<div className="flex flex-col gap-3 py-3 text-xs sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 py-3 text-xs sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-center gap-3">
               {cloudAccountIdDisplay.mono ? (
                 <code className="max-w-full break-all font-mono text-muted sm:max-w-[200px] sm:truncate">
@@ -1467,7 +1467,7 @@ const execStatus = result.execution?.status;
           </div>
 
           <hr className="border-border/40" />
-{!cloudNotReady && (
+          {!cloudNotReady && (
             <div className="py-4">
               {agentsLoading && cloudAgents.length === 0 ? (
                 <div className="flex items-center justify-center py-8">
@@ -1539,7 +1539,7 @@ const execStatus = result.execution?.status;
               )}
             </div>
           )}
-{selectedAgentId && selectedAgent && (
+          {selectedAgentId && selectedAgent && (
             <>
               <hr className="border-border/40" />
               <AgentDetailSidebar

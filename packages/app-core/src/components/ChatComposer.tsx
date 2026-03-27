@@ -276,7 +276,6 @@ export function ChatComposer({
           isGameModal
             ? "relative flex min-h-[46px] min-w-0 flex-1 items-center overflow-hidden rounded-[26px] border border-transparent bg-transparent shadow-none ring-0 backdrop-blur-none transition-[border-color,background-color,box-shadow] duration-300"
             : "flex min-h-[46px] min-w-0 flex-1 items-center rounded-xl border border-border/60 bg-card/78 shadow-sm backdrop-blur-md transition-[border-color,background-color,box-shadow] duration-200 hover:border-border-strong focus-within:border-accent/50 focus-within:bg-card/92 focus-within:shadow-md"
-
         }
       >
         <Textarea

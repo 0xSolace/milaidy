@@ -135,7 +135,9 @@ export function CloudLoginStep() {
           onClick={() => handleOnboardingNext()}
           type="button"
         >
-          {branding.cloudOnly ? t("onboarding.continueOffline") : t("onboarding.skip")}
+          {branding.cloudOnly
+            ? t("onboarding.continueOffline")
+            : t("onboarding.skip")}
         </Button>
       </div>
     </>

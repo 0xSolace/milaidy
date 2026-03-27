@@ -29,9 +29,28 @@ class FakeElectrobunWebview extends HTMLElement {
   }
 }
 
-class GetterOnlySandboxWebview extends FakeElectrobunWebview {
+/** Simulates a custom webview element where `sandbox` is a read-only getter
+ * (i.e. setAttribute would normally throw or be a no-op on the property).
+ * Used to verify the component handles the setter-missing case gracefully. */
+class GetterOnlySandboxWebview extends HTMLElement {
+  static latest: GetterOnlySandboxWebview | null = null;
+
+  loadURL = vi.fn();
+  goBack = vi.fn();
+  goForward = vi.fn();
+  reload = vi.fn();
+  canGoBack = vi.fn(async () => false);
+  canGoForward = vi.fn(async () => false);
+  on = vi.fn();
+  off = vi.fn();
+
   get sandbox(): string {
     return this.getAttribute("sandbox") ?? "";
+  }
+
+  constructor() {
+    super();
+    GetterOnlySandboxWebview.latest = this;
   }
 }
 
@@ -46,6 +65,7 @@ describe("BrowserSurfaceWindow", () => {
     root = createRoot(host);
     elementName = `electrobun-webview-test-${Math.random().toString(36).slice(2)}`;
     FakeElectrobunWebview.latest = null;
+    GetterOnlySandboxWebview.latest = null;
   });
 
   afterEach(async () => {

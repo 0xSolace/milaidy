@@ -166,9 +166,11 @@ describe("Electrobun release workflow drift", () => {
   it("requires an explicit tag for manual non-tag runs", () => {
     const workflow = fs.readFileSync(WORKFLOW_PATH, "utf8");
 
-    expect(workflow).toContain(`if [[ -n "\${{ inputs.tag }}" ]]; then`);
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: GitHub Actions expression
+    expect(workflow).toContain('if [[ -n "${{ inputs.tag }}" ]]; then');
     expect(workflow).toContain(
-      `elif [[ "\${{ github.ref_type }}" == "tag" ]]; then`,
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: GitHub Actions expression
+      'elif [[ "${{ github.ref_type }}" == "tag" ]]; then',
     );
     expect(workflow).toContain(
       "Manual branch dispatches must provide inputs.tag; refusing to derive a release tag from package.json.",

@@ -146,7 +146,6 @@ export function Header({
   const headerShellClassName =
     "border-transparent bg-transparent shadow-none ring-0 backdrop-blur-none";
 
-
   const handleShellViewChange = (
     view: "companion" | "character" | "desktop",
   ) => {

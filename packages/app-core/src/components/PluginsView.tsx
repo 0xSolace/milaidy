@@ -1738,7 +1738,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
         } ${isDragging ? "opacity-30" : ""} ${isDragOver ? "ring-2 ring-accent/60" : ""}`}
         data-plugin-id={p.id}
       >
-<div className="flex items-center gap-2 px-3 pt-3 pb-1">
+        <div className="flex items-center gap-2 px-3 pt-3 pb-1">
           {allowCustomOrder && (
             <span
               className="text-[10px] text-muted opacity-30 hover:opacity-70 cursor-grab active:cursor-grabbing shrink-0 select-none leading-none"
@@ -1800,7 +1800,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
             </Button>
           )}
         </div>
-<div className="flex items-center gap-1.5 px-3 pb-1.5">
+        <div className="flex items-center gap-1.5 px-3 pb-1.5">
           <span className="text-[10px] px-1.5 py-px border border-border bg-surface text-muted lowercase tracking-wide whitespace-nowrap">
             {categoryLabel}
           </span>
@@ -1829,7 +1829,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
             </span>
           )}
         </div>
-<p
+        <p
           className="text-xs text-muted px-3 pb-2 flex-1"
           style={{
             display: "-webkit-box",
@@ -1873,7 +1873,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
             ))}
           </div>
         )}
-<div className="mt-auto flex items-center gap-3 border-t border-border/40 bg-card/55 px-4 py-3">
+        <div className="mt-auto flex items-center gap-3 border-t border-border/40 bg-card/55 px-4 py-3">
           {hasParams && !isShowcase ? (
             <>
               <span
@@ -1942,7 +1942,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
             </Button>
           )}
         </div>
-{p.enabled && p.validationErrors && p.validationErrors.length > 0 && (
+        {p.enabled && p.validationErrors && p.validationErrors.length > 0 && (
           <div className="px-3 py-1.5 border-t border-destructive bg-[rgba(153,27,27,0.04)] text-xs">
             {p.validationErrors.map(
               (err: { field: string; message: string }) => (
@@ -1956,7 +1956,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
             )}
           </div>
         )}
-{p.enabled &&
+        {p.enabled &&
           p.validationWarnings &&
           p.validationWarnings.length > 0 && (
             <div className="px-3 py-1">
@@ -3086,7 +3086,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
             </section>
           </div>
         </div>
-{settingsDialogPlugin &&
+        {settingsDialogPlugin &&
           (() => {
             const p = settingsDialogPlugin;
             const isShowcase = p.id === "__ui-showcase__";
@@ -3107,7 +3107,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                 <DialogContent
                   className={`${ADMIN_DIALOG_CONTENT_CLASSNAME} max-h-[85vh] max-w-2xl`}
                 >
-<DialogHeader
+                  <DialogHeader
                     className={`${ADMIN_DIALOG_HEADER_CLASSNAME} flex flex-row items-center gap-3`}
                   >
                     <DialogTitle className="font-bold text-base flex items-center gap-2 flex-1 min-w-0 tracking-wide text-txt">
@@ -3154,8 +3154,8 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                       </span>
                     )}
                   </DialogHeader>
-<div className="custom-scrollbar overflow-y-auto flex-1">
-<div className="px-5 pt-4 pb-1 flex items-center gap-3 flex-wrap text-xs text-muted">
+                  <div className="custom-scrollbar overflow-y-auto flex-1">
+                    <div className="px-5 pt-4 pb-1 flex items-center gap-3 flex-wrap text-xs text-muted">
                       {p.description && (
                         <span className="text-[12px] text-muted leading-relaxed">
                           {p.description}
@@ -3219,7 +3219,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                       )}
                     </div>
                   </div>
-{!isShowcase && (
+                  {!isShowcase && (
                     <div
                       className={`${ADMIN_DIALOG_FOOTER_CLASSNAME} flex justify-end gap-3`}
                     >
@@ -3313,7 +3313,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
             );
           })()}
       </div>
-<Dialog
+      <Dialog
         open={addDirOpen}
         onOpenChange={(v) => {
           if (!v) {

@@ -114,7 +114,9 @@ export function VoiceProviderStep() {
           }}
           type="button"
         >
-          {elizaCloudConnected || onboardingVoiceApiKey ? t("onboarding.next") : t("onboarding.skip")}
+          {elizaCloudConnected || onboardingVoiceApiKey
+            ? t("onboarding.next")
+            : t("onboarding.skip")}
         </Button>
       </div>
     </>

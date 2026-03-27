@@ -326,10 +326,7 @@ describe("path safety — legacy handlers", () => {
 
     // FAKE_HOME is the mocked homedir — managed hooks dir = FAKE_HOME/.eliza/hooks
     const managedDir = resolve(FAKE_HOME, ".eliza", "hooks", "my-hook");
-    const managedPath = resolve(
-      managedDir,
-      "handler.mjs",
-    );
+    const managedPath = resolve(managedDir, "handler.mjs");
     await mkdir(managedDir, { recursive: true });
     await writeFile(
       managedPath,

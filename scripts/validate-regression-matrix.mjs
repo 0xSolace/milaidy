@@ -29,10 +29,11 @@ function normalisePath(filePath) {
 function globToRegExp(glob) {
   const escaped = glob
     .replace(/[.+^${}()|[\]\\]/g, "\\$&")
-    .replace(/\*\*/g, "__GLOB_STAR__")
+    .replace(/\*\*/g, "\u0000")
     .replace(/\*/g, "[^/]*")
     .replace(/\?/g, "[^/]")
-    .replace(/__GLOB_STAR__/g, ".*");
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: NUL placeholder for glob ** conversion
+    .replace(/\u0000/g, ".*");
   return new RegExp(`^${escaped}$`);
 }
 

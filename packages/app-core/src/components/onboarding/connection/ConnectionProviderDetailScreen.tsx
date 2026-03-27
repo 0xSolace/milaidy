@@ -791,7 +791,10 @@ export function ConnectionProviderDetailScreen({
         )}
 
       {onboardingProvider === "ollama" && (
-        <div className={`${onboardingHelperTextClassName} text-center`} style={onboardingBodyTextShadowStyle}>
+        <div
+          className={`${onboardingHelperTextClassName} text-center`}
+          style={onboardingBodyTextShadowStyle}
+        >
           {t("onboarding.ollamaNoConfig")}
         </div>
       )}
@@ -892,8 +895,8 @@ export function ConnectionProviderDetailScreen({
       )}
 
       {onboardingProvider === "openrouter" &&
-        onboardingApiKey.trim() &&
-        onboardingOptions?.openrouterModels ? (
+      onboardingApiKey.trim() &&
+      onboardingOptions?.openrouterModels ? (
         <div className={`${onboardingDetailStackClassName} mt-4`}>
           <div
             id="openrouter-models-label"

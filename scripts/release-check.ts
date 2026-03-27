@@ -89,22 +89,23 @@ const requiredWorkflowSnippets = [
   "name: Prepare public canary Windows installer artifact",
   "needs.prepare.outputs.env == 'canary'",
   '$publicCanaryDir = Join-Path $artifactsDir "public-canary-installer"',
-  '$canonicalInstallers = Get-ChildItem -Path $artifactsDir -File -Filter "Milady-Setup-*.exe"',
-  "Copy-Item $canonicalInstaller.FullName -Destination $publicCanaryDir -Force",
-  '$canonicalInstallerZips = Get-ChildItem -Path $artifactsDir -File -Filter "Milady-Setup-*.exe.zip"',
-  "No canonical Windows installer (or zip fallback) found for canary artifact publishing.",
+  "Expand-Archive -Path $canonicalInstallerZip.FullName -DestinationPath $publicCanaryDir -Force",
   "Prepared public canary installer artifact:",
   "name: Upload public canary installer artifact",
   "name: electrobun-$" + "{{ matrix.platform.artifact-name }}-public-installer",
   "path: apps/app/electrobun/artifacts/public-canary-installer/Milady-Setup-*.exe",
   "name: Collect public release files",
-  '-name "Milady-Setup-*.exe" -o \\',
   '-name "Milady-Setup-*.exe.zip" -o \\',
   '-name "*Setup*.tar.gz" -o \\',
   "name: Collect update channel files",
   '-name "*.tar.zst" -o \\',
   '-name "*-update.json" \\',
   "DMG attach attempt $attempt/5 failed",
+  "https://api.github.com/repos/blackboardsh/electrobun/releases/tags/v$version",
+  "$asset = @($release.assets) | Where-Object { $_.name -eq $assetName } | Select-Object -First 1",
+  "$expectedHash = $asset.digest.Substring(7).ToLowerInvariant()",
+  "$actualHash = (Get-FileHash -Path $tarPath -Algorithm SHA256).Hash.ToLowerInvariant()",
+  "electrobun CLI checksum mismatch",
   "name: Resolve electrobun package dir",
   "id: resolve-electrobun",
   'const workspacePackageJson = path.resolve("apps/app/electrobun/package.json");',
@@ -114,9 +115,15 @@ const requiredWorkflowSnippets = [
   'echo "package-dir=$package_dir" >> "$GITHUB_OUTPUT"',
   'echo "cache-dir=$package_dir/.cache" >> "$GITHUB_OUTPUT"',
   "path: $" + "{{ steps.resolve-electrobun.outputs.cache-dir }}",
-  "name: Build patched Electrobun CLI for Windows",
-  'node scripts/build-patched-electrobun-cli.mjs "$' +
-    '{{ steps.resolve-electrobun.outputs.package-dir }}"',
+  "$resolvedElectrobunDir = '" +
+    "$" +
+    "{{ steps.resolve-electrobun.outputs.package-dir }}" +
+    "'",
+  '$cacheDir     = Join-Path $resolvedElectrobunDir ".cache"',
+  '$resolvedRceditDir = Join-Path $resolvedElectrobunDir "node_modules\\rcedit"',
+  '(Join-Path (Split-Path -Parent $resolvedElectrobunDir) "rcedit")',
+  'Get-ChildItem -Path (Join-Path $PWD "node_modules\\.bun") -Directory -Filter "rcedit@*"',
+  "Seeding rcedit from $seedRceditDir",
   "node scripts/desktop-build.mjs package --env=$" +
     "{{ needs.prepare.outputs.env }}",
   "MILADY_ELECTROBUN_NOTARIZE: 0",
@@ -137,7 +144,7 @@ const requiredWorkflowSnippets = [
   "if ($null -eq $resolvedRceditPackageJson)",
   '$resolvedRceditPackageJson = "$resolvedRceditPackageJson".Trim()',
 ];
-const requiredPatchedElectrobunCliSnippets = [
+const _requiredPatchedElectrobunCliSnippets = [
   "https://github.com/blackboardsh/electrobun.git",
   '"sparse-checkout", "set", "package"',
   'writeGitHubEnv("ELECTROBUN_RCEDIT_PACKAGE_JSON", resolvedRceditPackageJson);',
@@ -379,22 +386,6 @@ export function findFloatingDependencySpecs(
   });
 }
 
-export function findMissingRequiredSnippets(
-  content: string,
-  snippets: readonly string[],
-): string[] {
-  return snippets.filter((snippet) => !content.includes(snippet));
-}
-
-export function findMissingPatchedElectrobunCliSnippets(
-  helperSource: string,
-): string[] {
-  return findMissingRequiredSnippets(
-    helperSource,
-    requiredPatchedElectrobunCliSnippets,
-  );
-}
-
 function readExistingReleaseCheckFile(
   label: string,
   candidates: readonly string[],
@@ -556,9 +547,8 @@ function assertReleaseWorkflowHasNotaryWrapper() {
     ".github/workflows/release-electrobun.yml",
     "utf8",
   );
-  const missing = findMissingRequiredSnippets(
-    workflow,
-    requiredWorkflowSnippets,
+  const missing = requiredWorkflowSnippets.filter(
+    (snippet) => !workflow.includes(snippet),
   );
 
   if (missing.length > 0) {
@@ -566,23 +556,6 @@ function assertReleaseWorkflowHasNotaryWrapper() {
       "release-check: release workflow is missing notary wrapper wiring:",
     );
     for (const snippet of missing) {
-      console.error(`  - ${snippet}`);
-    }
-    process.exit(1);
-  }
-
-  const patchedCliHelper = readFileSync(
-    "scripts/build-patched-electrobun-cli.mjs",
-    "utf8",
-  );
-  const missingPatchedCli =
-    findMissingPatchedElectrobunCliSnippets(patchedCliHelper);
-
-  if (missingPatchedCli.length > 0) {
-    console.error(
-      "release-check: patched Electrobun helper is missing expected build wiring:",
-    );
-    for (const snippet of missingPatchedCli) {
       console.error(`  - ${snippet}`);
     }
     process.exit(1);
@@ -665,7 +638,6 @@ function assertMacArtifactStagerLooksCorrect() {
   const requiredSnippets = [
     'find "$ARTIFACTS_DIR" -maxdepth 1 -type f -name "*-macos-*.app.tar.zst"',
     "no macOS updater tarball found",
-    `REAL_XCRUN="\${ELECTROBUN_REAL_XCRUN:-/usr/bin/xcrun}"`,
     'DIRECT_LAUNCHER_SOURCE="$SCRIPT_DIR/macos-direct-launcher.c"',
     'codesign -d --entitlements :- "$STAGED_APP_PATH"',
     "/usr/bin/clang \\",
@@ -674,11 +646,7 @@ function assertMacArtifactStagerLooksCorrect() {
     `--options runtime "\${entitlement_args[@]}" "$STAGED_APP_PATH"`,
     'codesign --verify --deep --strict --verbose=2 "$STAGED_APP_PATH"',
     "hdiutil create \\",
-    "wait_for_notary_acceptance()",
-    '"$REAL_XCRUN" notarytool submit \\',
-    'NOTARY_SUBMISSION_ID="$(parse_notary_submission_id "$NOTARY_SUBMIT_OUTPUT_PATH" || true)"',
-    '"$REAL_XCRUN" notarytool info \\',
-    '"$REAL_XCRUN" notarytool log \\',
+    "retry_command 3 20 xcrun notarytool submit \\",
     'retry_command 8 20 xcrun stapler staple "$TEMP_DMG_PATH"',
     'mv "$TEMP_DMG_PATH" "$FINAL_DMG_PATH"',
   ];
@@ -699,7 +667,6 @@ function assertMacArtifactStagerLooksCorrect() {
   const forbiddenSnippets = [
     'codesign --force --deep --timestamp --sign "$ELECTROBUN_DEVELOPER_ID" "$STAGED_APP_PATH"',
     "exit_code=$?",
-    "--wait \\",
   ];
   const forbidden = forbiddenSnippets.filter((snippet) =>
     script.includes(snippet),
@@ -840,11 +807,9 @@ function assertInnoTemplateTargetsBundledLauncher() {
   const template = readFileSync("packaging/inno/Milady.iss", "utf8");
   const requiredSnippets = [
     '#define MyAppExeName "bin\\launcher.exe"',
-    '#define MyAppIconFile "Milady.ico"',
-    'Source: "{#MySetupIconFile}"; DestDir: "{app}"; DestName: "{#MyAppIconFile}"; Flags: ignoreversion',
-    "UninstallDisplayIcon={app}\\{#MyAppIconFile}",
-    'Name: "{autoprograms}\\{#MyDefaultGroupName}\\{#MyAppName}"; Filename: "{app}\\{#MyAppExeName}"; IconFilename: "{app}\\{#MyAppIconFile}"',
-    'Name: "{autodesktop}\\{#MyAppName}"; Filename: "{app}\\{#MyAppExeName}"; Tasks: desktopicon; IconFilename: "{app}\\{#MyAppIconFile}"',
+    "UninstallDisplayIcon={app}\\{#MyAppExeName}",
+    'Name: "{autoprograms}\\{#MyDefaultGroupName}\\{#MyAppName}"; Filename: "{app}\\{#MyAppExeName}"',
+    'Name: "{autodesktop}\\{#MyAppName}"; Filename: "{app}\\{#MyAppExeName}"; Tasks: desktopicon',
   ];
   const missingSnippets = requiredSnippets.filter(
     (snippet) => !template.includes(snippet),

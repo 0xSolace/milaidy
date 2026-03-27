@@ -97,6 +97,15 @@ import {
   setAgentReady,
 } from "./agent-ready-state";
 
+function resolveDesktopAppIconPath(): string {
+  return path.join(
+    import.meta.dir,
+    process.platform === "win32"
+      ? "../assets/appIcon.ico"
+      : "../assets/appIcon.png",
+  );
+}
+
 function setupApplicationMenu(): void {
   const isMac = process.platform === "darwin";
   const menu = buildApplicationMenu({
@@ -690,13 +699,6 @@ async function resolveRendererUrl(): Promise<string> {
   }
 
   return rendererUrl;
-}
-
-function resolveDesktopAppIconPath() {
-  if (process.platform === "win32") {
-    return path.join(import.meta.dir, "../assets/appIcon.ico");
-  }
-  return path.join(import.meta.dir, "../assets/appIcon.png");
 }
 
 async function createMainWindow(): Promise<BrowserWindow> {
@@ -1878,6 +1880,12 @@ main().catch((err) => {
   persistStartupCrashReport({
     source: "fatal-startup",
     error: msg,
+  });
+  recordStartupPhase("fatal", {
+    pid: process.pid,
+    exec_path: process.execPath,
+    bundle_path: resolveStartupBundlePath(process.execPath),
+    error: err instanceof Error ? err.stack || err.message : String(err),
   });
   // Write to startup log so it's visible even without a console
   try {
