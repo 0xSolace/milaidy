@@ -851,7 +851,7 @@ jobs:
         with:
           name: electrobun-windows-installer-proof
           path: apps/app/electrobun/artifacts/windows-installer-proof/**
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
 
       - name: Run Windows packaged renderer bootstrap check

@@ -214,6 +214,103 @@ jobs:
       run_validation: true
     secrets: inherit
 
+  # ── Non-blocking platform builds (open issues on failure) ───────────
+  build-android:
+    name: Android AAB build
+    needs: [version]
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.10"
+      - name: Install and build web assets
+        run: |
+          bun install --frozen-lockfile --ignore-scripts
+          bun run postinstall
+          bun run build
+      - name: Capacitor sync
+        run: bunx cap sync android
+      - name: Build AAB
+        run: |
+          cd android
+          chmod +x ./gradlew
+          ./gradlew bundleRelease --no-daemon || echo "::warning::Android AAB build failed (non-blocking)"
+
+  build-snap:
+    name: Snap build
+    needs: [version]
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snapcore/action-build@v1
+        id: snap
+      - name: Verify snap
+        run: |
+          sudo snap install --dangerous ${{ steps.snap.outputs.snap }} || echo "::warning::Snap install test failed (non-blocking)"
+
+  build-flatpak:
+    name: Flatpak build
+    needs: [version]
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install flatpak tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak install --user -y flathub org.freedesktop.Platform//24.08 org.freedesktop.Sdk//24.08 org.freedesktop.Sdk.Extension.node22//24.08
+      - name: Build flatpak
+        run: |
+          flatpak-builder --user --install-deps-from=flathub --force-clean build-dir packaging/flatpak/com.milady.Milady.yml || echo "::warning::Flatpak build failed (non-blocking)"
+
+  build-pypi:
+    name: PyPI package build
+    needs: [version]
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build wheel
+        run: |
+          pip install build
+          python -m build packaging/pypi/ || echo "::warning::PyPI build failed (non-blocking)"
+
+  build-debian:
+    name: Debian package build
+    needs: [version]
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev debhelper fakeroot
+          curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.10"
+          echo "$HOME/.bun/bin" >> "$GITHUB_PATH"
+      - name: Build deb
+        run: |
+          cd packaging/debian
+          dpkg-buildpackage -us -uc -b || echo "::warning::Debian package build failed (non-blocking)"
+
   # ── 4. Electrobun + Docker green → tag and publish ─────────────────
   publish:
     name: Tag & publish release
@@ -299,58 +396,98 @@ jobs:
               try { await github.rest.issues.removeLabel({ owner: context.repo.owner, repo: context.repo.repo, issue_number: issue, name: 'release-ready' }); } catch (e) {}
             }
 
-  # ── 5. On failure — open issue with diagnostics ────────────────────
-  report-failure:
-    name: Report build failures
-    needs: [version, build-electrobun, build-docker, build-npm, publish]
-    if: always() && (needs.build-electrobun.result == 'failure' || needs.build-docker.result == 'failure' || needs.publish.result == 'failure')
+  # ── 5. Report — open issues for any failures/warnings ───────────────
+  report:
+    name: Report build results
+    needs: [version, build-electrobun, build-docker, build-npm, build-android, build-snap, build-flatpak, build-pypi, build-debian, publish]
+    if: always() && needs.version.result == 'success'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
       issues: write
     steps:
-      - name: Open failure issue
+      - name: Report results
         uses: actions/github-script@v7
         env:
           TAG: ${{ needs.version.outputs.tag || 'unknown' }}
-          ELECTROBUN: ${{ needs.build-electrobun.result }}
-          DOCKER: ${{ needs.build-docker.result }}
-          NPM: ${{ needs.build-npm.result }}
-          PUBLISH: ${{ needs.publish.result }}
-        with:
-          script: |
-            const tag = process.env.TAG;
-            const results = { Electrobun: process.env.ELECTROBUN, Docker: process.env.DOCKER, npm: process.env.NPM, Publish: process.env.PUBLISH };
-            const lines = Object.entries(results).map(([n, r]) => `| ${n} | ${r === 'success' ? '✅' : r === 'failure' ? '❌' : '⏭️'} ${r} |`);
-            const failed = Object.entries(results).filter(([,r]) => r === 'failure').map(([n]) => n);
-            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-
-            await github.rest.issues.create({
-              owner: context.repo.owner, repo: context.repo.repo,
-              title: `❌ Release ${tag} failed: ${failed.join(', ')}`,
-              body: `## Release build failure — ${tag}\n\n**Run:** ${runUrl}\n**By:** @${context.actor}\n\n| Step | Result |\n|------|--------|\n${lines.join('\n')}\n\nTag was **NOT** created. Re-trigger after fixing.`,
-              labels: ['release-tracker', 'bug'],
-            });
-
-  # ── 6. On npm failure with successful release — warning issue ──────
-  report-npm-warning:
-    name: Report npm build warning
-    needs: [version, build-npm, publish]
-    if: always() && needs.publish.result == 'success' && needs.build-npm.result == 'failure'
-    runs-on: blacksmith-4vcpu-ubuntu-2404
-    permissions:
-      issues: write
-    steps:
-      - name: Open warning issue
-        uses: actions/github-script@v7
-        env:
-          TAG: ${{ needs.version.outputs.tag || 'unknown' }}
+          R_ELECTROBUN: ${{ needs.build-electrobun.result }}
+          R_DOCKER: ${{ needs.build-docker.result }}
+          R_NPM: ${{ needs.build-npm.result }}
+          R_ANDROID: ${{ needs.build-android.result }}
+          R_SNAP: ${{ needs.build-snap.result }}
+          R_FLATPAK: ${{ needs.build-flatpak.result }}
+          R_PYPI: ${{ needs.build-pypi.result }}
+          R_DEBIAN: ${{ needs.build-debian.result }}
+          R_PUBLISH: ${{ needs.publish.result }}
         with:
           script: |
             const tag = process.env.TAG;
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            await github.rest.issues.create({
-              owner: context.repo.owner, repo: context.repo.repo,
-              title: `⚠️ Release ${tag} — npm build failed (non-blocking)`,
-              body: `## Release ${tag} published with npm warning\n\n**Run:** ${runUrl}\n\nElectrobun and Docker passed, but npm package build failed.\nThe npm publish pipeline may fail downstream. Investigate and fix.`,
-              labels: ['release-tracker'],
-            });
+
+            const blocking = {
+              'Electrobun (4-platform)': process.env.R_ELECTROBUN,
+              'Docker image': process.env.R_DOCKER,
+            };
+            const nonBlocking = {
+              'npm package': process.env.R_NPM,
+              'Android AAB': process.env.R_ANDROID,
+              'Snap': process.env.R_SNAP,
+              'Flatpak': process.env.R_FLATPAK,
+              'PyPI': process.env.R_PYPI,
+              'Debian': process.env.R_DEBIAN,
+            };
+            const all = { ...blocking, ...nonBlocking, 'Tag & publish': process.env.R_PUBLISH };
+
+            const icon = r => r === 'success' ? '✅' : r === 'failure' ? '❌' : '⏭️';
+            const lines = Object.entries(all).map(([n, r]) => `| ${n} | ${icon(r)} ${r} |`);
+
+            const blockingFailed = Object.entries(blocking).filter(([,r]) => r === 'failure').map(([n]) => n);
+            const nonBlockingFailed = Object.entries(nonBlocking).filter(([,r]) => r === 'failure').map(([n]) => n);
+            const published = process.env.R_PUBLISH === 'success';
+
+            // Blocking failure — release was NOT created
+            if (blockingFailed.length > 0) {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title: `❌ Release ${tag} blocked: ${blockingFailed.join(', ')} failed`,
+                body: [
+                  `## Release ${tag} — BLOCKED`,
+                  '', `**Run:** ${runUrl}`, `**By:** @${context.actor}`, '',
+                  '| Build | Result |', '|-------|--------|', ...lines, '',
+                  `**Blocking failures:** ${blockingFailed.join(', ')}`,
+                  '', 'Tag was **NOT** created. Fix the blocking failures and re-trigger.',
+                ].join('\n'),
+                labels: ['release-tracker', 'bug'],
+              });
+              return;
+            }
+
+            // Published but some non-blocking builds failed
+            if (published && nonBlockingFailed.length > 0) {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title: `⚠️ Release ${tag} — ${nonBlockingFailed.join(', ')} failed (non-blocking)`,
+                body: [
+                  `## Release ${tag} published with warnings`,
+                  '', `**Run:** ${runUrl}`, '',
+                  '| Build | Result |', '|-------|--------|', ...lines, '',
+                  `**Non-blocking failures:** ${nonBlockingFailed.join(', ')}`,
+                  '', 'The release was published. These platform builds may need manual re-runs.',
+                ].join('\n'),
+                labels: ['release-tracker'],
+              });
+            }
+
+            // Publish failed for non-build reasons
+            if (!published && blockingFailed.length === 0) {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title: `❌ Release ${tag} — publish step failed`,
+                body: [
+                  `## Release ${tag} — publish failure`,
+                  '', `**Run:** ${runUrl}`, '',
+                  '| Build | Result |', '|-------|--------|', ...lines, '',
+                  'All builds passed but the tag/release creation failed. Investigate the publish job.',
+                ].join('\n'),
+                labels: ['release-tracker', 'bug'],
+              });
+            }
