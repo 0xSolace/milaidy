@@ -105,7 +105,17 @@ vi.mock("../inventory/useInventoryData", () => ({
     allNfts: [],
     focusedChainError: null,
     focusedChainName:
-      inventoryChainFocus === "all" ? null : inventoryChainFocus,
+      inventoryChainFocus === "all"
+        ? null
+        : ((
+            {
+              ethereum: "Ethereum",
+              base: "Base",
+              bsc: "BSC",
+              avax: "Avalanche",
+              solana: "Solana",
+            } as Record<string, string>
+          )[inventoryChainFocus] ?? inventoryChainFocus),
     visibleRows: [],
     totalUsd: 20,
     visibleChainErrors: [],
@@ -115,7 +125,10 @@ vi.mock("../inventory/useInventoryData", () => ({
 
 import { InventoryView } from "../InventoryView";
 
-function t(key: string): string {
+function t(
+  key: string,
+  vars?: Record<string, string | number | boolean | null | undefined>,
+): string {
   const translations: Record<string, string> = {
     "wallet.tokens": "Tokens",
     "wallet.nfts": "NFTs",
@@ -123,13 +136,24 @@ function t(key: string): string {
     "wallet.value": "Value",
     "wallet.chain": "Chain",
     "wallet.name": "Name",
+    "wallet.overviewTitle": "Wallet Overview",
+    "wallet.overviewTitleChain": "{{chain}} Wallet Overview",
+    "wallet.overviewSubtitle":
+      "Track balances, managed addresses, and trading readiness in one place.",
+    "wallet.fundingRouteAvailable": "1 funding route available",
+    "wallet.fundingRoutesAvailable": "{{count}} funding routes available",
+    "wallet.managedWalletOverview": "Managed wallet overview",
     "wallet.copyEvmAddress": "Copy EVM address",
     "wallet.copySolanaAddress": "Copy Solana address",
     "common.refresh": "Refresh",
     "common.retry": "Retry",
   };
 
-  return translations[key] ?? key;
+  const template = translations[key] ?? key;
+  return template.replace(/\{\{(\w+)\}\}/g, (_, token: string) => {
+    const value = vars?.[token];
+    return value == null ? "" : String(value);
+  });
 }
 
 function createContext(
@@ -241,7 +265,7 @@ describe("InventoryView wallet settings", () => {
     );
     expect(routePill).toBeTruthy();
     expect(JSON.stringify(routePill?.props.children)).toContain(
-      "funding route",
+      "2 funding routes available",
     );
     expect(
       assetsHeader?.findAll(
@@ -319,5 +343,27 @@ describe("InventoryView wallet settings", () => {
     });
 
     expect(ctx.setState).toHaveBeenCalledWith("inventoryChainFocus", "base");
+  });
+
+  it("restores a chain-aware overview heading for focused wallets", async () => {
+    const ctx = createContext({ inventoryChainFocus: "base" });
+    mockUseApp.mockImplementation(() => ctx);
+
+    let tree: TestRenderer.ReactTestRenderer | undefined;
+    await act(async () => {
+      tree = TestRenderer.create(<InventoryView />);
+    });
+
+    const overviewCard = tree?.root.find(
+      (node) => node.props["data-testid"] === "wallet-overview-card",
+    );
+    expect(overviewCard).toBeTruthy();
+
+    const heading = overviewCard?.findByType("h1");
+    const subtitle = overviewCard?.findByType("p");
+    expect(heading?.children.join("")).toBe("Base Wallet Overview");
+    expect(subtitle?.children.join("")).toBe(
+      "Track balances, managed addresses, and trading readiness in one place.",
+    );
   });
 });

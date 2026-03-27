@@ -261,9 +261,11 @@ export function InventoryView() {
     solAddr ? { label: "Solana", address: solAddr } : null,
   ].filter((item): item is { label: string; address: string } => Boolean(item));
   const fundingRouteLabel =
-    addresses.length > 0
-      ? `${addresses.length} funding route${addresses.length === 1 ? "" : "s"} available`
-      : "Managed wallet overview";
+    addresses.length > 1
+      ? t("wallet.fundingRoutesAvailable", { count: addresses.length })
+      : addresses.length === 1
+        ? t("wallet.fundingRouteAvailable")
+        : t("wallet.managedWalletOverview");
 
   const chainItemMeta = useMemo(() => {
     const totalAssetCount = countVisibleAssetsForFocus("all", tokenRows);
@@ -328,6 +330,10 @@ export function InventoryView() {
       ? (CHAIN_CONFIGS[chainFocus as keyof typeof CHAIN_CONFIGS]?.name ??
         chainFocus)
       : null);
+  const overviewTitle =
+    chainFocus !== "all" && focusedChainLabel
+      ? t("wallet.overviewTitleChain", { chain: focusedChainLabel })
+      : t("wallet.overviewTitle");
   const inlineError =
     chainFocus !== "all" && focusedChainError
       ? {
@@ -649,11 +655,10 @@ export function InventoryView() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div className="min-w-0">
                   <h1 className="text-2xl font-semibold text-txt-strong">
-                    Wallet Overview
+                    {overviewTitle}
                   </h1>
                   <p className="mt-1 text-sm text-muted">
-                    Track balances, managed addresses, and trading readiness in
-                    one place.
+                    {t("wallet.overviewSubtitle")}
                   </p>
                 </div>
                 {inventoryView === "tokens" ? (
