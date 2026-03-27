@@ -252,6 +252,10 @@ jobs:
                - Typecheck: `bun run check`
                - Tests: `bun run test`
                - Lint: `bun run lint:fix && bun run format:fix`
+               - If the failure involves Electrobun desktop files (apps/app/electrobun/**):
+                 also run `bunx vitest run scripts/electrobun-release-workflow-drift.test.ts`
+                 and `bun run release:check` after building dist prerequisites:
+                 `bunx tsdown && printf '{"type":"module"}\n' > dist/package.json && node --import tsx scripts/write-build-info.ts`
             5. Commit and push the fix
 
             ## Rules
