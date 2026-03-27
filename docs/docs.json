@@ -154,7 +154,16 @@
               "connectors/feishu",
               "connectors/nostr",
               "connectors/lens",
-              "connectors/retake"
+              "connectors/retake",
+              "connectors/bluesky",
+              "connectors/instagram",
+              "connectors/line",
+              "connectors/zalo",
+              "connectors/twilio",
+              "connectors/github",
+              "connectors/gmail-watch",
+              "connectors/nextcloud-talk",
+              "connectors/tlon"
             ]
           },
           {
@@ -190,7 +199,7 @@
           },
           {
             "group": "Skills",
-            "pages": ["plugins/skills"]
+            "pages": ["plugins/skills", "skills/streaming"]
           },
           {
             "group": "Actions",
@@ -223,6 +232,10 @@
           {
             "group": "Security",
             "pages": ["guides/sandbox"]
+          },
+          {
+            "group": "Stability",
+            "pages": ["stability/known-failure-modes"]
           }
         ]
       },
@@ -243,6 +256,7 @@
               "plugin-registry/llm/openai",
               "plugin-registry/llm/anthropic",
               "plugin-registry/llm/google-genai",
+              "plugin-registry/llm/google-antigravity",
               "plugin-registry/llm/groq",
               "plugin-registry/llm/ollama",
               "plugin-registry/llm/openrouter",
@@ -252,7 +266,11 @@
               "plugin-registry/llm/cohere",
               "plugin-registry/llm/together",
               "plugin-registry/llm/perplexity",
-              "plugin-registry/llm/vercel-ai-gateway"
+              "plugin-registry/llm/vercel-ai-gateway",
+              "plugin-registry/llm/qwen",
+              "plugin-registry/llm/minimax",
+              "plugin-registry/llm/pi-ai",
+              "plugin-registry/llm/zai"
             ]
           },
           {
@@ -277,7 +295,16 @@
               "plugin-registry/platform/feishu",
               "plugin-registry/platform/nostr",
               "plugin-registry/platform/lens",
-              "plugin-registry/platform/retake"
+              "plugin-registry/platform/retake",
+              "plugin-registry/platform/bluesky",
+              "plugin-registry/platform/instagram",
+              "plugin-registry/platform/line",
+              "plugin-registry/platform/zalo",
+              "plugin-registry/platform/twilio",
+              "plugin-registry/platform/github",
+              "plugin-registry/platform/gmail-watch",
+              "plugin-registry/platform/nextcloud-talk",
+              "plugin-registry/platform/tlon"
             ]
           },
           {
@@ -290,8 +317,15 @@
               "plugin-registry/browser",
               "plugin-registry/image-generation",
               "plugin-registry/tts",
+              "plugin-registry/stt",
+              "plugin-registry/vision",
               "plugin-registry/computeruse",
-              "plugin-registry/cron"
+              "plugin-registry/cron",
+              "plugin-registry/obsidian",
+              "plugin-registry/webhooks",
+              "plugin-registry/fal",
+              "plugin-registry/suno",
+              "plugin-registry/x402"
             ]
           }
         ]

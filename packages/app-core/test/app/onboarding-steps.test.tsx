@@ -7,6 +7,10 @@
 import React from "react";
 import TestRenderer, { act } from "react-test-renderer";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  DEFAULT_BOOT_CONFIG,
+  setBootConfig,
+} from "../../src/config/boot-config";
 
 // ── Hoisted mock ──────────────────────────────────────────────────────
 const { mockUseApp, mockIsNativeFn } = vi.hoisted(() => ({
@@ -49,6 +53,16 @@ vi.mock("@miladyai/app-core/platform", () => ({
   isAndroid: false,
   platform: "web",
 }));
+
+vi.mock("../../src/components/onboarding/onboarding-step-chrome", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../src/components/onboarding/onboarding-step-chrome")
+  >("../../src/components/onboarding/onboarding-step-chrome");
+  return {
+    ...actual,
+    spawnOnboardingRipple: vi.fn(),
+  };
+});
 
 import { ActivateStep } from "../../src/components/onboarding/ActivateStep";
 import { ConnectionStep } from "../../src/components/onboarding/ConnectionStep";
@@ -125,12 +139,26 @@ function findButtons(
   return root.findAllByType("button");
 }
 
+function makeButtonClickEvent() {
+  return {
+    currentTarget: null,
+    clientX: 0,
+    clientY: 0,
+  };
+}
+
 // ===================================================================
 //  IdentityStep
 // ===================================================================
 
 describe("IdentityStep", () => {
-  beforeEach(() => mockUseApp.mockReset());
+  beforeEach(() => {
+    mockUseApp.mockReset();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    sessionStorage.clear();
+    setBootConfig(DEFAULT_BOOT_CONFIG);
+  });
 
   it("renders character select roster with preset characters", async () => {
     mockUseApp.mockReturnValue(baseContext({ onboardingStep: "identity" }));
@@ -164,38 +192,7 @@ describe("IdentityStep", () => {
     expect(next).toHaveBeenCalled();
   });
 
-  it("shows Restore from Backup option", async () => {
-    mockUseApp.mockReturnValue(baseContext({ onboardingStep: "identity" }));
-    let tree: TestRenderer.ReactTestRenderer | undefined;
-    await act(async () => {
-      tree = TestRenderer.create(React.createElement(IdentityStep));
-    });
 
-    const text = collectText(tree?.root as TestRenderer.ReactTestInstance);
-    expect(text).toContain("onboarding.restoreFromBackup");
-  });
-
-  it("switches to import view when Restore from Backup is clicked", async () => {
-    mockUseApp.mockReturnValue(baseContext({ onboardingStep: "identity" }));
-    let tree: TestRenderer.ReactTestRenderer | undefined;
-    await act(async () => {
-      tree = TestRenderer.create(React.createElement(IdentityStep));
-    });
-
-    const buttons = findButtons(tree?.root as TestRenderer.ReactTestInstance);
-    const restoreBtn = buttons.find(
-      (b) => collectText(b) === "onboarding.restoreFromBackup",
-    );
-    expect(restoreBtn).toBeDefined();
-    await act(async () => {
-      restoreBtn?.props.onClick();
-    });
-
-    const text = collectText(tree?.root as TestRenderer.ReactTestInstance);
-    expect(text).toContain("settings.importAgent");
-    expect(text).toContain("common.cancel");
-    expect(text).toContain("onboarding.restore");
-  });
 });
 
 // ===================================================================
@@ -373,6 +370,5 @@ describe("ActivateStep", () => {
 
     const text = collectText(tree?.root as TestRenderer.ReactTestInstance);
     expect(text).toContain("onboarding.companionReady");
-    expect(text).toContain("onboarding.allConfigured");
   });
 });

@@ -829,7 +829,6 @@
   "onboarding.stepSub.launch": "준비 완료",
   "onboarding.stepSub.permissions": "시스템 접근",
   "onboarding.stepSub.providers": "뉴럴 링크",
-  "onboarding.stepSub.welcome": "시작하기",
   "onboarding.systemAccessTitle": "시스템 접근",
   "onboarding.useDefaultModel": "기본 모델 사용",
   "onboarding.useExistingKey": "이미 키가 있으면 여기에 사용하세요.",
@@ -1327,5 +1326,14 @@
   "whatsappqroverlay.Tap": "탭",
   "whatsappqroverlay.TryAgain": "다시 시도",
   "whatsappqroverlay.UsesAnUnofficialW": "비공식 WhatsApp API를 사용합니다. 전용 전화번호를 사용하세요.",
-  "whatsappqroverlay.andSelect": "그리고 선택"
+  "whatsappqroverlay.andSelect": "그리고 선택",
+  "wallet.overviewTitle": "Wallet Overview",
+  "wallet.overviewTitleChain": "{{chain}} Wallet Overview",
+  "wallet.overviewSubtitle": "Track balances, managed addresses, and trading readiness in one place.",
+  "wallet.fundingRouteAvailable": "1 funding route available",
+  "wallet.fundingRoutesAvailable": "{{count}} funding routes available",
+  "wallet.managedWalletOverview": "Managed wallet overview",
+  "onboarding.cloudLoginRetry": "Retry Login",
+  "chat.micTitleIdleEnhanced": "Voice input — assistant replies use neural TTS (ElevenLabs). Change under Settings → Voice.",
+  "chat.micTitleIdleStandard": "Voice input — assistant uses device speech. Neural TTS and billing: Settings → Voice."
 }

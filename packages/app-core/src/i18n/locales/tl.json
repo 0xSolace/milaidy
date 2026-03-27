@@ -1326,5 +1326,14 @@
   "whatsappqroverlay.Tap": "I-tap ang",
   "whatsappqroverlay.TryAgain": "Subukan Muli",
   "whatsappqroverlay.UsesAnUnofficialW": "Gumagamit ng unofficial WhatsApp API. Gumamit ng dedicated phone number.",
-  "whatsappqroverlay.andSelect": "at piliin ang"
+  "whatsappqroverlay.andSelect": "at piliin ang",
+  "wallet.overviewTitle": "Wallet Overview",
+  "wallet.overviewTitleChain": "{{chain}} Wallet Overview",
+  "wallet.overviewSubtitle": "Track balances, managed addresses, and trading readiness in one place.",
+  "wallet.fundingRouteAvailable": "1 funding route available",
+  "wallet.fundingRoutesAvailable": "{{count}} funding routes available",
+  "wallet.managedWalletOverview": "Managed wallet overview",
+  "onboarding.cloudLoginRetry": "Retry Login",
+  "chat.micTitleIdleEnhanced": "Voice input — assistant replies use neural TTS (ElevenLabs). Change under Settings → Voice.",
+  "chat.micTitleIdleStandard": "Voice input — assistant uses device speech. Neural TTS and billing: Settings → Voice."
 }

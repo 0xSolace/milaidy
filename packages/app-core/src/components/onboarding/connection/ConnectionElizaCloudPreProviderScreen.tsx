@@ -155,6 +155,9 @@ export function ConnectionElizaCloudPreProviderScreen({
             <p className={`${onboardingHelperTextClassName} text-center`}>
               {t("onboarding.freeCredits")}
             </p>
+            <p className="text-xs text-[var(--onboarding-text-subtle)] text-center leading-relaxed">
+              {t("onboarding.cloudProviderBehaviorHint")}
+            </p>
           </div>
         ) : (
           <div className={onboardingDetailStackClassName}>
@@ -219,6 +222,9 @@ export function ConnectionElizaCloudPreProviderScreen({
           {t("onboarding.confirm")}
         </Button>
       </div>
+      <p className="mt-3 text-center text-xs leading-relaxed text-[var(--onboarding-text-subtle)]">
+        {t("onboarding.restartAfterProviderChangeHint")}
+      </p>
     </>
   );
 }

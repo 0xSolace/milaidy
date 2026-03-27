@@ -31,7 +31,7 @@ describe("CloudLoginStep", () => {
   it("shows a retry action when cloud login fails", async () => {
     const handleCloudLogin = vi.fn();
     useAppMock.mockReturnValue({
-      onboardingStep: "providers",
+      onboardingStep: "cloud_login",
       elizaCloudConnected: false,
       elizaCloudLoginBusy: false,
       elizaCloudLoginError: "Login failed",
@@ -78,7 +78,7 @@ describe("CloudLoginStep", () => {
   it("auto-advances once when cloud login is already connected", async () => {
     const handleOnboardingNext = vi.fn();
     useAppMock.mockReturnValue({
-      onboardingStep: "providers",
+      onboardingStep: "cloud_login",
       elizaCloudConnected: true,
       elizaCloudLoginBusy: false,
       elizaCloudLoginError: "",

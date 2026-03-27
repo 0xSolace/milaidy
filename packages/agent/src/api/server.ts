@@ -125,10 +125,7 @@ import {
   uninstallMarketplaceSkill,
 } from "../services/skill-marketplace.js";
 import { streamManager } from "../services/stream-manager.js";
-import {
-  isFatalTodoDbError,
-  TodoDbCircuitBreaker,
-} from "./todo-db-circuit.js";
+import { isFatalTodoDbError, TodoDbCircuitBreaker } from "./todo-db-circuit.js";
 import {
   sanitizeAccountId as sanitizeWhatsAppAccountId,
   WhatsAppPairingSession,
@@ -185,9 +182,7 @@ import {
 } from "./compat-utils.js";
 import { ConnectorHealthMonitor } from "./connector-health.js";
 import { wireCoordinatorBridgesWhenReady } from "./coordinator-wiring.js";
-import {
-  isInsufficientCreditsMessage,
-} from "./credit-detection.js";
+import { isInsufficientCreditsMessage } from "./credit-detection.js";
 import { handleDatabaseRoute } from "./database.js";
 import { handleDiagnosticsRoutes } from "./diagnostics-routes.js";
 import { DropService } from "./drop-service.js";
@@ -244,7 +239,16 @@ import {
   verifyTweet,
 } from "./twitter-verify.js";
 import { TxService } from "./tx-service.js";
-import { generateWalletKeys, getWalletAddresses } from "./wallet.js";
+import {
+  fetchEvmBalances,
+  fetchSolanaBalances,
+  fetchSolanaNativeBalanceViaRpc,
+  generateWalletForChain,
+  generateWalletKeys,
+  getWalletAddresses,
+  importWallet,
+  validatePrivateKey,
+} from "./wallet.js";
 import { handleWalletRoutes } from "./wallet-routes.js";
 import { resolveWalletRpcReadiness } from "./wallet-rpc.js";
 import {
@@ -440,15 +444,24 @@ function hasPersistedOnboardingState(config: ElizaConfig): boolean {
 function resolveConversationGreetingText(
   runtime: AgentRuntime,
   lang: string,
-  configuredPresetId?: string | null,
+  uiConfig?: ElizaConfig["ui"],
 ): string {
   const normalizedLanguage = normalizeCharacterLanguage(lang);
-  const presets = getStylePresets(normalizedLanguage);
+  const characterName = runtime.character.name?.trim();
+  const assistantName = uiConfig?.assistant?.name?.trim();
+
+  // Prefer explicit UI selections over the loaded character card: users pick a
+  // style in onboarding/roster (avatar + preset) while `runtime.character.name`
+  // can still be the default template (e.g. "Chen") until save/restart.
   const preset =
-    (configuredPresetId
-      ? presets.find((candidate) => candidate.id === configuredPresetId)
-      : undefined) ??
-    presets.find((candidate) => candidate.name === runtime.character.name);
+    resolveStylePresetByAvatarIndex(
+      uiConfig?.avatarIndex,
+      normalizedLanguage,
+    ) ??
+    resolveStylePresetById(uiConfig?.presetId, normalizedLanguage) ??
+    resolveStylePresetByName(characterName, normalizedLanguage) ??
+    resolveStylePresetByName(assistantName, normalizedLanguage);
+
   if (preset?.catchphrase?.trim()) {
     return preset.catchphrase.trim();
   }
@@ -617,6 +630,16 @@ interface PluginEntry {
   homepage?: string;
   repository?: string;
   setupGuideUrl?: string;
+  autoEnabled?: boolean;
+  managementMode?: "standard" | "core-optional";
+  capabilityStatus?:
+    | "loaded"
+    | "auto-enabled"
+    | "blocked"
+    | "missing-prerequisites"
+    | "disabled";
+  capabilityReason?: string | null;
+  prerequisites?: Array<{ label: string; met: boolean }>;
 }
 
 interface SkillEntry {
@@ -636,7 +659,10 @@ interface LogEntry {
   tags: string[];
 }
 
-export type StreamEventType = "agent_event" | "heartbeat_event" | "training_event";
+export type StreamEventType =
+  | "agent_event"
+  | "heartbeat_event"
+  | "training_event";
 
 interface StreamEventEnvelope {
   type: StreamEventType;
@@ -2633,6 +2659,38 @@ interface ChatGenerateOptions {
   onSnapshot?: (text: string) => void;
   isAborted?: () => boolean;
   resolveNoResponseText?: () => string;
+  preferredLanguage?: string;
+}
+
+const CHAT_LANGUAGE_INSTRUCTION: Record<string, string> = {
+  en: "Reply in natural English unless the user explicitly requests another language.",
+  "zh-CN":
+    "Reply in natural Simplified Chinese unless the user explicitly requests another language.",
+  ko: "Reply in natural Korean unless the user explicitly requests another language.",
+  es: "Reply in natural Spanish unless the user explicitly requests another language.",
+  pt: "Reply in natural Brazilian Portuguese unless the user explicitly requests another language.",
+  vi: "Reply in natural Vietnamese unless the user explicitly requests another language.",
+  tl: "Reply in natural Tagalog unless the user explicitly requests another language.",
+};
+
+function maybeAugmentChatMessageWithLanguage(
+  message: ReturnType<typeof createMessageMemory>,
+  preferredLanguage?: string,
+): ReturnType<typeof createMessageMemory> {
+  if (!preferredLanguage) return message;
+  const instruction =
+    CHAT_LANGUAGE_INSTRUCTION[normalizeCharacterLanguage(preferredLanguage)];
+  if (!instruction) return message;
+  const originalText = extractCompatTextContent(message.content);
+  if (!originalText) return message;
+
+  return {
+    ...message,
+    content: {
+      ...(message.content as Content),
+      text: `${originalText}\n\n[Language instruction: ${instruction}]`,
+    },
+  };
 }
 
 const PROVIDER_ISSUE_CHAT_REPLY = "Sorry, I'm having a provider issue";
@@ -2946,6 +3004,13 @@ function shouldForceCheckBalanceFallback(
   return balanceIntent;
 }
 
+function isBalanceIntent(input: string): boolean {
+  const normalized = input.toLowerCase();
+  return /\b(balance|wallet|holdings|portfolio|funds|how much)\b/.test(
+    normalized,
+  );
+}
+
 function parseFallbackActionBlocks(value: unknown): FallbackParsedAction[] {
   const rawValues: string[] = [];
   if (typeof value === "string") {
@@ -3001,7 +3066,9 @@ async function executeFallbackParsedActions(
   appendIncomingText: (incoming: string) => void,
   onActionCallback: (actionTag: string, hasText: boolean) => void,
 ): Promise<void> {
-  const runtimeActions = Array.isArray((runtime as { actions?: unknown[] }).actions)
+  const runtimeActions = Array.isArray(
+    (runtime as { actions?: unknown[] }).actions,
+  )
     ? ((runtime as { actions: unknown[] }).actions as Array<{
         name?: string;
         similes?: string[];
@@ -3012,7 +3079,8 @@ async function executeFallbackParsedActions(
 
   const lookup = new Map<string, (typeof runtimeActions)[number]>();
   for (const action of runtimeActions) {
-    if (typeof action.name === "string") lookup.set(action.name.toUpperCase(), action);
+    if (typeof action.name === "string")
+      lookup.set(action.name.toUpperCase(), action);
     if (!Array.isArray(action.similes)) continue;
     for (const alias of action.similes) {
       if (typeof alias === "string") lookup.set(alias.toUpperCase(), action);
@@ -3020,18 +3088,25 @@ async function executeFallbackParsedActions(
   }
 
   for (const parsed of parsedActions) {
-    if (parsed.name === "REPLY" || parsed.name === "NONE" || parsed.name === "IGNORE") {
+    if (
+      parsed.name === "REPLY" ||
+      parsed.name === "NONE" ||
+      parsed.name === "IGNORE"
+    ) {
       continue;
     }
     const action = lookup.get(parsed.name);
     if (!action || typeof action.handler !== "function") continue;
 
     if (typeof action.validate === "function") {
-      const valid = await Promise.resolve(action.validate(runtime, message, undefined));
+      const valid = await Promise.resolve(
+        action.validate(runtime, message, undefined),
+      );
       if (!valid) continue;
     }
 
-    await Promise.resolve(
+    let callbackSeen = false;
+    const actionResult = await Promise.resolve(
       action.handler(
         runtime,
         message,
@@ -3050,6 +3125,7 @@ async function executeFallbackParsedActions(
             contentRecord && typeof contentRecord === "object"
               ? extractCompatTextContent(contentRecord as Content)
               : "";
+          callbackSeen = true;
           onActionCallback(actionTag, Boolean(chunk));
           if (chunk) appendIncomingText(chunk);
           return [];
@@ -3057,6 +3133,16 @@ async function executeFallbackParsedActions(
         [],
       ),
     );
+    if (!callbackSeen) {
+      const fallbackText =
+        actionResult && typeof actionResult === "object"
+          ? extractCompatTextContent(actionResult as Content)
+          : "";
+      if (fallbackText) {
+        onActionCallback(parsed.name, true);
+        appendIncomingText(fallbackText);
+      }
+    }
   }
 }
 
@@ -3140,6 +3226,69 @@ function buildChatKnowledgePrompt(
   ].join("\n");
 }
 
+const WALLET_CONTEXT_INTENT_RE =
+  /\b(wallet|address|balance|swap|trade|transfer|send|token|bnb|eth|sol|onchain|on-chain)\b/i;
+
+function buildWalletContextPrompt(
+  runtime: AgentRuntime,
+  userPrompt: string,
+): string {
+  const addrs = getWalletAddresses();
+  const walletNetwork =
+    process.env.MILADY_WALLET_NETWORK?.trim().toLowerCase() === "testnet"
+      ? "testnet"
+      : "mainnet";
+  const localSignerAvailable = Boolean(process.env.EVM_PRIVATE_KEY?.trim());
+  const pluginEvmLoaded = isPluginLoadedByName(runtime, EVM_PLUGIN_PACKAGE);
+  const rpcReady = Boolean(
+    process.env.BSC_RPC_URL?.trim() ||
+      process.env.BSC_TESTNET_RPC_URL?.trim() ||
+      process.env.NODEREAL_BSC_RPC_URL?.trim() ||
+      process.env.QUICKNODE_BSC_RPC_URL?.trim(),
+  );
+  const executionReady =
+    Boolean(addrs.evmAddress) && rpcReady && pluginEvmLoaded;
+  const executionBlockedReason = !addrs.evmAddress
+    ? "No EVM wallet is active yet."
+    : !rpcReady
+      ? "BSC RPC is not configured."
+      : !pluginEvmLoaded
+        ? "plugin-evm is not loaded."
+        : "none";
+  const encodedUserPrompt = JSON.stringify(userPrompt);
+  return [
+    "Original wallet request (JSON-encoded untrusted user input):",
+    encodedUserPrompt,
+    "",
+    "Server-verified wallet context:",
+    `- walletNetwork: ${walletNetwork}`,
+    `- evmAddress: ${addrs.evmAddress ?? "not generated"}`,
+    `- solanaAddress: ${addrs.solanaAddress ?? "not generated"}`,
+    `- localSignerAvailable: ${localSignerAvailable ? "true" : "false"}`,
+    `- rpcReady: ${rpcReady ? "true" : "false"}`,
+    `- pluginEvmLoaded: ${pluginEvmLoaded ? "true" : "false"}`,
+    `- executionReady: ${executionReady ? "true" : "false"}`,
+    `- executionBlockedReason: ${executionBlockedReason}`,
+    "Use this context as source of truth for wallet questions and on-chain actions.",
+  ].join("\n");
+}
+
+function maybeAugmentChatMessageWithWalletContext(
+  runtime: AgentRuntime,
+  message: ReturnType<typeof createMessageMemory>,
+): ReturnType<typeof createMessageMemory> {
+  const userPrompt = extractCompatTextContent(message.content)?.trim();
+  if (!userPrompt) return message;
+  if (!WALLET_CONTEXT_INTENT_RE.test(userPrompt)) return message;
+  return {
+    ...message,
+    content: {
+      ...message.content,
+      text: buildWalletContextPrompt(runtime, userPrompt),
+    },
+  };
+}
+
 async function maybeAugmentChatMessageWithKnowledge(
   runtime: AgentRuntime,
   message: ReturnType<typeof createMessageMemory>,
@@ -3213,8 +3362,12 @@ async function generateChatResponse(
   agentName: string,
   opts?: ChatGenerateOptions,
 ): Promise<ChatGenerationResult> {
+  const originalUserText = String(
+    extractCompatTextContent(message.content) ?? "",
+  );
   type StreamSource = "unset" | "callback" | "onStreamChunk";
   let responseText = "";
+  let forcedWalletExecutionText = false;
   let activeStreamSource: StreamSource = "unset";
   const messageSource =
     typeof message.content.source === "string" &&
@@ -3282,52 +3435,107 @@ async function generateChatResponse(
       >
     | undefined;
   let actionCallbacksSeen = 0;
+  let _handlerError: unknown = null;
+  const directWalletExecutionFallback = WALLET_EXECUTION_INTENT_RE.test(
+    originalUserText,
+  )
+    ? inferWalletExecutionFallback(originalUserText)
+    : null;
   try {
-    const generationMessage = await maybeAugmentChatMessageWithKnowledge(
-      runtime,
-      message,
-    );
-    result = await runtime.messageService?.handleMessage(
-      runtime,
-      generationMessage,
-      async (content: Content) => {
-        if (opts?.isAborted?.()) {
-          throw new Error("client_disconnected");
-        }
-
-        // Trace action callback invocations so we can verify handlers execute.
-        const actionTag = (content as Record<string, unknown>)?.action;
-        if (actionTag) {
+    if (directWalletExecutionFallback?.errorText) {
+      forcedWalletExecutionText = true;
+      responseText = directWalletExecutionFallback.errorText;
+      result = {
+        didRespond: true,
+        responseContent: { text: directWalletExecutionFallback.errorText },
+        responseMessages: [],
+      };
+    } else if (directWalletExecutionFallback?.action) {
+      runtime.logger?.info(
+        {
+          src: "eliza-api",
+          action: directWalletExecutionFallback.action.name,
+          parameters: directWalletExecutionFallback.action.parameters,
+        },
+        "[eliza-api] Direct wallet execution dispatch from prompt intent",
+      );
+      await executeFallbackParsedActions(
+        runtime,
+        message,
+        [directWalletExecutionFallback.action],
+        appendIncomingText,
+        (actionTag, hasText) => {
           actionCallbacksSeen += 1;
           runtime.logger?.info(
             {
               src: "eliza-api",
               action: actionTag,
-              hasText: Boolean(extractCompatTextContent(content)),
+              hasText,
             },
             `[eliza-api] Action callback fired: ${actionTag}`,
           );
-        }
+        },
+      );
+      result = {
+        didRespond: true,
+        responseContent: { text: responseText },
+        responseMessages: [],
+      };
+    } else {
+      const languageAugmentedMessage = maybeAugmentChatMessageWithLanguage(
+        message,
+        opts?.preferredLanguage,
+      );
+      const walletAugmentedMessage = maybeAugmentChatMessageWithWalletContext(
+        runtime,
+        languageAugmentedMessage,
+      );
+      const generationMessage = await maybeAugmentChatMessageWithKnowledge(
+        runtime,
+        walletAugmentedMessage,
+      );
+      result = await runtime.messageService?.handleMessage(
+        runtime,
+        generationMessage,
+        async (content: Content) => {
+          if (opts?.isAborted?.()) {
+            throw new Error("client_disconnected");
+          }
 
-        const chunk = extractCompatTextContent(content);
-        if (!chunk) return [];
-        if (!claimStreamSource("callback")) return [];
-        appendIncomingText(chunk);
-        return [];
-      },
-      {
-        onStreamChunk: opts?.onChunk
-          ? async (chunk: string) => {
-              if (opts?.isAborted?.()) {
-                throw new Error("client_disconnected");
+          // Trace action callback invocations so we can verify handlers execute.
+          const actionTag = (content as Record<string, unknown>)?.action;
+          if (actionTag) {
+            actionCallbacksSeen += 1;
+            runtime.logger?.info(
+              {
+                src: "eliza-api",
+                action: actionTag,
+                hasText: Boolean(extractCompatTextContent(content)),
+              },
+              `[eliza-api] Action callback fired: ${actionTag}`,
+            );
+          }
+
+          const chunk = extractCompatTextContent(content);
+          if (!chunk) return [];
+          if (!claimStreamSource("callback")) return [];
+          appendIncomingText(chunk);
+          return [];
+        },
+        {
+          onStreamChunk: opts?.onChunk
+            ? async (chunk: string) => {
+                if (opts?.isAborted?.()) {
+                  throw new Error("client_disconnected");
+                }
+                if (!chunk) return;
+                if (!claimStreamSource("onStreamChunk")) return;
+                appendIncomingText(chunk);
               }
-              if (!chunk) return;
-              if (!claimStreamSource("onStreamChunk")) return;
-              appendIncomingText(chunk);
-            }
-          : undefined,
-      },
-    );
+            : undefined,
+        },
+      );
+    }
 
     // Ensure MESSAGE_SENT hooks run for API chat flows. Some runtimes emit this
     // internally, but API wrappers can bypass those hooks.
@@ -3365,6 +3573,7 @@ async function generateChatResponse(
       );
     }
   } catch (err) {
+    _handlerError = err;
     throw err;
   }
 
@@ -3386,24 +3595,85 @@ async function generateChatResponse(
     const rawActionsPayload = rc?.actions ?? resultRecord.actions;
     const parsedFallbackActions = parseFallbackActionBlocks(rawActionsPayload);
     const userText = String(extractCompatTextContent(message.content) ?? "");
-    const modelText = String(extractCompatTextContent(result.responseContent) ?? "");
+    const modelText = String(
+      extractCompatTextContent(result.responseContent) ?? "",
+    );
     const fallbackActionsToRun = [...parsedFallbackActions];
+    const inferredBalanceChain = inferBalanceChainFromText(userText);
 
     if (
-      shouldForceCheckBalanceFallback(fallbackActionsToRun, userText, modelText) &&
+      shouldForceCheckBalanceFallback(
+        fallbackActionsToRun,
+        userText,
+        modelText,
+      ) &&
       !fallbackActionsToRun.some((a) => a.name === "CHECK_BALANCE")
     ) {
       fallbackActionsToRun.push({
         name: "CHECK_BALANCE",
-        parameters: { chain: inferBalanceChainFromText(userText) },
+        parameters: { chain: inferredBalanceChain },
       });
       runtime.logger?.warn(
         {
           src: "eliza-api",
-          inferredChain: inferBalanceChainFromText(userText),
+          inferredChain: inferredBalanceChain,
         },
         "[eliza-api] Injecting CHECK_BALANCE fallback for REPLY-only malformed action payload",
       );
+    }
+
+    if (
+      actionCallbacksSeen === 0 &&
+      fallbackActionsToRun.length === 0 &&
+      isBalanceIntent(userText)
+    ) {
+      fallbackActionsToRun.push({
+        name: "CHECK_BALANCE",
+        parameters: { chain: inferredBalanceChain },
+      });
+      runtime.logger?.warn(
+        {
+          src: "eliza-api",
+          inferredChain: inferredBalanceChain,
+        },
+        "[eliza-api] Injecting CHECK_BALANCE fallback for balance intent without any action payload",
+      );
+    }
+
+    if (
+      actionCallbacksSeen === 0 &&
+      WALLET_EXECUTION_INTENT_RE.test(userText)
+    ) {
+      const inferredWalletFallback = inferWalletExecutionFallback(userText);
+      if (inferredWalletFallback?.action) {
+        const existingIndex = fallbackActionsToRun.findIndex(
+          (action) => action.name === inferredWalletFallback.action.name,
+        );
+        if (
+          existingIndex === -1 ||
+          !hasUsableWalletFallbackParams(fallbackActionsToRun[existingIndex]!)
+        ) {
+          if (existingIndex >= 0) {
+            fallbackActionsToRun.splice(existingIndex, 1);
+          }
+          fallbackActionsToRun.push(inferredWalletFallback.action);
+          runtime.logger?.warn(
+            {
+              src: "eliza-api",
+              action: inferredWalletFallback.action.name,
+              parameters: inferredWalletFallback.action.parameters,
+            },
+            "[eliza-api] Injecting wallet execution fallback from prompt intent",
+          );
+        }
+      } else if (inferredWalletFallback?.errorText) {
+        forcedWalletExecutionText = true;
+        if (opts?.onSnapshot) {
+          emitSnapshot(inferredWalletFallback.errorText);
+        } else {
+          responseText = inferredWalletFallback.errorText;
+        }
+      }
     }
 
     if (actionCallbacksSeen === 0 && fallbackActionsToRun.length > 0) {
@@ -3452,7 +3722,12 @@ async function generateChatResponse(
   ) {
     // Keep streaming monotonic when final text extends emitted chunks.
     emitChunk(resultText.slice(responseText.length));
-  } else if (actionCallbacksSeen === 0 && resultText && resultText !== responseText) {
+  } else if (
+    actionCallbacksSeen === 0 &&
+    resultText &&
+    resultText !== responseText &&
+    !forcedWalletExecutionText
+  ) {
     // Canonical final response may differ from streamed chunks (normalization).
     if (opts?.onSnapshot) {
       emitSnapshot(resultText);
@@ -3461,10 +3736,34 @@ async function generateChatResponse(
     }
   }
 
+  if (
+    actionCallbacksSeen === 0 &&
+    isWalletActionRequiredIntent(originalUserText)
+  ) {
+    const normalizedVisibleText = stripAssistantStageDirections(
+      (responseText || resultText || "").trim(),
+    );
+    if (
+      normalizedVisibleText.length === 0 ||
+      WALLET_PROGRESS_ONLY_RE.test(normalizedVisibleText)
+    ) {
+      const failureText = buildWalletActionNotExecutedReply(
+        runtime,
+        originalUserText.trim(),
+      );
+      if (opts?.onSnapshot) {
+        emitSnapshot(failureText);
+      } else {
+        responseText = failureText;
+      }
+    }
+  }
+
   const noResponseFallback = opts?.resolveNoResponseText?.();
-  const finalText = isClientVisibleNoResponse(responseText)
+  const normalizedResponseText = trimWalletProgressPrefix(responseText);
+  const finalText = isClientVisibleNoResponse(normalizedResponseText)
     ? (noResponseFallback ?? (responseText || "(no response)"))
-    : responseText;
+    : normalizedResponseText;
 
   // Estimate token usage from text lengths (~4 chars per token)
   const promptText = extractCompatTextContent(message.content) ?? "";
@@ -3855,12 +4154,14 @@ async function readChatRequestPayload(
   channelType: ChannelType;
   images?: ChatImageAttachment[];
   conversationMode?: "simple" | "power";
+  preferredLanguage?: string;
 } | null> {
   const body = await helpers.readJsonBody<{
     text?: string;
     channelType?: string;
     images?: ChatImageAttachment[];
     conversationMode?: string;
+    language?: string;
   }>(req, res, { maxBytes });
   if (!body) return null;
   const normalizedPrompt = normalizeIncomingChatPrompt(body.text, body.images);
@@ -3892,11 +4193,19 @@ async function readChatRequestPayload(
         mimeType: img.mimeType.toLowerCase(),
       }))
     : undefined;
+  const rawPreferredLanguage =
+    (typeof body.language === "string" && body.language.trim()
+      ? body.language
+      : undefined) ?? readUiLanguageHeader(req);
+  const preferredLanguage = rawPreferredLanguage
+    ? normalizeCharacterLanguage(rawPreferredLanguage)
+    : undefined;
   return {
     prompt: normalizedPrompt,
     channelType,
     images,
     ...(conversationMode ? { conversationMode } : {}),
+    ...(preferredLanguage ? { preferredLanguage } : {}),
   };
 }
 
@@ -4400,6 +4709,9 @@ import {
   getDefaultStylePreset,
   getStylePresets,
   normalizeCharacterLanguage,
+  resolveStylePresetByAvatarIndex,
+  resolveStylePresetById,
+  resolveStylePresetByName,
 } from "../onboarding-presets.js";
 
 import { pickRandomNames } from "../runtime/onboarding-names.js";
@@ -4442,7 +4754,9 @@ function readUiLanguageHeader(
   if (Array.isArray(header)) {
     return header.find((value) => value.trim())?.trim();
   }
-  return typeof header === "string" && header.trim() ? header.trim() : undefined;
+  return typeof header === "string" && header.trim()
+    ? header.trim()
+    : undefined;
 }
 
 function resolveConfiguredCharacterLanguage(
@@ -4469,7 +4783,10 @@ function resolveOnboardingStylePreset(
     if (byId) return byId;
   }
 
-  if (typeof body.avatarIndex === "number" && Number.isFinite(body.avatarIndex)) {
+  if (
+    typeof body.avatarIndex === "number" &&
+    Number.isFinite(body.avatarIndex)
+  ) {
     const byAvatar = presets.find(
       (preset) => preset.avatarIndex === Number(body.avatarIndex),
     );
@@ -5443,6 +5760,7 @@ import {
   type TradePermissionMode,
   assertQuoteFresh,
   canUseLocalTradeExecution,
+  recordAgentAutoTrade,
 } from "./trade-safety.js";
 
 export {
@@ -5467,6 +5785,7 @@ const AGENT_AUTOMATION_MODES = new Set<AgentAutomationMode>([
   "connectors-only",
   "full",
 ]);
+const EVM_PLUGIN_PACKAGE = "@elizaos/plugin-evm";
 
 function parseAgentAutomationMode(value: unknown): AgentAutomationMode | null {
   if (typeof value !== "string") return null;
@@ -5523,6 +5842,478 @@ function persistAgentAutomationMode(
     enabled: true,
     mode,
   };
+}
+
+function isPluginLoadedByName(
+  runtime: AgentRuntime | null,
+  pluginName: string,
+): boolean {
+  if (!runtime || !Array.isArray(runtime.plugins)) return false;
+  const shortId = pluginName.replace("@elizaos/plugin-", "");
+  const packageSuffix = `plugin-${shortId}`;
+  return runtime.plugins.some((plugin) => {
+    const name = typeof plugin?.name === "string" ? plugin.name : "";
+    return (
+      name === pluginName ||
+      name === shortId ||
+      name === packageSuffix ||
+      name.endsWith(`/${packageSuffix}`) ||
+      name.includes(shortId)
+    );
+  });
+}
+
+function resolveWalletCapabilityStatus(
+  state: Pick<ServerState, "config" | "runtime">,
+) {
+  const addrs = getWalletAddresses();
+  const rpcReadiness = resolveWalletRpcReadiness(state.config);
+  const automationMode = resolveAgentAutomationModeFromConfig(state.config);
+  const localSignerAvailable = Boolean(process.env.EVM_PRIVATE_KEY?.trim());
+  const hasWallet = Boolean(addrs.evmAddress || addrs.solanaAddress);
+  const hasEvm = Boolean(addrs.evmAddress);
+  const pluginEvmLoaded = isPluginLoadedByName(
+    state.runtime,
+    EVM_PLUGIN_PACKAGE,
+  );
+  const pluginEvmRequired = hasEvm || localSignerAvailable;
+  const rpcReady = Boolean(rpcReadiness.managedBscRpcReady);
+  const walletSource = localSignerAvailable
+    ? "local"
+    : hasWallet
+      ? "managed"
+      : "none";
+
+  let executionBlockedReason: string | null = null;
+  if (!hasEvm) {
+    executionBlockedReason = "No EVM wallet is active yet.";
+  } else if (!rpcReady) {
+    executionBlockedReason = "BSC RPC is not configured.";
+  } else if (!pluginEvmLoaded) {
+    executionBlockedReason =
+      "plugin-evm is not loaded, so EVM wallet execution is unavailable.";
+  } else if (automationMode !== "full") {
+    executionBlockedReason =
+      "Agent automation is in connectors-only mode, so wallet execution is blocked in chat.";
+  }
+
+  return {
+    walletSource,
+    walletNetwork: rpcReadiness.walletNetwork,
+    evmAddress: addrs.evmAddress ?? null,
+    solanaAddress: addrs.solanaAddress ?? null,
+    hasWallet,
+    hasEvm,
+    localSignerAvailable,
+    rpcReady,
+    automationMode,
+    pluginEvmLoaded,
+    pluginEvmRequired,
+    executionReady:
+      hasEvm && rpcReady && pluginEvmLoaded && automationMode === "full",
+    executionBlockedReason,
+  };
+}
+
+function buildPluginEvmDiagnosticEntry(
+  state: Pick<ServerState, "config" | "runtime">,
+): PluginEntry {
+  const capability = resolveWalletCapabilityStatus(state);
+  const enabled =
+    capability.pluginEvmLoaded ||
+    capability.pluginEvmRequired ||
+    (state.config.plugins?.allow ?? []).some((entry) => {
+      return entry === EVM_PLUGIN_PACKAGE || entry === "evm";
+    });
+
+  const capabilityStatus = capability.pluginEvmLoaded
+    ? capability.pluginEvmRequired
+      ? "loaded"
+      : "auto-enabled"
+    : enabled
+      ? capability.evmAddress || capability.localSignerAvailable
+        ? "blocked"
+        : "missing-prerequisites"
+      : "disabled";
+
+  return {
+    id: "evm",
+    name: "Plugin EVM",
+    description:
+      "EVM wallet runtime for balance, transfer, and trade actions. Required for wallet execution in chat.",
+    tags: ["wallet", "evm", "bsc", "onchain"],
+    enabled,
+    configured: capability.pluginEvmRequired,
+    envKey: "EVM_PRIVATE_KEY",
+    category: "feature",
+    source: "bundled",
+    configKeys: [
+      "EVM_PRIVATE_KEY",
+      "BSC_RPC_URL",
+      "BSC_TESTNET_RPC_URL",
+      "MILADY_WALLET_NETWORK",
+    ],
+    parameters: [],
+    validationErrors: [],
+    validationWarnings: [],
+    npmName: EVM_PLUGIN_PACKAGE,
+    isActive: capability.pluginEvmLoaded,
+    autoEnabled: capability.pluginEvmRequired && !capability.pluginEvmLoaded,
+    managementMode: "core-optional",
+    capabilityStatus,
+    capabilityReason: capability.executionReady
+      ? "Wallet execution is ready."
+      : capability.executionBlockedReason,
+    prerequisites: [
+      { label: "wallet present", met: Boolean(capability.evmAddress) },
+      { label: "rpc ready", met: capability.rpcReady },
+      { label: "plugin loaded", met: capability.pluginEvmLoaded },
+    ],
+  };
+}
+
+const WALLET_CHAT_INTENT_RE =
+  /\b(wallet|privy|onchain|on-chain|address|balance|swap|trade|transfer|send|token|bnb|eth|sol)\b/i;
+
+const WALLET_EXECUTION_INTENT_RE =
+  /\b(swap|trade|transfer|send|buy|sell|execute|approve)\b/i;
+
+const WALLET_IDENTITY_INTENT_RE = /\b(wallet\s*address|address)\b/i;
+
+const WALLET_ACTION_REQUIRED_INTENT_RE =
+  /\b(balance|portfolio|holdings|funds|swap|trade|transfer|send|buy|sell|execute|approve)\b/i;
+
+const WALLET_PROGRESS_ONLY_RE =
+  /\b(let me|i(?:'| wi)ll|checking|fetching|looking up|pulling|one moment|just a second|hold on)\b[\s\S]{0,80}\b(check|look|fetch|pull|get|verify|see|review)\b/i;
+
+const WALLET_PROGRESS_PREFIX_RE =
+  /^\s*(?:let me|i(?:'ll| will)|checking|fetching|looking up|pulling|one moment|just a second|hold on)[\s\S]{0,120}?(?:now|\.{3}|…)?\s*/i;
+
+function isWalletActionRequiredIntent(prompt: string): boolean {
+  return (
+    WALLET_CHAT_INTENT_RE.test(prompt) &&
+    !WALLET_IDENTITY_INTENT_RE.test(prompt) &&
+    WALLET_ACTION_REQUIRED_INTENT_RE.test(prompt)
+  );
+}
+
+const EVM_ADDRESS_CAPTURE_RE = /\b0x[a-fA-F0-9]{40}\b/g;
+const DECIMAL_AMOUNT_CAPTURE_RE = /\b(\d+(?:\.\d+)?)\b/;
+const SEND_NATIVE_ASSET_RE =
+  /\b(?:t?bnb|bnb|eth|usdt|usdc|busd|dai|weth|wbtc)\b/i;
+const SWAP_ROUTE_PROVIDER_RE = /\b(pancakeswap-v2|0x|auto)\b/i;
+
+type WalletIntentFallback =
+  | { action: FallbackParsedAction; errorText?: undefined }
+  | { action?: undefined; errorText: string };
+
+function normalizeWalletAssetSymbol(asset: string): string {
+  const normalized = asset.trim().toUpperCase();
+  if (normalized === "TBNB") return "BNB";
+  return normalized;
+}
+
+function resolveWalletDrillTokenAddress(): string | null {
+  if (process.env.NODE_ENV === "production" && !process.env.VITEST) {
+    return null;
+  }
+  const raw = process.env.WALLET_DRILL_TOKEN_ADDRESS?.trim();
+  return raw && /^0x[a-fA-F0-9]{40}$/.test(raw) ? raw : null;
+}
+
+function buildWalletParameterFailureReply(
+  actionName: "TRANSFER_TOKEN" | "EXECUTE_TRADE",
+  reason: string,
+): string {
+  const walletNetwork =
+    process.env.MILADY_WALLET_NETWORK?.trim().toLowerCase() === "testnet"
+      ? "BSC testnet"
+      : "BSC";
+  return [
+    `Action: ${actionName}`,
+    `Chain: ${walletNetwork}`,
+    "Executed: false",
+    `Reason: ${reason}`,
+  ].join("\n");
+}
+
+function inferTransferFallbackAction(
+  prompt: string,
+): WalletIntentFallback | null {
+  if (!/\b(send|transfer|pay)\b/i.test(prompt)) return null;
+
+  const recipient = prompt.match(EVM_ADDRESS_CAPTURE_RE)?.[0];
+  if (!recipient) {
+    return {
+      errorText: buildWalletParameterFailureReply(
+        "TRANSFER_TOKEN",
+        "I need a recipient EVM address to send funds.",
+      ),
+    };
+  }
+
+  const amount = prompt.match(DECIMAL_AMOUNT_CAPTURE_RE)?.[1];
+  if (!amount) {
+    return {
+      errorText: buildWalletParameterFailureReply(
+        "TRANSFER_TOKEN",
+        "I need a positive transfer amount.",
+      ),
+    };
+  }
+
+  const assetMatch = prompt.match(SEND_NATIVE_ASSET_RE)?.[0];
+  if (!assetMatch) {
+    return {
+      errorText: buildWalletParameterFailureReply(
+        "TRANSFER_TOKEN",
+        "I need an asset symbol such as BNB, USDT, or USDC.",
+      ),
+    };
+  }
+
+  return {
+    action: {
+      name: "TRANSFER_TOKEN",
+      parameters: {
+        toAddress: recipient,
+        amount,
+        assetSymbol: normalizeWalletAssetSymbol(assetMatch),
+      },
+    },
+  };
+}
+
+function inferTradeSide(prompt: string): "buy" | "sell" | null {
+  if (/\bsell\b/i.test(prompt)) return "sell";
+  if (/\b(buy|swap|trade)\b/i.test(prompt)) return "buy";
+  return null;
+}
+
+function inferTradeFallbackAction(prompt: string): WalletIntentFallback | null {
+  if (!/\b(swap|trade|buy|sell)\b/i.test(prompt)) return null;
+
+  const side = inferTradeSide(prompt);
+  if (!side) {
+    return {
+      errorText: buildWalletParameterFailureReply(
+        "EXECUTE_TRADE",
+        'I need a trade side ("buy" or "sell").',
+      ),
+    };
+  }
+
+  const amount = prompt.match(DECIMAL_AMOUNT_CAPTURE_RE)?.[1];
+  if (!amount) {
+    return {
+      errorText: buildWalletParameterFailureReply(
+        "EXECUTE_TRADE",
+        "I need a positive trade amount.",
+      ),
+    };
+  }
+
+  const addresses = prompt.match(EVM_ADDRESS_CAPTURE_RE) ?? [];
+  const drillTokenAddress = resolveWalletDrillTokenAddress();
+  const tokenAddress = addresses[0] ?? drillTokenAddress;
+  if (!tokenAddress) {
+    return {
+      errorText: buildWalletParameterFailureReply(
+        "EXECUTE_TRADE",
+        drillTokenAddress === null &&
+          process.env.NODE_ENV === "production" &&
+          !process.env.VITEST
+          ? "I need a target token contract address in the prompt."
+          : "I need a target token address. Set WALLET_DRILL_TOKEN_ADDRESS or include the token contract address in the prompt.",
+      ),
+    };
+  }
+
+  const routeProvider =
+    prompt.match(SWAP_ROUTE_PROVIDER_RE)?.[1]?.toLowerCase() ??
+    "pancakeswap-v2";
+
+  return {
+    action: {
+      name: "EXECUTE_TRADE",
+      parameters: {
+        side,
+        amount,
+        tokenAddress,
+        routeProvider,
+      },
+    },
+  };
+}
+
+function inferWalletExecutionFallback(
+  prompt: string,
+): WalletIntentFallback | null {
+  return (
+    inferTransferFallbackAction(prompt) ?? inferTradeFallbackAction(prompt)
+  );
+}
+
+function hasUsableWalletFallbackParams(action: FallbackParsedAction): boolean {
+  if (action.name === "TRANSFER_TOKEN") {
+    return (
+      typeof action.parameters.toAddress === "string" &&
+      /^0x[a-fA-F0-9]{40}$/.test(action.parameters.toAddress) &&
+      typeof action.parameters.amount === "string" &&
+      action.parameters.amount.trim().length > 0 &&
+      typeof action.parameters.assetSymbol === "string" &&
+      action.parameters.assetSymbol.trim().length > 0
+    );
+  }
+
+  if (action.name === "EXECUTE_TRADE") {
+    return (
+      (action.parameters.side === "buy" || action.parameters.side === "sell") &&
+      typeof action.parameters.amount === "string" &&
+      action.parameters.amount.trim().length > 0 &&
+      typeof action.parameters.tokenAddress === "string" &&
+      /^0x[a-fA-F0-9]{40}$/.test(action.parameters.tokenAddress)
+    );
+  }
+
+  return true;
+}
+
+function buildWalletActionNotExecutedReply(
+  runtime: AgentRuntime,
+  userPrompt: string,
+): string {
+  const addrs = getWalletAddresses();
+  const walletNetwork =
+    process.env.MILADY_WALLET_NETWORK?.trim().toLowerCase() === "testnet"
+      ? "testnet"
+      : "mainnet";
+  const pluginEvmLoaded = isPluginLoadedByName(runtime, EVM_PLUGIN_PACKAGE);
+  const rpcReady = Boolean(
+    process.env.BSC_RPC_URL?.trim() ||
+      process.env.BSC_TESTNET_RPC_URL?.trim() ||
+      process.env.NODEREAL_BSC_RPC_URL?.trim() ||
+      process.env.QUICKNODE_BSC_RPC_URL?.trim(),
+  );
+  const executionBlockedReason = !addrs.evmAddress
+    ? "No EVM wallet is active yet."
+    : !rpcReady
+      ? "BSC RPC is not configured."
+      : !pluginEvmLoaded
+        ? "plugin-evm is not loaded, so EVM wallet execution is unavailable."
+        : "A wallet action was not executed for this turn.";
+
+  return [
+    `I could not complete "${userPrompt}" because no wallet action actually ran.`,
+    `Wallet network: ${walletNetwork}.`,
+    `Detected wallets:`,
+    `- EVM: ${addrs.evmAddress ?? "not generated"}`,
+    `- Solana: ${addrs.solanaAddress ?? "not generated"}`,
+    `plugin-evm: ${pluginEvmLoaded ? "loaded" : "not loaded"}.`,
+    `RPC ready: ${rpcReady ? "yes" : "no"}.`,
+    `Blocked reason: ${executionBlockedReason}`,
+  ].join("\n");
+}
+
+function trimWalletProgressPrefix(text: string): string {
+  const balanceIdx = text.indexOf("Wallet Balances:");
+  if (balanceIdx > 0) {
+    return text.slice(balanceIdx).trimStart();
+  }
+
+  const markers = [
+    "Action: TRANSFER_TOKEN",
+    "Action: EXECUTE_TRADE",
+    "Transfer",
+    "Swap",
+    "Trade",
+    "Tx hash:",
+    "Transaction hash:",
+  ];
+  for (const marker of markers) {
+    const idx = text.indexOf(marker);
+    if (idx <= 0) continue;
+    const prefix = text.slice(0, idx);
+    if (WALLET_PROGRESS_PREFIX_RE.test(prefix)) {
+      return text.slice(idx).trimStart();
+    }
+  }
+  return text;
+}
+
+function resolveWalletModeGuidanceReply(
+  state: ServerState,
+  prompt: string,
+): string | null {
+  if (!WALLET_CHAT_INTENT_RE.test(prompt)) {
+    return null;
+  }
+
+  const capability = resolveWalletCapabilityStatus(state);
+  const {
+    automationMode,
+    evmAddress,
+    solanaAddress,
+    walletNetwork,
+    pluginEvmLoaded,
+    executionReady,
+    executionBlockedReason,
+  } = capability;
+  const walletSummary = `Detected wallets:
+- EVM: ${evmAddress ?? "not generated"}
+- Solana: ${solanaAddress ?? "not generated"}`;
+
+  if (automationMode === "connectors-only") {
+    if (!WALLET_EXECUTION_INTENT_RE.test(prompt)) {
+      return null;
+    }
+    return [
+      "I am in connectors-only mode, so wallet actions are disabled in chat right now.",
+      "Turn on full mode with one of these:",
+      '1) Settings -> Permissions -> Agent Automation Mode -> "Full".',
+      '2) API: PUT /api/permissions/automation-mode with {"mode":"full"}.',
+      "Then retry your wallet request.",
+      `Wallet network: ${walletNetwork}.`,
+      walletSummary,
+    ].join("\n");
+  }
+
+  if (
+    !evmAddress &&
+    !solanaAddress &&
+    WALLET_EXECUTION_INTENT_RE.test(prompt)
+  ) {
+    const privyConfigured = isPrivyWalletProvisioningEnabled();
+    return [
+      "No wallet is active yet.",
+      "Open Wallet page and choose one setup path:",
+      `- Managed (Privy): ${privyConfigured ? "available" : "blocked until PRIVY_APP_ID and PRIVY_APP_SECRET are set on the backend"}.`,
+      "- Local: Generate or Import wallet in the Wallet wizard.",
+      walletSummary,
+    ].join("\n");
+  }
+
+  if (WALLET_IDENTITY_INTENT_RE.test(prompt)) {
+    return [
+      `Wallet network: ${walletNetwork}.`,
+      walletSummary,
+      `plugin-evm: ${pluginEvmLoaded ? "loaded" : "not loaded"}.`,
+      `Execution readiness: ${executionReady ? "ready for wallet actions" : (executionBlockedReason ?? "blocked")}.`,
+      `Automation mode: ${automationMode}.`,
+    ].join("\n");
+  }
+
+  if (WALLET_EXECUTION_INTENT_RE.test(prompt) && !executionReady) {
+    return [
+      `Wallet execution is currently blocked: ${executionBlockedReason ?? "unknown reason"}`,
+      `Wallet network: ${walletNetwork}.`,
+      walletSummary,
+      `plugin-evm: ${pluginEvmLoaded ? "loaded" : "not loaded"}.`,
+      `Automation mode: ${automationMode}.`,
+    ].join("\n");
+  }
+
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -5656,6 +6447,15 @@ export function resolveCorsOrigin(origin?: string): string | null {
   const trimmed = origin.trim();
   if (!trimmed) return null;
 
+  // Cloud-provisioned containers default to allowing all origins so the
+  // browser web UI can reach the agent API without extra config.
+  if (
+    process.env.MILADY_CLOUD_PROVISIONED === "1" ||
+    process.env.ELIZA_CLOUD_PROVISIONED === "1"
+  ) {
+    return trimmed;
+  }
+
   // When bound to a wildcard address, allow any origin. Non-loopback binds still
   // require an explicit token, so this only relaxes the browser origin check.
   const bindHost = resolveApiBindHost(process.env).toLowerCase();
@@ -5721,7 +6521,10 @@ let pairingExpiresAt = 0;
 const pairingAttempts = new Map<string, { count: number; resetAt: number }>();
 
 function pairingEnabled(): boolean {
-  return Boolean(getConfiguredApiToken()) && process.env.ELIZA_PAIRING_DISABLED !== "1";
+  return (
+    Boolean(getConfiguredApiToken()) &&
+    process.env.ELIZA_PAIRING_DISABLED !== "1"
+  );
 }
 
 function normalizePairingCode(code: string): string {
@@ -5979,12 +6782,14 @@ export function resolveWalletExportRejection(
     };
   }
 
-  const expected = process.env.ELIZA_WALLET_EXPORT_TOKEN?.trim();
+  const expected =
+    process.env.ELIZA_WALLET_EXPORT_TOKEN?.trim() ||
+    process.env.MILADY_WALLET_EXPORT_TOKEN?.trim();
   if (!expected) {
     return {
       status: 403,
       reason:
-        "Wallet export is disabled. Set ELIZA_WALLET_EXPORT_TOKEN to enable secure exports.",
+        "Wallet export is disabled. Set ELIZA_WALLET_EXPORT_TOKEN (or MILADY_WALLET_EXPORT_TOKEN) to enable secure exports.",
     };
   }
 
@@ -8502,7 +9307,9 @@ async function handleRequest(
 
     json(res, {
       names: pickRandomNames(5),
-      styles: getStylePresets(resolveConfiguredCharacterLanguage(state.config, req)),
+      styles: getStylePresets(
+        resolveConfiguredCharacterLanguage(state.config, req),
+      ),
       providers: getProviderOptions(),
       cloudProviders: getCloudProviderOptions(),
       models: getModelOptions(),
@@ -8610,7 +9417,10 @@ async function handleRequest(
       ...(config.ui.assistant ?? {}),
       name: agent.name,
     };
-    if (typeof body.avatarIndex === "number" && Number.isFinite(body.avatarIndex)) {
+    if (
+      typeof body.avatarIndex === "number" &&
+      Number.isFinite(body.avatarIndex)
+    ) {
       config.ui.avatarIndex = Number(body.avatarIndex);
     }
     config.ui.language = configuredLanguage;
@@ -8911,9 +9721,10 @@ async function handleRequest(
         ) as NonNullable<typeof runtimeCharacter.style>;
       }
       if (normalizedMessageExamples) {
-        runtimeCharacter.messageExamples = normalizedMessageExamples as NonNullable<
-          typeof runtimeCharacter.messageExamples
-        >;
+        runtimeCharacter.messageExamples =
+          normalizedMessageExamples as NonNullable<
+            typeof runtimeCharacter.messageExamples
+          >;
       }
       if (Array.isArray(agent.postExamples)) {
         runtimeCharacter.postExamples = [...agent.postExamples];
@@ -8923,9 +9734,8 @@ async function handleRequest(
         await state.runtime.updateAgent(state.runtime.agentId, {
           name: runtimeCharacter.name,
           metadata: {
-            ...(
-              runtimeCharacter as { metadata?: Record<string, unknown> }
-            ).metadata,
+            ...(runtimeCharacter as { metadata?: Record<string, unknown> })
+              .metadata,
             character: {
               name: runtimeCharacter.name,
               bio: runtimeCharacter.bio,
@@ -9199,6 +10009,27 @@ async function handleRequest(
     const bundledIds = new Set(state.plugins.map((p) => p.id));
     const installedEntries = discoverInstalledPlugins(freshConfig, bundledIds);
     const allPlugins: PluginEntry[] = [...state.plugins, ...installedEntries];
+    const evmDiagnostic = buildPluginEvmDiagnosticEntry({
+      config: state.config,
+      runtime: state.runtime,
+    });
+    const existingEvmPlugin = allPlugins.find(
+      (plugin) => plugin.id === "evm" || plugin.npmName === EVM_PLUGIN_PACKAGE,
+    );
+    if (existingEvmPlugin) {
+      existingEvmPlugin.autoEnabled = evmDiagnostic.autoEnabled;
+      existingEvmPlugin.managementMode = "core-optional";
+      existingEvmPlugin.capabilityStatus = evmDiagnostic.capabilityStatus;
+      existingEvmPlugin.capabilityReason = evmDiagnostic.capabilityReason;
+      existingEvmPlugin.prerequisites = evmDiagnostic.prerequisites;
+      existingEvmPlugin.setupGuideUrl =
+        existingEvmPlugin.setupGuideUrl ?? evmDiagnostic.setupGuideUrl;
+      existingEvmPlugin.tags = Array.from(
+        new Set([...(existingEvmPlugin.tags ?? []), ...evmDiagnostic.tags]),
+      );
+    } else {
+      allPlugins.push(evmDiagnostic);
+    }
 
     // Resolve enabled state from config and loaded state from runtime.
     // "enabled" = user wants it active (config). "isActive" = actually loaded.
@@ -9245,6 +10076,15 @@ async function handleRequest(
           plugin.loadError =
             "Plugin installed but failed to load — the package may be missing compiled files.";
         }
+      }
+      if (plugin.id === "evm" || plugin.npmName === EVM_PLUGIN_PACKAGE) {
+        plugin.enabled = evmDiagnostic.enabled;
+        plugin.isActive = evmDiagnostic.isActive;
+        plugin.autoEnabled = evmDiagnostic.autoEnabled;
+        plugin.managementMode = "core-optional";
+        plugin.capabilityStatus = evmDiagnostic.capabilityStatus;
+        plugin.capabilityReason = evmDiagnostic.capabilityReason;
+        plugin.prerequisites = evmDiagnostic.prerequisites;
       }
     }
 
@@ -11244,6 +12084,15 @@ async function handleRequest(
       ensureWalletKeysInEnvAndConfig,
       resolveWalletExportRejection,
       scheduleRuntimeRestart,
+      deps: {
+        getWalletAddresses,
+        fetchEvmBalances,
+        fetchSolanaBalances,
+        fetchSolanaNativeBalanceViaRpc,
+        validatePrivateKey,
+        importWallet,
+        generateWalletForChain,
+      },
       readJsonBody,
       json,
       error,
@@ -11679,7 +12528,11 @@ async function handleRequest(
     }
     // Also remove from legacy channels key
     const stateConfigRecord = state.config as Record<string, unknown>;
-    if (stateConfigRecord.channels && typeof stateConfigRecord.channels === "object" && Object.hasOwn(stateConfigRecord.channels, name)) {
+    if (
+      stateConfigRecord.channels &&
+      typeof stateConfigRecord.channels === "object" &&
+      Object.hasOwn(stateConfigRecord.channels, name)
+    ) {
       delete (stateConfigRecord.channels as Record<string, unknown>)[name];
     }
 
@@ -12471,14 +13324,9 @@ async function handleRequest(
       ok: true,
       tradePermissionMode: newMode,
       canUserLocalExecute: canUseLocalTradeExecution(newMode, false),
-      canAgentAutoTrade: canUseLocalTradeExecution(
-        newMode,
-        true,
-        undefined,
-        {
-          consumeAgentQuota: false,
-        },
-      ),
+      canAgentAutoTrade: canUseLocalTradeExecution(newMode, true, undefined, {
+        consumeAgentQuota: false,
+      }),
     });
     return;
   }
@@ -12509,9 +13357,9 @@ async function handleRequest(
   // used by action handlers (can-i, etc.) to evaluate permissions.
   if (method === "GET" && pathname === "/api/agent/self-status") {
     const addrs = getWalletAddresses();
-    const evmAddress = addrs.evmAddress ?? null;
+    const capability = resolveWalletCapabilityStatus(state);
+    const evmAddress = capability.evmAddress;
     const tradePermissionMode = resolveTradePermissionMode(state.config);
-    const localSigner = Boolean(process.env.EVM_PRIVATE_KEY?.trim());
     const walletRpcReadiness = resolveWalletRpcReadiness(state.config);
     const bscRpcReady = walletRpcReadiness.managedBscRpcReady;
     const canLocalTrade = canUseLocalTradeExecution(tradePermissionMode, false);
@@ -12524,11 +13372,7 @@ async function handleRequest(
       },
     );
     const canTrade = Boolean(evmAddress) && bscRpcReady;
-    const automationMode: "connectors-only" | "full" =
-      (state.config.features as Record<string, unknown> | undefined)
-        ?.automationMode === "full"
-        ? "full"
-        : "connectors-only";
+    const automationMode = capability.automationMode;
 
     // Include registry snapshot summary if available
     let registrySummary: string | null = null;
@@ -12605,8 +13449,9 @@ async function handleRequest(
       tradePermissionMode,
       shellEnabled: state.shellEnabled !== false,
       wallet: {
-        hasWallet: Boolean(evmAddress || addrs.solanaAddress),
-        hasEvm: Boolean(evmAddress),
+        walletSource: capability.walletSource,
+        hasWallet: capability.hasWallet,
+        hasEvm: capability.hasEvm,
         hasSolana: Boolean(addrs.solanaAddress),
         evmAddress,
         evmAddressShort:
@@ -12618,8 +13463,13 @@ async function handleRequest(
           addrs.solanaAddress && addrs.solanaAddress.length >= 12
             ? `${addrs.solanaAddress.slice(0, 4)}...${addrs.solanaAddress.slice(-4)}`
             : (addrs.solanaAddress ?? null),
-        localSignerAvailable: localSigner,
+        localSignerAvailable: capability.localSignerAvailable,
         managedBscRpcReady: bscRpcReady,
+        rpcReady: capability.rpcReady,
+        pluginEvmLoaded: capability.pluginEvmLoaded,
+        pluginEvmRequired: capability.pluginEvmRequired,
+        executionReady: capability.executionReady,
+        executionBlockedReason: capability.executionBlockedReason,
       },
       plugins: {
         totalActive: pluginNames.length,
@@ -12629,8 +13479,10 @@ async function handleRequest(
       },
       capabilities: {
         canTrade,
-        canLocalTrade: canTrade && localSigner && canLocalTrade,
-        canAutoTrade: canTrade && localSigner && canAgentAutoTrade,
+        canLocalTrade:
+          canTrade && capability.localSignerAvailable && canLocalTrade,
+        canAutoTrade:
+          canTrade && capability.localSignerAvailable && canAgentAutoTrade,
         canUseBrowser: hasBrowserPlugin,
         canUseComputer: hasComputerPlugin,
         canRunTerminal: state.shellEnabled !== false,
@@ -13487,7 +14339,7 @@ async function handleRequest(
     const greeting = resolveConversationGreetingText(
       runtime,
       lang,
-      state.config.ui?.presetId ?? null,
+      state.config.ui,
     ).trim();
     if (!greeting) {
       return {
@@ -14427,7 +15279,8 @@ async function handleRequest(
       error,
     });
     if (!chatPayload) return;
-    const { prompt, channelType, images, conversationMode } = chatPayload;
+    const { prompt, channelType, images, conversationMode, preferredLanguage } =
+      chatPayload;
 
     const runtime = state.runtime;
     if (!runtime) {
@@ -14463,6 +15316,42 @@ async function handleRequest(
       await persistConversationMemory(runtime, messageToStore);
     } catch (err) {
       error(res, `Failed to store user message: ${getErrorMessage(err)}`, 500);
+      return;
+    }
+
+    const walletModeGuidance = resolveWalletModeGuidanceReply(state, prompt);
+    if (walletModeGuidance) {
+      initSse(res);
+      let aborted = false;
+      req.on("close", () => {
+        aborted = true;
+      });
+      if (!aborted) {
+        writeChatTokenSse(res, walletModeGuidance, walletModeGuidance);
+        try {
+          await persistAssistantConversationMemory(
+            runtime,
+            conv.roomId,
+            walletModeGuidance,
+            channelType,
+            turnStartedAt,
+          );
+          conv.updatedAt = new Date().toISOString();
+        } catch (persistErr) {
+          writeSse(res, {
+            type: "error",
+            message: getErrorMessage(persistErr),
+          });
+          res.end();
+          return;
+        }
+        writeSseJson(res, {
+          type: "done",
+          fullText: walletModeGuidance,
+          agentName: state.agentName,
+        });
+      }
+      res.end();
       return;
     }
 
@@ -14505,6 +15394,7 @@ async function handleRequest(
           },
           resolveNoResponseText: () =>
             resolveNoResponseFallback(state.logBuffer, runtime),
+          preferredLanguage,
         },
       );
 
@@ -14573,7 +15463,8 @@ async function handleRequest(
       error,
     });
     if (!chatPayload) return;
-    const { prompt, channelType, images, conversationMode } = chatPayload;
+    const { prompt, channelType, images, conversationMode, preferredLanguage } =
+      chatPayload;
     const runtime = state.runtime;
     if (!runtime) {
       error(res, "Agent is not running", 503);
@@ -14610,6 +15501,27 @@ async function handleRequest(
       return;
     }
 
+    const walletModeGuidance = resolveWalletModeGuidanceReply(state, prompt);
+    if (walletModeGuidance) {
+      try {
+        await persistAssistantConversationMemory(
+          runtime,
+          conv.roomId,
+          walletModeGuidance,
+          channelType,
+          turnStartedAt,
+        );
+        conv.updatedAt = new Date().toISOString();
+        json(res, {
+          text: walletModeGuidance,
+          agentName: state.agentName,
+        });
+      } catch (persistErr) {
+        error(res, getErrorMessage(persistErr), 500);
+      }
+      return;
+    }
+
     try {
       const result = await generateChatResponse(
         runtime,
@@ -14618,6 +15530,7 @@ async function handleRequest(
         {
           resolveNoResponseText: () =>
             resolveNoResponseFallback(state.logBuffer, runtime),
+          preferredLanguage,
         },
       );
 
@@ -14822,7 +15735,8 @@ async function handleRequest(
       MAX_BODY_BYTES,
     );
     if (!chatPayload) return;
-    const { prompt, channelType, conversationMode } = chatPayload;
+    const { prompt, channelType, conversationMode, preferredLanguage } =
+      chatPayload;
 
     // Cloud proxy path
 
@@ -14849,6 +15763,19 @@ async function handleRequest(
     let streamedText = "";
 
     try {
+      const walletModeGuidance = resolveWalletModeGuidanceReply(state, prompt);
+      if (walletModeGuidance) {
+        if (!aborted) {
+          writeChatTokenSse(res, walletModeGuidance, walletModeGuidance);
+          writeSseJson(res, {
+            type: "done",
+            fullText: walletModeGuidance,
+            agentName: state.agentName,
+          });
+        }
+        return;
+      }
+
       const runtime = state.runtime;
       const agentName = runtime.character.name ?? "Eliza";
       await ensureLegacyChatConnection(runtime, agentName);
@@ -14889,6 +15816,7 @@ async function handleRequest(
           },
           resolveNoResponseText: () =>
             resolveNoResponseFallback(state.logBuffer, runtime),
+          preferredLanguage,
         },
       );
 
@@ -14936,7 +15864,8 @@ async function handleRequest(
       MAX_BODY_BYTES,
     );
     if (!chatPayload) return;
-    const { prompt, channelType, conversationMode } = chatPayload;
+    const { prompt, channelType, conversationMode, preferredLanguage } =
+      chatPayload;
 
     if (!state.runtime) {
       error(res, "Agent is not running", 503);
@@ -14953,6 +15882,15 @@ async function handleRequest(
     }
 
     try {
+      const walletModeGuidance = resolveWalletModeGuidanceReply(state, prompt);
+      if (walletModeGuidance) {
+        json(res, {
+          text: walletModeGuidance,
+          agentName: state.agentName,
+        });
+        return;
+      }
+
       const runtime = state.runtime;
       const agentName = runtime.character.name ?? "Eliza";
       await ensureLegacyChatConnection(runtime, agentName);
@@ -14982,6 +15920,7 @@ async function handleRequest(
         {
           resolveNoResponseText: () =>
             resolveNoResponseFallback(state.logBuffer, runtime),
+          preferredLanguage,
         },
       );
 
@@ -17578,6 +18517,52 @@ export async function startApiServer(opts?: {
           destinations,
           activeDestinationId,
           activeStreamSource: { type: "stream-tab" as const },
+          mirrorStreamAvatarToElizaConfig: (avatarIndex: number) => {
+            try {
+              if (!Number.isFinite(avatarIndex)) {
+                return;
+              }
+              const diskCfg = loadElizaConfig();
+              const lang =
+                state.config.ui?.language ?? diskCfg.ui?.language;
+              const preset = resolveStylePresetByAvatarIndex(
+                avatarIndex,
+                lang,
+              );
+              const nextUi: ElizaConfig["ui"] = {
+                ...(state.config.ui ?? {}),
+                avatarIndex,
+                ...(preset?.id ? { presetId: preset.id } : {}),
+              };
+              state.config = {
+                ...state.config,
+                ui: nextUi,
+              };
+              // Merge disk + live server config so we never persist a minimal
+              // snapshot (e.g. ENOENT default) and clobber milady.json during
+              // onboarding while state.config still holds the full boot payload.
+              const toSave: ElizaConfig = {
+                ...diskCfg,
+                ...state.config,
+                ui: {
+                  ...(diskCfg.ui ?? {}),
+                  ...(state.config.ui ?? {}),
+                  ...nextUi,
+                },
+              };
+              saveElizaConfig(toSave);
+              state.config = {
+                ...state.config,
+                ui: toSave.ui,
+              };
+            } catch (err) {
+              logger.warn(
+                `[eliza-api] mirrorStreamAvatarToElizaConfig failed: ${
+                  err instanceof Error ? err.message : String(err)
+                }`,
+              );
+            }
+          },
           get config() {
             const cfg = state.config as Record<string, unknown> | undefined;
             const msgs = cfg?.messages as Record<string, unknown> | undefined;
@@ -18086,7 +19071,8 @@ export async function startApiServer(opts?: {
     bindRuntimeStreams(rt);
     // AppManager doesn't need a runtime reference
     state.agentState = "running";
-    state.agentName = rt.character.name ?? resolveDefaultAgentName(state.config);
+    state.agentName =
+      rt.character.name ?? resolveDefaultAgentName(state.config);
     state.model = detectRuntimeModel(rt, state.config);
     state.startedAt = Date.now();
     state.startup = {

@@ -1326,5 +1326,14 @@
   "whatsappqroverlay.Tap": "Toca",
   "whatsappqroverlay.TryAgain": "Intentar otra vez",
   "whatsappqroverlay.UsesAnUnofficialW": "Utiliza una API de WhatsApp no ​​oficial. Utilice un número de teléfono exclusivo.",
-  "whatsappqroverlay.andSelect": "y seleccione"
+  "whatsappqroverlay.andSelect": "y seleccione",
+  "wallet.overviewTitle": "Wallet Overview",
+  "wallet.overviewTitleChain": "{{chain}} Wallet Overview",
+  "wallet.overviewSubtitle": "Track balances, managed addresses, and trading readiness in one place.",
+  "wallet.fundingRouteAvailable": "1 funding route available",
+  "wallet.fundingRoutesAvailable": "{{count}} funding routes available",
+  "wallet.managedWalletOverview": "Managed wallet overview",
+  "onboarding.cloudLoginConnected": "✓ Connected to Eliza Cloud",
+  "chat.micTitleIdleEnhanced": "Voice input — assistant replies use neural TTS (ElevenLabs). Change under Settings → Voice.",
+  "chat.micTitleIdleStandard": "Voice input — assistant uses device speech. Neural TTS and billing: Settings → Voice."
 }

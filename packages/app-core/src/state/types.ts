@@ -424,6 +424,7 @@ export interface AppState {
   // Eliza Cloud
   elizaCloudEnabled: boolean;
   elizaCloudConnected: boolean;
+  elizaCloudHasPersistedKey: boolean;
   elizaCloudCredits: number | null;
   elizaCloudCreditsLow: boolean;
   elizaCloudCreditsCritical: boolean;

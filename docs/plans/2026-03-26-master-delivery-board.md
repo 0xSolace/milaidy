@@ -25,7 +25,6 @@ This is the top-level tracker for the parallel projects discussed.
 - Added safe provider fallback behavior and clearer provider-attempt error notes.
 - API handlers now pass routing preference through quote and execute paths.
 - Local validation complete except one ambient app-core type dependency gap (`vite/client`) in this environment.
-
 ## Branch/PR Discipline
 
 - One stream = one branch = one PR.

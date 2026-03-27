@@ -3,9 +3,15 @@ import { buttonVariants } from "./button";
 
 describe("buttonVariants", () => {
   describe("default variant", () => {
-    it("includes the accent surface background", () => {
+    it("includes bg-accent/18", () => {
       const classes = buttonVariants({ variant: "default" });
       expect(classes).toContain("bg-accent/18");
+    });
+
+    it("uses semantic accent text tokens for light and dark themes", () => {
+      const classes = buttonVariants({ variant: "default" });
+      expect(classes).toContain("text-accent-fg");
+      expect(classes).toContain("dark:text-accent");
     });
 
     it("does not include bg-primary", () => {

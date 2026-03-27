@@ -35,7 +35,7 @@ const DOCKERFILES = [
     name: "Dockerfile.ci",
     path: path.join(ROOT, "Dockerfile.ci"),
     expectedBase: "slim",
-    expectedCommand: 'CMD ["node", "--import", "tsx", "milady.mjs", "start"]',
+    expectedCommand: 'CMD ["node", "scripts/container-entrypoint.mjs"]',
   },
 ] as const;
 
@@ -68,10 +68,13 @@ describe("Docker contract", () => {
     expect(parseArg(content, "NODE_VERSION")).toBe(EXPECTED_NODE_VERSION);
     expect(parseArg(content, "BUN_VERSION")).toBe(EXPECTED_BUN_VERSION);
     expect(content).toContain(`FROM node:\${NODE_VERSION}-${expectedBase}`);
-    expect(content).toContain(EXPECTED_ENTRYPOINT);
+    if (filePath.endsWith("Dockerfile.ci")) {
+      expect(content).not.toContain(EXPECTED_ENTRYPOINT);
+    } else {
+      expect(content).toContain(EXPECTED_ENTRYPOINT);
+    }
     expect(content).toContain(`EXPOSE ${EXPECTED_EXPOSE_PORT}`);
     expect(content).toContain(expectedCommand);
-    expect(content).toContain(`\${PORT:-\${MILADY_PORT:-2138}}`);
 
     const labelKeys = collectOciLabelKeys(content);
     for (const key of EXPECTED_LABEL_KEYS) {

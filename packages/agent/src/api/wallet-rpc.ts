@@ -122,6 +122,13 @@ const WALLET_RPC_CONFIG_KEYS = [
   "SOLANA_RPC_URL",
 ] as const satisfies readonly WalletRpcCredentialKey[];
 
+function resolveWalletNetwork(): "mainnet" | "testnet" {
+  const explicit = process.env.MILADY_WALLET_NETWORK?.trim().toLowerCase();
+  if (explicit === "testnet") return "testnet";
+  if (explicit === "mainnet") return "mainnet";
+  return process.env.BSC_TESTNET_RPC_URL?.trim() ? "testnet" : "mainnet";
+}
+
 function normalizeSecret(value: string | null | undefined): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();

@@ -1,6 +1,6 @@
-import { Button } from "@miladyai/ui";
 import { useRenderGuard } from "@miladyai/app-core/hooks";
 import { useApp } from "@miladyai/app-core/state";
+import { Button } from "@miladyai/ui";
 import { PanelLeftOpen } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { AgentActivityBox } from "./AgentActivityBox";
@@ -37,7 +37,6 @@ const CompanionViewOverlay = memo(function CompanionViewOverlay() {
     chatAgentVoiceMuted,
     chatLastUsage,
     conversationMessages,
-    conversations,
     elizaCloudAuthRejected,
     elizaCloudConnected,
     elizaCloudCredits,
@@ -48,7 +47,6 @@ const CompanionViewOverlay = memo(function CompanionViewOverlay() {
     handleNewConversation,
     navigation,
     ptySessions,
-    activeConversationId,
     setState,
     setTab,
     switchShellView,
@@ -123,24 +121,6 @@ const CompanionViewOverlay = memo(function CompanionViewOverlay() {
       t,
     ],
   );
-  const activeConversation = useMemo(
-    () =>
-      conversations.find(
-        (conversation) => conversation.id === activeConversationId,
-      ) ?? null,
-    [activeConversationId, conversations],
-  );
-  const activeConversationTitle = useMemo(() => {
-    if (!activeConversation?.title) return t("conversations.newChat");
-    if (
-      activeConversation.title === "New Chat" ||
-      activeConversation.title === "companion.newChat" ||
-      activeConversation.title === "conversations.newChatTitle"
-    ) {
-      return t("conversations.newChat");
-    }
-    return activeConversation.title;
-  }, [activeConversation?.title, t]);
 
   const handleInferenceAlertClick = useCallback(() => {
     if (!inferenceNotice) return;
@@ -168,11 +148,12 @@ const CompanionViewOverlay = memo(function CompanionViewOverlay() {
         onClick={() => setHistoryOpen(true)}
         onPointerDown={(event) => event.stopPropagation()}
         className="h-11 min-h-[44px] min-w-[44px] max-w-[min(14rem,44vw)] justify-start gap-2 rounded-xl px-3 text-left"
-        aria-label={`${t("conversations.chats")}: ${activeConversationTitle}`}
-        title={activeConversationTitle}
+        data-testid="companion-history-button"
+        aria-label={t("conversations.chats")}
+        title={t("conversations.chats")}
       >
         <PanelLeftOpen className="h-4 w-4 shrink-0" aria-hidden />
-        <span className="truncate text-sm">{activeConversationTitle}</span>
+        <span className="truncate text-sm">{t("conversations.chats")}</span>
       </Button>
       {inferenceNotice ? (
         <InferenceCloudAlertButton

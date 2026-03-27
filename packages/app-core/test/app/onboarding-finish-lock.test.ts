@@ -467,8 +467,78 @@ describe("onboarding finish locking", () => {
     });
   });
 
+  it("requires an explicit permissions bypass before finishing", async () => {
+    mockClient.getPermissions.mockResolvedValue({
+      accessibility: { id: "accessibility", ...permissionState("granted") },
+      "screen-recording": {
+        id: "screen-recording",
+        ...permissionState("denied", true),
+      },
+      microphone: { id: "microphone", ...permissionState("granted") },
+      camera: { id: "camera", ...permissionState("granted") },
+      shell: { id: "shell", ...permissionState("granted") },
+    });
 
-  it("does not create an empty conversation after onboarding completes", async () => {
+    let api: ProbeApi | null = null;
+    let tree: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      tree = TestRenderer.create(
+        React.createElement(
+          AppProvider,
+          null,
+          React.createElement(Probe, {
+            onReady: (nextApi) => {
+              api = nextApi;
+            },
+          }),
+        ),
+      );
+    });
+
+    expect(api).not.toBeNull();
+    const requireApi = () => {
+      if (!api) throw new Error("onboarding probe API was not initialized");
+      return api;
+    };
+
+    await waitForOnboardingOptions(requireApi);
+    await act(async () => {
+      configureOnboardingProviders(requireApi());
+    });
+    await advanceToPermissions(requireApi);
+
+    await act(async () => {
+      await api?.handleOnboardingNext();
+    });
+    expect(requireApi().getOnboardingStep()).toBe("launch");
+    expect(mockClient.submitOnboarding).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await api?.handleOnboardingNext({ allowPermissionBypass: true });
+    });
+    expect(mockClient.submitOnboarding).toHaveBeenCalledTimes(1);
+    expect(requireApi().snapshot().onboardingComplete).toBe(true);
+
+    await act(async () => {
+      tree?.unmount();
+    });
+  });
+
+  it("creates a default conversation when the server has none after onboarding completes", async () => {
+    const createdMeta = {
+      id: "conv-created",
+      title: "New Chat",
+      roomId: "room-created",
+      createdAt: "2026-02-01T00:00:00.000Z",
+      updatedAt: "2026-02-01T00:00:00.000Z",
+    };
+    mockClient.listConversations.mockImplementation(async () => ({
+      conversations:
+        mockClient.createConversation.mock.calls.length > 0
+          ? [createdMeta]
+          : [],
+    }));
+
     let api: ProbeApi | null = null;
     let tree: TestRenderer.ReactTestRenderer;
     await act(async () => {
@@ -506,10 +576,15 @@ describe("onboarding finish locking", () => {
     const snapshot = requireApi().snapshot();
     expect(snapshot.onboardingComplete).toBe(true);
     expect(snapshot.tab).toBe("character-select");
-    expect(snapshot.activeConversationId).toBeNull();
-    expect(snapshot.conversationMessages).toEqual([]);
     expect(mockClient.restartAgent).toHaveBeenCalled();
-    expect(mockClient.createConversation).not.toHaveBeenCalled();
+    expect(mockClient.createConversation).toHaveBeenCalledWith(undefined, {
+      bootstrapGreeting: true,
+      lang: "en",
+    });
+
+    await vi.waitFor(() => {
+      expect(requireApi().snapshot().activeConversationId).toBe("conv-created");
+    });
 
     await act(async () => {
       tree?.unmount();

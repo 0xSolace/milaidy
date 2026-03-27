@@ -1,9 +1,19 @@
-import { dispatchAppEmoteEvent } from "@miladyai/app-core/events";
+import {
+  dispatchAppEmoteEvent,
+  dispatchWindowEvent,
+  ONBOARDING_VOICE_PREVIEW_AWAIT_TELEPORT_EVENT,
+  VRM_TELEPORT_COMPLETE_EVENT,
+} from "@miladyai/app-core/events";
 import { useApp } from "@miladyai/app-core/state";
 import { getStylePresets } from "@miladyai/shared/onboarding-presets";
 import { Button, Input } from "@miladyai/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { getElizaApiToken, resolveApiUrl, resolveAppAssetUrl } from "../../utils";
+import { getElizaApiToken, resolveAppAssetUrl } from "../../utils";
+import {
+  fetchWithTimeout,
+  resolveCompatApiToken,
+} from "../../utils/api-request";
+import { resolveApiUrl } from "../../utils/asset-url";
 import { PREMADE_VOICES } from "../../voice/types";
 import {
   CharacterRoster,
@@ -11,7 +21,7 @@ import {
   resolveRosterEntries,
 } from "../CharacterRoster";
 import { resolvePreviewTtsEndpoints } from "./identity-preview-tts";
-import { onboardingRosterRailClassName } from "./onboarding-form-primitives";
+
 import {
   OnboardingStepHeader,
   onboardingBodyTextShadowStyle,
@@ -24,7 +34,20 @@ import {
   spawnOnboardingRipple,
 } from "./onboarding-step-chrome";
 
-export function IdentityStep() {
+const IMPORT_AGENT_FETCH_TIMEOUT_MS = 60_000;
+
+export interface IdentityStepProps {
+  /**
+   * When the onboarding VRM stage is off (`disableVrm`), `eliza:vrm-teleport-complete`
+   * never fires — play the voice preview immediately on character swap instead of
+   * waiting on an event that will not arrive.
+   */
+  gateVoicePreviewOnTeleport?: boolean;
+}
+
+export function IdentityStep({
+  gateVoicePreviewOnTeleport = true,
+}: IdentityStepProps) {
   const { onboardingStyle, handleOnboardingNext, setState, t, uiLanguage } =
     useApp();
 
@@ -45,7 +68,6 @@ export function IdentityStep() {
   const previewObjectUrlRef = useRef<string | null>(null);
   const previewRequestIdRef = useRef(0);
   const pendingPreviewEntryRef = useRef<CharacterRosterEntry | null>(null);
-  const teleportPreviewTimerRef = useRef<number | null>(null);
 
   const stopPreviewAudio = useCallback(() => {
     if (previewAudioRef.current) {
@@ -126,22 +148,26 @@ export function IdentityStep() {
         previewRequestIdRef.current += 1;
         stopPreviewAudio();
         pendingPreviewEntryRef.current = null;
-        if (teleportPreviewTimerRef.current != null) {
-          window.clearTimeout(teleportPreviewTimerRef.current);
-          teleportPreviewTimerRef.current = null;
-        }
-        // Character swaps trigger a teleport dissolve; wait for completion before
-        // greeting emote/voice or the emote can be swallowed during transition.
+        // Avatar swaps use a teleport dissolve when VrmStage is mounted; defer preview until
+        // `VRM_TELEPORT_COMPLETE_EVENT`. When onboarding skips VRM, OnboardingWizard listens
+        // for `ONBOARDING_VOICE_PREVIEW_AWAIT_TELEPORT_EVENT` and echoes teleport-complete.
         const avatarChanged = previousAvatarIndex !== entry.avatarIndex;
-        if (avatarChanged) {
+        if (avatarChanged && gateVoicePreviewOnTeleport) {
           pendingPreviewEntryRef.current = entry;
+          dispatchWindowEvent(ONBOARDING_VOICE_PREVIEW_AWAIT_TELEPORT_EVENT);
         } else {
-          pendingPreviewEntryRef.current = null;
           void playSelectionPreview(entry);
         }
       }
     },
-    [entries, playSelectionPreview, selectedId, setState, stopPreviewAudio],
+    [
+      entries,
+      gateVoicePreviewOnTeleport,
+      playSelectionPreview,
+      selectedId,
+      setState,
+      stopPreviewAudio,
+    ],
   );
   useEffect(() => {
     if (!onboardingStyle && firstEntry) {
@@ -157,18 +183,12 @@ export function IdentityStep() {
       const pending = pendingPreviewEntryRef.current;
       if (!pending) return;
       pendingPreviewEntryRef.current = null;
-      if (teleportPreviewTimerRef.current != null) {
-        window.clearTimeout(teleportPreviewTimerRef.current);
-      }
-      teleportPreviewTimerRef.current = window.setTimeout(() => {
-        teleportPreviewTimerRef.current = null;
-        void playSelectionPreview(pending);
-      }, 450);
+      void playSelectionPreview(pending);
     };
-    window.addEventListener("eliza:vrm-teleport-complete", onTeleportComplete);
+    window.addEventListener(VRM_TELEPORT_COMPLETE_EVENT, onTeleportComplete);
     return () => {
       window.removeEventListener(
-        "eliza:vrm-teleport-complete",
+        VRM_TELEPORT_COMPLETE_EVENT,
         onTeleportComplete,
       );
     };
@@ -178,10 +198,6 @@ export function IdentityStep() {
     return () => {
       pendingPreviewEntryRef.current = null;
       previewRequestIdRef.current += 1;
-      if (teleportPreviewTimerRef.current != null) {
-        window.clearTimeout(teleportPreviewTimerRef.current);
-        teleportPreviewTimerRef.current = null;
-      }
       stopPreviewAudio();
     };
   }, [stopPreviewAudio]);
@@ -201,11 +217,54 @@ export function IdentityStep() {
       setImportBusy(true);
       setImportError(null);
       setImportSuccess(null);
-      // Dynamic import to avoid hard dependency on client when server is absent
-      const { client } = await import("@miladyai/app-core/api");
       const fileBuffer = await importFile.arrayBuffer();
-      const result = await client.importAgent(importPassword, fileBuffer);
-      const counts = result.counts;
+      const passwordBytes = new TextEncoder().encode(importPassword);
+      const envelope = new Uint8Array(
+        4 + passwordBytes.length + fileBuffer.byteLength,
+      );
+      const view = new DataView(envelope.buffer);
+      view.setUint32(0, passwordBytes.length, false);
+      envelope.set(passwordBytes, 4);
+      envelope.set(new Uint8Array(fileBuffer), 4 + passwordBytes.length);
+
+      const apiToken = resolveCompatApiToken();
+      const response = await fetchWithTimeout(
+        resolveApiUrl("/api/agent/import"),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/octet-stream",
+            ...(apiToken ? { Authorization: `Bearer ${apiToken}` } : {}),
+          },
+          body: envelope,
+        },
+        IMPORT_AGENT_FETCH_TIMEOUT_MS,
+      );
+
+      const responseText = await response.text();
+      let result = {} as {
+        error?: string;
+        success?: boolean;
+        agentId?: string;
+        agentName?: string;
+        counts?: Record<string, number>;
+      };
+
+      if (responseText) {
+        try {
+          result = JSON.parse(responseText) as typeof result;
+        } catch {
+          if (!response.ok) {
+            throw new Error(`Import failed (${response.status})`);
+          }
+          throw new Error("Import failed (invalid server response)");
+        }
+      }
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error ?? `Import failed (${response.status})`);
+      }
+      const counts = result.counts ?? {};
       const summary = [
         counts.memories ? `${counts.memories} memories` : null,
         counts.entities ? `${counts.entities} entities` : null,

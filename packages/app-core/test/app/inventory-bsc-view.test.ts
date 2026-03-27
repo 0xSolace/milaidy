@@ -18,6 +18,8 @@ vi.mock("@miladyai/ui", () => {
   }: React.PropsWithChildren<Record<string, unknown>>) =>
     React.createElement("div", props, children);
   return {
+    cn: (...classes: Array<string | false | null | undefined>) =>
+      classes.filter(Boolean).join(" "),
     Button: ({
       children,
       ...props
@@ -34,6 +36,10 @@ vi.mock("@miladyai/ui", () => {
       React.createElement("option", props, children),
     SelectTrigger: passthrough,
     SelectValue: passthrough,
+    Tooltip: passthrough,
+    TooltipContent: passthrough,
+    TooltipProvider: passthrough,
+    TooltipTrigger: passthrough,
     Tabs: passthrough,
     TabsList: passthrough,
     TabsTrigger: passthrough,
@@ -357,6 +363,7 @@ describe("InventoryView unified wallets", () => {
     const content = text(tree?.root);
     expect(content).not.toContain("wallet.portfolio");
     expect(content).not.toContain("All Chains");
+    expect(content).not.toContain("WALLET");
     expect(content).toContain("wallet.tokens");
     expect(content).toContain("wallet.nfts");
     expect(content).toContain("wallet.all");
@@ -367,6 +374,37 @@ describe("InventoryView unified wallets", () => {
         (node) =>
           node.type === "button" &&
           node.props["data-testid"] === "wallet-token-preflight",
+      ),
+    ).toHaveLength(0);
+  });
+
+  it("hides wallet sort chrome in NFT view", async () => {
+    const ctx = createContext({ inventoryView: "nfts" });
+    mockUseApp.mockImplementation(() => ctx);
+
+    let tree: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      tree = TestRenderer.create(React.createElement(InventoryView));
+    });
+
+    expect(
+      tree?.root.findAll(
+        (node) => node.props?.["data-testid"] === "wallet-funding-route-pill",
+      ),
+    ).toHaveLength(1);
+    expect(
+      tree?.root.findAll(
+        (node) => node.props?.["data-testid"] === "wallet-summary-sort-pill",
+      ),
+    ).toHaveLength(0);
+    expect(
+      tree?.root.findAll(
+        (node) => node.props?.["data-testid"] === "wallet-overview-sort-block",
+      ),
+    ).toHaveLength(0);
+    expect(
+      tree?.root.findAll(
+        (node) => node.props?.["data-testid"] === "wallet-sort-select",
       ),
     ).toHaveLength(0);
   });
@@ -409,15 +447,16 @@ describe("InventoryView unified wallets", () => {
       tree = TestRenderer.create(React.createElement(InventoryView));
     });
 
-    const chainSelect = tree?.root.findAll(
+    const bscButton = tree?.root.findAll(
       (node) =>
-        typeof node.props.onValueChange === "function" &&
-        node.props.value === "all"
+        node.type === "button" &&
+        typeof node.props.onClick === "function" &&
+        node.props["aria-label"] === "BSC"
     )[0];
-    expect(chainSelect).toBeDefined();
+    expect(bscButton).toBeDefined();
 
     await act(async () => {
-      chainSelect.props.onValueChange("bsc");
+      bscButton.props.onClick();
     });
     expect(ctx.setState).toHaveBeenCalledWith("inventoryChainFocus", "bsc");
 

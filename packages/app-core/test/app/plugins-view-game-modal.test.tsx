@@ -284,11 +284,8 @@ describe("PluginsView game modal", () => {
         };
       }),
     });
-    Object.defineProperty(window, "__MILADY_ELECTROBUN_RPC__", {
-      configurable: true,
-      writable: true,
-      value: undefined,
-    });
+    delete (window as any).__MILADY_ELECTROBUN_RPC__;
+    delete (globalThis as any).__MILADY_ELECTROBUN_RPC__;
     mockOpenExternalInvoke.mockReset();
   });
 
@@ -358,6 +355,15 @@ describe("PluginsView game modal", () => {
         (node) => node.props?.["data-testid"] === "connectors-settings-sidebar",
       ).length,
     ).toBe(1);
+    const sidebar = tree?.root.findAll(
+      (node) => node.props?.["data-testid"] === "connectors-settings-sidebar",
+    )[0];
+    expect(
+      tree?.root.findAll(
+        (node) => node.props?.["data-testid"] === "connectors-available-pill",
+      ).length,
+    ).toBe(0);
+    expect(text(sidebar).startsWith("nav.social2 available")).toBe(true);
     const shell = tree?.root.findAll(
       (node) => node.props?.["data-testid"] === "connectors-shell",
     )[0];
@@ -627,6 +633,16 @@ describe("PluginsView game modal", () => {
     expect(text(tree?.root)).toContain("GitHub");
     expect(text(tree?.root)).toContain("Iq");
     expect(text(tree?.root)).not.toContain("Retake.tv");
+    const sidebar = tree?.root.findAll(
+      (node) => node.props?.["data-testid"] === "connectors-settings-sidebar",
+    )[0];
+    expect(sidebar).toBeDefined();
+    const availabilityPill = tree?.root.findAll(
+      (node) => node.props?.["data-testid"] === "connectors-available-pill",
+    )[0];
+    expect(availabilityPill).toBeDefined();
+    expect(text(availabilityPill)).toBe("4 available");
+    expect(text(sidebar).startsWith("4 available")).toBe(true);
 
     const addButtons = tree?.root.findAll(
       (node) =>
@@ -736,11 +752,8 @@ describe("PluginsView game modal", () => {
       url: "https://docs.milady.ai/plugin-setup-guide#retaketv",
     });
 
-    Object.defineProperty(window, "__MILADY_ELECTROBUN_RPC__", {
-      configurable: true,
-      writable: true,
-      value: undefined,
-    });
+    delete (window as any).__MILADY_ELECTROBUN_RPC__;
+    delete (globalThis as any).__MILADY_ELECTROBUN_RPC__;
     const sourceButton = tree?.root.findAll(
       (node) =>
         hasClass(node, "plugins-game-link-btn") &&
@@ -748,7 +761,7 @@ describe("PluginsView game modal", () => {
     )[0];
     await act(async () => {
       sourceButton.props.onClick();
-      await Promise.resolve();
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(openSpy).toHaveBeenCalledWith(
       "https://github.com/milady-ai/milady/tree/main/packages/plugin-retake",

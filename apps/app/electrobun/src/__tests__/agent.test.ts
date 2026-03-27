@@ -163,7 +163,6 @@ async function flushAsyncWork(): Promise<void> {
   await Promise.resolve();
   await Promise.resolve();
 }
-
 async function getReadFileSyncMock(): Promise<Mock> {
   const fs = await import("node:fs");
   return fs.default.readFileSync as Mock;
@@ -450,6 +449,17 @@ describe("AgentManager", () => {
       expect(parsed.startupLogTail).toContain("[REDACTED]");
     });
 
+    it("sanitizes bundle prefixes to prevent path traversal", () => {
+      const bundle = createBugReportBundle({
+        reportMarkdown: "# Report",
+        reportJson: { ok: true },
+        prefix: "../../escape\\..\\report bundle",
+      });
+
+      expect(bundle.directory).toContain("/bug-reports/escape-report-bundle-");
+      expect(bundle.directory).not.toContain("../");
+      expect(bundle.directory).not.toContain("..\\");
+    });
     it("returns a default startup diagnostics snapshot when the status file is missing", async () => {
       const readFileSync = await getReadFileSyncMock();
       readFileSync.mockImplementation(() => {

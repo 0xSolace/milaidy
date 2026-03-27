@@ -2,7 +2,8 @@
  * Bidirectional voice hook for chat + avatar lip sync.
  *
  * TTS providers (in priority order):
- *  1. ElevenLabs  — low-latency streaming endpoint + first-sentence cache.
+ *  1. ElevenLabs  — streaming endpoint; assistant replies enqueue text deltas as
+ *     the stream grows (no sentence-boundary wait — lower time-to-first-audio).
  *  2. Browser SpeechSynthesis — fallback when ElevenLabs isn't configured.
  *
  * STT: Web Speech API (SpeechRecognition) for user voice input.
@@ -32,6 +33,11 @@ import {
 } from "../bridge/native-plugins";
 import { resolveApiUrl } from "../utils";
 import { getElizaApiToken } from "../utils/eliza-globals";
+import {
+  isMiladyTtsDebugEnabled,
+  miladyTtsDebug,
+  miladyTtsDebugTextPreview,
+} from "../utils/milady-tts-debug";
 import { mergeStreamingText } from "../utils/streaming-text";
 import { hasConfiguredApiKey } from "../voice";
 
@@ -150,6 +156,11 @@ export interface VoiceChatState {
   stopSpeaking: () => void;
   /** Increments when AudioContext is unlocked by a user gesture, allowing callers to retry speech that was silently blocked by autoplay policy. */
   voiceUnlockedGeneration: number;
+  /**
+   * Assistant reply TTS: `enhanced` = ElevenLabs path (own key, cloud proxy, or direct);
+   * `standard` = browser / Edge voices or non-ElevenLabs provider.
+   */
+  assistantTtsQuality: "enhanced" | "standard";
 }
 
 interface SpeakTask {
@@ -157,14 +168,19 @@ interface SpeakTask {
   append: boolean;
   segment: SpeechSegmentKind;
   cacheKey?: string;
+  /** Milady-only: sent as `x-milady-tts-*` headers on `/api/tts/*` when debug is on (never forwarded to Eliza Cloud). */
+  debugUtteranceContext?: {
+    messageId: string;
+    fullAssistTextPreview: string;
+  };
 }
 
 interface AssistantSpeechState {
   messageId: string;
-  lastObservedText: string;
-  firstSentenceSpoken: boolean;
-  firstSentenceText: string;
-  queuedRemainderText: string;
+  /** Speakable text already submitted to the playback queue (prefix of current stream). */
+  queuedSpeakablePrefix: string;
+  /** Latest speakable from the stream (debounce flush reads this). */
+  latestSpeakable: string;
   finalQueued: boolean;
 }
 
@@ -172,6 +188,20 @@ const DEFAULT_ELEVEN_MODEL = "eleven_flash_v2_5";
 const DEFAULT_ELEVEN_VOICE = "EXAVITQu4vr4xnSDxMaL";
 const MAX_SPOKEN_CHARS = 360;
 const MAX_CACHED_SEGMENTS = 128;
+/** First assistant clip: start synthesis after this much speakable text (avoids one-word TTS). */
+const ASSISTANT_TTS_FIRST_FLUSH_CHARS = 24;
+/** Later clips: batch for better prosody (avoid token-thin slices). */
+const ASSISTANT_TTS_MIN_CHUNK_CHARS = 88;
+/** Merge rapid stream deltas into one request after a short pause. */
+const ASSISTANT_TTS_DEBOUNCE_MS = 170;
+/**
+ * Temporary safety switch:
+ * only speak assistant replies once the final text has arrived.
+ *
+ * This avoids garbled overlap when cloud text streaming and speech playback
+ * race each other on partial chunks.
+ */
+const ASSISTANT_TTS_FINAL_ONLY = true;
 const TALKMODE_STOP_SETTLE_MS = 120;
 const REDACTED_SECRET = "[REDACTED]";
 const MOUTH_OPEN_STEP = 0.02;
@@ -180,11 +210,14 @@ const globalAudioCache = new Map<string, Uint8Array>();
 
 function resolveVoiceMode(
   mode: VoiceMode | undefined,
-  cloudConnected: boolean,
-  apiKey?: string | null,
+  _cloudConnected: boolean,
+  _apiKey?: string | null,
 ): VoiceMode {
   if (mode) return mode;
-  if (cloudConnected && !hasConfiguredApiKey(apiKey)) return "cloud";
+  // Always use the ElevenLabs proxy path ("own-key") — the server aliases the
+  // cloud API key to ELEVENLABS_API_KEY at startup so upstream Eliza can use
+  // it.  The "cloud" path converts ElevenLabs voice IDs to OpenAI-style names
+  // (nova, alloy, etc.) which produces wrong audio (default sample clips).
   return "own-key";
 }
 
@@ -192,6 +225,22 @@ function resolveVoiceProxyEndpoint(mode: VoiceMode): string {
   return resolveApiUrl(
     mode === "cloud" ? "/api/tts/cloud" : "/api/tts/elevenlabs",
   );
+}
+
+/** For MILADY_TTS_DEBUG: shows whether cloud TTS hits the API or the wrong (page) origin. */
+function describeTtsCloudFetchTargetForDebug(): string {
+  const target = resolveApiUrl("/api/tts/cloud");
+  if (/^https?:\/\//i.test(target)) {
+    try {
+      return `${new URL(target).origin} (absolute)`;
+    } catch {
+      return target.slice(0, 120);
+    }
+  }
+  const origin =
+    typeof window !== "undefined" ? window.location.origin : "(no-window)";
+  const path = target.startsWith("/") ? target : `/${target}`;
+  return `${origin}${path} — relative URL (TTS fetch goes to the UI host, not the Milady API). Set __MILADY_API_BASE__ / session milady_api_base / boot apiBase to http://127.0.0.1:<apiPort>`;
 }
 
 function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
@@ -496,26 +545,86 @@ function queueableSpeechPrefix(text: string, isFinal: boolean): string {
 }
 
 function cloneVoiceConfig(
-  config: VoiceConfig | null | undefined,
-): VoiceConfig | null {
+  config:
+    | (VoiceConfig & {
+        provider?: VoiceConfig["provider"] | "openai";
+        openai?: {
+          apiKey?: string;
+          voice?: string;
+          model?: string;
+        };
+      })
+    | null
+    | undefined,
+):
+  | (VoiceConfig & {
+      provider?: VoiceConfig["provider"] | "openai";
+      openai?: {
+        apiKey?: string;
+        voice?: string;
+        model?: string;
+      };
+    })
+  | null {
   if (!config) return null;
   return {
     ...config,
     elevenlabs: config.elevenlabs ? { ...config.elevenlabs } : undefined,
     edge: config.edge ? { ...config.edge } : undefined,
+    openai: config.openai ? { ...config.openai } : undefined,
   };
 }
 
 function resolveEffectiveVoiceConfig(
-  config: VoiceConfig | null | undefined,
+  config:
+    | (VoiceConfig & {
+        provider?: VoiceConfig["provider"] | "openai";
+        openai?: {
+          apiKey?: string;
+          voice?: string;
+          model?: string;
+        };
+      })
+    | null
+    | undefined,
   options?: { cloudConnected?: boolean },
-): VoiceConfig | null {
+):
+  | (VoiceConfig & {
+      provider?: VoiceConfig["provider"] | "openai";
+      openai?: {
+        apiKey?: string;
+        voice?: string;
+        model?: string;
+      };
+    })
+  | null {
   const cloudConnected = options?.cloudConnected === true;
   const base = cloneVoiceConfig(config) ?? {};
-  const provider =
-    base.provider ??
+  const rawProvider = base.provider as
+    | VoiceConfig["provider"]
+    | "openai"
+    | undefined;
+  const hasLegacyOpenAiProvider = rawProvider === "openai";
+  let provider: VoiceConfig["provider"] | undefined =
+    (hasLegacyOpenAiProvider ? undefined : rawProvider) ??
     (base.elevenlabs ? "elevenlabs" : base.edge ? "edge" : undefined) ??
     (cloudConnected ? "elevenlabs" : undefined);
+
+  // Saved characters often use browser/local TTS (`edge`, `simple-voice`, or
+  // legacy `openai`), which skips the ElevenLabs fetch path. When Eliza Cloud
+  // is available for voice, prefer cloud-backed synthesis instead of Web Speech
+  // (often labeled Microsoft / Edge in the OS).
+  if (
+    cloudConnected &&
+    (provider === "edge" ||
+      hasLegacyOpenAiProvider ||
+      provider === "simple-voice")
+  ) {
+    miladyTtsDebug("voiceConfig:upgrade_provider_for_cloud", {
+      fromProvider: hasLegacyOpenAiProvider ? "openai" : provider,
+    });
+    provider = "elevenlabs";
+  }
 
   if (!provider) return null;
   if (provider !== "elevenlabs") {
@@ -571,8 +680,11 @@ export const __voiceChatInternals = {
   resolveEffectiveVoiceConfig,
   resolveVoiceMode,
   resolveVoiceProxyEndpoint,
-  toSpeakableText,
-  mergeTranscriptWindows,
+  toSpeakableText,  mergeTranscriptWindows,
+  webSpeechVoiceDebugFields,
+  ASSISTANT_TTS_FINAL_ONLY,
+  ASSISTANT_TTS_FIRST_FLUSH_CHARS,
+  ASSISTANT_TTS_MIN_CHUNK_CHARS,
 };
 
 function isAbortError(error: unknown): boolean {
@@ -585,6 +697,44 @@ function shouldPreferNativeTalkMode(): boolean {
   if (typeof window === "undefined") return false;
   if (getElectrobunRendererRpc()) return true;
   return Capacitor.isNativePlatform();
+}
+
+/** MILADY_TTS_DEBUG fields for OS/browser SpeechSynthesis (often Microsoft Edge on Windows). */
+function webSpeechVoiceDebugFields(
+  voice: SpeechSynthesisVoice | undefined,
+): Record<string, string | boolean | undefined> {
+  if (!voice) {
+    return {
+      voiceName: "(engine default)",
+      voiceURI: "(none)",
+      engineGuess: "unknown",
+    };
+  }
+  const blob = `${voice.voiceURI} ${voice.name}`.toLowerCase();
+  let engineGuess = "unknown";
+  if (
+    blob.includes("microsoft") ||
+    blob.includes("msedge") ||
+    blob.includes("edge-tts")
+  ) {
+    engineGuess = "microsoft-edge-family";
+  } else if (blob.includes("com.apple")) {
+    engineGuess = "apple-webkit";
+  } else if (blob.includes("google")) {
+    engineGuess = "google";
+  }
+  const extended = voice as SpeechSynthesisVoice & { localService?: boolean };
+  return {
+    voiceName: voice.name,
+    voiceURI: voice.voiceURI,
+    voiceLang: voice.lang,
+    voiceDefault: voice.default,
+    voiceLocalService:
+      typeof extended.localService === "boolean"
+        ? extended.localService
+        : undefined,
+    engineGuess,
+  };
 }
 
 // ── Hook ──────────────────────────────────────────────────────────────
@@ -631,6 +781,39 @@ export function useVoiceChat(options: VoiceChatOptions): VoiceChatState {
     [options.cloudConnected, options.voiceConfig],
   );
 
+  const assistantTtsQuality = useMemo((): "enhanced" | "standard" => {
+    return effectiveVoiceConfig?.provider === "elevenlabs"
+      ? "enhanced"
+      : "standard";
+  }, [effectiveVoiceConfig?.provider]);
+
+  const ttsDebugConfigKeyRef = useRef("");
+  useEffect(() => {
+    const key = JSON.stringify({
+      c: options.cloudConnected,
+      p: effectiveVoiceConfig?.provider,
+      m: effectiveVoiceConfig?.mode,
+      v: effectiveVoiceConfig?.elevenlabs?.voiceId,
+      q: assistantTtsQuality,
+    });
+    if (ttsDebugConfigKeyRef.current === key) return;
+    ttsDebugConfigKeyRef.current = key;
+    miladyTtsDebug("useVoiceChat:config", {
+      cloudConnected: options.cloudConnected,
+      provider: effectiveVoiceConfig?.provider,
+      mode: effectiveVoiceConfig?.mode,
+      voiceId: effectiveVoiceConfig?.elevenlabs?.voiceId,
+      assistantTtsQuality,
+      ttsCloudUrl: resolveApiUrl("/api/tts/cloud"),
+    });
+  }, [
+    assistantTtsQuality,
+    effectiveVoiceConfig?.elevenlabs?.voiceId,
+    effectiveVoiceConfig?.mode,
+    effectiveVoiceConfig?.provider,
+    options.cloudConnected,
+  ]);
+
   // Voice config ref (latest value always available to callbacks)
   const voiceConfigRef = useRef<VoiceConfig | null>(effectiveVoiceConfig);
   voiceConfigRef.current = effectiveVoiceConfig;
@@ -653,6 +836,9 @@ export function useVoiceChat(options: VoiceChatOptions): VoiceChatState {
   const activeTaskFinishRef = useRef<(() => void) | null>(null);
   const activeFetchAbortRef = useRef<AbortController | null>(null);
   const assistantSpeechRef = useRef<AssistantSpeechState | null>(null);
+  const assistantTtsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   const clearSpeechTimers = useCallback(() => {
     if (speechTimeoutRef.current) {
@@ -1114,6 +1300,10 @@ export function useVoiceChat(options: VoiceChatOptions): VoiceChatState {
   }, [clearSpeechTimers]);
 
   const stopSpeaking = useCallback(() => {
+    if (assistantTtsDebounceRef.current != null) {
+      clearTimeout(assistantTtsDebounceRef.current);
+      assistantTtsDebounceRef.current = null;
+    }
     assistantSpeechRef.current = null;
     cancelPlayback();
     setIsSpeaking(false);
@@ -1178,33 +1368,61 @@ export function useVoiceChat(options: VoiceChatOptions): VoiceChatState {
         };
         const apiToken = getElizaApiToken()?.trim() ?? "";
 
-        const fetchViaProxy = async () => {
-          return fetch(
-            resolveVoiceProxyEndpoint(
-              voiceConfigRef.current?.mode ?? "own-key",
-            ),
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Accept: "audio/mpeg",
-                ...(apiToken ? { Authorization: `Bearer ${apiToken}` } : {}),
-              },
-              body: JSON.stringify({
-                ...requestBody,
-                voiceId,
-                modelId,
-                outputFormat: "mp3_44100_128",
-              }),
-              signal: controller.signal,
+        /**
+         * Server-side TTS when the browser has no `xi-api-key`.
+         * Always try Eliza Cloud (`/api/tts/cloud`) first — that is where a
+         * persisted Eliza Cloud API key is used. `voiceMode` may still be
+         * `own-key` when the UI has not yet marked cloud as connected (e.g.
+         * disconnect preference, status poll race), which previously routed
+         * here to `/api/tts/elevenlabs` only; Milady does not implement that
+         * path, so chat fell back to browser (Edge) TTS. If cloud rejects
+         * (no key), fall back to the upstream ElevenLabs proxy.
+         */
+        const fetchViaProxy = async (): Promise<Response> => {
+          const dbg = task.debugUtteranceContext;
+          const init: RequestInit = {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "audio/mpeg",
+              ...(apiToken ? { Authorization: `Bearer ${apiToken}` } : {}),
+              ...(isMiladyTtsDebugEnabled() && dbg
+                ? {
+                    "x-milady-tts-message-id": encodeURIComponent(
+                      dbg.messageId,
+                    ),
+                    "x-milady-tts-clip-segment": encodeURIComponent(
+                      task.segment,
+                    ),
+                    "x-milady-tts-full-preview": encodeURIComponent(
+                      dbg.fullAssistTextPreview,
+                    ),
+                  }
+                : {}),
             },
-          );
+            body: JSON.stringify({
+              ...requestBody,
+              voiceId,
+              modelId,
+              outputFormat: "mp3_44100_128",
+            }),
+            signal: controller.signal,
+          };
+
+          let res = await fetch(resolveApiUrl("/api/tts/cloud"), init);
+          if (!res.ok) {
+            const fallback = await fetch(
+              resolveApiUrl("/api/tts/elevenlabs"),
+              init,
+            );
+            if (fallback.ok) res = fallback;
+          }
+          return res;
         };
 
         const trimmedApiKey =
           typeof elConfig.apiKey === "string" ? elConfig.apiKey.trim() : "";
-        const hasDirectKey =
-          trimmedApiKey.length > 0 && !isRedactedSecret(trimmedApiKey);
+        const hasDirectKey = hasConfiguredApiKey(trimmedApiKey);
 
         let res: Response;
         if (hasDirectKey) {
@@ -1244,6 +1462,12 @@ export function useVoiceChat(options: VoiceChatOptions): VoiceChatState {
 
         if (!res.ok) {
           const body = await res.text().catch(() => "");
+          miladyTtsDebug("useVoiceChat:elevenlabs-http-error", {
+            status: res.status,
+            ttsTarget: describeTtsCloudFetchTargetForDebug(),
+            hadBearer: Boolean(apiToken),
+            bodyPreview: body.slice(0, 120),
+          });
           throw new Error(`ElevenLabs ${res.status}: ${body.slice(0, 200)}`);
         }
 
@@ -1272,10 +1496,13 @@ export function useVoiceChat(options: VoiceChatOptions): VoiceChatState {
 
       await new Promise<void>((resolve) => {
         let finished = false;
+        const playStartMs = performance.now();
+        let wrappedFinish: (() => void) | null = null;
+
         const finish = () => {
           if (finished) return;
           finished = true;
-          if (activeTaskFinishRef.current === finish) {
+          if (wrappedFinish && activeTaskFinishRef.current === wrappedFinish) {
             activeTaskFinishRef.current = null;
           }
           if (audioSourceRef.current === source) {
@@ -1296,11 +1523,27 @@ export function useVoiceChat(options: VoiceChatOptions): VoiceChatState {
           resolve();
         };
 
-        activeTaskFinishRef.current = finish;
-        source.onended = finish;
+        wrappedFinish = () => {
+          miladyTtsDebug("play:web-audio:end", {
+            segment: task.segment,
+            elapsedMs: Math.round(performance.now() - playStartMs),
+          });
+          finish();
+        };
 
+        miladyTtsDebug("play:web-audio:start", {
+          segment: task.segment,
+          append: task.append,
+          cached,
+          textChars: text.length,
+          preview: miladyTtsDebugTextPreview(text),
+          durationSecApprox: Math.round(audioBuffer.duration * 100) / 100,
+        });
+
+        activeTaskFinishRef.current = wrappedFinish;
+        source.onended = wrappedFinish;
         speechTimeoutRef.current = setTimeout(
-          finish,
+          wrappedFinish,
           Math.max(2500, Math.ceil(audioBuffer.duration * 1000) + 1200),
         );
 
@@ -1310,7 +1553,7 @@ export function useVoiceChat(options: VoiceChatOptions): VoiceChatState {
           segment: task.segment,
           provider: "elevenlabs",
           cached,
-          startedAtMs: performance.now(),
+          startedAtMs: playStartMs,
         });
       });
     },
@@ -1325,6 +1568,23 @@ export function useVoiceChat(options: VoiceChatOptions): VoiceChatState {
       const synth = synthRef.current;
       const words = text.trim().split(/\s+/).length;
       const estimatedMs = Math.max(1200, (words / 3) * 1000);
+      const useTalkModeTts = !synth && Boolean(getElectrobunRendererRpc());
+
+      miladyTtsDebug("speakBrowser:enter", {
+        path: synth
+          ? "speechSynthesis"
+          : useTalkModeTts
+            ? "talkmode-bridge"
+            : "no-synth-timer-only",
+        segment: task.segment,
+        append: task.append,
+        textChars: text.trim().length,
+        preview: miladyTtsDebugTextPreview(text),
+        voiceConfigProvider: config?.provider ?? null,
+        ...(config?.provider === "edge" && config.edge?.voice
+          ? { edgeVoiceSetting: config.edge.voice }
+          : {}),
+      });
 
       return new Promise<void>((resolve) => {
         let finished = false;
@@ -1343,12 +1603,36 @@ export function useVoiceChat(options: VoiceChatOptions): VoiceChatState {
 
         if (!synth) {
           if (getElectrobunRendererRpc()) {
+            miladyTtsDebug("play:talkmode:dispatch", {
+              segment: task.segment,
+              append: task.append,
+              textChars: text.trim().length,
+              preview: miladyTtsDebugTextPreview(text),
+              engine: "native-talkmode-bridge",
+              note: "No window.speechSynthesis — routing TTS to main-process talkmodeSpeak",
+            });
             void invokeDesktopBridgeRequest<void>({
               rpcMethod: "talkmodeSpeak",
               ipcChannel: "talkmode:speak",
               params: { text: text.trim() },
             }).catch((err: unknown) => {
+              miladyTtsDebug("play:talkmode:speak-failed", {
+                segment: task.segment,
+                preview: miladyTtsDebugTextPreview(text),
+                err:
+                  err instanceof Error
+                    ? `${err.name}: ${err.message.slice(0, 200)}`
+                    : String(err).slice(0, 200),
+              });
               console.warn("[useVoiceChat] Desktop speech bridge failed:", err);
+            });
+          } else {
+            miladyTtsDebug("play:browser:no-synth", {
+              segment: task.segment,
+              textChars: text.trim().length,
+              preview: miladyTtsDebugTextPreview(text),
+              engine: "none",
+              note: "No SpeechSynthesis — playback may be silent until Talk Mode or synth is available",
             });
           }
           emitPlaybackStart({
@@ -1365,9 +1649,9 @@ export function useVoiceChat(options: VoiceChatOptions): VoiceChatState {
         const utterance = new SpeechSynthesisUtterance(text.trim());
         utteranceRef.current = utterance;
 
+        let selectedVoice: SpeechSynthesisVoice | undefined;
         if (synth?.getVoices) {
           const voices = synth.getVoices();
-          let selectedVoice: SpeechSynthesisVoice | undefined;
 
           if (config?.provider === "edge" && config.edge?.voice) {
             const edgeVoiceName = config.edge.voice;
@@ -1419,18 +1703,58 @@ export function useVoiceChat(options: VoiceChatOptions): VoiceChatState {
 
         utterance.rate = 1.0;
         utterance.pitch = 1.0;
+
+        miladyTtsDebug("play:browser:web-speech:enqueued", {
+          segment: task.segment,
+          append: task.append,
+          textChars: text.trim().length,
+          preview: miladyTtsDebugTextPreview(text),
+          engine: "speechSynthesis",
+          ...webSpeechVoiceDebugFields(selectedVoice),
+        });
+
+        const browserPlayStartMsRef = { value: 0 };
         utterance.onstart = () => {
           if (generation !== generationRef.current) return;
+          browserPlayStartMsRef.value = performance.now();
+          miladyTtsDebug("play:browser:speechSynthesis:start", {
+            segment: task.segment,
+            append: task.append,
+            textChars: text.trim().length,
+            preview: miladyTtsDebugTextPreview(text),
+            engine: "speechSynthesis-utterance-onstart",
+            ...webSpeechVoiceDebugFields(selectedVoice),
+          });
           emitPlaybackStart({
             text,
             segment: task.segment,
             provider: "browser",
             cached: false,
-            startedAtMs: performance.now(),
+            startedAtMs: browserPlayStartMsRef.value,
           });
         };
-        utterance.onend = finish;
-        utterance.onerror = finish;
+        const endBrowserUtterance = () => {
+          if (browserPlayStartMsRef.value > 0) {
+            miladyTtsDebug("play:browser:speechSynthesis:end", {
+              segment: task.segment,
+              elapsedMs: Math.round(
+                performance.now() - browserPlayStartMsRef.value,
+              ),
+            });
+          }
+          finish();
+        };
+        utterance.onend = endBrowserUtterance;
+        utterance.onerror = (ev) => {
+          const errEv = ev as SpeechSynthesisErrorEvent;
+          miladyTtsDebug("play:browser:speechSynthesis:error", {
+            segment: task.segment,
+            synthesisError: errEv.error ?? "unknown",
+            preview: miladyTtsDebugTextPreview(text),
+            ...webSpeechVoiceDebugFields(selectedVoice),
+          });
+          endBrowserUtterance();
+        };
         synth.speak(utterance);
 
         speechTimeoutRef.current = setTimeout(finish, estimatedMs + 5000);
@@ -1454,6 +1778,21 @@ export function useVoiceChat(options: VoiceChatOptions): VoiceChatState {
           const config = voiceConfigRef.current;
           const elConfig = config?.elevenlabs;
           const useElevenLabs = config?.provider === "elevenlabs";
+
+          miladyTtsDebug("processQueue:task", {
+            useElevenLabs,
+            hasElConfig: Boolean(elConfig),
+            segment: task.segment,
+            append: task.append,
+            textChars: task.text.length,
+            preview: miladyTtsDebugTextPreview(task.text),
+            ...(task.debugUtteranceContext
+              ? {
+                  messageId: task.debugUtteranceContext.messageId,
+                  hearingFull: task.debugUtteranceContext.fullAssistTextPreview,
+                }
+              : {}),
+          });
 
           if (useElevenLabs && elConfig) {
             usingAudioAnalysisRef.current = true;
@@ -1479,12 +1818,30 @@ export function useVoiceChat(options: VoiceChatOptions): VoiceChatState {
                   ? `${error.name}: ${error.message}`
                   : error,
               );
+              miladyTtsDebug("useVoiceChat:elevenlabs-fallback-to-browser", {
+                err:
+                  error instanceof Error
+                    ? `${error.name}: ${error.message.slice(0, 200)}`
+                    : String(error).slice(0, 200),
+                ttsTarget: describeTtsCloudFetchTargetForDebug(),
+                hadBearer: Boolean(getElizaApiToken()?.trim()),
+                nextPath:
+                  "speakBrowser (Web Speech / Microsoft Edge voice or talkmode bridge)",
+              });
               usingAudioAnalysisRef.current = false;
               setUsingAudioAnalysis(false);
             }
           } else {
             usingAudioAnalysisRef.current = false;
             setUsingAudioAnalysis(false);
+            miladyTtsDebug("processQueue:browser-tts-direct", {
+              reason: elConfig
+                ? "provider_not_elevenlabs"
+                : "missing_elevenlabs_config",
+              provider: config?.provider ?? null,
+              nextPath:
+                "speakBrowser — OS Web Speech (often msedge/Microsoft) or Electrobun talkmode",
+            });
           }
 
           await speakBrowser(task.text, task, workerGeneration);
@@ -1513,6 +1870,13 @@ export function useVoiceChat(options: VoiceChatOptions): VoiceChatState {
       }
 
       queueRef.current.push({ ...task, text: speakable });
+      miladyTtsDebug("enqueueSpeech", {
+        segment: task.segment,
+        append: task.append,
+        textChars: speakable.length,
+        preview: miladyTtsDebugTextPreview(speakable),
+        queueLen: queueRef.current.length,
+      });
       speakingStartRef.current = Date.now();
       setIsSpeaking(true);
       processQueue();
@@ -1524,6 +1888,10 @@ export function useVoiceChat(options: VoiceChatOptions): VoiceChatState {
 
   const speak = useCallback(
     (text: string, speakOptions?: { append?: boolean }) => {
+      if (assistantTtsDebounceRef.current != null) {
+        clearTimeout(assistantTtsDebounceRef.current);
+        assistantTtsDebounceRef.current = null;
+      }
       assistantSpeechRef.current = null;
       enqueueSpeech({
         text,
@@ -1534,21 +1902,72 @@ export function useVoiceChat(options: VoiceChatOptions): VoiceChatState {
     [enqueueSpeech],
   );
 
+  const clearAssistantTtsDebounce = useCallback(() => {
+    if (assistantTtsDebounceRef.current != null) {
+      clearTimeout(assistantTtsDebounceRef.current);
+      assistantTtsDebounceRef.current = null;
+    }
+  }, []);
+
+  const flushPendingAssistantTts = useCallback(() => {
+    assistantTtsDebounceRef.current = null;
+    const state = assistantSpeechRef.current;
+    if (!state || state.finalQueued) return;
+
+    const latest = state.latestSpeakable;
+    if (!latest) return;
+
+    const unsent = remainderAfter(latest, state.queuedSpeakablePrefix);
+    if (!unsent) return;
+
+    const elConfig = voiceConfigRef.current?.elevenlabs;
+    const cacheKey =
+      voiceConfigRef.current?.provider === "elevenlabs" && elConfig
+        ? makeElevenCacheKey(unsent, elConfig)
+        : undefined;
+
+    const dbgUtterance = isMiladyTtsDebugEnabled()
+      ? {
+          messageId: state.messageId,
+          fullAssistTextPreview: miladyTtsDebugTextPreview(latest, 220),
+        }
+      : undefined;
+
+    const isFirstClip = state.queuedSpeakablePrefix.length === 0;
+    enqueueSpeech({
+      text: unsent,
+      append: !isFirstClip,
+      segment: isFirstClip ? "full" : "remainder",
+      cacheKey,
+      debugUtteranceContext: dbgUtterance,
+    });
+
+    state.queuedSpeakablePrefix = latest;
+  }, [enqueueSpeech, makeElevenCacheKey]);
+
   const queueAssistantSpeech = useCallback(
     (messageId: string, text: string, isFinal: boolean) => {
       if (!messageId) return;
 
       const speakable = toSpeakableText(text);
-      if (!speakable) return;
+      if (!speakable) {
+        miladyTtsDebug("queueAssistantSpeech:skip-empty", { messageId });
+        return;
+      }
+      miladyTtsDebug("queueAssistantSpeech", {
+        messageId,
+        isFinal,
+        speakableChars: speakable.length,
+        preview: miladyTtsDebugTextPreview(speakable),
+      });
 
       const current = assistantSpeechRef.current;
       if (!current || current.messageId !== messageId) {
+        clearAssistantTtsDebounce();
         assistantSpeechRef.current = {
           messageId,
-          lastObservedText: "",
-          firstSentenceSpoken: false,
-          firstSentenceText: "",
-          queuedRemainderText: "",
+          queuedSpeakablePrefix: "",
+          latestSpeakable: "",
           finalQueued: false,
         };
       }
@@ -1556,83 +1975,106 @@ export function useVoiceChat(options: VoiceChatOptions): VoiceChatState {
       const state = assistantSpeechRef.current;
       if (!state) return;
 
-      if (
-        speakable === state.lastObservedText &&
-        (!isFinal || state.finalQueued)
-      ) {
+      state.latestSpeakable = speakable;
+
+      if (ASSISTANT_TTS_FINAL_ONLY && !isFinal) {
+        // Band-aid mode: never speak partial stream chunks.
         return;
       }
-      state.lastObservedText = speakable;
 
-      if (!state.firstSentenceSpoken) {
-        const split = splitFirstSentence(speakable);
-        if (!split.complete && !isFinal) return;
+      if (ASSISTANT_TTS_FINAL_ONLY) {
+        if (state.finalQueued) return;
+        clearAssistantTtsDebounce();
 
-        if (split.complete) {
-          const firstSentence = split.firstSentence;
-          state.firstSentenceSpoken = true;
-          state.firstSentenceText = firstSentence;
+        const elConfig = voiceConfigRef.current?.elevenlabs;
+        const cacheKey =
+          voiceConfigRef.current?.provider === "elevenlabs" && elConfig
+            ? makeElevenCacheKey(speakable, elConfig)
+            : undefined;
+        const dbgUtterance = isMiladyTtsDebugEnabled()
+          ? {
+              messageId,
+              fullAssistTextPreview: miladyTtsDebugTextPreview(speakable, 220),
+            }
+          : undefined;
 
-          const elConfig = voiceConfigRef.current?.elevenlabs;
-          const cacheKey =
-            voiceConfigRef.current?.provider === "elevenlabs" && elConfig
-              ? makeElevenCacheKey(firstSentence, elConfig)
-              : undefined;
-
-          enqueueSpeech({
-            text: firstSentence,
-            append: false,
-            segment: "first-sentence",
-            cacheKey,
-          });
-
-          const queueableRemainder = queueableSpeechPrefix(
-            split.remainder,
-            isFinal,
-          );
-          if (queueableRemainder) {
-            enqueueSpeech({
-              text: queueableRemainder,
-              append: true,
-              segment: "remainder",
-            });
-            state.queuedRemainderText = queueableRemainder;
-          }
-          if (isFinal) {
-            state.finalQueued = true;
-          }
-          return;
-        }
-
+        // Final-only means one utterance per assistant message.
         enqueueSpeech({
           text: speakable,
           append: false,
           segment: "full",
+          cacheKey,
+          debugUtteranceContext: dbgUtterance,
         });
+        state.queuedSpeakablePrefix = speakable;
         state.finalQueued = true;
         return;
       }
 
-      const remainder = remainderAfter(speakable, state.firstSentenceText);
-      const queueableRemainder = queueableSpeechPrefix(remainder, isFinal);
-      const newRemainderDelta = remainderAfter(
-        queueableRemainder,
-        state.queuedRemainderText,
-      );
-      if (newRemainderDelta) {
-        enqueueSpeech({
-          text: newRemainderDelta,
-          append: true,
-          segment: "remainder",
-        });
-        state.queuedRemainderText = queueableRemainder;
+      if (
+        speakable === state.queuedSpeakablePrefix &&
+        (!isFinal || state.finalQueued)
+      ) {
+        return;
       }
 
-      if (isFinal && !state.finalQueued) {
+      if (speakable === state.queuedSpeakablePrefix && isFinal) {
+        clearAssistantTtsDebounce();
         state.finalQueued = true;
+        return;
       }
+
+      const unsent = remainderAfter(speakable, state.queuedSpeakablePrefix);
+      if (!unsent) {
+        if (isFinal) {
+          clearAssistantTtsDebounce();
+          state.finalQueued = true;
+        }
+        return;
+      }
+
+      const isFirstClip = state.queuedSpeakablePrefix.length === 0;
+      const flushNow =
+        isFinal ||
+        (isFirstClip && unsent.length >= ASSISTANT_TTS_FIRST_FLUSH_CHARS) ||
+        (!isFirstClip && unsent.length >= ASSISTANT_TTS_MIN_CHUNK_CHARS);
+
+      if (flushNow) {
+        clearAssistantTtsDebounce();
+        const elConfig = voiceConfigRef.current?.elevenlabs;
+        const cacheKey =
+          voiceConfigRef.current?.provider === "elevenlabs" && elConfig
+            ? makeElevenCacheKey(unsent, elConfig)
+            : undefined;
+        const dbgUtterance = isMiladyTtsDebugEnabled()
+          ? {
+              messageId,
+              fullAssistTextPreview: miladyTtsDebugTextPreview(speakable, 220),
+            }
+          : undefined;
+        enqueueSpeech({
+          text: unsent,
+          append: !isFirstClip,
+          segment: isFirstClip ? "full" : "remainder",
+          cacheKey,
+          debugUtteranceContext: dbgUtterance,
+        });
+        state.queuedSpeakablePrefix = speakable;
+        if (isFinal) state.finalQueued = true;
+        return;
+      }
+
+      clearAssistantTtsDebounce();
+      assistantTtsDebounceRef.current = setTimeout(() => {
+        flushPendingAssistantTts();
+      }, ASSISTANT_TTS_DEBOUNCE_MS);
     },
-    [enqueueSpeech, makeElevenCacheKey],
+    [
+      clearAssistantTtsDebounce,
+      enqueueSpeech,
+      flushPendingAssistantTts,
+      makeElevenCacheKey,
+    ],
   );
 
   // ── Unlock audio on first user gesture ─────────────────────────────
@@ -1693,5 +2135,6 @@ export function useVoiceChat(options: VoiceChatOptions): VoiceChatState {
     queueAssistantSpeech,
     stopSpeaking,
     voiceUnlockedGeneration,
+    assistantTtsQuality,
   };
 }

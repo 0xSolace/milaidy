@@ -19,7 +19,8 @@ type TestWindow = Window & {
 
 describe("openExternalUrl", () => {
   afterEach(() => {
-    delete (window as TestWindow).__MILADY_ELECTROBUN_RPC__;
+    delete (window as any).__MILADY_ELECTROBUN_RPC__;
+    delete (globalThis as any).__MILADY_ELECTROBUN_RPC__;
     vi.restoreAllMocks();
   });
 

@@ -48,7 +48,6 @@ import {
   APP_SIDEBAR_HEADER_CLASSNAME,
   APP_SIDEBAR_INNER_CLASSNAME,
   APP_SIDEBAR_KICKER_CLASSNAME,
-  APP_SIDEBAR_META_CLASSNAME,
   APP_SIDEBAR_PILL_CLASSNAME,
   APP_SIDEBAR_RAIL_CLASSNAME,
 } from "./sidebar-shell-styles";
@@ -1146,11 +1145,6 @@ export function KnowledgeView({ inModal }: { inModal?: boolean } = {}) {
           <div className={APP_SIDEBAR_INNER_CLASSNAME}>
             <div className={APP_SIDEBAR_HEADER_CLASSNAME}>
               <div className={KNOWLEDGE_KICKER_CLASS}>Knowledge</div>
-              <div className={APP_SIDEBAR_META_CLASSNAME}>
-                {documents.length > 0
-                  ? `${documents.length} uploaded document${documents.length === 1 ? "" : "s"} indexed`
-                  : "Upload docs and explore indexed fragments"}
-              </div>
             </div>
 
             <div className="mt-4 flex flex-wrap gap-2 px-1">
@@ -1179,9 +1173,6 @@ export function KnowledgeView({ inModal }: { inModal?: boolean } = {}) {
             <div className="mt-4 border-b border-border/25 pb-4">
               <div className="px-1">
                 <div className={KNOWLEDGE_SECTION_LABEL_CLASS}>Search</div>
-                <div className="mt-1 text-[11px] leading-relaxed text-muted">
-                  Jump to a known document by searching fragment text.
-                </div>
               </div>
               <form
                 className="mt-3 w-full max-w-[500px] flex-[1_1_500px]"
@@ -1241,11 +1232,6 @@ export function KnowledgeView({ inModal }: { inModal?: boolean } = {}) {
                     {isShowingSearchResults
                       ? t("knowledgeview.SearchResults")
                       : t("knowledgeview.Documents")}
-                  </div>
-                  <div className="mt-1 text-[11px] text-muted">
-                    {isShowingSearchResults
-                      ? "Search hits replace the document list until you clear them."
-                      : "Uploaded docs live here for quick review."}
                   </div>
                 </div>
                 <Button
@@ -1358,14 +1344,6 @@ export function KnowledgeView({ inModal }: { inModal?: boolean } = {}) {
                   <span className="rounded-full border border-border/45 bg-bg/25 px-3 py-1.5 text-[11px] font-semibold text-muted">
                     {documents.length} docs
                   </span>
-                  <span className="rounded-full border border-border/45 bg-bg/25 px-3 py-1.5 text-[11px] font-semibold text-muted">
-                    {totalFragments} fragments
-                  </span>
-                  {searchResults !== null && (
-                    <span className="rounded-full border border-accent/25 bg-accent/8 px-3 py-1.5 text-[11px] font-semibold text-txt-strong">
-                      {searchResults.length} results
-                    </span>
-                  )}
                 </div>
               </div>
             </section>

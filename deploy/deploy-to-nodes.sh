@@ -5,7 +5,7 @@
 #   ./deploy/deploy-to-nodes.sh [OPTIONS]
 #
 # Options:
-#   --image TAG       Image to deploy (default: milady/agent:cloud-full-ui)
+#   --image TAG       Image to deploy (default: milady/agent:latest)
 #   --nodes LIST      Comma-separated node list: name:ip (overrides defaults)
 #   --node NAME       Deploy to a single node by name (agent-node-1 or nyx-node)
 #   --restart         Restart all milady containers after loading image
@@ -28,7 +28,7 @@
 set -euo pipefail
 
 # ── Config ────────────────────────────────────────────────────────────────────
-DEFAULT_IMAGE="milady/agent:cloud-full-ui"
+DEFAULT_IMAGE="milady/agent:latest"
 SSH_KEY="${SSH_KEY:-$HOME/.ssh/clawdnet_nodes}"
 SSH_USER="${SSH_USER:-root}"
 SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=15"
@@ -66,6 +66,27 @@ hdr()  { echo -e "\n${CYAN}━━━ $* ━━━${NC}"; }
 ssh_cmd() {
   local ip="$1"; shift
   ssh $SSH_OPTS -i "$SSH_KEY" "${SSH_USER}@${ip}" "$@"
+}
+
+list_remote_images_cmd() {
+  cat <<'EOF'
+docker images --format 'table {{.Repository}}:{{.Tag}}\t{{.Size}}\t{{.ID}}\t{{.CreatedSince}}' | grep -E '^(milady/agent|ghcr\.io/milady-ai/agent|ghcr\.io/milady-ai/milady/agent):' || true
+EOF
+}
+
+list_remote_containers_cmd() {
+  cat <<'EOF'
+{
+  printf 'NAMES|IMAGE|STATUS|PORTS\n'
+  docker ps --format '{{.Names}}|{{.Image}}|{{.Status}}|{{.Ports}}'
+} | awk -F'|' 'NR == 1 || $2 ~ /^(milady\/agent|ghcr\.io\/milady-ai\/agent|ghcr\.io\/milady-ai\/milady\/agent)(:|@)/'
+EOF
+}
+
+list_remote_container_names_cmd() {
+  cat <<'EOF'
+docker ps --format '{{.Names}}|{{.Image}}' | awk -F'|' '$2 ~ /^(milady\/agent|ghcr\.io\/milady-ai\/agent|ghcr\.io\/milady-ai\/milady\/agent)(:|@)/ { print $1 }'
+EOF
 }
 
 # ── Parse Args ────────────────────────────────────────────────────────────────
@@ -108,10 +129,10 @@ if $DO_STATUS; then
     hdr "$node ($ip)"
     
     echo -e "${YELLOW}Images:${NC}"
-    ssh_cmd "$ip" "docker images milady/agent --format 'table {{.Repository}}:{{.Tag}}\t{{.Size}}\t{{.ID}}\t{{.CreatedSince}}'" 2>/dev/null || warn "Failed to connect"
+    ssh_cmd "$ip" "$(list_remote_images_cmd)" 2>/dev/null || warn "Failed to connect"
     
     echo -e "\n${YELLOW}Running containers:${NC}"
-    ssh_cmd "$ip" "docker ps --filter ancestor=milady/agent:cloud-full-ui --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'" 2>/dev/null || true
+    ssh_cmd "$ip" "$(list_remote_containers_cmd)" 2>/dev/null || true
   done
   exit 0
 fi
@@ -121,7 +142,7 @@ if $DO_LIST; then
   for node in "${SELECTED_NODES[@]}"; do
     ip="${NODE_MAP[$node]}"
     hdr "$node ($ip)"
-    ssh_cmd "$ip" "docker ps --filter ancestor=milady/agent:cloud-full-ui --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.CreatedAt}}'" 2>/dev/null || warn "Failed to connect"
+    ssh_cmd "$ip" "$(list_remote_containers_cmd)" 2>/dev/null || warn "Failed to connect"
   done
   exit 0
 fi
@@ -137,7 +158,7 @@ fi
 # Check image exists locally
 if ! docker image inspect "$IMAGE" &>/dev/null; then
   err "Image $IMAGE not found locally. Build it first:"
-  echo "  ./deploy/build-cloud-image.sh"
+  echo "  ./scripts/build-image.sh --tag latest"
   exit 1
 fi
 
@@ -171,7 +192,7 @@ for node in "${SELECTED_NODES[@]}"; do
   ok "Loaded in $((LOAD_END - LOAD_START))s"
   
   # Get running milady containers
-  CONTAINERS=$(ssh_cmd "$ip" "docker ps --filter ancestor=milady/agent:cloud-full-ui --format '{{.Names}}' 2>/dev/null" || true)
+  CONTAINERS=$(ssh_cmd "$ip" "$(list_remote_container_names_cmd)" 2>/dev/null || true)
   
   if [[ -z "$CONTAINERS" ]]; then
     warn "No running milady containers on $node"

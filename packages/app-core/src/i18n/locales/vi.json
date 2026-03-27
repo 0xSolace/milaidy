@@ -829,7 +829,6 @@
   "onboarding.stepSub.launch": "Sẵn sàng",
   "onboarding.stepSub.permissions": "Truy cập hệ thống",
   "onboarding.stepSub.providers": "Liên kết thần kinh",
-  "onboarding.stepSub.welcome": "Bắt đầu",
   "onboarding.systemAccessTitle": "Truy cập hệ thống",
   "onboarding.useDefaultModel": "Dùng model mặc định",
   "onboarding.useExistingKey": "Dùng nếu bạn đã có key.",
@@ -1327,5 +1326,14 @@
   "whatsappqroverlay.Tap": "Chạm",
   "whatsappqroverlay.TryAgain": "Thử lại",
   "whatsappqroverlay.UsesAnUnofficialW": "Dùng API WhatsApp không chính thức. Hãy dùng số riêng.",
-  "whatsappqroverlay.andSelect": "và chọn"
+  "whatsappqroverlay.andSelect": "và chọn",
+  "wallet.overviewTitle": "Wallet Overview",
+  "wallet.overviewTitleChain": "{{chain}} Wallet Overview",
+  "wallet.overviewSubtitle": "Track balances, managed addresses, and trading readiness in one place.",
+  "wallet.fundingRouteAvailable": "1 funding route available",
+  "wallet.fundingRoutesAvailable": "{{count}} funding routes available",
+  "wallet.managedWalletOverview": "Managed wallet overview",
+  "onboarding.cloudLoginRetry": "Retry Login",
+  "chat.micTitleIdleEnhanced": "Voice input — assistant replies use neural TTS (ElevenLabs). Change under Settings → Voice.",
+  "chat.micTitleIdleStandard": "Voice input — assistant uses device speech. Neural TTS and billing: Settings → Voice."
 }

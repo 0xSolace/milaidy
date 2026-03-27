@@ -76,7 +76,6 @@ describe("Electrobun startup bootstrap", () => {
     expect(source).toContain('recordStartupPhase("autostart_requested"');
     expect(source).toContain("resolveStartupBundlePath");
   });
-
   it("prompts with startup crash report recovery instructions", () => {
     const source = fs.readFileSync(INDEX_PATH, "utf8");
 

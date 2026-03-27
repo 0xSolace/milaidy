@@ -834,7 +834,6 @@
   "onboarding.useExistingKey": "Use se já tiver uma chave.",
   "onboarding.useExistingSetup": "Continuar com a configuração existente",
   "onboarding.welcomeDesc": "Seu companheiro IA tá quase pronto. Conecte ao Eliza Cloud pra começar em segundos.",
-
   "onboarding.welcomeTitle": "Bem-vindo ao {{appName}}",
   "pairingview.AskTheServerOwner": "Peça ao proprietário do servidor um token de API.",
   "pairingview.EnablePairingOnTh": "Habilite o emparelhamento no servidor e reinicie o {{appName}}.",
@@ -1327,5 +1326,14 @@
   "whatsappqroverlay.Tap": "Tocar",
   "whatsappqroverlay.TryAgain": "Tente novamente",
   "whatsappqroverlay.UsesAnUnofficialW": "Usa uma API não oficial do WhatsApp. Use um número de telefone dedicado.",
-  "whatsappqroverlay.andSelect": "e selecione"
+  "whatsappqroverlay.andSelect": "e selecione",
+  "wallet.overviewTitle": "Wallet Overview",
+  "wallet.overviewTitleChain": "{{chain}} Wallet Overview",
+  "wallet.overviewSubtitle": "Track balances, managed addresses, and trading readiness in one place.",
+  "wallet.fundingRouteAvailable": "1 funding route available",
+  "wallet.fundingRoutesAvailable": "{{count}} funding routes available",
+  "wallet.managedWalletOverview": "Managed wallet overview",
+  "onboarding.cloudLoginRetry": "Retry Login",
+  "chat.micTitleIdleEnhanced": "Voice input — assistant replies use neural TTS (ElevenLabs). Change under Settings → Voice.",
+  "chat.micTitleIdleStandard": "Voice input — assistant uses device speech. Neural TTS and billing: Settings → Voice."
 }
