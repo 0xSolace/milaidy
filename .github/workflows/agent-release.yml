@@ -311,6 +311,53 @@ jobs:
           cd packaging/debian
           dpkg-buildpackage -us -uc -b || echo "::warning::Debian package build failed (non-blocking)"
 
+  build-ios:
+    name: iOS build validation
+    needs: [version]
+    runs-on: macos-14
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.10"
+      - name: Build web assets
+        run: |
+          bun install --frozen-lockfile --ignore-scripts
+          bun run postinstall
+          bun run build
+      - name: Capacitor sync iOS
+        run: bunx cap sync ios
+      - name: Verify Xcode project
+        run: |
+          if [ -d ios/App ]; then
+            xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release -destination 'generic/platform=iOS' -dry-run || echo "::warning::iOS xcodebuild dry-run failed (non-blocking)"
+          else
+            echo "::warning::ios/App directory not found — skipping Xcode validation"
+          fi
+
+  build-macos-store:
+    name: macOS App Store build validation
+    needs: [version]
+    runs-on: macos-14
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.10"
+      - name: Build web assets and Electrobun
+        run: |
+          bun install --frozen-lockfile --ignore-scripts
+          bun run postinstall
+          ELECTROBUN_SKIP_CODESIGN=1 bun run build || echo "::warning::macOS build failed (non-blocking)"
+
   # ── 4. Electrobun + Docker green → tag and publish ─────────────────
   publish:
     name: Tag & publish release
@@ -399,7 +446,7 @@ jobs:
   # ── 5. Report — open issues for any failures/warnings ───────────────
   report:
     name: Report build results
-    needs: [version, build-electrobun, build-docker, build-npm, build-android, build-snap, build-flatpak, build-pypi, build-debian, publish]
+    needs: [version, build-electrobun, build-docker, build-npm, build-android, build-ios, build-macos-store, build-snap, build-flatpak, build-pypi, build-debian, publish]
     if: always() && needs.version.result == 'success'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
@@ -413,6 +460,8 @@ jobs:
           R_DOCKER: ${{ needs.build-docker.result }}
           R_NPM: ${{ needs.build-npm.result }}
           R_ANDROID: ${{ needs.build-android.result }}
+          R_IOS: ${{ needs.build-ios.result }}
+          R_MACOS_STORE: ${{ needs.build-macos-store.result }}
           R_SNAP: ${{ needs.build-snap.result }}
           R_FLATPAK: ${{ needs.build-flatpak.result }}
           R_PYPI: ${{ needs.build-pypi.result }}
@@ -430,6 +479,8 @@ jobs:
             const nonBlocking = {
               'npm package': process.env.R_NPM,
               'Android AAB': process.env.R_ANDROID,
+              'iOS': process.env.R_IOS,
+              'macOS App Store': process.env.R_MACOS_STORE,
               'Snap': process.env.R_SNAP,
               'Flatpak': process.env.R_FLATPAK,
               'PyPI': process.env.R_PYPI,
