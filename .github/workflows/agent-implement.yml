@@ -222,6 +222,7 @@ jobs:
           NPM_CONFIG_REGISTRY: 'https://registry.npmjs.org'
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           BRANCH_NAME: ${{ steps.branch.outputs.branch }}
+          GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -337,4 +338,12 @@ jobs:
             await github.rest.issues.addLabels({
               owner, repo, issue_number: issue,
               labels: ['agent-implemented'],
+            });
+
+            // Close the issue — the PR's "Closes #N" will reopen if the PR is
+            // reverted, but closing now signals the agent finished its work.
+            await github.rest.issues.update({
+              owner, repo, issue_number: issue,
+              state: 'closed',
+              state_reason: 'completed',
             });
