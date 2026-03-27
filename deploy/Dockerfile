@@ -41,6 +41,9 @@ COPY packages/vrm-utils/package.json ./packages/vrm-utils/package.json
 # deploy/
 COPY deploy/cloud-agent-template/package.json ./deploy/cloud-agent-template/package.json
 
+# Bun patchedDependencies need their patch files available during install.
+COPY patches ./patches
+
 COPY scripts ./scripts
 
 # Install ALL dependencies (dev + prod) for the build step.

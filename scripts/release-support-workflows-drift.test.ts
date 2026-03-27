@@ -38,6 +38,7 @@ describe("release support workflow drift", () => {
     const dockerfile = fs.readFileSync(CLOUD_IMAGE_DOCKERFILE, "utf8");
 
     expect(dockerfile).toContain("COPY package.json bun.lock* ./");
+    expect(dockerfile).toContain("COPY patches ./patches");
     expect(dockerfile).toContain(
       "COPY apps/app/electrobun/package.json ./apps/app/electrobun/package.json",
     );
