@@ -36,6 +36,9 @@ import type {
   SkillInfo,
   SkillMarketplaceResult,
   SkillScanReportSummary,
+  StewardApprovalActionResponse,
+  StewardHistoryResponse,
+  StewardPendingResponse,
   StewardStatusResponse,
   StreamEventEnvelope,
   SystemPermissionId,
@@ -702,6 +705,14 @@ export interface AppActions {
   ) => Promise<BscTradeQuoteResponse>;
   getBscTradeTxStatus: (hash: string) => Promise<BscTradeTxStatusResponse>;
   getStewardStatus: () => Promise<StewardStatusResponse>;
+  getStewardHistory: (opts?: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }) => Promise<{ records: StewardHistoryResponse; total: number; offset: number; limit: number }>;
+  getStewardPending: () => Promise<StewardPendingResponse>;
+  approveStewardTx: (txId: string) => Promise<StewardApprovalActionResponse>;
+  rejectStewardTx: (txId: string, reason?: string) => Promise<StewardApprovalActionResponse>;
   loadWalletTradingProfile: (
     window?: WalletTradingProfileWindow,
     source?: WalletTradingProfileSourceFilter,

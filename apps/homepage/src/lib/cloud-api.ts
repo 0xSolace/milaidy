@@ -1,6 +1,111 @@
 import { clearToken } from "./auth";
 import { CLOUD_BASE } from "./runtime-config";
 
+// ── Wallet types (mirrored from @miladyai/shared/contracts/wallet) ──────
+
+export interface WalletAddressesResponse {
+  evmAddress: string | null;
+  solanaAddress: string | null;
+}
+
+export interface EvmTokenBalance {
+  symbol: string;
+  name: string;
+  contractAddress: string;
+  balance: string;
+  decimals: number;
+  valueUsd: string;
+  logoUrl: string;
+}
+
+export interface EvmChainBalance {
+  chain: string;
+  chainId: number;
+  nativeBalance: string;
+  nativeSymbol: string;
+  nativeValueUsd: string;
+  tokens: EvmTokenBalance[];
+  error: string | null;
+}
+
+export interface SolanaTokenBalance {
+  symbol: string;
+  name: string;
+  mint: string;
+  balance: string;
+  decimals: number;
+  valueUsd: string;
+  logoUrl: string;
+}
+
+export interface WalletBalancesResponse {
+  evm: { address: string; chains: EvmChainBalance[] } | null;
+  solana: {
+    address: string;
+    solBalance: string;
+    solValueUsd: string;
+    tokens: SolanaTokenBalance[];
+  } | null;
+}
+
+export interface StewardStatusResponse {
+  configured: boolean;
+  available: boolean;
+  connected: boolean;
+  baseUrl?: string;
+  agentId?: string;
+  evmAddress?: string;
+  error?: string | null;
+}
+
+export type StewardTxStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "signed"
+  | "broadcast"
+  | "confirmed"
+  | "failed";
+
+export interface StewardPolicyResult {
+  policyId?: string;
+  name?: string;
+  status: "approved" | "rejected" | "pending";
+  reason?: string;
+}
+
+export interface StewardTxRecord {
+  id: string;
+  agentId: string;
+  status: StewardTxStatus;
+  request: {
+    agentId: string;
+    tenantId: string;
+    to: string;
+    value: string;
+    data?: string;
+    chainId: number;
+  };
+  txHash?: string;
+  policyResults: StewardPolicyResult[];
+  createdAt: string;
+  signedAt?: string;
+  confirmedAt?: string;
+}
+
+export interface StewardPendingApproval {
+  queueId: string;
+  status: "pending" | "approved" | "rejected";
+  requestedAt: string;
+  transaction: StewardTxRecord;
+}
+
+export interface StewardApprovalActionResponse {
+  ok: boolean;
+  txHash?: string;
+  error?: string;
+}
+
 export interface CloudAgentDetail {
   id: string;
   name: string;
@@ -640,5 +745,59 @@ export class CloudApiClient {
 
   async getBilling(): Promise<object> {
     return this.request("/api/billing", { method: "GET" });
+  }
+
+  // Wallet
+
+  async getWalletAddresses(): Promise<WalletAddressesResponse> {
+    return this.request("/api/wallet/addresses", { method: "GET" });
+  }
+
+  async getWalletBalances(): Promise<WalletBalancesResponse> {
+    return this.request("/api/wallet/balances", { method: "GET" });
+  }
+
+  async getStewardStatus(): Promise<StewardStatusResponse> {
+    return this.request("/api/wallet/steward-status", { method: "GET" });
+  }
+
+  async getStewardTxRecords(options?: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{
+    records: StewardTxRecord[];
+    total: number;
+    offset: number;
+    limit: number;
+  }> {
+    const params = new URLSearchParams();
+    if (options?.status) params.set("status", options.status);
+    if (options?.limit) params.set("limit", String(options.limit));
+    if (options?.offset) params.set("offset", String(options.offset));
+    const qs = params.toString();
+    return this.request(`/api/wallet/steward-tx-records${qs ? `?${qs}` : ""}`, {
+      method: "GET",
+    });
+  }
+
+  async getStewardPendingApprovals(): Promise<StewardPendingApproval[]> {
+    return this.request("/api/wallet/steward-pending-approvals", {
+      method: "GET",
+    });
+  }
+
+  async approveStewardTx(txId: string): Promise<StewardApprovalActionResponse> {
+    return this.request("/api/wallet/steward-approve-tx", {
+      method: "POST",
+      body: JSON.stringify({ txId }),
+    });
+  }
+
+  async denyStewardTx(txId: string): Promise<StewardApprovalActionResponse> {
+    return this.request("/api/wallet/steward-deny-tx", {
+      method: "POST",
+      body: JSON.stringify({ txId }),
+    });
   }
 }
