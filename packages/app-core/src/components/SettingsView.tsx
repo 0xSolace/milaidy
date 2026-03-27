@@ -31,6 +31,7 @@ import {
 import { CloudDashboard } from "./ElizaCloudDashboard";
 import { MediaSettingsSection } from "./MediaSettingsSection";
 import { PermissionsSection } from "./PermissionsSection";
+import { PolicyControlsView } from "./PolicyControlsView";
 import { ProviderSwitcher } from "./ProviderSwitcher";
 import { ReleaseCenterView } from "./ReleaseCenterView";
 import { SETTINGS_TOOLBAR_SELECT_TRIGGER_CLASSNAME } from "./settings-control-primitives";
@@ -104,6 +105,25 @@ const SETTINGS_SECTIONS: SettingsSectionDef[] = [
       "private key",
       "address",
       "network",
+    ],
+  },
+  {
+    id: "wallet-policies",
+    label: "settings.sections.walletpolicies.label",
+    description: "settings.sections.walletpolicies.desc",
+    keywords: [
+      "policy",
+      "policies",
+      "spending",
+      "limit",
+      "approved",
+      "addresses",
+      "rate limit",
+      "time window",
+      "auto approve",
+      "steward",
+      "safety",
+      "guardrails",
     ],
   },
   {
@@ -807,6 +827,22 @@ export function SettingsView({
           className={SETTINGS_SECTION_CARD_CLASS}
         >
           <ConfigPageView embedded />
+        </SectionCard>
+      )}
+
+      {visibleSectionIds.has("wallet-policies") && (
+        <SectionCard
+          id="wallet-policies"
+          title={t("settings.sections.walletpolicies.label", {
+            defaultValue: "Wallet Policies",
+          })}
+          description={t("settings.sections.walletpolicies.desc", {
+            defaultValue:
+              "Spending limits, address controls, rate limits, and transaction safety rules",
+          })}
+          className={SETTINGS_SECTION_CARD_CLASS}
+        >
+          <PolicyControlsView />
         </SectionCard>
       )}
 

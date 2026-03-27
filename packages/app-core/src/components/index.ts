@@ -88,6 +88,7 @@ export * from "./MessageContent";
 export * from "./OnboardingWizard";
 export * from "./PairingView";
 export * from "./PermissionsSection";
+export * from "./PolicyControlsView";
 export * from "./PluginsPageView";
 export * from "./PluginsView";
 export * from "./PtyConsoleBase";

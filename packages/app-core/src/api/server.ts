@@ -128,8 +128,10 @@ import {
 } from "./dev-console-log";
 import { resolveDevStackFromEnv } from "./dev-stack";
 import {
+  createStewardClient,
   getStewardBridgeStatus,
   isStewardConfigured,
+  resolveStewardAgentId,
   signTransactionWithOptionalSteward,
 } from "./steward-bridge";
 
@@ -2725,6 +2727,249 @@ async function handleMiladyCompatRoute(
       evmAddress: addresses.evmAddress,
     });
     sendJsonResponse(res, 200, status);
+    return true;
+  }
+
+  /* ── Steward Policy CRUD ──────────────────────────────────────────── */
+
+  if (method === "GET" && url.pathname === "/api/wallet/steward-policies") {
+    if (!ensureCompatApiAuthorized(req, res)) {
+      return true;
+    }
+
+    const addresses = getWalletAddresses();
+    const agentId = resolveStewardAgentId(
+      process.env,
+      addresses.evmAddress,
+    );
+    const stewardClient = createStewardClient();
+
+    if (!stewardClient || !agentId) {
+      sendJsonResponse(res, 503, {
+        error: "Steward not configured",
+      });
+      return true;
+    }
+
+    try {
+      const policies = await stewardClient.getPolicies(agentId);
+      sendJsonResponse(res, 200, policies);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to fetch policies";
+      sendJsonResponse(res, 500, { error: message });
+    }
+    return true;
+  }
+
+  if (method === "PUT" && url.pathname === "/api/wallet/steward-policies") {
+    if (!ensureCompatApiAuthorized(req, res)) {
+      return true;
+    }
+
+    const body = await readCompatJsonBody(req, res);
+    if (!body) return true;
+
+    const { policies } = body as {
+      policies: Array<{
+        id: string;
+        type: string;
+        enabled: boolean;
+        config: Record<string, unknown>;
+      }>;
+    };
+
+    if (!Array.isArray(policies)) {
+      sendJsonResponse(res, 400, {
+        error: "policies must be an array",
+      });
+      return true;
+    }
+
+    const addresses = getWalletAddresses();
+    const agentId = resolveStewardAgentId(
+      process.env,
+      addresses.evmAddress,
+    );
+    const stewardClient = createStewardClient();
+
+    if (!stewardClient || !agentId) {
+      sendJsonResponse(res, 503, {
+        error: "Steward not configured",
+      });
+      return true;
+    }
+
+    try {
+      await stewardClient.setPolicies(
+        agentId,
+        policies as unknown as import("@stwd/sdk").PolicyRule[],
+      );
+      sendJsonResponse(res, 200, { ok: true });
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to save policies";
+      sendJsonResponse(res, 500, { error: message });
+    }
+    return true;
+  }
+
+  /* ── Steward Transaction Records ──────────────────────────────────── */
+
+  if (method === "GET" && url.pathname === "/api/wallet/steward-tx-records") {
+    if (!ensureCompatApiAuthorized(req, res)) {
+      return true;
+    }
+
+    const addresses = getWalletAddresses();
+    const agentId = resolveStewardAgentId(
+      process.env,
+      addresses.evmAddress,
+    );
+    const stewardClient = createStewardClient();
+
+    if (!stewardClient || !agentId) {
+      sendJsonResponse(res, 503, {
+        error: "Steward not configured",
+      });
+      return true;
+    }
+
+    try {
+      const status = url.searchParams.get("status") || undefined;
+      const limit = parseInt(url.searchParams.get("limit") || "50", 10);
+      const offset = parseInt(url.searchParams.get("offset") || "0", 10);
+      const history = await stewardClient.getHistory(agentId);
+      // History entries are basic {timestamp, value} — return as-is
+      // The frontend will format them. Apply pagination locally.
+      const filtered = status
+        ? history.filter((h: any) => h.status === status)
+        : history;
+      const paginated = filtered.slice(offset, offset + limit);
+      sendJsonResponse(res, 200, {
+        records: paginated,
+        total: filtered.length,
+        offset,
+        limit,
+      });
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to fetch tx records";
+      sendJsonResponse(res, 500, { error: message });
+    }
+    return true;
+  }
+
+  /* ── Steward Pending Approvals ────────────────────────────────────── */
+
+  if (
+    method === "GET" &&
+    url.pathname === "/api/wallet/steward-pending-approvals"
+  ) {
+    if (!ensureCompatApiAuthorized(req, res)) {
+      return true;
+    }
+
+    const addresses = getWalletAddresses();
+    const agentId = resolveStewardAgentId(
+      process.env,
+      addresses.evmAddress,
+    );
+    const stewardClient = createStewardClient();
+
+    if (!stewardClient || !agentId) {
+      sendJsonResponse(res, 503, {
+        error: "Steward not configured",
+      });
+      return true;
+    }
+
+    try {
+      // Try the pending approvals endpoint on the steward API directly.
+      // This isn't exposed in the SDK yet, so we call the base URL directly.
+      const baseUrl = (stewardClient as any).baseUrl as string;
+      const headers = (stewardClient as any).buildHeaders() as Headers;
+      const pendingRes = await fetch(
+        `${baseUrl}/vault/${encodeURIComponent(agentId)}/pending`,
+        { headers },
+      );
+      if (pendingRes.ok) {
+        const body = await pendingRes.json();
+        sendJsonResponse(res, 200, body.data ?? body);
+      } else if (pendingRes.status === 404) {
+        // Endpoint not available yet — return empty array
+        sendJsonResponse(res, 200, []);
+      } else {
+        const errText = await pendingRes.text().catch(() => "Unknown error");
+        sendJsonResponse(res, pendingRes.status, { error: errText });
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Failed to fetch pending approvals";
+      sendJsonResponse(res, 500, { error: message });
+    }
+    return true;
+  }
+
+  /* ── Steward Approve/Deny Transaction ─────────────────────────────── */
+
+  if (
+    method === "POST" &&
+    (url.pathname === "/api/wallet/steward-approve-tx" ||
+      url.pathname === "/api/wallet/steward-deny-tx")
+  ) {
+    if (!ensureCompatApiAuthorized(req, res)) {
+      return true;
+    }
+
+    const body = await readCompatJsonBody(req, res);
+    if (!body) return true;
+
+    const txId = typeof body.txId === "string" ? body.txId : "";
+    if (!txId) {
+      sendJsonResponse(res, 400, { error: "txId is required" });
+      return true;
+    }
+
+    const addresses = getWalletAddresses();
+    const agentId = resolveStewardAgentId(
+      process.env,
+      addresses.evmAddress,
+    );
+    const stewardClient = createStewardClient();
+
+    if (!stewardClient || !agentId) {
+      sendJsonResponse(res, 503, {
+        error: "Steward not configured",
+      });
+      return true;
+    }
+
+    const action = url.pathname.includes("approve") ? "approve" : "deny";
+
+    try {
+      const baseUrl = (stewardClient as any).baseUrl as string;
+      const headers = (stewardClient as any).buildHeaders() as Headers;
+      const actionRes = await fetch(
+        `${baseUrl}/vault/${encodeURIComponent(agentId)}/${action}/${encodeURIComponent(txId)}`,
+        { method: "POST", headers },
+      );
+      if (actionRes.ok) {
+        const responseBody = await actionRes.json().catch(() => ({}));
+        sendJsonResponse(res, 200, responseBody.data ?? responseBody);
+      } else {
+        const errText = await actionRes.text().catch(() => "Unknown error");
+        sendJsonResponse(res, actionRes.status, { error: errText });
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : `Failed to ${action} transaction`;
+      sendJsonResponse(res, 500, { error: message });
+    }
     return true;
   }
 
