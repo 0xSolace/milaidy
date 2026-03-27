@@ -9,6 +9,7 @@ const BUILD_CLOUD_IMAGE_WORKFLOW = path.join(
   ".github/workflows/build-cloud-image.yml",
 );
 const CLOUD_IMAGE_DOCKERFILE = path.join(ROOT, "deploy/Dockerfile");
+const ROOT_DOCKERIGNORE = path.join(ROOT, ".dockerignore");
 const DEBIAN_CONTROL = path.join(ROOT, "packaging/debian/control");
 const DEBIAN_COMPAT = path.join(ROOT, "packaging/debian/compat");
 const ANDROID_RELEASE_WORKFLOW = path.join(
@@ -44,6 +45,18 @@ describe("release support workflow drift", () => {
       "COPY deploy/cloud-agent-template/package.json ./deploy/cloud-agent-template/package.json",
     );
     expect(dockerfile).not.toContain("COPY package.json bun.lock* .npmrc ./");
+  });
+
+  it("keeps full cloud image workspace inputs in the default docker context", () => {
+    const dockerignoreEntries = fs
+      .readFileSync(ROOT_DOCKERIGNORE, "utf8")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0 && !line.startsWith("#"));
+
+    expect(dockerignoreEntries).not.toContain("apps/app/electrobun");
+    expect(dockerignoreEntries).not.toContain("apps/homepage");
+    expect(dockerignoreEntries).not.toContain("deploy/");
   });
 
   it("declares the Debian debhelper compat level exactly once", () => {
