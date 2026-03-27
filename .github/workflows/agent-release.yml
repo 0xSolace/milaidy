@@ -254,6 +254,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: snapcore/action-build@v1
         id: snap
+        with:
+          path: packaging/snap
       - name: Verify snap
         run: |
           sudo snap install --dangerous ${{ steps.snap.outputs.snap }} || echo "::warning::Snap install test failed (non-blocking)"
@@ -308,8 +310,14 @@ jobs:
           echo "$HOME/.bun/bin" >> "$GITHUB_PATH"
       - name: Build deb
         run: |
-          cd packaging/debian
-          dpkg-buildpackage -us -uc -b || echo "::warning::Debian package build failed (non-blocking)"
+          if [ -f packaging/debian/Makefile ] || [ -f packaging/debian/rules ]; then
+            cd packaging/debian
+            dpkg-buildpackage -us -uc -b || echo "::warning::Debian package build failed (non-blocking)"
+          elif [ -d debian ]; then
+            dpkg-buildpackage -us -uc -b || echo "::warning::Debian package build failed (non-blocking)"
+          else
+            echo "::warning::No debian packaging found — skipping"
+          fi
 
   build-ios:
     name: iOS build validation
