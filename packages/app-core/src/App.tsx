@@ -44,6 +44,7 @@ import {
   SaveCommandModal,
   SettingsView,
   SharedCompanionScene,
+  StewardView,
   ShellOverlays,
   StartupFailureView,
   StreamView,
@@ -182,6 +183,12 @@ function ViewRouter({
         return (
           <TabScrollView>
             <InventoryView />
+          </TabScrollView>
+        );
+      case "steward":
+        return (
+          <TabScrollView>
+            <StewardView />
           </TabScrollView>
         );
       case "knowledge":

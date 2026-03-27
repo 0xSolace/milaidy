@@ -1,13 +1,17 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { ManagedAgent } from "../../lib/AgentProvider";
 import type { AgentStatus } from "../../lib/cloud-api";
+import { CloudApiClient } from "../../lib/cloud-api";
 import { formatUptime as formatUptimeShared } from "../../lib/format";
 import { openWebUI } from "../../lib/open-web-ui";
+import { ApprovalQueue } from "./ApprovalQueue";
 import { ExportPanel } from "./ExportPanel";
 import { LogsPanel } from "./LogsPanel";
 import { MetricsPanel } from "./MetricsPanel";
+import { TransactionHistory } from "./TransactionHistory";
+import { WalletsPanel } from "./WalletsPanel";
 
-const TABS = ["Overview", "Metrics", "Logs", "Snapshots"] as const;
+const TABS = ["Overview", "Wallets", "Transactions", "Approvals", "Metrics", "Logs", "Snapshots"] as const;
 type Tab = (typeof TABS)[number];
 
 interface AgentDetailProps {
@@ -53,6 +57,17 @@ export function AgentDetail({
   const [tab, setTab] = useState<Tab>("Overview");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // Build a CloudApiClient for steward proxy endpoints (tx history, approvals)
+  const stewardClient = useMemo(() => {
+    if (!managedAgent.sourceUrl && !managedAgent.client) return null;
+    if (managedAgent.client) return managedAgent.client;
+    return new CloudApiClient({
+      url: managedAgent.sourceUrl ?? "",
+      type: managedAgent.source === "cloud" ? "cloud" : "remote",
+      authToken: managedAgent.apiToken,
+    });
+  }, [managedAgent]);
 
   const handleCloudAction = useCallback(
     async (action: string) => {
@@ -192,6 +207,27 @@ export function AgentDetail({
             actionLoading={actionLoading}
             actionError={actionError}
           />
+        )}
+        {tab === "Wallets" && <WalletsPanel managedAgent={managedAgent} />}
+        {tab === "Transactions" && stewardClient && (
+          <TransactionHistory client={stewardClient} />
+        )}
+        {tab === "Transactions" && !stewardClient && (
+          <div className="border border-border bg-surface p-8 text-center">
+            <p className="font-mono text-xs text-text-muted">
+              Connect an agent to view transaction history.
+            </p>
+          </div>
+        )}
+        {tab === "Approvals" && stewardClient && (
+          <ApprovalQueue client={stewardClient} />
+        )}
+        {tab === "Approvals" && !stewardClient && (
+          <div className="border border-border bg-surface p-8 text-center">
+            <p className="font-mono text-xs text-text-muted">
+              Connect an agent to view pending approvals.
+            </p>
+          </div>
         )}
         {tab === "Metrics" && <MetricsPanel />}
         {tab === "Logs" && <LogsPanel />}

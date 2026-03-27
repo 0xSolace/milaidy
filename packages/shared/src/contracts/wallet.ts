@@ -560,3 +560,55 @@ export interface WalletGenerateResult {
   address: string;
   privateKey: string;
 }
+
+// ─── Steward Transaction History & Approval Queue ─────────────────────────────
+
+export type StewardTxStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "signed"
+  | "broadcast"
+  | "confirmed"
+  | "failed";
+
+/** A transaction record from the Steward vault history. */
+export interface StewardTxRecord {
+  id: string;
+  agentId: string;
+  status: StewardTxStatus;
+  request: {
+    agentId: string;
+    tenantId: string;
+    to: string;
+    value: string;
+    data?: string;
+    chainId: number;
+  };
+  txHash?: string;
+  policyResults: StewardPolicyResult[];
+  createdAt: string;
+  signedAt?: string;
+  confirmedAt?: string;
+}
+
+/** A pending approval entry from the Steward approval queue. */
+export interface StewardPendingApproval {
+  queueId: string;
+  status: "pending" | "approved" | "rejected";
+  requestedAt: string;
+  transaction: StewardTxRecord;
+}
+
+/** Response shape for GET /api/wallet/steward-history */
+export type StewardHistoryResponse = StewardTxRecord[];
+
+/** Response shape for GET /api/wallet/steward-pending */
+export type StewardPendingResponse = StewardPendingApproval[];
+
+/** Response shape for POST /api/wallet/steward-approve and steward-reject */
+export interface StewardApprovalActionResponse {
+  ok: boolean;
+  txHash?: string;
+  error?: string;
+}
