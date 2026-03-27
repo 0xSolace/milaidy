@@ -235,9 +235,15 @@ export function Header({
       >
         <div
           style={{
-            paddingTop: `calc(var(--safe-area-top, 0px) + 0.875rem)`,
-            paddingLeft: `calc(var(--safe-area-left, 0px) + clamp(0.65rem, 1.3vw, 1.2rem))`,
-            paddingRight: `calc(var(--safe-area-right, 0px) + clamp(0.65rem, 1.3vw, 1.2rem))`,
+            paddingTop: `calc(var(--safe-area-top, 0px) + var(--milady-macos-frame-top-inset, 0px) + ${
+              isDesktopShell ? "0.875rem" : "0.375rem"
+            })`,
+            paddingLeft: `calc(var(--safe-area-left, 0px) + ${
+              isDesktopShell ? "clamp(0.65rem, 1.3vw, 1.2rem)" : "0.375rem"
+            })`,
+            paddingRight: `calc(var(--safe-area-right, 0px) + ${
+              isDesktopShell ? "clamp(0.65rem, 1.3vw, 1.2rem)" : "0.375rem"
+            })`,
           }}
         >
           <div

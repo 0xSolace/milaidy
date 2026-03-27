@@ -80,6 +80,7 @@ function createContext(overrides: Record<string, unknown> = {}) {
     t: (k: string) => k,
     chatMode: "simple",
     chatAgentVoiceMuted: false,
+    conversations: [{ id: "conv-1", title: "Chat", status: "completed" }],
     conversationMessages: [],
     chatLastUsage: null,
     elizaCloudAuthRejected: false,
@@ -316,13 +317,9 @@ describe("CompanionView", () => {
     // render until the avatar finishes loading. Verify the header overlay is
     // present instead (rendered with opacity 0 while waiting).
     const desktopVoice = tree?.root.findAllByProps({
-      "data-testid": "companion-header-desktop-voice",
-    });
-    const desktopNewChat = tree?.root.findAllByProps({
-      "data-testid": "companion-header-desktop-new-chat",
+      "aria-label": "companion.agentVoiceOn",
     });
     expect(desktopVoice.length).toBeGreaterThanOrEqual(1);
-    expect(desktopNewChat.length).toBeGreaterThanOrEqual(1);
     const headerShell = tree?.root.findAllByProps({
       "data-testid": "companion-header-shell",
     });
@@ -366,7 +363,7 @@ describe("CompanionView", () => {
     }
   });
 
-  it("renders split companion header actions around the shell chrome", async () => {
+  it("renders centered companion header actions around the shell chrome", async () => {
     const setState = vi.fn();
     const handleStartDraftConversation = vi.fn(async () => {});
     const handleNewConversation = vi.fn(async () => {});
@@ -383,11 +380,8 @@ describe("CompanionView", () => {
       tree = TestRenderer.create(React.createElement(CompanionView));
     });
 
-    const desktopVoice = tree?.root.findByProps({
-      "data-testid": "companion-header-desktop-voice",
-    });
-    const desktopNewChat = tree?.root.findByProps({
-      "data-testid": "companion-header-desktop-new-chat",
+    const chatControls = tree?.root.findByProps({
+      "data-testid": "companion-header-chat-controls",
     });
     const headerShell = tree?.root.findByProps({
       "data-testid": "companion-header-shell",
@@ -397,28 +391,16 @@ describe("CompanionView", () => {
         node.type === "button" &&
         node.props["aria-label"] === "companion.agentVoiceOn",
     );
-    const newChatButton = tree?.root.find(
-      (node) =>
-        node.type === "button" &&
-        node.props["aria-label"] === "companion.newChat",
-    );
 
-    expect(String(headerShell.props.className)).toContain("max-w-5xl");
-    expect(String(desktopVoice.props.className)).toContain("shrink-0");
-    expect(String(desktopNewChat.props.className)).toContain("shrink-0");
+    expect(String(headerShell.props.className)).toContain("w-full");
+    expect(String(chatControls.props.className)).toContain("justify-center");
     expect(voiceButton).toBeDefined();
-    expect(newChatButton).toBeDefined();
-    expect(String(newChatButton.props.className)).toContain("backdrop-blur-xl");
 
     await act(async () => {
       voiceButton?.props.onClick();
     });
     expect(setState).toHaveBeenCalledWith("chatAgentVoiceMuted", true);
 
-    await act(async () => {
-      newChatButton?.props.onClick();
-    });
-    expect(handleNewConversation).toHaveBeenCalledTimes(1);
   });
 
   it("shows the cloud badge in companion mode only when connected", async () => {

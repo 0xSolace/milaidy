@@ -138,22 +138,17 @@ describe("ConnectionProviderDetailScreen", () => {
       }),
     );
 
-    let tree: TestRenderer.ReactTestRenderer | undefined;
-    await act(async () => {
-      tree = TestRenderer.create(
-        <ConnectionProviderDetailScreen dispatch={vi.fn()} />,
-      );
-    });
+    const { getByRole } = render(
+      <ConnectionProviderDetailScreen dispatch={vi.fn()} />,
+    );
 
-    const reportIssueButton = tree?.root
-      .findAll((node) => typeof node.props?.onClick === "function")
-      .find((node) => textOf(node).includes("onboarding.reportIssue"));
+    const reportIssueButton = getByRole("button", {
+      name: (content) => content.includes("onboarding.reportIssue"),
+    });
 
     expect(reportIssueButton).toBeDefined();
 
-    await act(async () => {
-      reportIssueButton?.props.onClick();
-    });
+    fireEvent.click(reportIssueButton);
     expect(mockOpenExternalUrl).toHaveBeenCalledWith("https://example.invalid");
   });
 

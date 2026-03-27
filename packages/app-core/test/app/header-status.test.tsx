@@ -44,6 +44,12 @@ vi.mock("@miladyai/ui", () => ({
     content?: string;
     side?: string;
   }) => React.createElement("div", null, children),
+  Dialog: ({ children }: any) => React.createElement("div", null, children),
+  DialogContent: ({ children }: any) => React.createElement("div", null, children),
+  DialogHeader: ({ children }: any) => React.createElement("div", null, children),
+  DialogTitle: ({ children }: any) => React.createElement("div", null, children),
+  DialogDescription: ({ children }: any) => React.createElement("div", null, children),
+  DialogFooter: ({ children }: any) => React.createElement("div", null, children),
 }));
 
 vi.mock("lucide-react", () => ({

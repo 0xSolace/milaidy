@@ -216,7 +216,7 @@ export function ShellHeaderControls({
   /** Render the appropriate action button — Save for character, New Chat for companion */
   const renderActionButton = (compact: boolean) => {
     if (onSave) return renderSaveButton(compact);
-    // if (onNewChat) return renderNewChatButton(compact);
+    if (onNewChat) return renderNewChatButton(compact);
     return null;
   };
 
