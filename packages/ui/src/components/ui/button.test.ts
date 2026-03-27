@@ -3,9 +3,15 @@ import { buttonVariants } from "./button";
 
 describe("buttonVariants", () => {
   describe("default variant", () => {
-    it("includes bg-accent/15", () => {
+    it("includes bg-accent/18", () => {
       const classes = buttonVariants({ variant: "default" });
-      expect(classes).toContain("bg-accent/15");
+      expect(classes).toContain("bg-accent/18");
+    });
+
+    it("uses text-accent on translucent gold buttons", () => {
+      const classes = buttonVariants({ variant: "default" });
+      expect(classes).toContain("text-accent");
+      expect(classes).not.toContain("text-accent-fg");
     });
 
     it("does not include bg-primary", () => {
@@ -58,7 +64,7 @@ describe("buttonVariants", () => {
     it("falls back to default variant classes", () => {
       const withDefault = buttonVariants({ variant: "default" });
       const withoutVariant = buttonVariants({});
-      expect(withoutVariant).toContain("bg-accent/15");
+      expect(withoutVariant).toContain("bg-accent/18");
       expect(withoutVariant).toBe(withDefault);
     });
   });
