@@ -110,13 +110,10 @@ log "Tag:     ${YELLOW}${IMAGE_NAME}${NC}"
 $DRY_RUN && warn "DRY RUN mode — commands will be shown but not executed"
 
 # ── Select Dockerfile ─────────────────────────────────────────────────────────
-# Preference: Dockerfile.ci (canonical generic agent image) → legacy fallbacks
+# Preference: Dockerfile.ci (canonical full app image) → legacy full-app fallbacks
 if [[ -f "Dockerfile.ci" ]]; then
   DOCKERFILE="Dockerfile.ci"
-  log "Dockerfile: ${YELLOW}${DOCKERFILE}${NC} (canonical generic agent image)"
-elif [[ -f "deploy/Dockerfile.cloud-slim" ]]; then
-  DOCKERFILE="deploy/Dockerfile.cloud-slim"
-  log "Dockerfile: ${YELLOW}${DOCKERFILE}${NC} (legacy slim fallback)"
+  log "Dockerfile: ${YELLOW}${DOCKERFILE}${NC} (canonical full app image)"
 elif [[ -f "deploy/Dockerfile" ]]; then
   DOCKERFILE="deploy/Dockerfile"
   log "Dockerfile: ${YELLOW}${DOCKERFILE}${NC} (legacy standard fallback)"

@@ -1,5 +1,5 @@
 # =============================================================================
-# build-cloud-image.yml — Build Milady cloud-only agent image and push to GHCR
+# build-cloud-image.yml — Build the full Milady app image for cloud deploys
 # =============================================================================
 #
 # Triggers:
@@ -8,14 +8,15 @@
 #   - Manual dispatch (workflow_dispatch) with optional override
 #
 # Published to: ghcr.io/milady-ai/milady/agent
-#   Tags: :cloud-agent
-#         :cloud-agent-{version}
+#   Tags: :cloud-app
+#         :cloud-app-{version}
 #
-# Build strategy: use the dedicated headless cloud runtime Dockerfile so users
-# who want a separate cloud-only deployment do not need the full generic image.
+# Build strategy: publish the complete Milady app image (UI + API + runtime)
+# for hosted cloud deployments. Subordinate per-agent runtimes use the internal
+# deploy/Dockerfile.cloud-agent contract instead of this user-facing image.
 # =============================================================================
 
-name: Build Cloud Agent Image
+name: Build Cloud App Image
 
 on:
   push:
@@ -67,7 +68,7 @@ permissions:
 
 jobs:
   build:
-    name: Build cloud agent image
+    name: Build cloud app image
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 90
 
@@ -77,6 +78,45 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ inputs.source_sha || github.sha }}
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.10"
+
+      - name: Cache bun store
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-store-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-store-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: bun install --ignore-scripts
+
+      - name: Build Capacitor plugins
+        run: |
+          cd apps/app
+          bun scripts/plugin-build.mjs
+
+      - name: Build runtime (tsdown)
+        run: |
+          npx tsdown
+          echo '{"type":"module"}' > dist/package.json
+          node --import tsx scripts/write-build-info.ts 2>/dev/null || true
+
+      - name: Build UI (vite)
+        run: |
+          cd apps/app
+          npx vite build
+        env:
+          NODE_ENV: production
 
       - name: Determine version
         id: version
@@ -93,6 +133,9 @@ jobs:
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "version_clean=${VERSION_CLEAN}" >> "$GITHUB_OUTPUT"
           echo "Source SHA: $(git rev-parse HEAD)"
+
+      - name: Set up CI dockerignore
+        run: cp .dockerignore.ci .dockerignore
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -111,26 +154,26 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=cloud-agent
-            type=raw,value=cloud-agent-${{ steps.version.outputs.version_clean }}
+            type=raw,value=cloud-app
+            type=raw,value=cloud-app-${{ steps.version.outputs.version_clean }}
 
-      - name: Build and push cloud image
+      - name: Build and push cloud app image
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: deploy/Dockerfile.cloud-slim
+          file: Dockerfile.ci
           platforms: linux/amd64
           push: ${{ github.event_name == 'push' || inputs.push_image != false }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=milady-cloud-agent
-          cache-to: type=gha,scope=milady-cloud-agent,mode=max
+          cache-from: type=gha,scope=milady-cloud-app
+          cache-to: type=gha,scope=milady-cloud-app,mode=max
           provenance: false
 
       - name: Build summary
         if: always()
         run: |
-          echo "## ☁️ Milady Cloud Agent Image" >> $GITHUB_STEP_SUMMARY
+          echo "## ☁️ Milady Cloud App Image" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
@@ -141,6 +184,6 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Pull commands" >> $GITHUB_STEP_SUMMARY
           echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:cloud-agent" >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:cloud-agent-${{ steps.version.outputs.version_clean }}" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:cloud-app" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:cloud-app-${{ steps.version.outputs.version_clean }}" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY

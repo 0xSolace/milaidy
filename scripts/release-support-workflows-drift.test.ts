@@ -17,7 +17,7 @@ const LEGACY_STEWARD_IMAGE_WORKFLOW = path.join(
   ".github/workflows/build-steward-image.yml",
 );
 const CANONICAL_IMAGE_DOCKERFILE = path.join(ROOT, "Dockerfile.ci");
-const CLOUD_IMAGE_DOCKERFILE = path.join(ROOT, "deploy/Dockerfile.cloud-slim");
+const CLOUD_AGENT_DOCKERFILE = path.join(ROOT, "deploy/Dockerfile.cloud-agent");
 const CI_DOCKERIGNORE = path.join(ROOT, ".dockerignore.ci");
 const BUILD_IMAGE_SCRIPT = path.join(ROOT, "scripts/build-image.sh");
 const DEPLOY_TO_NODES_SCRIPT = path.join(ROOT, "deploy/deploy-to-nodes.sh");
@@ -37,7 +37,7 @@ const UPDATE_HOMEBREW_WORKFLOW = path.join(
 );
 
 describe("release support workflow drift", () => {
-  it("validates both generic and cloud agent image builds in Agent Release", () => {
+  it("validates both generic and cloud app image builds in Agent Release", () => {
     const workflow = fs.readFileSync(AGENT_RELEASE_WORKFLOW, "utf8");
 
     expect(workflow).toContain("build-docker");
@@ -61,36 +61,27 @@ describe("release support workflow drift", () => {
     expect(workflow).toContain("repos.generateReleaseNotes");
     expect(workflow).toContain("## Full changelog");
     expect(workflow).toContain("- [ ] PyPI publish");
-    expect(workflow).toContain("- [ ] Cloud-only agent image push to GHCR");
+    expect(workflow).toContain("- [ ] Cloud app image push to GHCR");
   });
 
-  it("builds the cloud-only image from the dedicated cloud runtime Dockerfile", () => {
+  it("builds the cloud app image from the full app Dockerfile", () => {
     const workflow = fs.readFileSync(CLOUD_IMAGE_WORKFLOW, "utf8");
 
-    expect(workflow).toContain("name: Build Cloud Agent Image");
-    expect(workflow).toContain("file: deploy/Dockerfile.cloud-slim");
-    expect(workflow).toContain("type=raw,value=cloud-agent");
+    expect(workflow).toContain("name: Build Cloud App Image");
+    expect(workflow).toContain("file: Dockerfile.ci");
+    expect(workflow).toContain("type=raw,value=cloud-app");
     expect(workflow).toContain(
-      "type=raw,value=cloud-agent-$" +
+      "type=raw,value=cloud-app-$" +
         "{{ steps.version.outputs.version_clean }}",
     );
-    expect(workflow).not.toContain("cloud-full-ui");
+    expect(workflow).not.toContain("deploy/Dockerfile.cloud-slim");
   });
 
-  it("keeps the cloud runtime Dockerfile limited to real runtime inputs", () => {
-    const dockerfile = fs.readFileSync(CLOUD_IMAGE_DOCKERFILE, "utf8");
+  it("keeps the subordinate cloud agent runtime on the dedicated child-image Dockerfile", () => {
+    const dockerfile = fs.readFileSync(CLOUD_AGENT_DOCKERFILE, "utf8");
 
-    expect(dockerfile).not.toContain("/build/src ./src");
-
-    const createUserIndex = dockerfile.indexOf(
-      "RUN groupadd -r agent && useradd -r -g agent -m agent",
-    );
-    const firstChownedCopyIndex = dockerfile.indexOf(
-      "COPY --from=pruner --chown=agent:agent /build/dist ./dist",
-    );
-
-    expect(createUserIndex).toBeGreaterThanOrEqual(0);
-    expect(firstChownedCopyIndex).toBeGreaterThan(createUserIndex);
+    expect(dockerfile).toContain("deploy/cloud-agent-entrypoint.ts");
+    expect(dockerfile).toContain('CMD ["tsx", "entrypoint.ts"]');
   });
 
   it("uses the canonical image runtime selector for both agent and cloud launches", () => {
@@ -125,6 +116,9 @@ describe("release support workflow drift", () => {
     expect(buildScript).toContain('DOCKERFILE="Dockerfile.ci"');
     expect(buildScript).toContain("cp .dockerignore.ci .dockerignore");
     expect(buildScript).toContain("--build-arg VERSION=v$" + "{VERSION#v}");
+    expect(buildScript).not.toContain(
+      'DOCKERFILE="deploy/Dockerfile.cloud-slim"',
+    );
     expect(deployScript).toContain('DEFAULT_IMAGE="milady/agent:latest"');
     expect(deployScript).not.toContain("cloud-full-ui");
   });

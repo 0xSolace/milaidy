@@ -204,7 +204,7 @@ jobs:
     secrets: inherit
 
   build-cloud-image:
-    name: Cloud agent image build
+    name: Cloud app image build
     needs: [version]
     uses: ./.github/workflows/build-cloud-image.yml
     with:
@@ -523,7 +523,7 @@ jobs:
                 '### Release verification',
                 '- ✅ Electrobun desktop — full matrix (macOS ARM, macOS Intel, Windows, Linux)',
                 '- ✅ Canonical agent image — built successfully',
-                '- ✅ Cloud-only agent image — built successfully',
+                '- ✅ Cloud app image — built successfully',
                 npmOk ? '- ✅ npm package — built and validated' : '- ⚠️ npm package — build failed (non-blocking)',
                 '',
                 generatedNotes ? '## Release notes' : null,
@@ -536,7 +536,7 @@ jobs:
                 '- [ ] npm publish',
                 '- [ ] PyPI publish',
                 '- [ ] Canonical agent image push to GHCR',
-                '- [ ] Cloud-only agent image push to GHCR',
+                '- [ ] Cloud app image push to GHCR',
                 '- [ ] Android / iOS / macOS App Store',
                 '- [ ] Snap / Flatpak / Debian',
                 '- [ ] Homebrew / Homepage',
@@ -597,7 +597,7 @@ jobs:
             const blocking = {
               'Electrobun (4-platform)': process.env.R_ELECTROBUN,
               'Canonical agent image': process.env.R_DOCKER,
-              'Cloud agent image': process.env.R_CLOUD_IMAGE,
+              'Cloud app image': process.env.R_CLOUD_IMAGE,
             };
             const nonBlocking = {
               'npm package': process.env.R_NPM,

@@ -1,15 +1,16 @@
-# Milady Agent Images — Generic And Cloud Deploys
+# Milady Images — Full App And Cloud Agents
 
 ## Overview
 
-Milady ships two Docker images:
+Milady uses three container roles:
 
-- The canonical generic agent image, built from `Dockerfile.ci`
-- A dedicated cloud-only image, built from `deploy/Dockerfile.cloud-slim`
+- The canonical full app image, built from `Dockerfile.ci`
+- A cloud-deploy full app image, also built from `Dockerfile.ci` and published under cloud-specific tags
+- A subordinate cloud-agent runtime image, built from `deploy/Dockerfile.cloud-agent`
 
-Use the generic image for the standard Milady runtime. Use the cloud-only image
-when you want a separate headless cloud instance with the bridge runtime
-already baked in.
+Use the full app images when users should open Milady in a browser and interact
+with the complete UI/API/runtime surface. Use the subordinate cloud-agent image
+only for app-managed child agents that run in their own Docker containers.
 
 ### Image Architecture
 
@@ -26,17 +27,28 @@ already baked in.
 └─────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────┐
-│  ghcr.io/milady-ai/milady/agent:cloud-agent │
+│  ghcr.io/milady-ai/milady/agent:cloud-app │
 │                                         │
 │  ┌──────────────────────────────────┐   │
-│  │  Headless runtime + bridge       │   │
+│  │  Full Milady app for hosted      │   │
+│  │  cloud/browser deployments       │   │
+│  └──────────────────────────────────┘   │
+│                                         │
+│  Base: node:22-slim                     │
+│  Build: Dockerfile.ci                   │
+└─────────────────────────────────────────┘
+
+┌─────────────────────────────────────────┐
+│  deploy/Dockerfile.cloud-agent         │
+│                                         │
+│  ┌──────────────────────────────────┐   │
+│  │  Child cloud-agent runtime       │   │
 │  │  deploy/cloud-agent-entrypoint.ts│   │
-│  │  /health                         │   │
-│  │  /bridge                         │   │
+│  │  /health + bridge server         │   │
 │  └──────────────────────────────────┘   │
 │                                         │
 │  Base: node:22-bookworm-slim            │
-│  Build: deploy/Dockerfile.cloud-slim    │
+│  Build: deploy/Dockerfile.cloud-agent   │
 └─────────────────────────────────────────┘
 ```
 
@@ -56,14 +68,14 @@ already baked in.
 ### Build a new image
 
 ```bash
-# Build the canonical agent image
+# Build the canonical full app image
 docker build -f Dockerfile.ci -t milady/agent:latest .
 
-# Build the cloud-only image
-docker build -f deploy/Dockerfile.cloud-slim -t milady/agent:cloud-agent .
+# Build the cloud-deploy full app image
+docker build -f Dockerfile.ci -t milady/agent:cloud-app .
 
-# Build with a specific version tag
-docker build -f deploy/Dockerfile.cloud-slim -t milady/agent:cloud-agent-2.0.0-alpha.92 .
+# Build the subordinate cloud-agent runtime image
+docker build -f deploy/Dockerfile.cloud-agent -t milady/agent:cloud-agent-runtime .
 ```
 
 ### Deploy to nodes
@@ -102,15 +114,12 @@ docker build -f deploy/Dockerfile.cloud-slim -t milady/agent:cloud-agent-2.0.0-a
 
 ### Dockerfile
 
-The generic image uses `Dockerfile.ci`. The cloud-only image uses
-`deploy/Dockerfile.cloud-slim`.
-
 Key points:
 
-- **Generic image** — full Milady runtime, UI/API capable
-- **Cloud image** — headless runtime tuned for separate cloud instances
-- **Cloud workflow** — published by `build-cloud-image.yml`
-- **Health checks** — generic uses `/api/health`, cloud uses `/health`
+- **Canonical image** — full Milady runtime, UI/API capable
+- **Cloud app image** — same full app contract, published under cloud tags for hosted deployments
+- **Cloud agent runtime** — slim child-agent container for app-managed cloud agents
+- **Cloud workflow** — publishes the full app cloud image, not the child-agent runtime
 
 ### Build args
 
@@ -190,7 +199,8 @@ $SSH "docker stop -t 30 $CONTAINER && docker rm $CONTAINER"
 
 - Milady releases create git tags like `v2.0.0-alpha.81`
 - The canonical generic image is published to `ghcr.io/milady-ai/agent`
-- The cloud-only image is published to `ghcr.io/milady-ai/milady/agent:cloud-agent`
+- The cloud app image is published to `ghcr.io/milady-ai/milady/agent:cloud-app`
+- The subordinate cloud-agent runtime stays on the internal `deploy/Dockerfile.cloud-agent` contract
 - The steward-only image was removed from the release path
 
 ### GitHub Actions (CI)
@@ -203,16 +213,16 @@ The `build-docker.yml` workflow:
 
 The `build-cloud-image.yml` workflow:
 - **Auto-triggers** on release tags
-- **Runs inside `Agent Release`** as the cloud-only image validation job
-- Builds and pushes the dedicated cloud-only image
+- **Runs inside `Agent Release`** as the cloud app image validation job
+- Builds and pushes the full app cloud image
 
 To use the CI-built image on nodes:
 ```bash
 # Pull the generic image from GHCR (requires login)
 docker pull ghcr.io/milady-ai/agent:latest
 
-# Pull the cloud-only image from GHCR
-docker pull ghcr.io/milady-ai/milady/agent:cloud-agent
+# Pull the cloud app image from GHCR
+docker pull ghcr.io/milady-ai/milady/agent:cloud-app
 
 # Or build locally and transfer via SSH
 docker build -f Dockerfile.ci -t milady/agent:latest .
@@ -223,9 +233,9 @@ docker build -f Dockerfile.ci -t milady/agent:latest .
 ```
 git tag v2.0.0-alpha.82
 git push origin v2.0.0-alpha.82
-  → CI builds and pushes the canonical image and cloud-only image to GHCR
+  → CI builds and pushes the canonical image and cloud app image to GHCR
   → OR: docker build -f Dockerfile.ci -t milady/agent:latest . (manual)
-  → OR: docker build -f deploy/Dockerfile.cloud-slim -t milady/agent:cloud-agent . (manual)
+  → OR: docker build -f Dockerfile.ci -t milady/agent:cloud-app . (manual)
 ./deploy/deploy-to-nodes.sh --restart --rolling
 ```
 
@@ -268,10 +278,10 @@ docker save milady/agent:latest | gzip | \
 
 | File | Description |
 |------|-------------|
-| `../Dockerfile.ci` | Canonical generic agent image |
-| `Dockerfile.cloud-slim` | Dedicated cloud-only image |
+| `../Dockerfile.ci` | Canonical full app image used for generic and cloud app builds |
+| `Dockerfile.cloud-agent` | Subordinate cloud-agent runtime image |
 | `../scripts/container-entrypoint.mjs` | Runtime selector used by the generic image |
 | `cloud-agent-entrypoint.ts` | Cloud agent entrypoint (bridge server + runtime) |
 | `deploy-to-nodes.sh` | Deploy script (push to nodes, restart containers) |
 | `../.github/workflows/build-docker.yml` | CI workflow for canonical generic image builds |
-| `../.github/workflows/build-cloud-image.yml` | CI workflow for cloud-only image builds |
+| `../.github/workflows/build-cloud-image.yml` | CI workflow for cloud app image builds |
