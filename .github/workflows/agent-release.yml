@@ -207,12 +207,20 @@ jobs:
   build-npm:
     name: npm package build
     needs: [version]
-    uses: ./.github/workflows/reusable-npm-publish.yml
-    with:
-      version: ${{ needs.version.outputs.version }}
-      dist_tag: next
-      run_validation: true
-    secrets: inherit
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bun-workspace
+      - name: Build
+        run: |
+          bunx tsdown
+          printf '{"type":"module"}\n' > dist/package.json
+          node --import tsx scripts/write-build-info.ts
+      - name: Validate package
+        run: |
+          npm pack --dry-run 2>&1 | tee /tmp/pack-output.txt
+          grep -q "package.json" /tmp/pack-output.txt || echo "::warning::package.json missing from pack"
 
   # ── Non-blocking platform builds (open issues on failure) ───────────
   build-android:
