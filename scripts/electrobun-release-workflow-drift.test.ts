@@ -494,8 +494,18 @@ describe("Electrobun release workflow drift", () => {
     expect(stageScript).not.toContain(
       'spctl -a -vv --type exec "$STAGED_APP_PATH"',
     );
-    expect(stageScript).toContain("xcrun notarytool submit \\");
+    expect(stageScript).toContain(
+      `REAL_XCRUN="\${ELECTROBUN_REAL_XCRUN:-/usr/bin/xcrun}"`,
+    );
+    expect(stageScript).toContain("wait_for_notary_acceptance()");
+    expect(stageScript).toContain('"$REAL_XCRUN" notarytool submit \\');
+    expect(stageScript).toContain(
+      'NOTARY_SUBMISSION_ID="$(parse_notary_submission_id "$NOTARY_SUBMIT_OUTPUT_PATH" || true)"',
+    );
+    expect(stageScript).toContain('"$REAL_XCRUN" notarytool info \\');
+    expect(stageScript).toContain('"$REAL_XCRUN" notarytool log \\');
     expect(stageScript).toContain('xcrun stapler staple "$TEMP_DMG_PATH"');
+    expect(stageScript).not.toContain("--wait \\");
   });
 
   it("rebuilds the staged macOS direct launcher with the packaged launcher architecture", () => {

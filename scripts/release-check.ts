@@ -653,6 +653,7 @@ function assertMacArtifactStagerLooksCorrect() {
   const requiredSnippets = [
     'find "$ARTIFACTS_DIR" -maxdepth 1 -type f -name "*-macos-*.app.tar.zst"',
     "no macOS updater tarball found",
+    `REAL_XCRUN="\${ELECTROBUN_REAL_XCRUN:-/usr/bin/xcrun}"`,
     'DIRECT_LAUNCHER_SOURCE="$SCRIPT_DIR/macos-direct-launcher.c"',
     'codesign -d --entitlements :- "$STAGED_APP_PATH"',
     "/usr/bin/clang \\",
@@ -661,7 +662,11 @@ function assertMacArtifactStagerLooksCorrect() {
     `--options runtime "\${entitlement_args[@]}" "$STAGED_APP_PATH"`,
     'codesign --verify --deep --strict --verbose=2 "$STAGED_APP_PATH"',
     "hdiutil create \\",
-    "retry_command 3 20 xcrun notarytool submit \\",
+    "wait_for_notary_acceptance()",
+    '"$REAL_XCRUN" notarytool submit \\',
+    'NOTARY_SUBMISSION_ID="$(parse_notary_submission_id "$NOTARY_SUBMIT_OUTPUT_PATH" || true)"',
+    '"$REAL_XCRUN" notarytool info \\',
+    '"$REAL_XCRUN" notarytool log \\',
     'retry_command 8 20 xcrun stapler staple "$TEMP_DMG_PATH"',
     'mv "$TEMP_DMG_PATH" "$FINAL_DMG_PATH"',
   ];
@@ -682,6 +687,7 @@ function assertMacArtifactStagerLooksCorrect() {
   const forbiddenSnippets = [
     'codesign --force --deep --timestamp --sign "$ELECTROBUN_DEVELOPER_ID" "$STAGED_APP_PATH"',
     "exit_code=$?",
+    "--wait \\",
   ];
   const forbidden = forbiddenSnippets.filter((snippet) =>
     script.includes(snippet),
