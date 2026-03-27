@@ -9,6 +9,7 @@ const {
   resolveVoiceMode,
   resolveVoiceProxyEndpoint,
   toSpeakableText,
+  webSpeechVoiceDebugFields,
 } = __voiceChatInternals;
 
 describe("useVoiceChat streaming text helpers", () => {
@@ -29,6 +30,14 @@ describe("useVoiceChat streaming text helpers", () => {
         false,
       ),
     ).toBe("second sentence done.");
+  });
+
+  it("splitFirstSentence can yield remainder identical to first sentence (e.g. Hi! Hi!)", () => {
+    const s = splitFirstSentence("Hi! Hi!");
+    expect(s.complete).toBe(true);
+    expect(s.firstSentence).toBe("Hi!");
+    expect(s.remainder).toBe("Hi!");
+    expect(queueableSpeechPrefix(s.remainder, true)).toBe("Hi!");
   });
 
   it("flushes all remaining text on the final chunk", () => {
@@ -89,7 +98,23 @@ describe("useVoiceChat streaming text helpers", () => {
     expect(resolveVoiceProxyEndpoint("own-key")).toBe("/api/tts/elevenlabs");
   });
 
-  it("keeps explicit non-ElevenLabs providers intact", () => {
+  it("upgrades simple-voice to ElevenLabs when Cloud voice is available", () => {
+    expect(
+      resolveEffectiveVoiceConfig(
+        { provider: "simple-voice" },
+        { cloudConnected: true },
+      ),
+    ).toMatchObject({
+      provider: "elevenlabs",
+      mode: "own-key",
+      elevenlabs: {
+        voiceId: "EXAVITQu4vr4xnSDxMaL",
+        modelId: "eleven_flash_v2_5",
+      },
+    });
+  });
+
+  it("upgrades saved edge provider to ElevenLabs when Cloud voice is available", () => {
     expect(
       resolveEffectiveVoiceConfig(
         {
@@ -99,8 +124,51 @@ describe("useVoiceChat streaming text helpers", () => {
         { cloudConnected: true },
       ),
     ).toEqual({
+      provider: "elevenlabs",
+      mode: "own-key",
+      edge: { voice: "en-US-AriaNeural" },
+      elevenlabs: {
+        voiceId: "EXAVITQu4vr4xnSDxMaL",
+        modelId: "eleven_flash_v2_5",
+        stability: 0.5,
+        similarityBoost: 0.75,
+        speed: 1,
+      },
+    });
+  });
+
+  it("keeps explicit edge provider when Cloud voice is not available", () => {
+    expect(
+      resolveEffectiveVoiceConfig(
+        {
+          provider: "edge",
+          edge: { voice: "en-US-AriaNeural" },
+        },
+        { cloudConnected: false },
+      ),
+    ).toEqual({
       provider: "edge",
       edge: { voice: "en-US-AriaNeural" },
+    });
+  });
+
+  it("upgrades saved openai provider to ElevenLabs when Cloud voice is available", () => {
+    expect(
+      resolveEffectiveVoiceConfig(
+        {
+          provider: "openai",
+          openai: { voice: "nova", model: "tts-1" },
+        },
+        { cloudConnected: true },
+      ),
+    ).toMatchObject({
+      provider: "elevenlabs",
+      mode: "own-key",
+      openai: { voice: "nova", model: "tts-1" },
+      elevenlabs: {
+        voiceId: "EXAVITQu4vr4xnSDxMaL",
+        modelId: "eleven_flash_v2_5",
+      },
     });
   });
 
@@ -191,6 +259,95 @@ describe("useVoiceChat streaming text helpers", () => {
     const exactPhrase = "The quick brown fox jumps over the lazy dog.";
     const wrapped = `<response><thought>user wants a test</thought><text>${exactPhrase}</text></response>`;
     expect(toSpeakableText(wrapped)).toBe(exactPhrase);
+  });
+});
+
+describe("webSpeechVoiceDebugFields (MILADY_TTS_DEBUG engine guess)", () => {
+  it("classifies Microsoft / Edge style Web Speech voices", () => {
+    const v = {
+      name: "Microsoft Zira - English (United States)",
+      voiceURI: "Microsoft Zira - English (United States)",
+      lang: "en-US",
+      default: false,
+    } as SpeechSynthesisVoice;
+    expect(webSpeechVoiceDebugFields(v).engineGuess).toBe(
+      "microsoft-edge-family",
+    );
+  });
+
+  it("detects msedge in voiceURI", () => {
+    const v = {
+      name: "Custom",
+      voiceURI: "urn:msedge-tts:en-US",
+      lang: "en-US",
+      default: false,
+    } as SpeechSynthesisVoice;
+    expect(webSpeechVoiceDebugFields(v).engineGuess).toBe(
+      "microsoft-edge-family",
+    );
+  });
+
+  it("detects edge-tts in name or URI", () => {
+    const v = {
+      name: "edge-tts neural",
+      voiceURI: "local",
+      lang: "en-US",
+      default: false,
+    } as SpeechSynthesisVoice;
+    expect(webSpeechVoiceDebugFields(v).engineGuess).toBe(
+      "microsoft-edge-family",
+    );
+  });
+
+  it("classifies Apple WebKit voices", () => {
+    const v = {
+      name: "Samantha",
+      voiceURI: "com.apple.speech.synthesis.voice.samantha",
+      lang: "en-US",
+      default: true,
+    } as SpeechSynthesisVoice;
+    const f = webSpeechVoiceDebugFields(v);
+    expect(f.engineGuess).toBe("apple-webkit");
+    expect(f.voiceDefault).toBe(true);
+  });
+
+  it("classifies Google voices", () => {
+    const v = {
+      name: "Google US English",
+      voiceURI: "Google US English",
+      lang: "en-US",
+      default: false,
+    } as SpeechSynthesisVoice;
+    expect(webSpeechVoiceDebugFields(v).engineGuess).toBe("google");
+  });
+
+  it("returns unknown for generic local voices", () => {
+    const v = {
+      name: "Local Voice",
+      voiceURI: "file:///voices/local",
+      lang: "en",
+      default: false,
+    } as SpeechSynthesisVoice;
+    expect(webSpeechVoiceDebugFields(v).engineGuess).toBe("unknown");
+  });
+
+  it("includes voiceLocalService when present on the voice object", () => {
+    const v = {
+      name: "Test",
+      voiceURI: "x",
+      lang: "en",
+      default: false,
+      localService: true,
+    } as SpeechSynthesisVoice;
+    expect(webSpeechVoiceDebugFields(v).voiceLocalService).toBe(true);
+  });
+
+  it("describes missing voice for TTS debug", () => {
+    expect(webSpeechVoiceDebugFields(undefined)).toEqual({
+      voiceName: "(engine default)",
+      voiceURI: "(none)",
+      engineGuess: "unknown",
+    });
   });
 });
 

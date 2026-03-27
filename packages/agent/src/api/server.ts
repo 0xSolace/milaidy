@@ -433,15 +433,24 @@ function hasPersistedOnboardingState(config: ElizaConfig): boolean {
 function resolveConversationGreetingText(
   runtime: AgentRuntime,
   lang: string,
-  configuredPresetId?: string | null,
+  uiConfig?: ElizaConfig["ui"],
 ): string {
   const normalizedLanguage = normalizeCharacterLanguage(lang);
-  const presets = getStylePresets(normalizedLanguage);
+  const characterName = runtime.character.name?.trim();
+  const assistantName = uiConfig?.assistant?.name?.trim();
+
+  // Prefer explicit UI selections over the loaded character card: users pick a
+  // style in onboarding/roster (avatar + preset) while `runtime.character.name`
+  // can still be the default template (e.g. "Chen") until save/restart.
   const preset =
-    (configuredPresetId
-      ? presets.find((candidate) => candidate.id === configuredPresetId)
-      : undefined) ??
-    presets.find((candidate) => candidate.name === runtime.character.name);
+    resolveStylePresetByAvatarIndex(
+      uiConfig?.avatarIndex,
+      normalizedLanguage,
+    ) ??
+    resolveStylePresetById(uiConfig?.presetId, normalizedLanguage) ??
+    resolveStylePresetByName(characterName, normalizedLanguage) ??
+    resolveStylePresetByName(assistantName, normalizedLanguage);
+
   if (preset?.catchphrase?.trim()) {
     return preset.catchphrase.trim();
   }
@@ -4642,6 +4651,9 @@ import {
   getDefaultStylePreset,
   getStylePresets,
   normalizeCharacterLanguage,
+  resolveStylePresetByAvatarIndex,
+  resolveStylePresetById,
+  resolveStylePresetByName,
 } from "../onboarding-presets.js";
 
 import { pickRandomNames } from "../runtime/onboarding-names.js";
@@ -14300,7 +14312,7 @@ async function handleRequest(
     const greeting = resolveConversationGreetingText(
       runtime,
       lang,
-      state.config.ui?.presetId ?? null,
+      state.config.ui,
     ).trim();
     if (!greeting) {
       return {
@@ -18474,6 +18486,52 @@ export async function startApiServer(opts?: {
           destinations,
           activeDestinationId,
           activeStreamSource: { type: "stream-tab" as const },
+          mirrorStreamAvatarToElizaConfig: (avatarIndex: number) => {
+            try {
+              if (!Number.isFinite(avatarIndex)) {
+                return;
+              }
+              const diskCfg = loadElizaConfig();
+              const lang =
+                state.config.ui?.language ?? diskCfg.ui?.language;
+              const preset = resolveStylePresetByAvatarIndex(
+                avatarIndex,
+                lang,
+              );
+              const nextUi: ElizaConfig["ui"] = {
+                ...(state.config.ui ?? {}),
+                avatarIndex,
+                ...(preset?.id ? { presetId: preset.id } : {}),
+              };
+              state.config = {
+                ...state.config,
+                ui: nextUi,
+              };
+              // Merge disk + live server config so we never persist a minimal
+              // snapshot (e.g. ENOENT default) and clobber milady.json during
+              // onboarding while state.config still holds the full boot payload.
+              const toSave: ElizaConfig = {
+                ...diskCfg,
+                ...state.config,
+                ui: {
+                  ...(diskCfg.ui ?? {}),
+                  ...(state.config.ui ?? {}),
+                  ...nextUi,
+                },
+              };
+              saveElizaConfig(toSave);
+              state.config = {
+                ...state.config,
+                ui: toSave.ui,
+              };
+            } catch (err) {
+              logger.warn(
+                `[eliza-api] mirrorStreamAvatarToElizaConfig failed: ${
+                  err instanceof Error ? err.message : String(err)
+                }`,
+              );
+            }
+          },
           get config() {
             const cfg = state.config as Record<string, unknown> | undefined;
             const msgs = cfg?.messages as Record<string, unknown> | undefined;
