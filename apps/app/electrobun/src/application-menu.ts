@@ -257,7 +257,9 @@ export function buildApplicationMenu({
       submenu: [
         ...(isMac
           ? ([{ role: "about" }] as ApplicationMenuItem[])
-          : ([{ label: "About Milady", action: "open-about" }] as ApplicationMenuItem[])),
+          : ([
+              { label: "About Milady", action: "open-about" },
+            ] as ApplicationMenuItem[])),
         { label: "Check for Updates", action: "check-for-updates" },
         { type: "separator" },
         {
