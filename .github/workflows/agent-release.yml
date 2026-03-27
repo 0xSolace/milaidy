@@ -162,11 +162,30 @@ jobs:
           STABLE: ${{ github.event.inputs.stable || 'false' }}
           VERSION_OVERRIDE: ${{ github.event.inputs.version_override || '' }}
         run: |
+          bump_patch() {
+            local version="$1"
+            local major minor patch
+            IFS='.' read -r major minor patch <<<"$version"
+            echo "${major}.${minor}.$((patch + 1))"
+          }
+
           if [ -n "$VERSION_OVERRIDE" ]; then
             VERSION="$VERSION_OVERRIDE"
           elif [ "$STABLE" = "true" ]; then
-            LATEST=$(git tag --sort=-creatordate | grep '^v' | head -1)
-            VERSION=$(echo "$LATEST" | sed 's/-alpha\.[0-9]*//' | sed 's/^v//')
+            LATEST_ALPHA="$(git tag --sort=-creatordate | grep '^v[0-9].*-alpha\.[0-9]\+$' | head -1 || true)"
+            LATEST_STABLE="$(git tag --sort=-creatordate | grep '^v[0-9]' | grep -v -- '-alpha\.' | head -1 || true)"
+            ALPHA_BASE="$(echo "$LATEST_ALPHA" | sed 's/^v//' | sed 's/-alpha\.[0-9]*$//' )"
+            STABLE_VERSION="${LATEST_STABLE#v}"
+
+            if [ -z "$LATEST_STABLE" ] && [ -z "$LATEST_ALPHA" ]; then
+              VERSION="2.0.0"
+            elif [ -z "$LATEST_STABLE" ]; then
+              VERSION="$ALPHA_BASE"
+            elif [ -n "$ALPHA_BASE" ] && [ "$(printf '%s\n%s\n' "$ALPHA_BASE" "$STABLE_VERSION" | sort -V | tail -1)" = "$ALPHA_BASE" ] && [ "$ALPHA_BASE" != "$STABLE_VERSION" ]; then
+              VERSION="$ALPHA_BASE"
+            else
+              VERSION="$(bump_patch "$STABLE_VERSION")"
+            fi
           else
             LATEST=$(git tag --sort=-creatordate | grep '^v.*-alpha\.' | head -1)
             if [ -z "$LATEST" ]; then VERSION="2.0.0-alpha.1"
@@ -446,7 +465,17 @@ jobs:
         env:
           TAG: ${{ needs.version.outputs.tag }}
         run: |
-          git tag -a "$TAG" -m "Release $TAG — all builds verified"
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists on origin; reusing existing tag"
+            exit 0
+          fi
+
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "Local tag $TAG already exists; pushing it to origin"
+          else
+            git tag -a "$TAG" -m "Release $TAG — all builds verified"
+          fi
+
           git push origin "$TAG"
 
       - name: Generate release changelog
@@ -507,7 +536,7 @@ jobs:
               core.warning(`Could not generate GitHub release notes: ${error.message}`);
             }
 
-            const { data: release } = await github.rest.repos.createRelease({
+            const releasePayload = {
               owner: context.repo.owner,
               repo: context.repo.repo,
               tag_name: tag,
@@ -544,9 +573,46 @@ jobs:
               prerelease,
               draft: false,
               generate_release_notes: false,
-            });
+            };
 
-            core.info(`Created release: ${release.html_url}`);
+            const releases = await github.paginate(github.rest.repos.listReleases, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100,
+            });
+            const matchingReleases = releases.filter((release) => release.tag_name === tag);
+            const existingRelease = matchingReleases.find((release) => !release.draft) ?? matchingReleases[0] ?? null;
+
+            for (const duplicate of matchingReleases) {
+              if (existingRelease && duplicate.id !== existingRelease.id && duplicate.draft) {
+                await github.rest.repos.deleteRelease({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  release_id: duplicate.id,
+                });
+              }
+            }
+
+            let release;
+            if (existingRelease) {
+              const { data } = await github.rest.repos.updateRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                release_id: existingRelease.id,
+                tag_name: releasePayload.tag_name,
+                name: releasePayload.name,
+                body: releasePayload.body,
+                prerelease: releasePayload.prerelease,
+                draft: releasePayload.draft,
+                generate_release_notes: releasePayload.generate_release_notes,
+              });
+              release = data;
+              core.info(`Updated release: ${release.html_url}`);
+            } else {
+              const { data } = await github.rest.repos.createRelease(releasePayload);
+              release = data;
+              core.info(`Created release: ${release.html_url}`);
+            }
 
             if (context.payload.issue) {
               const issue = context.payload.issue.number;

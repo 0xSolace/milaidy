@@ -64,6 +64,20 @@ describe("release support workflow drift", () => {
     expect(workflow).toContain("- [ ] Cloud app image push to GHCR");
   });
 
+  it("keeps stable release publishing idempotent", () => {
+    const workflow = fs.readFileSync(AGENT_RELEASE_WORKFLOW, "utf8");
+
+    expect(workflow).toContain("bump_patch()");
+    expect(workflow).toContain("grep -v -- '-alpha\\.'");
+    expect(workflow).toContain("git ls-remote --exit-code --tags origin");
+    expect(workflow).toContain(
+      "Tag $TAG already exists on origin; reusing existing tag",
+    );
+    expect(workflow).toContain("repos.listReleases");
+    expect(workflow).toContain("repos.updateRelease");
+    expect(workflow).toContain("repos.deleteRelease");
+  });
+
   it("builds the cloud app image from the full app Dockerfile", () => {
     const workflow = fs.readFileSync(CLOUD_IMAGE_WORKFLOW, "utf8");
 
