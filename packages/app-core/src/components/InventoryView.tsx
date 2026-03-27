@@ -56,7 +56,7 @@ import { useInventoryData } from "./inventory/useInventoryData";
 import {
   APP_PANEL_SHELL_CLASSNAME,
   APP_SIDEBAR_CARD_ACTIVE_CLASSNAME,
-  APP_SIDEBAR_HEADER_CLASSNAME,
+  APP_SIDEBAR_COMPACT_PILL_CLASSNAME,
   APP_SIDEBAR_INNER_CLASSNAME,
   APP_SIDEBAR_KICKER_CLASSNAME,
   APP_SIDEBAR_RAIL_CLASSNAME,
@@ -69,6 +69,9 @@ const WALLET_SIDEBAR_CLASS = `lg:w-[21rem] lg:max-w-[352px] ${APP_SIDEBAR_RAIL_C
 const WALLET_SIDEBAR_KICKER_CLASS = APP_SIDEBAR_KICKER_CLASSNAME;
 const WALLET_SIDEBAR_ITEM_ACTIVE_CLASS = APP_SIDEBAR_CARD_ACTIVE_CLASSNAME;
 const WALLET_PANEL_CLASS = DESKTOP_SURFACE_PANEL_CLASSNAME;
+const WALLET_SORT_PILL_CLASS = `${APP_SIDEBAR_COMPACT_PILL_CLASSNAME} text-[10px] font-semibold tracking-[0.14em] text-txt-strong`;
+
+type InventorySortKey = "chain" | "symbol" | "value";
 
 function countVisibleAssetsForFocus(
   focus: string,
@@ -87,6 +90,19 @@ function countVisibleAssetsForFocus(
     if (focus === "all") return true;
     return resolveChainKey(row.chain) === focus;
   }).length;
+}
+
+function isInventorySortKey(value: string): value is InventorySortKey {
+  return value === "value" || value === "chain" || value === "symbol";
+}
+
+function getInventorySortLabel(
+  inventorySort: InventorySortKey,
+  t: (key: string) => string,
+): string {
+  if (inventorySort === "chain") return t("wallet.chain");
+  if (inventorySort === "symbol") return t("wallet.name");
+  return t("wallet.value");
 }
 
 export function InventoryView() {
@@ -115,6 +131,8 @@ export function InventoryView() {
     copyToClipboard,
     t,
   } = useApp();
+
+  const currentSortLabel = getInventorySortLabel(inventorySort, t);
 
   // ── Tracked tokens state ──────────────────────────────────────────
   const [trackedTokens, setTrackedTokens] = useState<TrackedToken[]>(() =>
@@ -447,11 +465,18 @@ export function InventoryView() {
       <div className={WALLET_SHELL_CLASS}>
         <aside className={WALLET_SIDEBAR_CLASS}>
           <div className={APP_SIDEBAR_INNER_CLASSNAME}>
-            <div className={APP_SIDEBAR_HEADER_CLASSNAME}>
-              <div className={WALLET_SIDEBAR_KICKER_CLASS}>WALLET</div>
-            </div>
+            {inventoryView === "tokens" ? (
+              <div className="mb-3 flex items-center justify-end px-1">
+                <div
+                  data-testid="wallet-sort-pill"
+                  className={WALLET_SORT_PILL_CLASS}
+                >
+                  {t("wallet.sort")}: {currentSortLabel}
+                </div>
+              </div>
+            ) : null}
 
-            <div className={`mt-4 ${DESKTOP_RAIL_SUMMARY_CARD_CLASSNAME}`}>
+            <div className={DESKTOP_RAIL_SUMMARY_CARD_CLASSNAME}>
               <div
                 className="text-[2rem] font-semibold leading-none text-txt-strong"
                 data-testid="wallet-balance-value"
@@ -595,14 +620,51 @@ export function InventoryView() {
 
         <div className={DESKTOP_PAGE_CONTENT_CLASSNAME}>
           <div className="mx-auto max-w-[76rem] px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
-            <section className={`${WALLET_PANEL_CLASS} px-5 py-5 sm:px-6`}>
-              <div className="min-w-0">
-                <h1 className="text-2xl font-semibold text-txt-strong">
-                  Wallet Overview
-                </h1>
-                <p className="mt-1 text-sm text-muted">
-                  Track balances, managed addresses, and trading readiness in one place.
-                </p>
+            <section
+              data-testid="wallet-overview-card"
+              className={`${WALLET_PANEL_CLASS} px-5 py-5 sm:px-6`}
+            >
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div className="min-w-0">
+                  <h1 className="text-2xl font-semibold text-txt-strong">
+                    Wallet Overview
+                  </h1>
+                  <p className="mt-1 text-sm text-muted">
+                    Track balances, managed addresses, and trading readiness in one
+                    place.
+                  </p>
+                </div>
+                {inventoryView === "tokens" ? (
+                  <div
+                    data-testid="wallet-overview-sort-block"
+                    className="w-full sm:w-auto sm:min-w-40"
+                  >
+                    <div className="mb-1 px-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted/60">
+                      {t("wallet.sort")}
+                    </div>
+                    <Select
+                      value={inventorySort}
+                      onValueChange={(nextSort) => {
+                        if (isInventorySortKey(nextSort)) {
+                          setState("inventorySort", nextSort);
+                        }
+                      }}
+                    >
+                      <SelectTrigger
+                        data-testid="wallet-sort-select"
+                        aria-label={t("wallet.sort")}
+                        className="h-10 w-full rounded-xl border border-border/60 bg-card/88 px-3 text-sm text-txt shadow-sm"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="value">{t("wallet.value")}</SelectItem>
+                        <SelectItem value="chain">{t("wallet.chain")}</SelectItem>
+                        <SelectItem value="symbol">{t("wallet.name")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : null}
               </div>
             </section>
 
@@ -674,42 +736,13 @@ export function InventoryView() {
               )}
             </div>
 
-            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div
+              data-testid="wallet-assets-header"
+              className="mt-4 mb-2 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"
+            >
               <div className="px-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted/60">
                 assets
               </div>
-              {inventoryView === "tokens" ? (
-                <div className="w-full sm:w-auto">
-                  <div className="mb-1 px-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted/60">
-                    {t("wallet.sort")}
-                  </div>
-                  <Select
-                    value={inventorySort}
-                    onValueChange={(nextSort) => {
-                      if (
-                        nextSort === "value" ||
-                        nextSort === "chain" ||
-                        nextSort === "symbol"
-                      ) {
-                        setState("inventorySort", nextSort);
-                      }
-                    }}
-                  >
-                    <SelectTrigger
-                      data-testid="wallet-sort-select"
-                      aria-label={t("wallet.sort")}
-                      className="h-10 w-full min-w-36 rounded-xl border border-border/60 bg-card/88 px-3 text-sm text-txt shadow-sm"
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="value">{t("wallet.value")}</SelectItem>
-                      <SelectItem value="chain">{t("wallet.chain")}</SelectItem>
-                      <SelectItem value="symbol">{t("wallet.name")}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              ) : null}
             </div>
             <div
               className={`min-h-[58vh] ${WALLET_PANEL_CLASS} overflow-hidden`}

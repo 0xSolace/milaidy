@@ -361,6 +361,7 @@ describe("InventoryView unified wallets", () => {
     const content = text(tree?.root);
     expect(content).not.toContain("wallet.portfolio");
     expect(content).not.toContain("All Chains");
+    expect(content).not.toContain("WALLET");
     expect(content).toContain("wallet.tokens");
     expect(content).toContain("wallet.nfts");
     expect(content).toContain("wallet.all");
@@ -371,6 +372,32 @@ describe("InventoryView unified wallets", () => {
         (node) =>
           node.type === "button" &&
           node.props["data-testid"] === "wallet-token-preflight",
+      ),
+    ).toHaveLength(0);
+  });
+
+  it("hides wallet sort chrome in NFT view", async () => {
+    const ctx = createContext({ inventoryView: "nfts" });
+    mockUseApp.mockImplementation(() => ctx);
+
+    let tree: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      tree = TestRenderer.create(React.createElement(InventoryView));
+    });
+
+    expect(
+      tree?.root.findAll(
+        (node) => node.props?.["data-testid"] === "wallet-sort-pill",
+      ),
+    ).toHaveLength(0);
+    expect(
+      tree?.root.findAll(
+        (node) => node.props?.["data-testid"] === "wallet-overview-sort-block",
+      ),
+    ).toHaveLength(0);
+    expect(
+      tree?.root.findAll(
+        (node) => node.props?.["data-testid"] === "wallet-sort-select",
       ),
     ).toHaveLength(0);
   });

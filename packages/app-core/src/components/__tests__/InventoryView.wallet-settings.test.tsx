@@ -184,14 +184,43 @@ describe("InventoryView wallet settings", () => {
       tree = TestRenderer.create(<InventoryView />);
     });
 
-    const sortTrigger = tree?.root.find(
+    const overviewCard = tree?.root.find(
+      (node) => node.props["data-testid"] === "wallet-overview-card",
+    );
+    expect(overviewCard).toBeTruthy();
+
+    const sortTrigger = overviewCard?.find(
       (node) =>
         node.type === "button" &&
         node.props["data-testid"] === "wallet-sort-select",
     );
     expect(sortTrigger).toBeTruthy();
 
-    const sortSelect = tree?.root.find(
+    const assetsHeader = tree?.root.find(
+      (node) => node.props["data-testid"] === "wallet-assets-header",
+    );
+    expect(assetsHeader).toBeTruthy();
+    expect(
+      assetsHeader?.findAll(
+        (node) =>
+          node.type === "button" &&
+          node.props["data-testid"] === "wallet-sort-select",
+      ),
+    ).toHaveLength(0);
+
+    const sortPill = tree?.root.find(
+      (node) => node.props["data-testid"] === "wallet-sort-pill",
+    );
+    expect(sortPill).toBeTruthy();
+    expect(JSON.stringify(sortPill?.props.children)).toContain("Sort");
+    expect(JSON.stringify(sortPill?.props.children)).toContain("Value");
+    expect(
+      assetsHeader?.findAll(
+        (node) => node.props["data-testid"] === "wallet-assets-sort-meta",
+      ),
+    ).toHaveLength(0);
+
+    const sortSelect = overviewCard?.find(
       (node) =>
         node.type === "mock-select" && node.props.value === ctx.inventorySort,
     );
@@ -220,6 +249,16 @@ describe("InventoryView wallet settings", () => {
           node.props["data-testid"] === "wallet-sort-select",
       ),
     ).toHaveLength(0);
+    expect(
+      tree?.root.findAll(
+        (node) => node.props["data-testid"] === "wallet-sort-pill",
+      ),
+    ).toHaveLength(0);
+    expect(
+      tree?.root.findAll(
+        (node) => node.props["data-testid"] === "wallet-overview-sort-block",
+      ),
+    ).toHaveLength(0);
   });
 
   it("keeps the simplified wallet shell and interactive chain icon grid", async () => {
@@ -232,6 +271,9 @@ describe("InventoryView wallet settings", () => {
     });
 
     expect(JSON.stringify(tree?.toJSON())).toContain("Wallet Overview");
+    expect(
+      tree?.root.findAll((node) => node.children.includes("WALLET")),
+    ).toHaveLength(0);
 
     const baseButton = tree?.root.find(
       (node) =>
