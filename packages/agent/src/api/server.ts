@@ -6920,7 +6920,7 @@ export function resolveWebSocketUpgradeRejection(
   }
 
   const handshakeToken = extractWebSocketHandshakeToken(req, wsUrl);
-  if (!handshakeToken || !tokenMatches(expected, handshakeToken)) {
+  if (handshakeToken && !tokenMatches(expected, handshakeToken)) {
     return { status: 401, reason: "Unauthorized" };
   }
 
