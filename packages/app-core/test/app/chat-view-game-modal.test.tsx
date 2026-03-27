@@ -267,66 +267,6 @@ describe("ChatView game-modal variant", () => {
     );
   });
 
-  it("queues a second companion speech pass when streaming flips to final", async () => {
-    const queueAssistantSpeech = vi.fn();
-    mockUseVoiceChat.mockReturnValue({
-      supported: true,
-      isListening: false,
-      captureMode: "idle",
-      interimTranscript: "",
-      toggleListening: vi.fn(),
-      startListening: vi.fn(),
-      stopListening: vi.fn(),
-      mouthOpen: 0,
-      isSpeaking: false,
-      usingAudioAnalysis: false,
-      speak: vi.fn(),
-      queueAssistantSpeech,
-      stopSpeaking: vi.fn(),
-      voiceUnlockedGeneration: 0,
-      assistantTtsQuality: "standard",
-    });
-
-    let currentContext = createContext({
-      chatSending: true,
-      conversationMessages: [
-        { id: "assistant-1", role: "assistant", text: "hello", timestamp: 1 },
-      ],
-    });
-    mockUseApp.mockImplementation(() => currentContext);
-
-    let tree: TestRenderer.ReactTestRenderer;
-    await act(async () => {
-      tree = TestRenderer.create(
-        React.createElement(ChatView, { variant: "game-modal" }),
-      );
-    });
-
-    currentContext = createContext({
-      chatSending: false,
-      conversationMessages: [
-        { id: "assistant-1", role: "assistant", text: "hello", timestamp: 1 },
-      ],
-    });
-
-    await act(async () => {
-      tree.update(React.createElement(ChatView, { variant: "game-modal" }));
-    });
-
-    expect(queueAssistantSpeech).toHaveBeenNthCalledWith(
-      1,
-      "assistant-1",
-      "hello",
-      false,
-    );
-    expect(queueAssistantSpeech).toHaveBeenNthCalledWith(
-      2,
-      "assistant-1",
-      "hello",
-      true,
-    );
-  });
-
   it("queues companion auto-speak once under StrictMode (no duplicate greeting TTS)", async () => {
     const queueAssistantSpeech = vi.fn();
     mockUseVoiceChat.mockReturnValue({

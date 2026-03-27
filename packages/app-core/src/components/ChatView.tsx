@@ -155,7 +155,6 @@ function useChatVoiceController(options: {
     messageId: string;
     text: string;
     unlockGen: number;
-    final: boolean;
   } | null>(null);
   const voiceDraftBaseInputRef = useRef("");
   const prevIsGameModalRef = useRef(isGameModal);
@@ -440,15 +439,13 @@ function useChatVoiceController(options: {
     const tick = voiceBootstrapTick;
     const messageId = latestAssistant.id;
     const text = latestAssistant.text;
-    const final = !chatSending;
     const ug = voiceUnlockedGeneration;
     const prev = companionBootstrapAutoSpeakRef.current;
     if (
       prev &&
       prev.messageId === messageId &&
       prev.text === text &&
-      prev.unlockGen === ug &&
-      prev.final === final
+      prev.unlockGen === ug
     ) {
       if (tick > prev.tick) {
         // Voice config / cloud status bumped the tick only — do not re-queue the same line.
@@ -457,7 +454,6 @@ function useChatVoiceController(options: {
           messageId,
           text,
           unlockGen: ug,
-          final,
         };
         return;
       }
@@ -467,14 +463,13 @@ function useChatVoiceController(options: {
       }
     }
 
-    queueAssistantSpeech(messageId, text, final);
+    queueAssistantSpeech(messageId, text, !chatSending);
     suppressedAssistantSpeechIdRef.current = null;
     companionBootstrapAutoSpeakRef.current = {
       tick,
       messageId,
       text,
       unlockGen: ug,
-      final,
     };
   }, [
     agentVoiceMuted,
