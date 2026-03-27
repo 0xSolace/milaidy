@@ -2083,6 +2083,27 @@ function AppProviderInner({
     [],
   );
 
+  const getStewardHistory = useCallback(
+    async (opts?: { status?: string; limit?: number; offset?: number }) =>
+      client.getStewardHistory(opts),
+    [],
+  );
+
+  const getStewardPending = useCallback(
+    async () => client.getStewardPending(),
+    [],
+  );
+
+  const approveStewardTx = useCallback(
+    async (txId: string) => client.approveStewardTx(txId),
+    [],
+  );
+
+  const rejectStewardTx = useCallback(
+    async (txId: string, reason?: string) => client.rejectStewardTx(txId, reason),
+    [],
+  );
+
   const loadWalletTradingProfile = useCallback(
     async (
       window: WalletTradingProfileWindow = "30d",
@@ -8196,6 +8217,10 @@ function AppProviderInner({
     getBscTradeQuote,
     getBscTradeTxStatus,
     getStewardStatus,
+    getStewardHistory,
+    getStewardPending,
+    approveStewardTx,
+    rejectStewardTx,
     loadWalletTradingProfile,
     handleWalletApiKeySave,
     handleExportKeys,

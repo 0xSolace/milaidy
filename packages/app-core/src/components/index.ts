@@ -102,6 +102,7 @@ export * from "./RuntimeView";
 export * from "./SaveCommandModal";
 export * from "./SecretsView";
 export * from "./SettingsView";
+export * from "./steward";
 export * from "./ShellOverlays";
 export * from "./ShortcutsOverlay";
 export * from "./SkillsView";
