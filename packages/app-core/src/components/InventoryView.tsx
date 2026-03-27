@@ -545,7 +545,7 @@ export function InventoryView() {
 
             <div className="mt-4 flex min-h-0 flex-1 flex-col">
               <div className={WALLET_SIDEBAR_KICKER_CLASS}>Chains</div>
-              <nav className="mt-3 min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-3">
+              <nav className="mt-3 min-h-0 flex-1 space-y-1.5 overflow-y-auto overscroll-contain pr-3 custom-scrollbar">
                 {chainItemMeta.map((item) => {
                   const isActive = chainFocus === item.key;
                   return (

@@ -1655,8 +1655,8 @@ export async function installDatabaseTrajectoryLogger(
     return stepId;
   };
 
-  loggerAny.startStep = (_trajectoryId: string): string => {
-    return `step-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  loggerAny.startStep = (trajectoryId: string): string => {
+    return trajectoryId;
   };
 
   loggerAny.endTrajectory = async (
