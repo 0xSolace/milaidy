@@ -187,6 +187,8 @@ jobs:
           # Sanitize title for branch name — env var avoids shell injection
           SLUG=$(printf '%s' "$ISSUE_TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//' | sed 's/-$//' | head -c 50)
           BRANCH="agent/${ISSUE_NUM}-${SLUG}"
+          # Delete stale remote branch from prior failed attempts
+          git push origin --delete "$BRANCH" 2>/dev/null || true
           git checkout -b "$BRANCH"
           git push -u origin "$BRANCH"
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
