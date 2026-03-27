@@ -241,8 +241,8 @@ jobs:
         working-directory: apps/app
         run: bun run cap:sync:android
       - name: Build AAB
+        working-directory: apps/app/android
         run: |
-          cd android
           chmod +x ./gradlew
           ./gradlew bundleRelease --no-daemon || echo "::warning::Android AAB build failed (non-blocking)"
 
@@ -253,10 +253,12 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
+      - name: Stage snapcraft.yaml
+        run: |
+          mkdir -p snap
+          cp packaging/snap/snapcraft.yaml snap/snapcraft.yaml
       - uses: snapcore/action-build@v1
         id: snap
-        with:
-          path: packaging/snap
       - name: Verify snap
         run: |
           sudo snap install --dangerous ${{ steps.snap.outputs.snap }} || echo "::warning::Snap install test failed (non-blocking)"
