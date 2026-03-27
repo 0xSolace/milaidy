@@ -1361,7 +1361,6 @@ function setupDockReopen(): void {
   });
 }
 
-<<<<<<< HEAD
 async function runShutdownCleanup(reason: string): Promise<void> {
   if (shutdownCleanupStarted) {
     return;
@@ -1384,18 +1383,6 @@ function setupShutdown(cleanupFns: Array<() => void | Promise<void>>): void {
     isQuitting = true;
     console.log("[Main] App quitting, disposing native modules...");
     void runShutdownCleanup("before-quit");
-=======
-function setupShutdown(cleanupFns: Array<() => void | Promise<void>>): void {
-  Electrobun.events.on("before-quit", () => {
-    void (async () => {
-      isQuitting = true;
-      console.log("[Main] App quitting, disposing native modules...");
-      for (const cleanupFn of cleanupFns) {
-        await Promise.resolve(cleanupFn());
-      }
-      await disposeNativeModules();
-    })();
->>>>>>> pr-1360
   });
 }
 
