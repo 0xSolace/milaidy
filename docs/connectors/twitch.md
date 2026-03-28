@@ -20,7 +20,7 @@ The Twitch connector is an external elizaOS plugin that bridges your agent to Tw
 
 ## Minimal Configuration
 
-In your character file:
+In `~/.milady/milady.json`:
 
 ```json
 {
@@ -51,7 +51,7 @@ To explicitly disable the connector even when credentials are present:
 
 ## Auto-Enable Mechanism
 
-The `plugin-auto-enable.ts` module checks `connectors.twitch` in your character config. If any of the fields `accessToken` or `clientId` is truthy, or `enabled` is explicitly `true` (and `enabled` is not explicitly `false`), the runtime automatically loads `@elizaos/plugin-twitch`.
+The `plugin-auto-enable.ts` module checks `connectors.twitch` in your config. If any of the fields `accessToken` or `clientId` is truthy, or `enabled` is explicitly `true` (and `enabled` is not explicitly `false`), the runtime automatically loads `@elizaos/plugin-twitch`.
 
 No environment variable is required to trigger auto-enable — it is driven entirely by the connector config object.
 
@@ -71,7 +71,7 @@ No environment variable is required to trigger auto-enable — it is driven enti
 
 ## Full Configuration Reference
 
-All fields are defined under `connectors.twitch` in your character file.
+All fields are defined under `connectors.twitch` in `milady.json`.
 
 ### Core Fields
 

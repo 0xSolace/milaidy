@@ -24,7 +24,7 @@ The WeChat connector sends your API key and message payloads through the configu
 
 ## Minimal Configuration
 
-In your character file:
+In `~/.milady/milady.json`:
 
 ```json
 {
@@ -55,7 +55,7 @@ To explicitly disable the connector even when an API key is present:
 
 ## Auto-Enable Mechanism
 
-The `plugin-auto-enable.ts` module checks `connectors.wechat` in your character config. The plugin auto-enables when:
+The `plugin-auto-enable.ts` module checks `connectors.wechat` in your config. The plugin auto-enables when:
 
 - A top-level `apiKey` is truthy, OR
 - An `accounts` map contains at least one enabled account with a truthy `apiKey`
@@ -70,7 +70,7 @@ Setting `enabled: false` at the connector or account level disables auto-enable.
 
 ## Full Configuration Reference
 
-All fields are defined under `connectors.wechat` in your character file.
+All fields are defined under `connectors.wechat` in `milady.json`.
 
 ### Core Fields
 

@@ -73,13 +73,13 @@ To explicitly disable the connector even when credentials are present:
 
 ## Auto-Enable Mechanism
 
-The `plugin-auto-enable.ts` module checks `connectors.googlechat` in your character config. If any of the fields `botToken`, `token`, or `apiKey` is truthy (and `enabled` is not explicitly `false`), the runtime automatically loads `@elizaos/plugin-google-chat`.
+The `plugin-auto-enable.ts` module checks `connectors.googlechat` in your config. If any of the fields `botToken`, `token`, or `apiKey` is truthy (and `enabled` is not explicitly `false`), the runtime automatically loads `@elizaos/plugin-google-chat`.
 
 No environment variable is required to trigger auto-enable — it is driven entirely by the connector config object.
 
 ## Full Configuration Reference
 
-All fields are defined under `connectors.googlechat` in your character file.
+All fields are defined under `connectors.googlechat` in `milady.json`.
 
 ### Core Fields
 

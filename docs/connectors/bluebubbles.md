@@ -20,7 +20,7 @@ The BlueBubbles connector is an external elizaOS plugin that bridges your agent 
 
 ## Minimal Configuration
 
-In your character file:
+In `~/.milady/milady.json`:
 
 ```json
 {
@@ -51,13 +51,13 @@ To explicitly disable the connector even when credentials are present:
 
 ## Auto-Enable Mechanism
 
-The `plugin-auto-enable.ts` module checks `connectors.bluebubbles` in your character config. If both `serverUrl` and `password` are truthy (and `enabled` is not explicitly `false`), the runtime automatically loads `@elizaos/plugin-bluebubbles`.
+The `plugin-auto-enable.ts` module checks `connectors.bluebubbles` in your config. If both `serverUrl` and `password` are truthy (and `enabled` is not explicitly `false`), the runtime automatically loads `@elizaos/plugin-bluebubbles`.
 
 No environment variable is required to trigger auto-enable — it is driven entirely by the connector config object.
 
 ## Full Configuration Reference
 
-All fields are defined under `connectors.bluebubbles` in your character file.
+All fields are defined under `connectors.bluebubbles` in `milady.json`.
 
 ### Core Fields
 

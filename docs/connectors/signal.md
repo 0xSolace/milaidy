@@ -20,7 +20,7 @@ The Signal connector is an external elizaOS plugin that bridges your agent to Si
 
 ## Minimal Configuration
 
-In your character file:
+In `~/.milady/milady.json`:
 
 ```json
 {
@@ -53,7 +53,7 @@ signal-cli -a +1234567890 daemon --http localhost:8080
 
 ### 3. Configure Milady
 
-Add the `connectors.signal` block to your character file as shown in the minimal configuration above.
+Add the `connectors.signal` block to `milady.json` as shown in the minimal configuration above.
 
 ## Disabling
 
@@ -73,7 +73,7 @@ To explicitly disable the connector even when an account is configured:
 
 ## Auto-Enable Mechanism
 
-The `plugin-auto-enable.ts` module checks `connectors.signal` in your character config. The plugin auto-enables when any of the following conditions are met (and `enabled` is not explicitly `false`):
+The `plugin-auto-enable.ts` module checks `connectors.signal` in your config. The plugin auto-enables when any of the following conditions are met (and `enabled` is not explicitly `false`):
 
 - `account` is set together with `httpUrl`
 - `cliPath` is set (signal-cli binary path for auto-start)
@@ -83,7 +83,7 @@ No environment variable is required to trigger auto-enable — it is driven enti
 
 ## Full Configuration Reference
 
-All fields are defined under `connectors.signal` in your character file.
+All fields are defined under `connectors.signal` in `milady.json`.
 
 ### Core Fields
 
