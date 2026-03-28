@@ -154,6 +154,10 @@ function lifecycleReducer(
       return {
         ...state,
         backendConnection: { ...state.backendConnection, ...action.value },
+        backendDisconnectedBannerDismissed:
+          action.value.state === "failed"
+            ? state.backendDisconnectedBannerDismissed
+            : false,
       };
     case "DISMISS_BACKEND_BANNER":
       return { ...state, backendDisconnectedBannerDismissed: true };

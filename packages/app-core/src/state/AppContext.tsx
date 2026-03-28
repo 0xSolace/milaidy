@@ -168,6 +168,7 @@ import {
   loadCompanionVrmPowerMode,
   loadLastNativeTab,
   loadPersistedConnectionMode,
+  loadPersistedOnboardingComplete,
   loadPersistedOnboardingStep,
   loadUiTheme,
   mergeStreamingText,
@@ -690,6 +691,7 @@ function AppProviderInner({
     setPendingRestart: setPendingRestartAction,
     dismissRestartBanner,
     showRestartBanner,
+    setBackendConnection,
     dismissBackendBanner: dismissBackendDisconnectedBanner,
     resetBackendConnection,
     dismissSystemWarning,
@@ -6655,6 +6657,33 @@ function AppProviderInner({
     requestGreetingWhenRunningRef.current = requestGreetingWhenRunning;
   }, [requestGreetingWhenRunning]);
 
+  useEffect(() => {
+    const publishConnectionState = (state: {
+      state: "connected" | "disconnected" | "reconnecting" | "failed";
+      reconnectAttempt: number;
+      maxReconnectAttempts: number;
+    }) => {
+      setBackendConnection({
+        state: state.state,
+        reconnectAttempt: state.reconnectAttempt,
+        maxReconnectAttempts: state.maxReconnectAttempts,
+        showDisconnectedUI: state.state === "failed",
+      });
+    };
+
+    if (typeof client.getConnectionState === "function") {
+      publishConnectionState(client.getConnectionState());
+    }
+
+    if (typeof client.onConnectionStateChange !== "function") {
+      return;
+    }
+
+    return client.onConnectionStateChange((state) => {
+      publishConnectionState(state);
+    });
+  }, [setBackendConnection]);
+
   // ── Initialization ─────────────────────────────────────────────────
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: t is stable but defined later
@@ -6770,6 +6799,8 @@ function AppProviderInner({
       const sleep = (ms: number) =>
         new Promise<void>((resolve) => setTimeout(resolve, ms));
       let onboardingNeedsOptions = false;
+      const persistedOnboardingCompleteAtStartup =
+        loadPersistedOnboardingComplete();
       let requiresAuth = false;
       let latestAuth: {
         required: boolean;
@@ -6812,15 +6843,19 @@ function AppProviderInner({
         persistedConnection ??
         probedConnection?.connection ??
         (shouldPreferLocalBootstrap ? { runMode: "local" } : null);
+      const shouldPreserveCompletedOnboarding =
+        persistedOnboardingCompleteAtStartup &&
+        !onboardingCompletionCommittedRef.current;
 
       setOnboardingExistingInstallDetected(
         Boolean(
+          persistedOnboardingCompleteAtStartup ||
           desktopExistingInstall?.detected ||
             probedConnection?.detectedExistingInstall,
         ),
       );
 
-      if (!restoredConnection) {
+      if (!restoredConnection && !shouldPreserveCompletedOnboarding) {
         // No reusable backend/config was found yet. Show static onboarding
         // immediately so first-run users are not blocked on server startup.
         setOnboardingOptions({
@@ -6903,10 +6938,24 @@ function AppProviderInner({
           }
           const { complete } = await client.getOnboardingStatus();
           const sessionOnboardingComplete =
-            complete || onboardingCompletionCommittedRef.current;
+            complete ||
+            onboardingCompletionCommittedRef.current ||
+            shouldPreserveCompletedOnboarding;
           if (complete) {
             clearPersistedOnboardingStep();
             onboardingResumeConnectionRef.current = null;
+          }
+          if (
+            sessionOnboardingComplete &&
+            !persistedConnection &&
+            restoredConnection
+          ) {
+            savePersistedConnectionMode(restoredConnection);
+          }
+          if (!complete && shouldPreserveCompletedOnboarding) {
+            console.warn(
+              "[milady][startup:init] Preserving completed onboarding despite incomplete backend onboarding status.",
+            );
           }
           setOnboardingComplete(sessionOnboardingComplete);
           onboardingNeedsOptions = !sessionOnboardingComplete;
