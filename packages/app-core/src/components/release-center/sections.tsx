@@ -80,14 +80,9 @@ export function ReleaseStatusSection({
         />
         {nativeUpdater?.channel ? (
           <StatusPill
-            label={tr(
-              t,
-              "releasecenter.ChannelPill",
-              "Channel: {{channel}}",
-              {
-                channel: nativeUpdater.channel,
-              },
-            )}
+            label={tr(t, "releasecenter.ChannelPill", "Channel: {{channel}}", {
+              channel: nativeUpdater.channel,
+            })}
             tone="neutral"
           />
         ) : null}
@@ -181,7 +176,8 @@ export function ReleaseStatusSection({
           <DefinitionRow
             label={tr(t, "releasecenter.LastStatus", "Last status")}
             value={
-              nativeUpdater?.lastStatus?.message ?? tr(t, "releasecenterview.Idle", "Idle")
+              nativeUpdater?.lastStatus?.message ??
+              tr(t, "releasecenterview.Idle", "Idle")
             }
           />
           <DefinitionRow
@@ -376,7 +372,11 @@ export function BuildRuntimeSection({
           value={buildInfo?.defaultRenderer}
         />
         <DefinitionRow
-          label={tr(t, "releasecenter.AvailableRenderers", "Available renderers")}
+          label={tr(
+            t,
+            "releasecenter.AvailableRenderers",
+            "Available renderers",
+          )}
           value={buildInfo?.availableRenderers.join(", ")}
         />
         <DefinitionRow
@@ -628,7 +628,11 @@ export function WgpuSurfaceSection({
 
         <div className="rounded-xl border border-border bg-bg p-3">
           <div className="mb-3 text-xs font-semibold text-txt">
-            {tr(t, "releasecenter.BrowserWebgpuStatus", "Browser WebGPU Status")}
+            {tr(
+              t,
+              "releasecenter.BrowserWebgpuStatus",
+              "Browser WebGPU Status",
+            )}
           </div>
           <p className="mb-3 text-xs text-muted">
             {tr(
@@ -638,7 +642,11 @@ export function WgpuSurfaceSection({
             )}
           </p>
           <DefinitionRow
-            label={tr(t, "releasecenter.InlineSurfaceReady", "Inline surface ready")}
+            label={tr(
+              t,
+              "releasecenter.InlineSurfaceReady",
+              "Inline surface ready",
+            )}
             value={String(wgpuReady)}
           />
           <DefinitionRow

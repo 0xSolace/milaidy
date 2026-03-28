@@ -1014,11 +1014,14 @@ export function KnowledgeView({ inModal }: { inModal?: boolean } = {}) {
                 if (item.warnings?.[0]) {
                   warnings.push(`${filename}: ${item.warnings[0]}`);
                 }
-                } else {
+              } else {
                 failures.push(
-                  `${filename}: ${item.error || t("knowledgeview.UploadFailed", {
-                    defaultValue: "Upload failed",
-                  })}`,
+                  `${filename}: ${
+                    item.error ||
+                    t("knowledgeview.UploadFailed", {
+                      defaultValue: "Upload failed",
+                    })
+                  }`,
                 );
               }
             }

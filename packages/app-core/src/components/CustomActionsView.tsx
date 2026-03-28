@@ -86,25 +86,28 @@ export function CustomActionsView() {
     [],
   );
 
-  const handleDelete = useCallback(async (id: string, name: string) => {
-    const confirmed = await confirmDesktopAction({
-      title: t("customactionsview.DeleteCustomActionTitle"),
-      message: t("customactionsview.DeleteCustomActionMessage", { name }),
-      confirmLabel: t("customactionsview.Delete"),
-      cancelLabel: t("customactionsview.Cancel"),
-      type: "warning",
-    });
-    if (!confirmed) {
-      return;
-    }
+  const handleDelete = useCallback(
+    async (id: string, name: string) => {
+      const confirmed = await confirmDesktopAction({
+        title: t("customactionsview.DeleteCustomActionTitle"),
+        message: t("customactionsview.DeleteCustomActionMessage", { name }),
+        confirmLabel: t("customactionsview.Delete"),
+        cancelLabel: t("customactionsview.Cancel"),
+        type: "warning",
+      });
+      if (!confirmed) {
+        return;
+      }
 
-    try {
-      await client.deleteCustomAction(id);
-      setActions((prev) => prev.filter((action) => action.id !== id));
-    } catch (error) {
-      console.error("Failed to delete action:", error);
-    }
-  }, [t]);
+      try {
+        await client.deleteCustomAction(id);
+        setActions((prev) => prev.filter((action) => action.id !== id));
+      } catch (error) {
+        console.error("Failed to delete action:", error);
+      }
+    },
+    [t],
+  );
 
   const handleImport = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {

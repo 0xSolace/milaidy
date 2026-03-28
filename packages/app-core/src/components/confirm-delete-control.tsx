@@ -38,8 +38,7 @@ export function ConfirmDeleteControl({
     confirmLabel ??
     t("confirmdeletecontrol.Confirm", { defaultValue: "Confirm" });
   const resolvedCancelLabel =
-    cancelLabel ??
-    t("confirmdeletecontrol.Cancel", { defaultValue: "Cancel" });
+    cancelLabel ?? t("confirmdeletecontrol.Cancel", { defaultValue: "Cancel" });
   const resolvedPromptText =
     promptText ??
     t("confirmdeletecontrol.DeletePrompt", { defaultValue: "Delete?" });

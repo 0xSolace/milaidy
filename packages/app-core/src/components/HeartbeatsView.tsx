@@ -1300,10 +1300,10 @@ export function HeartbeatsView() {
                     </div>
 
                     <dl className="mb-8 grid gap-4 text-sm sm:grid-cols-2 xl:grid-cols-4">
-                        <div className={HEARTBEATS_STAT_CARD_CLASS}>
-                          <dt className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-                            {t("heartbeatsview.schedule")}
-                          </dt>
+                      <div className={HEARTBEATS_STAT_CARD_CLASS}>
+                        <dt className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                          {t("heartbeatsview.schedule")}
+                        </dt>
                         <dd className="mt-1 text-txt font-medium">
                           {scheduleLabel(trigger, t)}
                         </dd>

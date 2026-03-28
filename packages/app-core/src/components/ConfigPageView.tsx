@@ -791,7 +791,8 @@ export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
         </div>
         <div className="text-[11px] text-muted mb-2">
           {t("configpageview.WalletNetworkDesc", {
-            defaultValue: "Choose Mainnet for live funds or Testnet for practice.",
+            defaultValue:
+              "Choose Mainnet for live funds or Testnet for practice.",
           })}
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -996,7 +997,9 @@ export function ConfigPageView({ embedded = false }: { embedded?: boolean }) {
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
-                <title>{t("configpageview.Secrets", { defaultValue: "Secrets" })}</title>
+                <title>
+                  {t("configpageview.Secrets", { defaultValue: "Secrets" })}
+                </title>
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                 <path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>

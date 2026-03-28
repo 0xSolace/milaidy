@@ -195,13 +195,13 @@ export function ConnectionStep() {
       name:
         override?.nameKey && override?.nameDefault
           ? t(override.nameKey, { defaultValue: override.nameDefault })
-          : override?.nameDefault ?? provider.name,
+          : (override?.nameDefault ?? provider.name),
       description:
         override?.descriptionKey && override?.descriptionDefault
           ? t(override.descriptionKey, {
               defaultValue: override.descriptionDefault,
             })
-          : override?.descriptionDefault ?? provider.description,
+          : (override?.descriptionDefault ?? provider.description),
     };
   };
 

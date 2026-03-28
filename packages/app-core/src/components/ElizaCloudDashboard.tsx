@@ -842,7 +842,8 @@ export function CloudDashboard() {
     if (!network || network !== "bsc") {
       setActionNotice(
         t("elizaclouddashboard.BscOnlyAgentWalletPayment", {
-          defaultValue: "Agent-wallet payment is currently wired for BSC quotes only.",
+          defaultValue:
+            "Agent-wallet payment is currently wired for BSC quotes only.",
         }),
         "info",
         4200,
@@ -888,7 +889,8 @@ export function CloudDashboard() {
         );
         setActionNotice(
           t("elizaclouddashboard.CryptoPaymentSubmitted", {
-            defaultValue: "Crypto payment submitted from the agent wallet{{note}}.",
+            defaultValue:
+              "Crypto payment submitted from the agent wallet{{note}}.",
             note: stewardNote,
           }),
           "success",
@@ -939,7 +941,8 @@ export function CloudDashboard() {
         );
         setActionNotice(
           t("elizaclouddashboard.RequiresUserSignMode", {
-            defaultValue: "This wallet requires user-sign mode for crypto payment.",
+            defaultValue:
+              "This wallet requires user-sign mode for crypto payment.",
           }),
           "info",
           4200,

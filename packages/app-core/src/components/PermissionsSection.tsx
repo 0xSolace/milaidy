@@ -488,9 +488,7 @@ function PermissionRow({
         <PermissionIcon icon={def.icon} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold text-[13px] text-txt">
-              {name}
-            </span>
+            <span className="font-semibold text-[13px] text-txt">{name}</span>
             {isShell && (
               <span className="rounded-full border border-border/50 bg-bg-hover px-2 py-0.5 text-[10px] font-medium text-muted-strong">
                 {translateWithFallback(
@@ -596,9 +594,7 @@ function CapabilityToggle({
     >
       <div className="flex-1 min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-semibold text-[13px] text-txt">
-            {label}
-          </span>
+          <span className="font-semibold text-[13px] text-txt">{label}</span>
           {!available && (
             <span className="rounded-full border border-border/50 bg-bg-hover px-2 py-0.5 text-[10px] font-medium text-muted-strong">
               {translateWithFallback(
@@ -622,7 +618,11 @@ function CapabilityToggle({
         <div className="flex min-h-10 items-center gap-2 rounded-xl border border-border/50 bg-bg-hover px-3">
           <span className="text-[11px] font-medium text-muted-strong">
             {enabled
-              ? translateWithFallback(t, "permissionssection.Enabled", "Enabled")
+              ? translateWithFallback(
+                  t,
+                  "permissionssection.Enabled",
+                  "Enabled",
+                )
               : translateWithFallback(
                   t,
                   "permissionssection.Disabled",
@@ -1094,11 +1094,7 @@ function DesktopPermissionsView() {
                       "permissionssection.Refreshing",
                       "Refreshing...",
                     )
-                  : translateWithFallback(
-                      t,
-                      "common.refresh",
-                      "Refresh",
-                    )}
+                  : translateWithFallback(t, "common.refresh", "Refresh")}
               </Button>
             </div>
           </div>

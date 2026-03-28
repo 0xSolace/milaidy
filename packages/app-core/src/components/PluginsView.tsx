@@ -2596,7 +2596,9 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                               aria-expanded={isExpanded}
                               aria-label={`${isExpanded ? collapseLabel : expandLabel} ${plugin.name}`}
                             >
-                              <span>{isExpanded ? collapseLabel : expandLabel}</span>
+                              <span>
+                                {isExpanded ? collapseLabel : expandLabel}
+                              </span>
                               <ChevronRight
                                 className={`h-4 w-4 transition-transform ${
                                   isExpanded ? "rotate-90" : ""
@@ -2660,9 +2662,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                               !plugin.loadError && (
                                 <div className="mb-4 rounded-2xl border border-warn/30 bg-warn/10 px-4 py-3 text-sm text-txt">
                                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                    <div>
-                                      {connectorInstallPrompt}
-                                    </div>
+                                    <div>{connectorInstallPrompt}</div>
                                     <Button
                                       variant="default"
                                       size="sm"
@@ -3086,7 +3086,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
     selectedSubgroupTag?.id === "all"
       ? t("pluginsview.PluginCatalog", { defaultValue: "Plugin Catalog" })
       : (selectedSubgroupTag?.label ??
-          t("pluginsview.PluginCatalog", { defaultValue: "Plugin Catalog" }));
+        t("pluginsview.PluginCatalog", { defaultValue: "Plugin Catalog" }));
 
   return (
     <DesktopPageFrame data-testid="plugins-view-page">
@@ -3197,8 +3197,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                                 "No plugins match the selected category.",
                             })
                           : t("pluginsview.NoPluginsMatchFilters", {
-                              defaultValue:
-                                "No {{label}} match your filters.",
+                              defaultValue: "No {{label}} match your filters.",
                               label: resultLabel,
                             })
                       }
@@ -3366,14 +3365,14 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                             onClick={() =>
                               handleInstallPlugin(p.id, p.npmName ?? "")
                             }
-                        >
-                          {installingPlugins.has(p.id)
-                            ? installProgressLabel(
-                                installProgress.get(p.npmName ?? "")?.message,
-                              )
-                            : installPluginLabel}
-                        </Button>
-                      )}
+                          >
+                            {installingPlugins.has(p.id)
+                              ? installProgressLabel(
+                                  installProgress.get(p.npmName ?? "")?.message,
+                                )
+                              : installPluginLabel}
+                          </Button>
+                        )}
                       {p.loadError && (
                         <span
                           className="px-3 py-1.5 text-[11px] text-danger font-bold tracking-wide"

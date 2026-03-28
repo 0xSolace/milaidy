@@ -153,7 +153,9 @@ export function ShellHeaderControls({
         <Volume2 className="pointer-events-none h-4 w-4 shrink-0" />
       )}
       {iconOnly ? null : (
-        <span className="pointer-events-none">{t("companion.voiceToggle")}</span>
+        <span className="pointer-events-none">
+          {t("companion.voiceToggle")}
+        </span>
       )}
     </Button>
   );
@@ -282,9 +284,7 @@ export function ShellHeaderControls({
       </div>
 
       {/* Center: children or companion controls */}
-      <div
-        className="flex-1 min-w-0"
-      >
+      <div className="flex-1 min-w-0">
         {showCompanionControls ? (
           shouldSplitCompanionDesktopActions ? null : (
             <div

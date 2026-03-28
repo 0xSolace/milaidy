@@ -82,8 +82,7 @@ const providerOverrides: Record<
     nameDefault: "ChatGPT Sub",
     descriptionDefault: "Plus/Pro subscription",
     nameKey: "onboarding.providerChatGPTSubscription",
-    descriptionKey:
-      "onboarding.providerChatGPTSubscriptionDetailDescription",
+    descriptionKey: "onboarding.providerChatGPTSubscriptionDetailDescription",
   },
   anthropic: {
     nameDefault: "Anthropic",
@@ -232,13 +231,13 @@ export function ConnectionProviderDetailScreen({
       name:
         override?.nameKey && override?.nameDefault
           ? t(override.nameKey, { defaultValue: override.nameDefault })
-          : override?.nameDefault ?? provider.name,
+          : (override?.nameDefault ?? provider.name),
       description:
         override?.descriptionKey && override?.descriptionDefault
           ? t(override.descriptionKey, {
               defaultValue: override.descriptionDefault,
             })
-          : override?.descriptionDefault ?? provider.description,
+          : (override?.descriptionDefault ?? provider.description),
     };
   };
 

@@ -491,7 +491,7 @@ export function MediaGalleryView({ leftNav }: { leftNav?: ReactNode }) {
                   >
                     <track kind="captions" />
                   </video>
-                  ) : (
+                ) : (
                   <div className="flex w-full max-w-xl flex-col items-center gap-5 rounded-3xl border border-border/35 bg-bg/35 px-8 py-10 text-center">
                     <div className="text-lg font-semibold text-txt">
                       {t("mediagalleryview.AudioPreview", {

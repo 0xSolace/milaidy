@@ -223,7 +223,8 @@ function InstallModal({
           </DialogTitle>
           <DialogDescription className="mt-0.5 text-[11px] text-muted">
             {t("skillsview.installSkillDescription", {
-              defaultValue: "Add skills from the marketplace or a GitHub repository.",
+              defaultValue:
+                "Add skills from the marketplace or a GitHub repository.",
             })}
           </DialogDescription>
         </DialogHeader>

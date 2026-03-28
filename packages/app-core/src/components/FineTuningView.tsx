@@ -291,7 +291,9 @@ export function FineTuningView() {
       );
     } catch (err) {
       setActionNotice(
-        err instanceof Error ? err.message : t("finetuningview.FailedToBuildDataset"),
+        err instanceof Error
+          ? err.message
+          : t("finetuningview.FailedToBuildDataset"),
         "error",
         4200,
       );
@@ -447,7 +449,9 @@ export function FineTuningView() {
       }
     } catch (err) {
       setActionNotice(
-        err instanceof Error ? err.message : t("finetuningview.FailedToActivateModel"),
+        err instanceof Error
+          ? err.message
+          : t("finetuningview.FailedToActivateModel"),
         "error",
         4200,
       );
@@ -479,7 +483,9 @@ export function FineTuningView() {
       );
     } catch (err) {
       setActionNotice(
-        err instanceof Error ? err.message : t("finetuningview.FailedToBenchmarkModel"),
+        err instanceof Error
+          ? err.message
+          : t("finetuningview.FailedToBenchmarkModel"),
         "error",
         4200,
       );
@@ -501,7 +507,9 @@ export function FineTuningView() {
     } catch (err) {
       setSmokeResult(null);
       setActionNotice(
-        err instanceof Error ? err.message : t("finetuningview.FailedToRunSmokeTest"),
+        err instanceof Error
+          ? err.message
+          : t("finetuningview.FailedToRunSmokeTest"),
         "error",
         4200,
       );

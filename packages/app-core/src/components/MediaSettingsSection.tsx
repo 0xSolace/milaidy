@@ -959,7 +959,7 @@ export function DesktopMediaControlPanel() {
                         data: screenshot.data,
                         filename: "milady-desktop-screenshot.png",
                       },
-                      });
+                    });
                     setLastSavedPath(saved?.path ?? null);
                   },
                   t("mediasettingssection.ScreenshotCapturedAndSaved", {
@@ -1042,9 +1042,9 @@ export function DesktopMediaControlPanel() {
                         ipcChannel: screenPaused
                           ? "screencapture:resumeRecording"
                           : "screencapture:pauseRecording",
-                    });
-                  },
-                  screenPaused
+                      });
+                    },
+                    screenPaused
                       ? t("mediasettingssection.ScreenRecordingResumed", {
                           defaultValue: "Screen recording resumed.",
                         })
