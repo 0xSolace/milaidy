@@ -44,7 +44,7 @@ export const SectionCard = React.forwardRef<HTMLDivElement, SectionCardProps>(
                 <Button
                   variant="ghost"
                   className={cn(
-                    "h-auto px-0 text-sm font-semibold text-left",
+                    "h-auto px-0 text-sm font-semibold text-left justify-start",
                     collapsible &&
                       "cursor-pointer hover:text-accent transition-colors",
                     !collapsible && "cursor-default",
