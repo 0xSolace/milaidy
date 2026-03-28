@@ -436,7 +436,7 @@ describe("CompanionView", () => {
     expect(newChatButtons).toHaveLength(1);
   });
 
-  it("shows the cloud badge in companion mode only when connected", async () => {
+  it("does not render the cloud status badge in companion header (desktop header only)", async () => {
     mockUseApp.mockReturnValue(
       createContext({
         elizaCloudConnected: true,
@@ -452,18 +452,11 @@ describe("CompanionView", () => {
       throw new Error("Failed to render connected CompanionView");
     }
 
-    const connectedBadge = connectedTree.root.findByProps({
-      "data-testid": "companion-cloud-status",
-    });
-    expect(connectedBadge.props["data-status"]).toBe("regular-credits");
-    expect(String(connectedBadge.props.className)).toContain(
-      "backdrop-blur-xl",
-    );
-    expect(String(connectedBadge.props.className)).toContain("font-medium");
-    expect(String(connectedBadge.props.className)).not.toContain("font-mono");
-    expect(connectedBadge.props.style.backgroundColor).toBeUndefined();
-    expect(connectedBadge.props.style.borderColor).toBe("transparent");
-    expect(text(connectedBadge)).toContain("$87.5");
+    expect(
+      connectedTree.root.findAllByProps({
+        "data-testid": "companion-cloud-status",
+      }),
+    ).toHaveLength(0);
 
     mockUseApp.mockReturnValue(createContext());
 
@@ -482,43 +475,6 @@ describe("CompanionView", () => {
         "data-testid": "companion-cloud-status",
       }),
     ).toHaveLength(0);
-  });
-
-  it("opens billing from the companion cloud badge", async () => {
-    const setState = vi.fn();
-    const setTab = vi.fn();
-    const switchShellView = vi.fn();
-
-    mockUseApp.mockReturnValue(
-      createContext({
-        elizaCloudConnected: true,
-        elizaCloudCredits: 87.5,
-        setState,
-        setTab,
-        switchShellView,
-      }),
-    );
-
-    let tree: TestRenderer.ReactTestRenderer | undefined;
-    await act(async () => {
-      tree = TestRenderer.create(React.createElement(CompanionView));
-    });
-    if (!tree) {
-      throw new Error("Failed to render CompanionView");
-    }
-
-    const cloudBadge = tree.root.findByProps({
-      "data-testid": "companion-cloud-status",
-    });
-
-    await act(async () => {
-      cloudBadge.props.onClick();
-      await Promise.resolve();
-    });
-
-    expect(switchShellView).toHaveBeenCalledWith("desktop");
-    expect(setState).toHaveBeenCalledWith("cloudDashboardView", "billing");
-    expect(setTab).toHaveBeenCalledWith("settings");
   });
 
   it("keeps the shared companion scene wrapper height-bounded", async () => {

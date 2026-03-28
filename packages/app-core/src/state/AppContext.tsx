@@ -205,6 +205,7 @@ import { NavigationEventHub } from "./navigation-events";
 import {
   deriveDetectedProviderPrefill,
   detectExistingOnboardingConnection,
+  resolveStartupWithoutRestoredConnection,
 } from "./onboarding-bootstrap";
 import {
   deriveUiShellModeForTab,
@@ -6811,6 +6812,8 @@ function AppProviderInner({
         pairingEnabled: false,
         expiresAt: null,
       };
+      const hadPersistedOnboardingCompletion =
+        loadPersistedOnboardingComplete();
       setStartupError(null);
       setStartupPhase("starting-backend");
       setAuthRequired(false);
@@ -6855,7 +6858,17 @@ function AppProviderInner({
         ),
       );
 
-      if (!restoredConnection && !shouldPreserveCompletedOnboarding) {
+      if (!restoredConnection) {
+        const startupWithoutConnection =
+          resolveStartupWithoutRestoredConnection({
+            hadPersistedOnboardingCompletion,
+          });
+        if (startupWithoutConnection.kind === "startup-error") {
+          setOnboardingComplete(true);
+          setStartupError(startupWithoutConnection.error);
+          setOnboardingLoading(false);
+          return;
+        }
         // No reusable backend/config was found yet. Show static onboarding
         // immediately so first-run users are not blocked on server startup.
         setOnboardingOptions({

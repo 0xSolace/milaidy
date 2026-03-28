@@ -505,51 +505,6 @@ export function RuntimeView() {
         <aside className={APP_DESKTOP_SIDEBAR_RAIL_STANDARD_CLASSNAME}>
           <div className={APP_SIDEBAR_INNER_CLASSNAME}>
             <DesktopRailSummaryCard
-              className={`mt-3 ${DESKTOP_RAIL_SUMMARY_CARD_COMPACT_CLASSNAME}`}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-[12px] font-semibold text-txt">
-                    {snapshot?.meta.agentName ??
-                      t("runtimeview.loadingSnapshot", {
-                        defaultValue: "Loading snapshot",
-                      })}
-                  </div>
-                  <div className="mt-0.5 text-[10px] text-muted">
-                    {snapshot
-                      ? formatDateTime(snapshot.generatedAt, {
-                          fallback: "n/a",
-                        })
-                      : t("runtimeview.noSnapshotLoaded")}
-                  </div>
-                </div>
-                <span className={APP_SIDEBAR_PILL_CLASSNAME}>
-                  {runtimeAvailable
-                    ? t("runtimeview.available")
-                    : t("runtimeview.offline")}
-                </span>
-              </div>
-
-              <div className="mt-2.5 grid grid-cols-2 gap-1.5">
-                <div className={APP_SIDEBAR_COMPACT_PILL_CLASSNAME}>
-                  {snapshot?.meta.model ?? "n/a"}
-                </div>
-                <div className={APP_SIDEBAR_COMPACT_PILL_CLASSNAME}>
-                  {snapshot?.meta.agentState ?? "unknown"}
-                </div>
-                <div className={APP_SIDEBAR_COMPACT_PILL_CLASSNAME}>
-                  {`${snapshot?.meta.pluginCount ?? 0} plugins`}
-                </div>
-                <div className={APP_SIDEBAR_COMPACT_PILL_CLASSNAME}>
-                  {`${snapshot?.meta.serviceCount ?? 0} services`}
-                </div>
-              </div>
-            </DesktopRailSummaryCard>
-
-            <div className={`mt-3 ${APP_SIDEBAR_SECTION_HEADING_CLASSNAME}`}>
-              Inspector controls
-            </div>
-            <DesktopRailSummaryCard
               className={`mt-2 space-y-2 ${DESKTOP_RAIL_SUMMARY_CARD_COMPACT_CLASSNAME}`}
             >
               {/* biome-ignore lint/a11y/noLabelWithoutControl: programmatic control association is preserved */}
@@ -722,20 +677,6 @@ export function RuntimeView() {
               />
             ) : activeSection === "summary" ? (
               <>
-                <section className={DESKTOP_PADDED_SURFACE_PANEL_CLASSNAME}>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted/70">
-                    Runtime
-                  </div>
-                  <div className="mt-2 text-[2rem] font-semibold leading-tight text-txt">
-                    Runtime Summary
-                  </div>
-                  <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
-                    Confirm that the agent runtime is healthy, review its active
-                    model and state, then use the left rail to open one section
-                    at a time when you need raw detail.
-                  </p>
-                </section>
-
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                   <OrderCard
                     title={t("runtimeview.Plugins")}

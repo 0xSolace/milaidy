@@ -333,7 +333,8 @@ export function ShellHeaderControls({
             {renderActionButton(false)}
           </div>
         ) : null}
-        {rightTrailingExtras}
+        {/* Cloud status / trailing chrome: main (desktop) shell only — not companion or character editor */}
+        {activeShellView === "desktop" ? rightTrailingExtras : null}
         <div
           className={`shrink-0 ${languageDropdownClassName ?? ""}`}
           data-testid={languageDropdownWrapperTestId}

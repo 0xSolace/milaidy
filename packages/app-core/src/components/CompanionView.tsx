@@ -4,7 +4,6 @@ import { Button } from "@miladyai/ui";
 import { PanelLeftOpen } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { ChatModalView } from "./ChatModalView";
-import { CloudStatusBadge } from "./CloudStatusBadge";
 import { useCompanionSceneStatus } from "./companion-scene-status-context";
 import { CompanionHeader } from "./companion/CompanionHeader";
 import {
@@ -37,10 +36,7 @@ const CompanionViewOverlay = memo(function CompanionViewOverlay() {
     conversationMessages,
     elizaCloudAuthRejected,
     elizaCloudConnected,
-    elizaCloudCredits,
-    elizaCloudCreditsCritical,
     elizaCloudCreditsError,
-    elizaCloudCreditsLow,
     elizaCloudEnabled,
     handleNewConversation,
     navigation,
@@ -128,14 +124,6 @@ const CompanionViewOverlay = memo(function CompanionViewOverlay() {
     });
   }, [inferenceNotice, navigation, setState, setTab, switchShellView]);
 
-  const handleCloudStatusClick = useCallback(() => {
-    switchShellView("desktop");
-    navigation.scheduleAfterTabCommit(() => {
-      setState("cloudDashboardView", "billing");
-      setTab("settings");
-    });
-  }, [navigation, setState, setTab, switchShellView]);
-
   const companionHeaderRightExtras = (
     <>
       {inferenceNotice ? (
@@ -146,22 +134,6 @@ const CompanionViewOverlay = memo(function CompanionViewOverlay() {
         />
       ) : null}
     </>
-  );
-
-  const companionHeaderRightTrailingExtras = (
-    <CloudStatusBadge
-      connected={elizaCloudConnected}
-      credits={elizaCloudCredits}
-      creditsLow={elizaCloudCreditsLow}
-      creditsCritical={elizaCloudCreditsCritical}
-      authRejected={elizaCloudAuthRejected}
-      creditsError={elizaCloudCreditsError}
-      compactOnMobile
-      appearance="shell"
-      t={t}
-      onClick={handleCloudStatusClick}
-      dataTestId="companion-cloud-status"
-    />
   );
 
   return (
@@ -189,7 +161,6 @@ const CompanionViewOverlay = memo(function CompanionViewOverlay() {
           }
           onNewChat={() => void handleNewConversation()}
           rightExtras={companionHeaderRightExtras}
-          rightTrailingExtras={companionHeaderRightTrailingExtras}
         />
       </div>
 

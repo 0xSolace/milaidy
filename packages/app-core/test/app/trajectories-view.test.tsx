@@ -8,13 +8,8 @@ const hoisted = vi.hoisted(() => ({
   mockUseApp: vi.fn(),
   mockClient: {
     getTrajectories: vi.fn(),
-    getTrajectoryStats: vi.fn(),
-    getTrajectoryConfig: vi.fn(),
-    updateTrajectoryConfig: vi.fn(),
     exportTrajectories: vi.fn(),
-    clearAllTrajectories: vi.fn(),
   },
-  mockConfirmDesktopAction: vi.fn(),
 }));
 
 vi.mock("@miladyai/app-core/state", () => ({
@@ -23,12 +18,6 @@ vi.mock("@miladyai/app-core/state", () => ({
 
 vi.mock("@miladyai/app-core/api", () => ({
   client: hoisted.mockClient,
-}));
-
-vi.mock("@miladyai/app-core/utils", () => ({
-  confirmDesktopAction: (
-    ...args: Parameters<typeof hoisted.mockConfirmDesktopAction>
-  ) => hoisted.mockConfirmDesktopAction(...args),
 }));
 
 vi.mock("@miladyai/ui", () => ({
@@ -85,37 +74,30 @@ vi.mock("@miladyai/ui", () => ({
     React.createElement("div", null, children),
   SelectItem: ({ children }: { children: React.ReactNode; value: string }) =>
     React.createElement("div", null, children),
-  EmptyState: ({ children }: { children: React.ReactNode }) =>
-    React.createElement("div", null, children),
-  cn: (...args: any[]) => args.filter(Boolean).join(" "),
+  EmptyState: ({
+    title,
+    description,
+    children,
+  }: {
+    title?: string;
+    description?: string;
+    children?: React.ReactNode;
+  }) => React.createElement("div", null, title, description ?? "", children),
+  cn: (...args: (string | boolean | undefined)[]) =>
+    args.filter(Boolean).join(" "),
 }));
 
-import type {
-  TrajectoryConfig,
-  TrajectoryListResult,
-  TrajectoryStats,
-} from "@miladyai/app-core/api";
+import type { TrajectoryListResult } from "@miladyai/app-core/api";
 import { flush } from "../../../../test/helpers/react-test";
 import { TrajectoriesView } from "../../src/components/TrajectoriesView";
 
-const { mockClient, mockConfirmDesktopAction, mockUseApp } = hoisted;
+const { mockClient, mockUseApp } = hoisted;
 
 const trajectoryList: TrajectoryListResult = {
   trajectories: [],
   total: 0,
   offset: 0,
   limit: 50,
-};
-
-const trajectoryStats: TrajectoryStats = {
-  totalTrajectories: 0,
-  totalLlmCalls: 0,
-  totalProviderAccesses: 0,
-  totalPromptTokens: 0,
-  totalCompletionTokens: 0,
-  averageDurationMs: 0,
-  bySource: {},
-  byModel: {},
 };
 
 function collectText(node: TestRenderer.ReactTestInstance): string {
@@ -140,33 +122,26 @@ function createTranslator(): (
   };
 }
 
-function setBaseMocks(config: TrajectoryConfig): void {
+function setBaseMocks(): void {
   mockClient.getTrajectories.mockResolvedValue(trajectoryList);
-  mockClient.getTrajectoryStats.mockResolvedValue(trajectoryStats);
-  mockClient.getTrajectoryConfig.mockResolvedValue(config);
-  mockClient.updateTrajectoryConfig.mockResolvedValue(config);
   mockClient.exportTrajectories.mockResolvedValue(
     new Blob(["[]"], { type: "application/json" }),
   );
-  mockClient.clearAllTrajectories.mockResolvedValue({ deleted: 0 });
-  mockConfirmDesktopAction.mockResolvedValue(true);
   mockUseApp.mockReturnValue({
     t: createTranslator(),
   });
 }
 
-describe("TrajectoriesView logging toggle", () => {
+describe("TrajectoriesView", () => {
   beforeEach(() => {
     mockUseApp.mockReset();
-    mockConfirmDesktopAction.mockReset();
     for (const fn of Object.values(mockClient)) {
       fn.mockReset();
     }
   });
 
-  it("toggles logging from off to on", async () => {
-    setBaseMocks({ enabled: false });
-    mockClient.updateTrajectoryConfig.mockResolvedValue({ enabled: true });
+  it("shows empty copy when there are no trajectories", async () => {
+    setBaseMocks();
 
     let tree: TestRenderer.ReactTestRenderer | undefined;
     await act(async () => {
@@ -174,50 +149,18 @@ describe("TrajectoriesView logging toggle", () => {
     });
     await flush();
 
-    const buttons = tree?.root.findAllByType("button") ?? [];
-    const loggingButton = buttons.find(
-      (node) => collectText(node) === "OFF_TEXT",
+    if (tree == null) {
+      throw new Error("expected tree");
+    }
+    expect(collectText(tree.root)).toContain(
+      "trajectoriesview.NoTrajectoriesYet",
     );
-    expect(loggingButton).toBeDefined();
-
-    await act(async () => {
-      loggingButton?.props.onClick();
-    });
-
-    expect(mockClient.updateTrajectoryConfig).toHaveBeenCalledWith({
-      enabled: true,
-    });
-  });
-
-  it("toggles logging from on to off", async () => {
-    setBaseMocks({ enabled: true });
-    mockClient.updateTrajectoryConfig.mockResolvedValue({ enabled: false });
-
-    let tree: TestRenderer.ReactTestRenderer | undefined;
-    await act(async () => {
-      tree = TestRenderer.create(React.createElement(TrajectoriesView));
-    });
-    await flush();
-
-    const buttons = tree?.root.findAllByType("button") ?? [];
-    const loggingButton = buttons.find(
-      (node) => collectText(node) === "ON_TEXT",
-    );
-    expect(loggingButton).toBeDefined();
-
-    await act(async () => {
-      loggingButton?.props.onClick();
-    });
-
-    expect(mockClient.updateTrajectoryConfig).toHaveBeenCalledWith({
-      enabled: false,
-    });
   });
 
   it("retries trajectory loading when the logger API is still starting", async () => {
     vi.useFakeTimers();
     try {
-      setBaseMocks({ enabled: true });
+      setBaseMocks();
       mockClient.getTrajectories
         .mockRejectedValueOnce(
           new ApiError({

@@ -150,6 +150,7 @@ describe("ShellHeaderControls", () => {
     mockUseMediaQuery.mockReturnValue(false);
 
     const tree = renderControls({
+      activeShellView: "desktop",
       companionDesktopActionsLayout: "split",
       rightTrailingExtras: React.createElement("div", {
         "data-testid": "right-trailing-extra-stub",
