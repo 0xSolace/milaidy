@@ -810,6 +810,19 @@ jobs:
             -OutputDir (Join-Path $PWD "apps/app/electrobun/artifacts") `
             -Version "${{ needs.prepare.outputs.version }}"
 
+      # When building unsigned (skip_codesign=1), the CEF framework ships with
+      # a pre-existing signature.  Injecting version.json into Resources breaks
+      # that signature (resource hash mismatch).  Ad-hoc re-sign the .app so
+      # the bundle is internally consistent even without a Developer ID cert.
+      - name: Ad-hoc re-sign unsigned macOS bundle
+        if: matrix.platform.os == 'macos' && steps.macos-keychain.outputs.skip_codesign == '1'
+        run: |
+          for app in apps/app/electrobun/artifacts/*.app; do
+            [ -d "$app" ] || continue
+            echo "Ad-hoc signing: $app"
+            codesign --force --deep --sign - "$app" || echo "::warning::Ad-hoc re-sign failed for $app"
+          done
+
       - name: Verify macOS signature and notarization
         if: matrix.platform.os == 'macos'
         run: |
