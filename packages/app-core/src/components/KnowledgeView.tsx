@@ -532,7 +532,7 @@ function DocumentViewer({ documentId }: { documentId: string | null }) {
       className={`${KNOWLEDGE_PANEL_CLASS} min-h-[62vh] overflow-hidden`}
     >
       {doc && (
-        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+        <div className="flex flex-wrap items-center gap-2 px-5 pt-5 sm:px-6 lg:justify-end">
           <span className="rounded-full border border-border/45 bg-bg/25 px-3 py-1.5 text-[11px] font-semibold text-muted">
             {getKnowledgeTypeLabel(doc.contentType)}
           </span>
