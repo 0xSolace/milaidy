@@ -10,8 +10,10 @@ import {
   resolveDesktopApiPort,
 } from "@miladyai/shared/runtime-env";
 
-/** API port for loopback wallet API calls. Shared across all wallet actions. */
-export const WALLET_ACTION_API_PORT = String(resolveDesktopApiPort(process.env));
+/** Resolve the loopback API port for wallet action calls at runtime. */
+export function getWalletActionApiPort(): string {
+  return String(resolveDesktopApiPort(process.env));
+}
 
 /**
  * Build Authorization headers for loopback API calls.

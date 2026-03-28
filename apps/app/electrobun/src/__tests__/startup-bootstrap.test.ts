@@ -68,6 +68,14 @@ describe("Electrobun startup bootstrap", () => {
     expect(source).toContain("[Main] Skipping embedded agent startup");
   });
 
+  it("records machine-readable startup phases for packaged smoke", () => {
+    const source = fs.readFileSync(INDEX_PATH, "utf8");
+
+    expect(source).toContain('recordStartupPhase("main_start"');
+    expect(source).toContain('recordStartupPhase("window_ready"');
+    expect(source).toContain('recordStartupPhase("autostart_requested"');
+    expect(source).toContain("resolveStartupBundlePath");
+  });
   it("prompts with startup crash report recovery instructions", () => {
     const source = fs.readFileSync(INDEX_PATH, "utf8");
 

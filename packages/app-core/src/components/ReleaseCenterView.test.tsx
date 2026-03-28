@@ -218,6 +218,8 @@ describe("ReleaseCenterView", () => {
 
     const root = renderer.root;
     expect(() => findButtonByText(root, "Refresh")).not.toThrow();
-    expect(() => findButtonByText(root, "Open Detached Release Center")).not.toThrow();
+    expect(() =>
+      findButtonByText(root, "Open Detached Release Center"),
+    ).not.toThrow();
   });
 });

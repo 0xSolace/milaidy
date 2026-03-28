@@ -44,6 +44,8 @@ vi.mock("@miladyai/ui", () => {
     TabsList: passthrough,
     TabsTrigger: passthrough,
     TabsContent: passthrough,
+    DropdownMenuShortcut: "DropdownMenuShortcut",
+    cn: (...args: any[]) => args.filter(Boolean).join(" "),
     Badge: passthrough,
   };
 });

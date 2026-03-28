@@ -67,7 +67,9 @@ describe("Electrobun test workflow drift", () => {
       "bun install --frozen-lockfile --ignore-scripts",
     );
     expect(workflow).toContain("bun run postinstall");
-    expect(workflow).toContain("bun run test:regression-matrix:release-contract");
+    expect(workflow).toContain(
+      "bun run test:regression-matrix:release-contract",
+    );
     expect(workflow).toContain("bun run test:release:contract");
     expect(workflow).not.toContain(
       "uses: ./.github/workflows/release-electrobun.yml",

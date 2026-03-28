@@ -2,12 +2,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import {
-  collectMacCodeSignTargets,
-} from "../../scripts/local-adhoc-sign-macos";
-import {
-  resolveRequiredRuntimeBinaryNames,
-} from "../../scripts/postwrap-diagnostics";
+import { collectMacCodeSignTargets } from "../../scripts/local-adhoc-sign-macos";
+import { resolveRequiredRuntimeBinaryNames } from "../../scripts/postwrap-diagnostics";
 
 describe("wrapper runtime contract", () => {
   it("repairs the macOS wrapper with the launcher-side runtime binaries", () => {

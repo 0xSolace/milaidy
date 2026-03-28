@@ -176,7 +176,7 @@ describe("OnboardingWizard", () => {
 
     it("fades in the UI overlay when VrmStage never calls onRevealStart", async () => {
       mockUseApp.mockReturnValue({
-        onboardingStep: "welcome",
+        onboardingStep: "cloud_login",
         selectedVrmIndex: 1,
         customVrmUrl: "",
         uiLanguage: "en",
@@ -242,7 +242,7 @@ describe("OnboardingWizard", () => {
 
     it("shows the overlay immediately when opening onboarding after agent reset", async () => {
       mockUseApp.mockReturnValue({
-        onboardingStep: "welcome",
+        onboardingStep: "cloud_login",
         selectedVrmIndex: 1,
         customVrmUrl: "",
         uiLanguage: "en",
@@ -273,7 +273,7 @@ describe("OnboardingWizard", () => {
 
   it("locks document/body scroll while mounted and restores on unmount", async () => {
     mockUseApp.mockReturnValue({
-      onboardingStep: "welcome",
+      onboardingStep: "cloud_login",
       selectedVrmIndex: 1,
       customVrmUrl: "",
       uiLanguage: "en",

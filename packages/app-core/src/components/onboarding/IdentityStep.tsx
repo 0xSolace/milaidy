@@ -8,12 +8,12 @@ import { useApp } from "@miladyai/app-core/state";
 import { getStylePresets } from "@miladyai/shared/onboarding-presets";
 import { Button, Input } from "@miladyai/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { getElizaApiToken, resolveAppAssetUrl } from "../../utils";
 import {
   fetchWithTimeout,
   resolveCompatApiToken,
 } from "../../utils/api-request";
 import { resolveApiUrl } from "../../utils/asset-url";
-import { getElizaApiToken } from "../../utils/eliza-globals";
 import { PREMADE_VOICES } from "../../voice/types";
 import {
   CharacterRoster,
@@ -21,20 +21,16 @@ import {
   resolveRosterEntries,
 } from "../CharacterRoster";
 import { resolvePreviewTtsEndpoints } from "./identity-preview-tts";
+
 import {
-  onboardingInputClassName,
-  onboardingReadableTextMutedClassName,
-  onboardingReadableTextStrongClassName,
-} from "./onboarding-form-primitives";
-import { onboardingPanelSurfaceClassName } from "./OnboardingPanel";
-import {
-  OnboardingLinkActionButton,
-  OnboardingSecondaryActionButton,
   OnboardingStepHeader,
   onboardingBodyTextShadowStyle,
   onboardingFooterClass,
+  onboardingLinkActionClass,
   onboardingPrimaryActionClass,
   onboardingPrimaryActionTextShadowStyle,
+  onboardingSecondaryActionClass,
+  onboardingSecondaryActionTextShadowStyle,
   spawnOnboardingRipple,
 } from "./onboarding-step-chrome";
 
@@ -61,8 +57,6 @@ export function IdentityStep({
   );
   const firstEntry = entries[0];
   const selectedId = onboardingStyle || entries[0]?.id || "";
-
-  /* ── Import / restore state ─────────────────────────────────────── */
   const [showImport, setShowImport] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importPassword, setImportPassword] = useState("");
@@ -128,39 +122,11 @@ export function IdentityStep({
         if (played && isCurrentRequest()) return;
       }
 
-      if (selectedPreset?.voiceId) {
-        const apiToken = getElizaApiToken()?.trim() ?? "";
-        const endpoints = resolvePreviewTtsEndpoints(selectedPreset.voiceId);
-
-        for (const endpoint of endpoints) {
-          if (!isCurrentRequest()) return;
-          try {
-            const response = await fetch(resolveApiUrl(endpoint), {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Accept: "audio/mpeg",
-                ...(apiToken ? { Authorization: `Bearer ${apiToken}` } : {}),
-              },
-              body: JSON.stringify({
-                text: catchphrase,
-                voiceId: selectedPreset.voiceId,
-                modelId: "eleven_flash_v2_5",
-                outputFormat: "mp3_44100_128",
-              }),
-            });
-            if (!response.ok) continue;
-
-            const blob = await response.blob();
-            if (!isCurrentRequest()) return;
-            const objectUrl = URL.createObjectURL(blob);
-            previewObjectUrlRef.current = objectUrl;
-            const played = await playPreviewFromUrl(objectUrl);
-            if (played && isCurrentRequest()) return;
-          } catch {
-            // Try next endpoint.
-          }
-        }
+      if (entry.id) {
+        // Use offline preset MP3s for onboarding
+        const offlineUrl = resolveAppAssetUrl(`audio/previews/${entry.id}.mp3`);
+        const played = await playPreviewFromUrl(offlineUrl);
+        if (played && isCurrentRequest()) return;
       }
 
       // Intentionally do not fall back to generic system/browser TTS voices for
@@ -203,8 +169,6 @@ export function IdentityStep({
       stopPreviewAudio,
     ],
   );
-
-  // Auto-select the first one if nothing is selected yet
   useEffect(() => {
     if (!onboardingStyle && firstEntry) {
       handleSelect(firstEntry, false);
@@ -323,8 +287,6 @@ export function IdentityStep({
       setImportBusy(false);
     }
   }, [importBusy, importFile, importPassword, t]);
-
-  /* ── Import UI ──────────────────────────────────────────────────── */
   if (showImport) {
     return (
       <div className="flex flex-col items-center gap-3 w-full max-w-[400px]">
@@ -341,7 +303,7 @@ export function IdentityStep({
             setImportFile(e.target.files?.[0] ?? null);
             setImportError(null);
           }}
-          className={`${onboardingInputClassName} h-auto rounded-[6px] px-[20px] py-[16px] text-[13px] font-inherit tracking-[0.03em] text-center`}
+          className="w-full px-[20px] py-[16px] bg-[var(--onboarding-card-bg)] border border-[var(--onboarding-card-border)] rounded-[6px] text-[var(--onboarding-text-primary)] font-inherit outline-none tracking-[0.03em] transition-all duration-300 focus:border-[var(--onboarding-field-focus-border)] focus:shadow-[var(--onboarding-field-focus-shadow)] placeholder:text-[var(--onboarding-text-faint)] text-[13px] text-left"
         />
 
         <Input
@@ -352,28 +314,14 @@ export function IdentityStep({
             setImportPassword(e.target.value);
             setImportError(null);
           }}
-          className={`${onboardingInputClassName} h-auto rounded-[6px] px-[20px] py-[16px] font-inherit tracking-[0.03em] text-center`}
+          className="w-full px-[20px] py-[16px] bg-[var(--onboarding-card-bg)] border border-[var(--onboarding-card-border)] rounded-[6px] text-[var(--onboarding-text-primary)] font-inherit outline-none tracking-[0.03em] text-center transition-all duration-300 focus:border-[var(--onboarding-field-focus-border)] focus:shadow-[var(--onboarding-field-focus-shadow)] placeholder:text-[var(--onboarding-text-faint)]"
         />
 
-        {importError && (
-          <p
-            className="text-sm text-[var(--danger)] text-center leading-relaxed mt-3 !mb-0"
-            style={onboardingBodyTextShadowStyle}
-          >
-            {importError}
-          </p>
-        )}
-        {importSuccess && (
-          <p
-            className="text-sm text-[var(--ok)] text-center leading-relaxed mt-3 !mb-0"
-            style={onboardingBodyTextShadowStyle}
-          >
-            {importSuccess}
-          </p>
-        )}
-
         <div className={`${onboardingFooterClass} mt-2 w-full border-t-0 pt-0`}>
-          <OnboardingSecondaryActionButton
+          <Button
+            variant="ghost"
+            className={onboardingSecondaryActionClass}
+            style={onboardingSecondaryActionTextShadowStyle}
             onClick={() => {
               setShowImport(false);
               setImportError(null);
@@ -384,7 +332,7 @@ export function IdentityStep({
             type="button"
           >
             {t("common.cancel")}
-          </OnboardingSecondaryActionButton>
+          </Button>
           <Button
             className={onboardingPrimaryActionClass}
             style={onboardingPrimaryActionTextShadowStyle}
@@ -404,56 +352,23 @@ export function IdentityStep({
       </div>
     );
   }
-
-  /* ── Overwatch-style character select — full-width bottom bar ──── */
   const selected = entries.find((e) => e.id === selectedId);
 
   return (
     <div
-      className="flex flex-col items-center gap-3 w-full"
+      className="flex w-full flex-col items-center gap-3 max-md:max-h-[calc(100dvh-6.5rem)] max-md:overflow-y-auto max-md:px-4 max-md:pb-2"
       style={{ animation: "onboarding-content-fade-in 0.6s ease both" }}
     >
-      {/* Selected character info — floats above the roster */}
-      <div
-        className="w-full text-center"
-        style={{ animation: "onboarding-content-fade-in 0.5s ease 0.1s both" }}
-      >
-        <div
-          className={`mb-2 text-xs font-semibold uppercase tracking-[0.3em] ${onboardingReadableTextMutedClassName}`}
-          style={onboardingBodyTextShadowStyle}
-        >
-          {t("onboarding.stepSub.identity")}
-        </div>
-        <div
-          className={`text-[28px] font-bold tracking-[0.12em] uppercase transition-all duration-300 max-md:text-xl ${onboardingReadableTextStrongClassName}`}
-          style={{
-            textShadow:
-              "0 0 24px rgba(240,185,11,0.18), var(--onboarding-text-shadow-strong)",
-          }}
-        >
-          {selected?.name ?? ""}
-        </div>
-      </div>
-
-      {/* ── Roster bar ── */}
-      <div
-        className={`flex w-full max-w-[900px] flex-nowrap items-end justify-center gap-0 rounded-[18px] p-4 pb-8 px-2 backdrop-blur-[36px] backdrop-saturate-[1.24] max-md:max-w-full max-md:px-1 ${onboardingPanelSurfaceClassName}`}
-        style={{
-          animation:
-            "ob-roster-slide-up 0.5s cubic-bezier(0.25,0.46,0.45,0.94) 0.15s both",
-        }}
-      >
-        <CharacterRoster
-          entries={entries}
-          selectedId={selectedId}
-          onSelect={(entry) => handleSelect(entry, true)}
-          variant="onboarding"
-          testIdPrefix="onboarding"
-        />
-      </div>
+      <CharacterRoster
+        entries={entries}
+        selectedId={selectedId}
+        onSelect={(entry) => handleSelect(entry, true)}
+        variant="onboarding"
+        testIdPrefix="onboarding"
+      />
 
       <div
-        className="flex flex-col items-center gap-2 pb-6 max-md:pb-4"
+        className="flex flex-col items-center gap-2 pb-6 max-md:pb-2"
         style={{ animation: "onboarding-content-fade-in 0.5s ease 0.3s both" }}
       >
         <Button
@@ -475,12 +390,6 @@ export function IdentityStep({
         >
           Continue
         </Button>
-        <OnboardingLinkActionButton
-          type="button"
-          onClick={() => setShowImport(true)}
-        >
-          {t("onboarding.restoreFromBackup")}
-        </OnboardingLinkActionButton>
       </div>
     </div>
   );

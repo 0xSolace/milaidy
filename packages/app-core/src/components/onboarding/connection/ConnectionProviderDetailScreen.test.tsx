@@ -137,7 +137,7 @@ describe("ConnectionProviderDetailScreen", () => {
     );
   });
 
-  it("shows report-issue action for non-link cloud login errors", () => {
+  it("shows report-issue action for non-link cloud login errors", async () => {
     mockUseBranding.mockImplementation(() => ({
       bugReportUrl: "https://example.invalid",
     }));
@@ -148,11 +148,17 @@ describe("ConnectionProviderDetailScreen", () => {
       }),
     );
 
-    render(<ConnectionProviderDetailScreen dispatch={vi.fn()} />);
-
-    fireEvent.click(
-      screen.getByRole("button", { name: "onboarding.reportIssue" }),
+    const { getByRole } = render(
+      <ConnectionProviderDetailScreen dispatch={vi.fn()} />,
     );
+
+    const reportIssueButton = getByRole("button", {
+      name: (content) => content.includes("onboarding.reportIssue"),
+    });
+
+    expect(reportIssueButton).toBeDefined();
+
+    fireEvent.click(reportIssueButton);
     expect(mockOpenExternalUrl).toHaveBeenCalledWith("https://example.invalid");
   });
 

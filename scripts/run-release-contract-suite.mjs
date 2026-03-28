@@ -30,6 +30,9 @@ run("bun", ["run", "test:startup:contract"]);
 
 run("bunx", ["tsdown"]);
 fs.mkdirSync(path.join(ROOT, "dist"), { recursive: true });
-fs.writeFileSync(path.join(ROOT, "dist", "package.json"), '{"type":"module"}\n');
+fs.writeFileSync(
+  path.join(ROOT, "dist", "package.json"),
+  '{"type":"module"}\n',
+);
 run("node", ["--import", "tsx", "scripts/write-build-info.ts"]);
 run("bun", ["run", "release:check"]);

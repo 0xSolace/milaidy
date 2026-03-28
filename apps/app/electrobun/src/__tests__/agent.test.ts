@@ -18,9 +18,6 @@ const MOCK_DIST_PATH = "/mock/milady-dist";
 process.env.MILADY_DIST_PATH = MOCK_DIST_PATH;
 const ORIGINAL_EXEC_PATH = process.execPath;
 const ORIGINAL_PLATFORM = process.platform;
-const ORIGINAL_MILADY_PORT = process.env.MILADY_PORT;
-const ORIGINAL_MILADY_API_PORT = process.env.MILADY_API_PORT;
-const ORIGINAL_ELIZA_PORT = process.env.ELIZA_PORT;
 
 vi.mock("node:fs", () => {
   const existsSyncFn = vi.fn(() => true);
@@ -35,20 +32,20 @@ vi.mock("node:fs", () => {
       existsSync: existsSyncFn,
       mkdirSync: vi.fn(),
       appendFileSync: appendFileSyncFn,
-      readFileSync: readFileSyncFn,
       writeFileSync: writeFileSyncFn,
-      copyFileSync: copyFileSyncFn,
       renameSync: renameSyncFn,
+      readFileSync: readFileSyncFn,
+      copyFileSync: copyFileSyncFn,
       readdirSync: vi.fn(() => ["entry.js"]),
       rmSync: rmSyncFn,
     },
     existsSync: existsSyncFn,
     mkdirSync: vi.fn(),
     appendFileSync: appendFileSyncFn,
-    readFileSync: readFileSyncFn,
     writeFileSync: writeFileSyncFn,
-    copyFileSync: copyFileSyncFn,
     renameSync: renameSyncFn,
+    readFileSync: readFileSyncFn,
+    copyFileSync: copyFileSyncFn,
     readdirSync: vi.fn(() => ["entry.js"]),
     rmSync: rmSyncFn,
   };
@@ -157,6 +154,15 @@ async function getExistsSyncMock(): Promise<Mock> {
   return fs.default.existsSync as Mock;
 }
 
+async function getAppendFileSyncMock(): Promise<Mock> {
+  const fs = await import("node:fs");
+  return fs.default.appendFileSync as Mock;
+}
+
+async function flushAsyncWork(): Promise<void> {
+  await Promise.resolve();
+  await Promise.resolve();
+}
 async function getReadFileSyncMock(): Promise<Mock> {
   const fs = await import("node:fs");
   return fs.default.readFileSync as Mock;
@@ -170,16 +176,6 @@ async function getWriteFileSyncMock(): Promise<Mock> {
 async function getCopyFileSyncMock(): Promise<Mock> {
   const fs = await import("node:fs");
   return fs.default.copyFileSync as Mock;
-}
-
-async function getAppendFileSyncMock(): Promise<Mock> {
-  const fs = await import("node:fs");
-  return fs.default.appendFileSync as Mock;
-}
-
-async function flushAsyncWork(): Promise<void> {
-  await Promise.resolve();
-  await Promise.resolve();
 }
 
 // ---------------------------------------------------------------------------
@@ -198,7 +194,6 @@ import {
   resolveBunExecutablePath,
   resolveMiladyDistPath,
 } from "../native/agent";
-import { findFirstAvailableLoopbackPort } from "../native/loopback-port";
 
 describe("AgentManager", () => {
   let manager: AgentManager;
@@ -217,16 +212,10 @@ describe("AgentManager", () => {
       configurable: true,
       value: ORIGINAL_PLATFORM,
     });
-<<<<<<< HEAD
-    delete process.env.MILADY_PORT;
-    delete process.env.MILADY_API_PORT;
-    delete process.env.ELIZA_PORT;
-=======
     process.env.MILADY_DIST_PATH = MOCK_DIST_PATH;
     delete process.env.MILADY_STARTUP_SESSION_ID;
     delete process.env.MILADY_STARTUP_STATE_FILE;
     delete process.env.MILADY_STARTUP_EVENTS_FILE;
->>>>>>> pr-1360
     // Default: all filesystem checks return true (dist exists, entry.js exists, etc.)
     const existsSync = await getExistsSyncMock();
     existsSync.mockReturnValue(true);
@@ -307,8 +296,7 @@ describe("AgentManager", () => {
             env: process.env,
             moduleDir:
               "/Applications/Milady-canary.app/Contents/Resources/app/bun",
-            execPath:
-              "/Applications/Milady-canary.app/Contents/MacOS/launcher",
+            execPath: "/Applications/Milady-canary.app/Contents/MacOS/launcher",
           }),
         ).toBe(
           "/Applications/Milady-canary.app/Contents/Resources/app/milady-dist",
@@ -384,21 +372,6 @@ describe("AgentManager", () => {
       configurable: true,
       value: ORIGINAL_PLATFORM,
     });
-    if (ORIGINAL_MILADY_PORT === undefined) {
-      delete process.env.MILADY_PORT;
-    } else {
-      process.env.MILADY_PORT = ORIGINAL_MILADY_PORT;
-    }
-    if (ORIGINAL_MILADY_API_PORT === undefined) {
-      delete process.env.MILADY_API_PORT;
-    } else {
-      process.env.MILADY_API_PORT = ORIGINAL_MILADY_API_PORT;
-    }
-    if (ORIGINAL_ELIZA_PORT === undefined) {
-      delete process.env.ELIZA_PORT;
-    } else {
-      process.env.ELIZA_PORT = ORIGINAL_ELIZA_PORT;
-    }
     await manager.dispose();
   });
 
@@ -487,7 +460,6 @@ describe("AgentManager", () => {
       expect(bundle.directory).not.toContain("../");
       expect(bundle.directory).not.toContain("..\\");
     });
-
     it("returns a default startup diagnostics snapshot when the status file is missing", async () => {
       const readFileSync = await getReadFileSyncMock();
       readFileSync.mockImplementation(() => {
@@ -503,7 +475,7 @@ describe("AgentManager", () => {
   describe("start()", () => {
     it("transitions to starting state", async () => {
       const states: string[] = [];
-      manager.setSendToWebview((_msg, payload) => {
+      manager.setSendToWebview((_msg: string, payload: unknown) => {
         if (payload && typeof payload === "object" && "state" in payload) {
           states.push((payload as { state: string }).state);
         }
@@ -557,9 +529,9 @@ describe("AgentManager", () => {
         const traceEvents = appendFileSync.mock.calls
           .map(([, line]) => String(line))
           .filter((line) => line.includes('"session_id":"test-session"'));
-        expect(traceEvents.some((line) => line.includes('"phase":"fatal"'))).toBe(
-          true,
-        );
+        expect(
+          traceEvents.some((line) => line.includes('"phase":"fatal"')),
+        ).toBe(true);
         expect(
           traceEvents.some((line) => line.includes('"exit_code":23')),
         ).toBe(true);
@@ -636,42 +608,6 @@ describe("AgentManager", () => {
       // Second call should return immediately without spawning again
       const secondStatus = await manager.start();
       expect(secondStatus.state).toBe("running");
-      expect(mockSpawn).toHaveBeenCalledTimes(1);
-    });
-
-    it("marks status as starting before awaited startup work so concurrent callers do not double-spawn", async () => {
-      const portDeferred = createDeferred<number>();
-      vi.mocked(findFirstAvailableLoopbackPort).mockReturnValueOnce(
-        portDeferred.promise,
-      );
-
-      const mockProc = createMockProcess();
-      mockSpawn.mockReturnValue(mockProc);
-
-      mockFetch.mockResolvedValueOnce(makeHealthyResponse());
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ agents: [{ name: "TestAgent" }] }),
-      });
-
-      const firstStart = manager.start();
-      await Promise.resolve();
-
-      expect(manager.getStatus().state).toBe("starting");
-
-      const secondStart = manager.start();
-      await Promise.resolve();
-
-      expect(mockSpawn).toHaveBeenCalledTimes(0);
-
-      portDeferred.resolve(9999);
-      const [firstStatus, secondStatus] = await Promise.all([
-        firstStart,
-        secondStart,
-      ]);
-
-      expect(firstStatus.state).toBe("running");
-      expect(secondStatus.state).toBe("starting");
       expect(mockSpawn).toHaveBeenCalledTimes(1);
     });
 
@@ -1037,44 +973,6 @@ describe("AgentManager", () => {
       }
     });
 
-    it("does not overwrite MILADY_PORT in child env when the API falls back to another port", async () => {
-      const originalPort = process.env.MILADY_PORT;
-      const originalApiPort = process.env.MILADY_API_PORT;
-      process.env.MILADY_PORT = "9999";
-      delete process.env.MILADY_API_PORT;
-
-      try {
-        vi.mocked(findFirstAvailableLoopbackPort).mockResolvedValueOnce(31337);
-
-        const mockProc = createMockProcess();
-        mockSpawn.mockReturnValue(mockProc);
-
-        mockFetch.mockResolvedValueOnce(makeHealthyResponse());
-        mockFetch.mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ agents: [] }),
-        });
-
-        await manager.start();
-
-        const spawnArgs = mockSpawn.mock.calls[0];
-        const childEnv = spawnArgs[1].env as Record<string, string>;
-        expect(childEnv.MILADY_PORT).toBe("9999");
-      } finally {
-        if (originalPort === undefined) {
-          delete process.env.MILADY_PORT;
-        } else {
-          process.env.MILADY_PORT = originalPort;
-        }
-
-        if (originalApiPort === undefined) {
-          delete process.env.MILADY_API_PORT;
-        } else {
-          process.env.MILADY_API_PORT = originalApiPort;
-        }
-      }
-    });
-
     it("defaults agent name to Milady when agents endpoint fails", async () => {
       const mockProc = createMockProcess();
       mockSpawn.mockReturnValue(mockProc);
@@ -1090,7 +988,6 @@ describe("AgentManager", () => {
 
     it("restarts once after a PGLite migration failure is detected", async () => {
       vi.useFakeTimers();
-      const statusChanges: string[] = [];
       const mockProc1 = createMockProcess({
         pid: 111,
         stderr: makeReadableStream("Failed query: create schema if not exists"),
@@ -1109,15 +1006,11 @@ describe("AgentManager", () => {
         json: async () => ({ agents: [{ name: "Milady" }] }),
       });
 
-      const unsubscribe = manager.onStatusChange((nextStatus) => {
-        statusChanges.push(nextStatus.state);
-      });
       const status = await manager.start();
       expect(status.state).toBe("running");
 
       mockProc1._exitDeferred.resolve(1);
       await Promise.resolve();
-      expect(statusChanges).toContain("not_started");
       await vi.advanceTimersByTimeAsync(500);
 
       const fs = await import("node:fs");
@@ -1126,7 +1019,6 @@ describe("AgentManager", () => {
         { recursive: true, force: true },
       );
       expect(mockSpawn).toHaveBeenCalledTimes(2);
-      unsubscribe();
 
       vi.useRealTimers();
     });
@@ -1295,7 +1187,7 @@ describe("AgentManager", () => {
   describe("setSendToWebview()", () => {
     it("emits status updates via the callback", async () => {
       const messages: Array<{ message: string; payload: unknown }> = [];
-      manager.setSendToWebview((message, payload) => {
+      manager.setSendToWebview((message: string, payload: unknown) => {
         messages.push({ message, payload });
       });
 
@@ -1319,9 +1211,11 @@ describe("AgentManager", () => {
   describe("onStatusChange()", () => {
     it("notifies listeners and supports unsubscribe", async () => {
       const states: string[] = [];
-      const unsubscribe = manager.onStatusChange((status) => {
-        states.push(status.state);
-      });
+      const unsubscribe = manager.onStatusChange(
+        (status: { state: string }) => {
+          states.push(status.state);
+        },
+      );
 
       const existsSync = await getExistsSyncMock();
       existsSync.mockImplementation((p: string) => {

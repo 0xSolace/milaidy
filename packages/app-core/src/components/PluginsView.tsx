@@ -1241,8 +1241,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
     new Set(),
   );
   const hasPluginToggleInFlight = togglingPlugins.size > 0;
-
-  // ── Drag-to-reorder state ────────────────────────────────────────
   const [pluginOrder, setPluginOrder] = useState<string[]>(() => {
     try {
       const stored = localStorage.getItem("pluginOrder");
@@ -1427,8 +1425,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
     [subgroupFilter],
   );
 
-  // ── Handlers ───────────────────────────────────────────────────────
-
   const toggleSettings = (pluginId: string) => {
     const next = new Set<string>();
     if (!pluginSettingsOpen.has(pluginId)) next.add(pluginId);
@@ -1447,7 +1443,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
   };
 
   const handleConfigSave = async (pluginId: string) => {
-    // Showcase plugin: no-op save (it's not a real plugin)
     if (pluginId === "__ui-showcase__") return;
     const config = pluginConfigs[pluginId] ?? {};
     await handlePluginConfigSave(pluginId, config);
@@ -1561,8 +1556,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
     [setActionNotice],
   );
 
-  // ── Add from directory ──────────────────────────────────────────────
-
   const handleAddFromDirectory = async () => {
     const trimmed = addDirPath.trim();
     if (!trimmed) return;
@@ -1582,8 +1575,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
     }
     setAddDirLoading(false);
   };
-
-  // ── Drag-to-reorder handlers ─────────────────────────────────────
 
   const handleDragStart = useCallback(
     (e: React.DragEvent, pluginId: string) => {
@@ -1690,8 +1681,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
     [],
   );
 
-  // ── Card renderers ────────────────────────────────────────────────
-
   const renderPluginCard = (p: PluginInfo) => {
     const hasParams = p.parameters && p.parameters.length > 0;
     const isOpen = pluginSettingsOpen.has(p.id);
@@ -1749,7 +1738,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
         } ${isDragging ? "opacity-30" : ""} ${isDragOver ? "ring-2 ring-accent/60" : ""}`}
         data-plugin-id={p.id}
       >
-        {/* Top: drag handle + icon + name + toggle */}
         <div className="flex items-center gap-2 px-3 pt-3 pb-1">
           {allowCustomOrder && (
             <span
@@ -1812,8 +1800,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
             </Button>
           )}
         </div>
-
-        {/* Badges: category + version + loaded status */}
         <div className="flex items-center gap-1.5 px-3 pb-1.5">
           <span className="text-[10px] px-1.5 py-px border border-border bg-surface text-muted lowercase tracking-wide whitespace-nowrap">
             {categoryLabel}
@@ -1843,8 +1829,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
             </span>
           )}
         </div>
-
-        {/* Description — clamped to 3 lines */}
         <p
           className="text-xs text-muted px-3 pb-2 flex-1"
           style={{
@@ -1889,8 +1873,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
             ))}
           </div>
         )}
-
-        {/* Bottom bar: config status + settings button */}
         <div className="mt-auto flex items-center gap-3 border-t border-border/40 bg-card/55 px-4 py-3">
           {hasParams && !isShowcase ? (
             <>
@@ -1960,8 +1942,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
             </Button>
           )}
         </div>
-
-        {/* Validation errors */}
         {p.enabled && p.validationErrors && p.validationErrors.length > 0 && (
           <div className="px-3 py-1.5 border-t border-destructive bg-[rgba(153,27,27,0.04)] text-xs">
             {p.validationErrors.map(
@@ -1976,8 +1956,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
             )}
           </div>
         )}
-
-        {/* Validation warnings */}
         {p.enabled &&
           p.validationWarnings &&
           p.validationWarnings.length > 0 && (
@@ -2011,8 +1989,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
     Array.from(pluginSettingsOpen)
       .map((id) => nonDbPlugins.find((plugin) => plugin.id === id) ?? null)
       .find((plugin) => (plugin?.parameters?.length ?? 0) > 0) ?? null;
-
-  // ── Game-modal state ──────────────────────────────────────────────
   const [gameSelectedId, setGameSelectedId] = useState<string | null>(null);
   const [gameMobileDetail, setGameMobileDetail] = useState(false);
   const gameNarrow =
@@ -2150,8 +2126,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
     },
     [desktopConnectorLayout, scrollConnectorIntoView],
   );
-
-  // ── Game-modal render ─────────────────────────────────────────────
   if (isSidebarEditorShellMode) {
     const connectorsShellClassName = APP_DESKTOP_SPLIT_SHELL_CLASSNAME;
     const shellTitle =
@@ -2993,8 +2967,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
     );
   }
 
-  // ── Main render ────────────────────────────────────────────────────
-
   const selectedSubgroupTag =
     subgroupTags.find((tag) => tag.id === subgroupFilter) ?? subgroupTags[0];
   const pluginSectionTitle =
@@ -3114,8 +3086,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
             </section>
           </div>
         </div>
-
-        {/* Settings dialog */}
         {settingsDialogPlugin &&
           (() => {
             const p = settingsDialogPlugin;
@@ -3137,7 +3107,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                 <DialogContent
                   className={`${ADMIN_DIALOG_CONTENT_CLASSNAME} max-h-[85vh] max-w-2xl`}
                 >
-                  {/* Dialog header */}
                   <DialogHeader
                     className={`${ADMIN_DIALOG_HEADER_CLASSNAME} flex flex-row items-center gap-3`}
                   >
@@ -3185,10 +3154,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                       </span>
                     )}
                   </DialogHeader>
-
-                  {/* Dialog body — scrollable */}
                   <div className="custom-scrollbar overflow-y-auto flex-1">
-                    {/* Plugin details */}
                     <div className="px-5 pt-4 pb-1 flex items-center gap-3 flex-wrap text-xs text-muted">
                       {p.description && (
                         <span className="text-[12px] text-muted leading-relaxed">
@@ -3253,8 +3219,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                       )}
                     </div>
                   </div>
-
-                  {/* Dialog footer — actions (hidden for showcase) */}
                   {!isShowcase && (
                     <div
                       className={`${ADMIN_DIALOG_FOOTER_CLASSNAME} flex justify-end gap-3`}
@@ -3349,8 +3313,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
             );
           })()}
       </div>
-
-      {/* Add from directory modal */}
       <Dialog
         open={addDirOpen}
         onOpenChange={(v) => {

@@ -17,7 +17,9 @@ if (!fs.existsSync(SUMMARY_PATH)) {
 }
 
 const summary = JSON.parse(fs.readFileSync(SUMMARY_PATH, "utf8"));
-const fileEntries = Object.entries(summary).filter(([file]) => file !== "total");
+const fileEntries = Object.entries(summary).filter(
+  ([file]) => file !== "total",
+);
 
 function normaliseRelativePath(filePath) {
   const absolutePath = path.isAbsolute(filePath)
@@ -32,6 +34,7 @@ function globToRegExp(glob) {
     .replace(/\*\*/g, "\u0000")
     .replace(/\*/g, "[^/]*")
     .replace(/\?/g, "[^/]")
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: NUL placeholder for glob ** conversion
     .replace(/\u0000/g, ".*");
   return new RegExp(`^${escaped}$`);
 }
@@ -57,13 +60,15 @@ function percentage(metric) {
   return Number(((metric.covered / metric.total) * 100).toFixed(2));
 }
 
-const surfaces = Object.entries(coverageSurfaceGlobs).map(([surface, globs]) => ({
-  surface,
-  globs,
-  matchers: globs.map(globToRegExp),
-  metrics: createMetricBucket(),
-  matchedFiles: new Set(),
-}));
+const surfaces = Object.entries(coverageSurfaceGlobs).map(
+  ([surface, globs]) => ({
+    surface,
+    globs,
+    matchers: globs.map(globToRegExp),
+    metrics: createMetricBucket(),
+    matchedFiles: new Set(),
+  }),
+);
 
 for (const [filePath, metrics] of fileEntries) {
   const relativePath = normaliseRelativePath(filePath);

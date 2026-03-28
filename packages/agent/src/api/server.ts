@@ -3727,6 +3727,8 @@ function wantsRawBinanceSkillResult(userText: string): boolean {
   );
 }
 
+const FENCED_JSON_RE_SERVER = /```(?:json)?\s*\n([\s\S]*?)```/;
+
 function unwrapDirectBinanceSkillResult(rawText: string): string {
   const fencedBlocks = Array.from(
     rawText.matchAll(new RegExp(FENCED_JSON_RE_SERVER.source, "g")),
@@ -18681,8 +18683,9 @@ export async function startApiServer(opts?: {
 
   // Optional auto-provision mode for legacy environments. Disabled by default
   // so startup does not silently create new wallets when keys are missing.
-  const walletAutoProvisionRaw =
-    process.env.MILADY_WALLET_AUTO_PROVISION?.trim().toLowerCase();
+  const walletAutoProvisionRaw = process.env.MILADY_WALLET_AUTO_PROVISION
+    ?.trim()
+    .toLowerCase();
   const walletAutoProvisionEnabled =
     walletAutoProvisionRaw === "1" ||
     walletAutoProvisionRaw === "true" ||

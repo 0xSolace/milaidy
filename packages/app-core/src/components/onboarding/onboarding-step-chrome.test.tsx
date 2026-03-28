@@ -11,7 +11,9 @@ import {
 
 describe("onboarding step chrome actions", () => {
   it("uses onboarding-owned chrome for secondary actions instead of theme ghost styles", () => {
-    render(<OnboardingSecondaryActionButton>Back</OnboardingSecondaryActionButton>);
+    render(
+      <OnboardingSecondaryActionButton>Back</OnboardingSecondaryActionButton>,
+    );
 
     const button = screen.getByRole("button", { name: "Back" });
     expect(button.className).toContain("min-h-[44px]");
@@ -31,7 +33,9 @@ describe("onboarding step chrome actions", () => {
   });
 
   it("keeps onboarding link actions on onboarding-owned interaction tokens", () => {
-    render(<OnboardingLinkActionButton>Report issue</OnboardingLinkActionButton>);
+    render(
+      <OnboardingLinkActionButton>Report issue</OnboardingLinkActionButton>,
+    );
 
     const button = screen.getByRole("button", { name: "Report issue" });
     expect(button.className).toContain(

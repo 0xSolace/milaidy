@@ -722,8 +722,6 @@ export function KnowledgeView({ inModal }: { inModal?: boolean } = {}) {
       setLoading(false);
     });
   }, [loadData]);
-
-  // Auto-retry with exponential backoff when knowledge service is still loading (503)
   useEffect(() => {
     if (!isServiceLoading) {
       serviceRetryRef.current = 0;
@@ -1329,18 +1327,26 @@ export function KnowledgeView({ inModal }: { inModal?: boolean } = {}) {
               </div>
             )}
 
-            {selectedDoc && (
-              <section className={`${KNOWLEDGE_PANEL_CLASS} px-5 py-4 sm:px-6`}>
-                <div className="flex items-center justify-between gap-4">
-                  <h2 className="min-w-0 truncate text-lg font-semibold text-txt-strong">
-                    {selectedDoc.filename}
-                  </h2>
-                  <span className="shrink-0 text-[11px] font-semibold text-muted">
-                    {getKnowledgeDocumentSummary(selectedDoc)}
+            <section className={`${KNOWLEDGE_PANEL_CLASS} px-5 py-5 sm:px-6`}>
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className={KNOWLEDGE_KICKER_CLASS}>Knowledge</div>
+                  <h1 className="mt-1 text-2xl font-semibold text-txt-strong">
+                    {selectedDoc?.filename || "Knowledge workspace"}
+                  </h1>
+                  <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
+                    {selectedDoc
+                      ? getKnowledgeDocumentSummary(selectedDoc)
+                      : "Upload, search, and review documents."}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                  <span className="rounded-full border border-border/45 bg-bg/25 px-3 py-1.5 text-[11px] font-semibold text-muted">
+                    {documents.length} docs
                   </span>
                 </div>
-              </section>
-            )}
+              </div>
+            </section>
 
             <div className="mt-4">
               <DocumentViewer documentId={selectedDocId} />

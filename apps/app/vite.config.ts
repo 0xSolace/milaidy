@@ -2,14 +2,14 @@ import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import {
-  resolveDesktopApiPort,
-  resolveDesktopUiPort,
-} from "../../packages/shared/src/runtime-env.ts";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react-swc";
 import type { Plugin } from "vite";
 import { defineConfig } from "vite";
+import {
+  resolveDesktopApiPort,
+  resolveDesktopUiPort,
+} from "../../packages/shared/src/runtime-env.ts";
 
 const _require = createRequire(import.meta.url);
 
