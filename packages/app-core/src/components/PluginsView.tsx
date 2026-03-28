@@ -2585,7 +2585,10 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                                     <div
                                       key={`${plugin.id}:${error.field}:${error.message}`}
                                     >
-                                      <span className="font-medium text-warn">{error.field}</span>: {error.message}
+                                      <span className="font-medium text-warn">
+                                        {error.field}
+                                      </span>
+                                      : {error.message}
                                     </div>
                                   ))}
                                 </div>
