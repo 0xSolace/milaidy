@@ -11,7 +11,6 @@ import {
   Radio,
   Settings,
   Share2,
-  Shield,
   Sparkles,
   Wallet,
 } from "lucide-react";
@@ -50,8 +49,7 @@ export type Tab =
   | "desktop"
   | "settings"
   | "logs"
-  | "security"
-  | "steward";
+  | "security";
 
 export interface TabGroup {
   label: string;
@@ -102,12 +100,6 @@ export const ALL_TAB_GROUPS: TabGroup[] = [
     tabs: ["settings"],
     icon: Settings,
     description: "Configuration and preferences",
-  },
-  {
-    label: "Steward",
-    tabs: ["steward"],
-    icon: Shield,
-    description: "Transaction history and approval queue",
   },
   {
     label: "Heartbeats",
@@ -168,7 +160,6 @@ const TAB_PATHS: Record<Tab, string> = {
   settings: "/settings",
   logs: "/logs",
   security: "/security",
-  steward: "/steward",
 };
 
 /** Legacy path redirects — old paths that now map to new tabs. */
@@ -303,8 +294,6 @@ export function titleForTab(tab: Tab): string {
       return "Stream";
     case "security":
       return "Security";
-    case "steward":
-      return "Steward";
     default:
       return DEFAULT_BRANDING.appName;
   }
