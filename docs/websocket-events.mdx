@@ -45,7 +45,7 @@ Messages sent before authentication (other than the `auth` message itself) are r
 You can also authenticate during the HTTP upgrade handshake by including the token in an `Authorization: Bearer <token>` header. If the handshake includes a valid token, the connection is activated immediately without needing to send an `auth` message.
 
 <Warning>
-Passing the token as a `?token=` query parameter is **deprecated** and disabled by default. Query-parameter tokens are rejected with a `401 Unauthorized` response. To temporarily re-enable query-parameter authentication during migration, set the environment variable `ELIZA_ALLOW_WS_QUERY_TOKEN=1`. Requests to paths other than `/ws` receive a 404 rejection.
+Passing the token as a `?token=` query parameter is **deprecated** and disabled by default. Query-parameter tokens are rejected with a `401 Unauthorized` response. To temporarily re-enable query-parameter authentication during migration, set the environment variable `MILADY_ALLOW_WS_QUERY_TOKEN=1` (the legacy `ELIZA_ALLOW_WS_QUERY_TOKEN` also works). Requests to paths other than `/ws` receive a 404 rejection.
 </Warning>
 
 ## Connection Lifecycle

@@ -2,7 +2,7 @@
 
 > **This is an agents-only codebase.** All PRs are reviewed and merged by agents. Humans contribute as QA testers. See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
-- Monorepo: `packages/milady` within eliza-ok
+- Monorepo: `milady-ai/milady` — core logic in `packages/app-core`, upstream agent in `packages/agent`
 - Runtime baseline: Node **22+** (keep Node + Bun paths working)
 
 ## Contribution Scope

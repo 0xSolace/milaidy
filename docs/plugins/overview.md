@@ -96,18 +96,33 @@ milady plugins list
 
 ### Enable/Disable
 
+Enable or disable a plugin by setting its `enabled` flag in `milady.json`:
+
+```json
+{
+  "plugins": {
+    "entries": {
+      "plugin-name": { "enabled": false }
+    }
+  }
+}
+```
+
+Or use the config command:
+
 ```bash
-milady plugins enable plugin-name
-milady plugins disable plugin-name
+milady config set plugins.entries.browser.enabled true
 ```
 
 ### Eject (Copy to Local)
 
-```bash
-milady plugins eject plugin-name
+Eject a plugin via agent chat to clone its source for local editing:
+
+```
+eject the telegram plugin so I can edit its source
 ```
 
-See [Plugin Eject](/plugins/plugin-eject) for details on customizing ejected plugins.
+See [Plugin Eject](/plugins/plugin-eject) for the full eject/sync/reinject workflow.
 
 ## Related
 
