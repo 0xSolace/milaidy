@@ -46,6 +46,7 @@ import { ChatComposer } from "./ChatComposer";
 import { ChatMessage, TypingIndicator } from "./ChatMessage";
 import { MessageContent } from "./MessageContent";
 import { PtyConsoleDrawer } from "./PtyConsoleDrawer";
+import { useCompanionSceneStatus } from "./companion-scene-status-context";
 
 function nowMs(): number {
   return typeof performance !== "undefined" ? performance.now() : Date.now();
@@ -183,6 +184,7 @@ function useChatVoiceController(options: {
   uiLanguage: string;
 }) {
   const { setTimeout } = useTimeout();
+  const { avatarReady: companionSceneAvatarReady } = useCompanionSceneStatus();
   const {
     agentVoiceMuted,
     chatFirstTokenReceived,
@@ -497,6 +499,7 @@ function useChatVoiceController(options: {
 
   useEffect(() => {
     if (!isGameModal || agentVoiceMuted || voice.isListening) return;
+    if (!companionSceneAvatarReady) return;
     if (voiceBootstrapTick === 0) return;
     // Skip the stale replay when the view just became active (mode switch).
     if (gameModalJustActivatedRef.current) {
@@ -556,6 +559,7 @@ function useChatVoiceController(options: {
     agentVoiceMuted,
     activeConversationId,
     chatSending,
+    companionSceneAvatarReady,
     conversationMessages,
     isGameModal,
     queueAssistantSpeech,

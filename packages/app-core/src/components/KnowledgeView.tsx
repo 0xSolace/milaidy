@@ -1159,27 +1159,6 @@ export function KnowledgeView({ inModal }: { inModal?: boolean } = {}) {
               </div>
             </div>
 
-            <div className="mt-4 flex min-h-0 flex-1 flex-col">
-              <div className="flex items-center justify-between gap-2 px-1">
-                <div>
-                  <div className={KNOWLEDGE_SECTION_LABEL_CLASS}>
-                    {isShowingSearchResults
-                      ? t("knowledgeview.SearchResults")
-                      : t("knowledgeview.Documents")}
-                  </div>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9 rounded-xl px-3 text-[11px] font-semibold shadow-sm"
-                  onClick={() => void loadData()}
-                  disabled={loading}
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  {loading ? "Loading..." : "Refresh"}
-                </Button>
-              </div>
-
               <div className="mt-3 min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-3">
                 {loading &&
                   !isShowingSearchResults &&
@@ -1233,7 +1212,6 @@ export function KnowledgeView({ inModal }: { inModal?: boolean } = {}) {
                     ))}
               </div>
             </div>
-          </div>
         </aside>
 
         <div className={DESKTOP_PAGE_CONTENT_CLASSNAME}>

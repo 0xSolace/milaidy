@@ -1,5 +1,9 @@
 import { useRenderGuard } from "@miladyai/app-core/hooks";
 import {
+  dispatchAppEmoteEvent,
+  VRM_TELEPORT_COMPLETE_EVENT,
+} from "@miladyai/app-core/events";
+import {
   getVrmPreviewUrl,
   getVrmUrl,
   useCompanionSceneConfig,
@@ -26,6 +30,14 @@ const COMPANION_ZOOM_WHEEL_SENSITIVITY = 1 / 720;
 const COMPANION_ZOOM_PINCH_SENSITIVITY = 2.35;
 const COMPANION_ZOOM_STORAGE_KEY = "milady.companion.zoom.v1";
 const DEFAULT_COMPANION_ZOOM = 0.95;
+const COMPANION_TELEPORT_GREETING_DELAY_MS = 400;
+const COMPANION_TELEPORT_GREETING_EMOTE = {
+  emoteId: "greeting",
+  path: "/animations/emotes/greeting.fbx",
+  duration: 3,
+  loop: false,
+  showOverlay: false,
+} as const;
 const CAMERA_DRAG_IGNORE_SELECTOR =
   'button, a, label, input, textarea, select, option, [role="button"], [role="listbox"], [role="tab"], [aria-expanded], [aria-haspopup], [contenteditable="true"], [data-no-camera-drag="true"]';
 const CAMERA_ZOOM_IGNORE_SELECTOR = '[data-no-camera-zoom="true"]';
@@ -408,21 +420,33 @@ function CompanionSceneSurface({
     string | null
   >(null);
   const teleportKeyRef = useRef(teleportKey);
+  const greetingEmoteTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const handleTeleportComplete = () => {
       _companionTeleportCompletedOnce = true;
       setTeleportCompletedKey(teleportKeyRef.current);
+      if (greetingEmoteTimerRef.current != null) {
+        window.clearTimeout(greetingEmoteTimerRef.current);
+      }
+      // Give the idle blend a moment to settle after the dissolve before
+      // cross-fading into the greeting emote.
+      greetingEmoteTimerRef.current = window.setTimeout(() => {
+        greetingEmoteTimerRef.current = null;
+        dispatchAppEmoteEvent(COMPANION_TELEPORT_GREETING_EMOTE);
+      }, COMPANION_TELEPORT_GREETING_DELAY_MS);
     };
-    window.addEventListener(
-      "eliza:vrm-teleport-complete",
-      handleTeleportComplete,
-    );
-    return () =>
+    window.addEventListener(VRM_TELEPORT_COMPLETE_EVENT, handleTeleportComplete);
+    return () => {
       window.removeEventListener(
-        "eliza:vrm-teleport-complete",
+        VRM_TELEPORT_COMPLETE_EVENT,
         handleTeleportComplete,
       );
+      if (greetingEmoteTimerRef.current != null) {
+        window.clearTimeout(greetingEmoteTimerRef.current);
+        greetingEmoteTimerRef.current = null;
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -521,6 +545,10 @@ function CompanionSceneSurface({
     teleportKeyRef.current = teleportKey;
     _companionTeleportCompletedOnce = false;
     setTeleportCompletedKey(null);
+    if (greetingEmoteTimerRef.current != null) {
+      window.clearTimeout(greetingEmoteTimerRef.current);
+      greetingEmoteTimerRef.current = null;
+    }
   }, [teleportKey]);
 
   const preloadAvatars = useMemo(() => {

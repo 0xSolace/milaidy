@@ -2,6 +2,7 @@
 import React from "react";
 import TestRenderer, { act } from "react-test-renderer";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { APP_EMOTE_EVENT } from "@miladyai/app-core/events";
 import { textOf as text } from "../../../../test/helpers/react-test";
 
 const mockUseApp = vi.fn();
@@ -356,6 +357,52 @@ describe("CompanionView", () => {
         }),
       ).toHaveLength(1);
     } finally {
+      await act(async () => {
+        tree?.unmount();
+      });
+      vi.useRealTimers();
+      window.setTimeout = globalThis.setTimeout.bind(globalThis);
+      window.clearTimeout = globalThis.clearTimeout.bind(globalThis);
+    }
+  });
+
+  it("plays the greeting emote only after teleport completion", async () => {
+    vi.useFakeTimers();
+    window.setTimeout = globalThis.setTimeout.bind(globalThis);
+    window.clearTimeout = globalThis.clearTimeout.bind(globalThis);
+    mockUseApp.mockReturnValue(createContext());
+
+    const events: Array<{ emoteId?: string; path?: string }> = [];
+    const handleEmote = (event: Event) => {
+      events.push(
+        (event as CustomEvent<{ emoteId?: string; path?: string }>).detail ?? {},
+      );
+    };
+    window.addEventListener(APP_EMOTE_EVENT, handleEmote);
+
+    let tree: TestRenderer.ReactTestRenderer | undefined;
+    try {
+      await act(async () => {
+        tree = TestRenderer.create(React.createElement(CompanionView));
+      });
+
+      expect(events).toHaveLength(0);
+
+      await act(async () => {
+        window.dispatchEvent(new Event("eliza:vrm-teleport-complete"));
+      });
+
+      expect(events).toHaveLength(0);
+
+      await act(async () => {
+        vi.advanceTimersByTime(400);
+      });
+
+      expect(events).toHaveLength(1);
+      expect(events[0]?.emoteId).toBe("greeting");
+      expect(events[0]?.path).toBe("/animations/emotes/greeting.fbx");
+    } finally {
+      window.removeEventListener(APP_EMOTE_EVENT, handleEmote);
       await act(async () => {
         tree?.unmount();
       });

@@ -310,14 +310,6 @@ import {
 } from "@miladyai/ui";
 import { buildWalletRpcUpdateRequest } from "../wallet-rpc";
 
-const GREETING_EMOTE_DELAY_MS = 1400;
-const GREETING_WAVE_EMOTE: AppEmoteEventDetail = {
-  emoteId: "wave",
-  path: "/animations/emotes/greeting.fbx",
-  duration: 2.5,
-  loop: false,
-  showOverlay: false,
-};
 const ELIZA_CLOUD_LOGIN_POLL_INTERVAL_MS = 1000;
 const ELIZA_CLOUD_LOGIN_TIMEOUT_MS = 300_000;
 const ELIZA_CLOUD_LOGIN_MAX_CONSECUTIVE_ERRORS = 3;
@@ -803,7 +795,6 @@ function AppProviderInner({
     chatSendNonceRef,
     greetingFiredRef,
     greetingInFlightConversationRef,
-    greetingEmoteTimerRef,
     companionStaleConversationRefreshRef,
     autonomousStoreRef,
     autonomousEventsRef,
@@ -1431,42 +1422,6 @@ function AppProviderInner({
   const { prompt: promptModal, modalProps: promptModalProps } = usePrompt();
 
   // setActionNotice is now provided by useLifecycleState
-
-  const scheduleGreetingWave = useCallback(
-    (showOverlay = false) => {
-      if (typeof window === "undefined") return;
-      if (greetingEmoteTimerRef.current != null) {
-        window.clearTimeout(greetingEmoteTimerRef.current);
-      }
-      greetingEmoteTimerRef.current = window.setTimeout(() => {
-        dispatchAppEmoteEvent({
-          ...GREETING_WAVE_EMOTE,
-          showOverlay,
-        });
-        greetingEmoteTimerRef.current = null;
-      }, GREETING_EMOTE_DELAY_MS);
-    },
-    [greetingEmoteTimerRef],
-  );
-
-  const scheduleGreetingWaveForCompanion = useCallback(
-    (showOverlay = false) => {
-      if (uiShellMode !== "companion") {
-        return;
-      }
-      scheduleGreetingWave(showOverlay);
-    },
-    [scheduleGreetingWave, uiShellMode],
-  );
-
-  useEffect(() => {
-    return () => {
-      if (greetingEmoteTimerRef.current != null) {
-        window.clearTimeout(greetingEmoteTimerRef.current);
-        greetingEmoteTimerRef.current = null;
-      }
-    };
-  }, [greetingEmoteTimerRef]);
 
   // ── Clipboard ──────────────────────────────────────────────────────
 
@@ -2386,12 +2341,7 @@ function AppProviderInner({
 
   /** Request an agent greeting for a conversation and add it to messages. */
   const fetchGreeting = useCallback(
-    async (
-      convId: string,
-      options?: {
-        showOverlay?: boolean;
-      },
-    ): Promise<boolean> => {
+    async (convId: string): Promise<boolean> => {
       if (greetingInFlightConversationRef.current === convId) {
         traceMiladyGreeting("fetchGreeting:skip_duplicate_in_flight", {
           convId,
@@ -2412,9 +2362,6 @@ function AppProviderInner({
             persisted: data.persisted === true,
           });
           if (stillActive) {
-            if (data.persisted === true) {
-              scheduleGreetingWaveForCompanion(options?.showOverlay === true);
-            }
             setConversationMessages((prev: ConversationMessage[]) => {
               if (
                 prev.some(
@@ -2459,7 +2406,6 @@ function AppProviderInner({
       return false;
     },
     [
-      scheduleGreetingWaveForCompanion,
       uiLanguage,
       activeConversationIdRef,
       greetingFiredRef,
@@ -2469,12 +2415,7 @@ function AppProviderInner({
   );
 
   const requestGreetingWhenRunning = useCallback(
-    async (
-      convId: string | null,
-      options?: {
-        showOverlay?: boolean;
-      },
-    ): Promise<void> => {
+    async (convId: string | null): Promise<void> => {
       if (!convId || greetingFiredRef.current) {
         traceMiladyGreeting("requestGreetingWhenRunning:skip", {
           convId: convId ?? null,
@@ -2489,7 +2430,7 @@ function AppProviderInner({
           state: status.state,
         });
         if (status.state === "running" && !greetingFiredRef.current) {
-          await fetchGreeting(convId, options);
+          await fetchGreeting(convId);
         }
       } catch (err) {
         console.warn(
@@ -2708,7 +2649,7 @@ function AppProviderInner({
       const s = await client.restartAgent();
       setAgentStatus(s);
       const greetConvId = await hydrateInitialConversationState();
-      await requestGreetingWhenRunning(greetConvId, { showOverlay: true });
+      await requestGreetingWhenRunning(greetConvId);
       setPendingRestart(false);
       setPendingRestartReasons([]);
       void loadPlugins();
@@ -3278,7 +3219,6 @@ function AppProviderInner({
 
         if (greetingText) {
           greetingFiredRef.current = true;
-          scheduleGreetingWaveForCompanion();
           const initMessages: ConversationMessage[] = [
             {
               id: `greeting-${Date.now()}`,
@@ -3321,7 +3261,6 @@ function AppProviderInner({
       companionMessageCutoffTs,
       fetchGreeting,
       resetConversationDraftState,
-      scheduleGreetingWaveForCompanion,
       uiLanguage,
       activeConversationIdRef,
       conversationMessagesRef,
@@ -3341,9 +3280,8 @@ function AppProviderInner({
   const bootstrapConversationAfterAgentReady = useCallback(
     async (
       context: string,
-      options?: { showOverlay?: boolean; skipAgentRunningWait?: boolean },
+      options?: { skipAgentRunningWait?: boolean },
     ) => {
-      const showOverlay = options?.showOverlay ?? true;
       traceMiladyGreeting(`${context}:begin`, {
         skipAgentRunningWait: options?.skipAgentRunningWait === true,
       });
@@ -3371,7 +3309,7 @@ function AppProviderInner({
 
       if (greetConvId) {
         traceMiladyGreeting(`${context}:request_greeting`, { greetConvId });
-        await requestGreetingWhenRunning(greetConvId, { showOverlay });
+        await requestGreetingWhenRunning(greetConvId);
         traceMiladyGreeting(`${context}:after_request_greeting`, {
           messageCount: conversationMessagesRef.current.length,
           greetingFired: greetingFiredRef.current,
@@ -5352,12 +5290,7 @@ function AppProviderInner({
           /* ignore */
         }
 
-        await bootstrapConversationAfterAgentReady(
-          "onboarding:cloud_fast_track",
-          {
-            showOverlay: true,
-          },
-        );
+        await bootstrapConversationAfterAgentReady("onboarding:cloud_fast_track");
 
         clearPersistedOnboardingStep();
         onboardingResumeConnectionRef.current = null;
@@ -5591,9 +5524,7 @@ function AppProviderInner({
       } catch {
         /* ignore */
       }
-      await bootstrapConversationAfterAgentReady("onboarding:full_finish", {
-        showOverlay: true,
-      });
+      await bootstrapConversationAfterAgentReady("onboarding:full_finish");
       clearPersistedOnboardingStep();
       onboardingResumeConnectionRef.current = null;
       onboardingCompletionCommittedRef.current = true;
@@ -7210,9 +7141,7 @@ function AppProviderInner({
       setStartupPhase("ready");
       setOnboardingLoading(false);
       if (greetConvId) {
-        void requestGreetingWhenRunningRef.current(greetConvId, {
-          showOverlay: true,
-        });
+        void requestGreetingWhenRunningRef.current(greetConvId);
       }
 
       void loadWorkbench();

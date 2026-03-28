@@ -221,7 +221,6 @@ export interface ChatStateHook {
   chatSendNonceRef: React.MutableRefObject<number>;
   greetingFiredRef: React.RefObject<boolean>;
   greetingInFlightConversationRef: React.RefObject<string | null>;
-  greetingEmoteTimerRef: React.RefObject<number | null>;
   companionStaleConversationRefreshRef: React.RefObject<string | null>;
 
   // Autonomy refs
@@ -251,7 +250,6 @@ export function useChatState(): ChatStateHook {
   const chatSendNonceRef = useRef(0);
   const greetingFiredRef = useRef(false);
   const greetingInFlightConversationRef = useRef<string | null>(null);
-  const greetingEmoteTimerRef = useRef<number | null>(null);
   const companionStaleConversationRefreshRef = useRef<string | null>(null);
 
   // Autonomy refs
@@ -438,7 +436,6 @@ export function useChatState(): ChatStateHook {
     chatSendNonceRef,
     greetingFiredRef,
     greetingInFlightConversationRef,
-    greetingEmoteTimerRef,
     companionStaleConversationRefreshRef,
     autonomousStoreRef,
     autonomousEventsRef,

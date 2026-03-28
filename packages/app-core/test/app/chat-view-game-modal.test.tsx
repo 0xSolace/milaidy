@@ -40,11 +40,17 @@ interface ChatViewContextStub {
   t: (k: string) => string;
 }
 
-const { mockClient, mockUseApp, mockUseVoiceChat } = vi.hoisted(() => ({
+const {
+  mockClient,
+  mockUseApp,
+  mockUseCompanionSceneStatus,
+  mockUseVoiceChat,
+} = vi.hoisted(() => ({
   mockClient: {
     getConfig: vi.fn(),
   },
   mockUseApp: vi.fn(),
+  mockUseCompanionSceneStatus: vi.fn(),
   mockUseVoiceChat: vi.fn(),
 }));
 
@@ -70,6 +76,10 @@ vi.mock("@miladyai/app-core/hooks", async () => {
 vi.mock("../../src/components/MessageContent", () => ({
   MessageContent: ({ message }: { message: { text: string } }) =>
     React.createElement("span", null, message.text),
+}));
+
+vi.mock("../../src/components/companion-scene-status-context", () => ({
+  useCompanionSceneStatus: () => mockUseCompanionSceneStatus(),
 }));
 
 vi.mock("@miladyai/app-core/api", () => ({
@@ -118,6 +128,7 @@ describe("ChatView game-modal variant", () => {
   beforeEach(() => {
     __resetCompanionSpeechMemoryForTests();
     mockUseApp.mockReset();
+    mockUseCompanionSceneStatus.mockReset();
     mockUseVoiceChat.mockReset();
     mockClient.getConfig.mockReset();
     Object.defineProperty(window, "dispatchEvent", {
@@ -142,6 +153,10 @@ describe("ChatView game-modal variant", () => {
       stopSpeaking: vi.fn(),
       voiceUnlockedGeneration: 0,
       assistantTtsQuality: "standard",
+    });
+    mockUseCompanionSceneStatus.mockReturnValue({
+      avatarReady: true,
+      teleportKey: "vrm-1",
     });
     mockClient.getConfig.mockResolvedValue({});
   });
@@ -307,6 +322,63 @@ describe("ChatView game-modal variant", () => {
           React.createElement(ChatView, { variant: "game-modal" }),
         ),
       );
+    });
+
+    expect(queueAssistantSpeech).toHaveBeenCalledTimes(1);
+    expect(queueAssistantSpeech).toHaveBeenCalledWith(
+      "assistant-1",
+      "hello",
+      true,
+    );
+  });
+
+  it("waits for teleport completion before queueing companion speech", async () => {
+    const queueAssistantSpeech = vi.fn();
+    mockUseVoiceChat.mockReturnValue({
+      supported: true,
+      isListening: false,
+      captureMode: "idle",
+      interimTranscript: "",
+      toggleListening: vi.fn(),
+      startListening: vi.fn(),
+      stopListening: vi.fn(),
+      mouthOpen: 0,
+      isSpeaking: false,
+      usingAudioAnalysis: false,
+      speak: vi.fn(),
+      queueAssistantSpeech,
+      stopSpeaking: vi.fn(),
+      voiceUnlockedGeneration: 0,
+      assistantTtsQuality: "standard",
+    });
+    mockUseApp.mockReturnValue(
+      createContext({
+        conversationMessages: [
+          { id: "assistant-1", role: "assistant", text: "hello", timestamp: 1 },
+        ],
+      }),
+    );
+    mockUseCompanionSceneStatus.mockReturnValue({
+      avatarReady: false,
+      teleportKey: "vrm-2",
+    });
+
+    let tree: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      tree = TestRenderer.create(
+        React.createElement(ChatView, { variant: "game-modal" }),
+      );
+    });
+
+    expect(queueAssistantSpeech).not.toHaveBeenCalled();
+
+    mockUseCompanionSceneStatus.mockReturnValue({
+      avatarReady: true,
+      teleportKey: "vrm-2",
+    });
+
+    await act(async () => {
+      tree.update(React.createElement(ChatView, { variant: "game-modal" }));
     });
 
     expect(queueAssistantSpeech).toHaveBeenCalledTimes(1);

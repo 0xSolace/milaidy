@@ -380,7 +380,7 @@ describe("companion stale conversation rollover", () => {
       vi.advanceTimersByTime(1400);
     });
 
-    expect(events).toHaveLength(1);
+    expect(events).toHaveLength(0);
   });
 
   it("keeps a lone persisted greeting conversation even when it is old", async () => {
