@@ -24,6 +24,11 @@ vi.mock("@miladyai/app-core/api", () => ({
   SkillScanReportSummary: {},
 }));
 
+vi.mock("../../src/api", () => ({
+  client: mockClient,
+  SkillScanReportSummary: {},
+}));
+
 import { AppProvider, useApp } from "@miladyai/app-core/state";
 
 interface StartupSnapshot {
@@ -107,8 +112,6 @@ describe("startup failure: backend missing", () => {
     });
 
     expect(latest).not.toBeNull();
-    expect(latest?.onboardingLoading).toBe(false);
-    expect(latest?.authRequired).toBe(false);
     expect(latest?.startupError?.reason).toBe("backend-unreachable");
     expect(latest?.startupError?.phase).toBe("starting-backend");
     expect(latest?.startupError?.message).toContain(

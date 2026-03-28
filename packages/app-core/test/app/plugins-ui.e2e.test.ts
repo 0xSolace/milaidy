@@ -25,6 +25,15 @@ import {
 } from "vitest";
 import { req } from "../../../../test/helpers/http";
 
+function translateTest(
+  key: string,
+  vars?: {
+    defaultValue?: string;
+  },
+): string {
+  return vars?.defaultValue ?? key;
+}
+
 // ---------------------------------------------------------------------------
 // Part 1: API Tests for Plugin Endpoints
 // ---------------------------------------------------------------------------
@@ -265,6 +274,16 @@ vi.mock("@miladyai/app-core/state", async () => {
   };
 });
 
+vi.mock("../../src/state", async () => {
+  const actual = await vi.importActual<typeof import("../../src/state")>(
+    "../../src/state",
+  );
+  return {
+    ...actual,
+    useApp: () => mockUseApp(),
+  };
+});
+
 vi.mock("@miladyai/app-core/api", () => ({
   client: {
     getPlugins: vi.fn().mockResolvedValue([]),
@@ -304,8 +323,8 @@ type PluginState = {
   pluginStatusFilter: string;
   pluginSearch: string;
   pluginSettingsOpen: Set<string>;
-  pluginSaving: boolean;
-  pluginSaveSuccess: boolean;
+  pluginSaving: Set<string>;
+  pluginSaveSuccess: Set<string>;
 };
 
 function createPluginUIState(): PluginState {
@@ -336,8 +355,8 @@ function createPluginUIState(): PluginState {
     pluginStatusFilter: "all",
     pluginSearch: "",
     pluginSettingsOpen: new Set<string>(),
-    pluginSaving: false,
-    pluginSaveSuccess: false,
+    pluginSaving: new Set<string>(),
+    pluginSaveSuccess: new Set<string>(),
   };
 }
 
@@ -349,8 +368,8 @@ describe("PluginsView UI", () => {
 
     mockUseApp.mockReset();
     mockUseApp.mockImplementation(() => ({
-      t: (k: string) => k,
       ...state,
+      t: translateTest,
       loadPlugins: vi.fn(),
       handlePluginToggle: vi.fn().mockImplementation((name: string) => {
         const plugin = state.plugins.find((p) => p.name === name);
@@ -385,7 +404,7 @@ describe("PluginsView UI", () => {
   });
 
   it("shows saving state when pluginSaving is true", async () => {
-    state.pluginSaving = true;
+    state.pluginSaving = new Set(["plugin-openai"]);
 
     let tree: TestRenderer.ReactTestRenderer | null = null;
 
@@ -410,6 +429,7 @@ describe("Plugin Toggle Integration", () => {
     mockUseApp.mockReset();
     mockUseApp.mockImplementation(() => ({
       ...state,
+      t: translateTest,
       loadPlugins: vi.fn(),
       handlePluginToggle: (name: string) => {
         const plugin = state.plugins.find((p) => p.name === name);
@@ -466,6 +486,7 @@ describe("Plugin Filter Integration", () => {
     mockUseApp.mockReset();
     mockUseApp.mockImplementation(() => ({
       ...state,
+      t: translateTest,
       loadPlugins: vi.fn(),
       handlePluginToggle: vi.fn(),
       handlePluginConfigSave: vi.fn(),
@@ -510,6 +531,7 @@ describe("Plugin Configuration", () => {
     mockUseApp.mockReset();
     mockUseApp.mockImplementation(() => ({
       ...state,
+      t: translateTest,
       loadPlugins: vi.fn(),
       handlePluginToggle: vi.fn(),
       handlePluginConfigSave: async (
@@ -517,8 +539,10 @@ describe("Plugin Configuration", () => {
         config: Record<string, unknown>,
       ) => {
         configSaved = { name, config };
-        state.pluginSaving = false;
-        state.pluginSaveSuccess = true;
+        const pluginId =
+          state.plugins.find((plugin) => plugin.name === name)?.id ?? name;
+        state.pluginSaving = new Set<string>();
+        state.pluginSaveSuccess = new Set([pluginId]);
       },
     }));
   });
@@ -537,6 +561,6 @@ describe("Plugin Configuration", () => {
 
     await saveFn("@elizaos/plugin-anthropic", { model: "claude-3" });
 
-    expect(state.pluginSaveSuccess).toBe(true);
+    expect(state.pluginSaveSuccess.has("plugin-anthropic")).toBe(true);
   });
 });

@@ -131,12 +131,14 @@ function resolveOnboardingHandoffCopy(
     case "restarting":
       return {
         title: "Restarting your agent",
-        detail: "Hot-swapping the runtime without reloading the companion shell.",
+        detail:
+          "Hot-swapping the runtime without reloading the companion shell.",
       };
     case "bootstrapping":
       return {
         title: "Starting your first conversation",
-        detail: "Creating a fresh chat thread and asking the agent to greet you.",
+        detail:
+          "Creating a fresh chat thread and asking the agent to greet you.",
       };
     case "error":
       return {
@@ -577,7 +579,8 @@ export function App() {
 
   if (authRequired && !blockOnboardingForShell) return <PairingView />;
   const showOnboarding =
-    ((!onboardingComplete && !onboardingHandoffActive) || fadingOutOnboarding) &&
+    ((!onboardingComplete && !onboardingHandoffActive) ||
+      fadingOutOnboarding) &&
     !blockOnboardingForShell;
 
   // We conditionally skip returning early for onboarding so we can mount the app shell

@@ -444,7 +444,23 @@ describe("KnowledgeView UI", () => {
 
     mockUseApp.mockReset();
     mockUseApp.mockImplementation(() => ({
-      t: (k: string) => k,
+      t: (
+        k: string,
+        vars?: {
+          defaultValue?: string;
+          [key: string]: unknown;
+        },
+      ) => {
+        if (typeof vars?.defaultValue === "string") {
+          let value = vars.defaultValue;
+          for (const [key, raw] of Object.entries(vars)) {
+            if (key === "defaultValue") continue;
+            value = value.replace(`{{${key}}}`, String(raw));
+          }
+          return value;
+        }
+        return k;
+      },
       ...state,
       loadKnowledgeStats: vi.fn(),
       loadKnowledgeDocuments: vi.fn(),

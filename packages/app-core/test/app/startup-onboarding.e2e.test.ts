@@ -17,6 +17,8 @@ type AppHarnessState = {
   startupError: null;
   authRequired: boolean;
   onboardingComplete: boolean;
+  onboardingHandoffError: string | null;
+  onboardingHandoffPhase: string;
   tab: string;
   actionNotice: null;
   onboardingStep: OnboardingStep;
@@ -140,6 +142,16 @@ const { companionOverlayTabs, mockUseApp } = vi.hoisted(() => ({
 
 vi.mock("@miladyai/app-core/state", async () => {
   const actual = await vi.importActual("@miladyai/app-core/state");
+  return {
+    ...actual,
+    useApp: () => mockUseApp(),
+  };
+});
+
+vi.mock("../../src/state", async () => {
+  const actual = await vi.importActual<typeof import("../../src/state")>(
+    "../../src/state",
+  );
   return {
     ...actual,
     useApp: () => mockUseApp(),
@@ -397,6 +409,125 @@ vi.mock("@miladyai/app-core/src/app-shell-components", () => ({
     React.createElement("div", null, "SystemWarningBanner"),
 }));
 
+vi.mock("../../src/app-shell-components", () => ({
+  AdvancedPageView: () => React.createElement("div", null, "AdvancedPageView"),
+  AppsPageView: () => React.createElement("div", null, "AppsPageView"),
+  AvatarLoader: () => React.createElement("div", null, "AvatarLoader"),
+  BugReportModal: () => React.createElement("div", null, "BugReportModal"),
+  CharacterEditor: () => React.createElement("div", null, "CharacterView"),
+  ChatView: () => React.createElement("div", null, "ChatView"),
+  CompanionShell: ({ tab }: { tab: string }) =>
+    React.createElement("main", null, `CompanionShell:${tab}`),
+  CompanionView: () => React.createElement("div", null, "CompanionView"),
+  ConnectionFailedBanner: () =>
+    React.createElement("div", null, "ConnectionFailedBanner"),
+  ConnectorsPageView: () =>
+    React.createElement("div", null, "ConnectorsPageView"),
+  ConversationsSidebar: () =>
+    React.createElement("div", null, "ConversationsSidebar"),
+  CustomActionEditor: () =>
+    React.createElement("div", null, "CustomActionEditor"),
+  CustomActionsPanel: () =>
+    React.createElement("div", null, "CustomActionsPanel"),
+  GameViewOverlay: () => React.createElement("div", null, "GameViewOverlay"),
+  Header: () => React.createElement("div", null, "Header"),
+  HeartbeatsView: () => React.createElement("div", null, "HeartbeatsView"),
+  InventoryView: () => React.createElement("div", null, "InventoryView"),
+  KnowledgeView: () => React.createElement("div", null, "KnowledgeView"),
+  OnboardingWizard: () => {
+    const state = mockUseApp();
+    if (state.onboardingStep === "identity") {
+      return React.createElement(
+        "button",
+        {
+          onClick: () => state.handleOnboardingNext(),
+          type: "button",
+        },
+        "onboarding.chooseAgent",
+      );
+    }
+    if (state.onboardingStep === "connection") {
+      if (!state.onboardingRunMode) {
+        return React.createElement(
+          React.Fragment,
+          null,
+          React.createElement(
+            "button",
+            {
+              onClick: () => {
+                state.setState?.("onboardingRunMode", "local");
+              },
+              type: "button",
+            },
+            "onboarding.hostingLocal",
+          ),
+          React.createElement(
+            "button",
+            {
+              onClick: () => {
+                state.setState?.("onboardingMode", "advanced");
+                state.setState?.("onboardingActiveGuide", "provider");
+              },
+              type: "button",
+            },
+            "advanced-configuration",
+          ),
+          state.onboardingMode === "advanced"
+            ? React.createElement("div", null, "Flamina guidance")
+            : null,
+        );
+      }
+      return React.createElement(
+        "button",
+        {
+          onClick: () => state.handleOnboardingNext(),
+          type: "button",
+        },
+        "onboarding.confirm",
+      );
+    }
+    if (state.onboardingStep === "rpc") {
+      return React.createElement(
+        "button",
+        {
+          onClick: () => state.handleOnboardingNext(),
+          type: "button",
+        },
+        "onboarding.rpcSkip",
+      );
+    }
+    if (state.onboardingStep === "senses") {
+      return React.createElement(
+        "button",
+        {
+          onClick: () => state.handleOnboardingNext(),
+          type: "button",
+        },
+        "permissions-continue",
+      );
+    }
+    return React.createElement(
+      "button",
+      {
+        onClick: () => state.handleOnboardingNext(),
+        type: "button",
+      },
+      "onboarding.enter",
+    );
+  },
+  PairingView: () => React.createElement("div", null, "PairingView"),
+  SaveCommandModal: () => React.createElement("div", null, "SaveCommandModal"),
+  SettingsView: () => React.createElement("div", null, "SettingsView"),
+  SharedCompanionScene: ({ children }: { children: React.ReactNode }) =>
+    React.createElement(React.Fragment, null, children),
+  ShellOverlays: () => null,
+  StartupFailureView: ({ error }: { error: { message: string } }) =>
+    React.createElement("div", null, error.message),
+  StreamView: () => React.createElement("div", null, "StreamView"),
+  SystemWarningBanner: () =>
+    React.createElement("div", null, "SystemWarningBanner"),
+}));
+
 vi.mock("@miladyai/app-core/src/components/Header", () => ({
   Header: () => React.createElement("div", null, "Header"),
 }));
@@ -499,7 +630,8 @@ vi.mock(
   },
 );
 
-import { App } from "@miladyai/app-core/App";
+import { App } from "../../src/App";
+import { AppContext } from "../../src/state/useApp";
 
 function onboardingOptions() {
   return {
@@ -574,6 +706,8 @@ function createHarnessState(): AppHarnessState {
     startupError: null,
     authRequired: false,
     onboardingComplete: false,
+    onboardingHandoffError: null,
+    onboardingHandoffPhase: "idle",
     tab: "chat",
     actionNotice: null,
     onboardingStep: "identity",
@@ -652,10 +786,27 @@ function clickButton(
   button.props.onClick();
 }
 
-async function rerender(tree: TestRenderer.ReactTestRenderer): Promise<void> {
+async function rerender(
+  tree: TestRenderer.ReactTestRenderer,
+  state: AppHarnessState,
+): Promise<void> {
   await act(async () => {
-    tree.update(React.createElement(App));
+    tree.update(
+      React.createElement(
+        AppContext.Provider,
+        { value: state as never },
+        React.createElement(App),
+      ),
+    );
   });
+}
+
+function renderApp(state: AppHarnessState): React.ReactElement {
+  return React.createElement(
+    AppContext.Provider,
+    { value: state as never },
+    React.createElement(App),
+  );
 }
 
 describe("app startup onboarding flow (e2e)", () => {
@@ -697,6 +848,7 @@ describe("app startup onboarding flow (e2e)", () => {
     mockUseApp.mockImplementation(() => ({
       t: (k: string) => TRANSLATIONS[k] ?? k,
       ...state,
+      cancelOnboardingHandoff: vi.fn(),
       setState: (key: string, value: unknown) => {
         state[key] = value;
       },
@@ -719,6 +871,10 @@ describe("app startup onboarding flow (e2e)", () => {
         generated: true,
         persisted: false,
       })),
+      retryOnboardingHandoff: vi.fn(async () => {}),
+      retryStartup: vi.fn(),
+      startupPhase:
+        state.startupStatus === "ready" ? "ready" : "starting-backend",
     }));
   });
 
@@ -726,7 +882,13 @@ describe("app startup onboarding flow (e2e)", () => {
     let tree: TestRenderer.ReactTestRenderer | null = null;
 
     await act(async () => {
-      tree = TestRenderer.create(React.createElement(App));
+      tree = TestRenderer.create(
+        React.createElement(
+          AppContext.Provider,
+          { value: state as never },
+          React.createElement(App),
+        ),
+      );
     });
     if (!tree) throw new Error("failed to render App");
     const renderedTree = tree;
@@ -738,7 +900,7 @@ describe("app startup onboarding flow (e2e)", () => {
         !state.onboardingProvider
       ) {
         state.onboardingProvider = "ollama";
-        await rerender(renderedTree);
+        await rerender(renderedTree, state);
       }
 
       if (state.onboardingStep === "senses") {
@@ -756,7 +918,7 @@ describe("app startup onboarding flow (e2e)", () => {
       } else if (state.onboardingStep === "activate") {
         clickButton(renderedTree, "onboarding.enter");
       }
-      await rerender(renderedTree);
+      await rerender(renderedTree, state);
     }
 
     expect(state.onboardingComplete).toBe(true);
@@ -776,7 +938,7 @@ describe("app startup onboarding flow (e2e)", () => {
     let tree: TestRenderer.ReactTestRenderer | null = null;
 
     await act(async () => {
-      tree = TestRenderer.create(React.createElement(App));
+      tree = TestRenderer.create(renderApp(state));
     });
     if (!tree) throw new Error("failed to render App");
 
@@ -789,14 +951,14 @@ describe("app startup onboarding flow (e2e)", () => {
     let tree: TestRenderer.ReactTestRenderer | null = null;
 
     await act(async () => {
-      tree = TestRenderer.create(React.createElement(App));
+      tree = TestRenderer.create(renderApp(state));
     });
     if (!tree) throw new Error("failed to render App");
 
     clickButton(tree, "onboarding.chooseAgent");
-    await rerender(tree);
+    await rerender(tree, state);
     clickButton(tree, "advanced-configuration");
-    await rerender(tree);
+    await rerender(tree, state);
 
     expect(textOf(tree.root)).toContain("Flamina guidance");
   });
@@ -811,7 +973,7 @@ describe("app startup onboarding flow (e2e)", () => {
     let tree: TestRenderer.ReactTestRenderer | null = null;
 
     await act(async () => {
-      tree = TestRenderer.create(React.createElement(App));
+      tree = TestRenderer.create(renderApp(state));
     });
     if (!tree) throw new Error("failed to render App");
 

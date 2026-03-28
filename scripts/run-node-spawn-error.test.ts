@@ -8,7 +8,7 @@ describe("spawn error handler pattern", () => {
     const { EventEmitter } = require("node:events");
     const child = new EventEmitter();
 
-    child.on("error", (err: Error) => {
+    child.on("error", (_err: Error) => {
       process.exit(1);
     });
 

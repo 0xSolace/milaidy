@@ -25,12 +25,12 @@ function waitForPort(
       }
       activeSocket = createConnection({ port, host: "127.0.0.1" });
       activeSocket.once("connect", () => {
-        activeSocket!.destroy();
+        activeSocket?.destroy();
         activeSocket = null;
         resolve();
       });
       activeSocket.once("error", () => {
-        activeSocket!.destroy();
+        activeSocket?.destroy();
         activeSocket = null;
         setTimeout(attempt, interval);
       });
@@ -50,7 +50,7 @@ describe("waitForPort", () => {
 
   it("resolves when port becomes available", async () => {
     server = createServer();
-    await new Promise<void>((r) => server!.listen(0, "127.0.0.1", r));
+    await new Promise<void>((r) => server?.listen(0, "127.0.0.1", r));
     const port = (server.address() as AddressInfo).port;
     await expect(waitForPort(port, { timeout: 5000 })).resolves.toBeUndefined();
   });

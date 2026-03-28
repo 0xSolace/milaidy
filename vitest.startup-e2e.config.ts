@@ -15,6 +15,11 @@ const appCoreSourceRoot = getAppCoreSourceRoot(repoRoot);
 
 const liveTest = process.env.MILADY_LIVE_TEST === "1";
 
+// Startup e2e tests require module isolation so that vi.mock() registrations
+// from one test file do not bleed into another.  The shared e2e config uses
+// isolate:false for speed, but the startup tests mock the same modules
+// (e.g. @miladyai/app-core/state) with incompatible factories, causing
+// cross-file interference when run together without isolation.
 export default defineConfig({
   resolve: {
     alias: [
@@ -180,9 +185,8 @@ export default defineConfig({
     testTimeout: 120_000,
     hookTimeout: 120_000,
     globalSetup: ["test/e2e-global-setup.ts"],
-    // E2E files frequently replace globals and module-level mocks. Shared module
-    // state causes cross-file bleed, which is more expensive to debug than the
-    // small cost of per-file isolation.
+    // isolate: true so each startup test file gets its own module registry.
+    // This prevents vi.mock() factories from different files from interfering.
     isolate: true,
     fileParallelism: false,
     pool: "forks",
@@ -191,11 +195,6 @@ export default defineConfig({
       concurrent: false,
       shuffle: false,
     },
-    include: [
-      "test/**/*.e2e.test.ts",
-      "packages/agent/test/**/*.e2e.test.ts",
-      "packages/app-core/test/**/*.e2e.test.ts",
-    ],
     setupFiles: ["test/setup.ts"],
     exclude: [
       "dist/**",

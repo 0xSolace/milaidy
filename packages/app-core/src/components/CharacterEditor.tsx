@@ -620,8 +620,7 @@ export function CharacterEditor({
             const currentElevenlabs =
               typeof prev.elevenlabs === "object" ? prev.elevenlabs : {};
             const serverEdge = typeof tts.edge === "object" ? tts.edge : {};
-            const currentEdge =
-              typeof prev.edge === "object" ? prev.edge : {};
+            const currentEdge = typeof prev.edge === "object" ? prev.edge : {};
             return {
               ...tts,
               ...prev,
@@ -1354,7 +1353,7 @@ export function CharacterEditor({
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                          <ThemedSelect
+                        <ThemedSelect
                           value={voiceSelectValue}
                           groups={
                             useElevenLabs

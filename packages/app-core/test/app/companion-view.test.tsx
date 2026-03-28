@@ -90,7 +90,6 @@ function createContext(overrides: Record<string, unknown> = {}) {
     chatAgentVoiceMuted: false,
     conversations: [{ id: "conv-1", title: "Chat", status: "completed" }],
     conversationMessages: [],
-    conversations: [],
     activeConversationId: null,
     chatLastUsage: null,
     elizaCloudAuthRejected: false,

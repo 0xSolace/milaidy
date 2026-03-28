@@ -45,6 +45,18 @@ vi.mock("@miladyai/app-core/state", async () => {
   };
 });
 
+vi.mock("../../src/state", async () => {
+  const actual = await vi.importActual<typeof import("../../src/state")>(
+    "../../src/state",
+  );
+  return {
+    ...actual,
+    useApp: () => mockUseApp(),
+    getVrmUrl: vi.fn(() => "mock-vrm-url"),
+    getVrmPreviewUrl: vi.fn(() => "mock-vrm-preview"),
+  };
+});
+
 vi.mock("@miladyai/app-core/components", async () => {
   const actual = await vi.importActual<
     typeof import("@miladyai/app-core/components")
@@ -124,6 +136,55 @@ vi.mock("@miladyai/app-core/components", async () => {
 });
 
 vi.mock("@miladyai/app-core/src/app-shell-components", () => ({
+  AdvancedPageView: () =>
+    React.createElement("section", null, "AdvancedPageView Ready"),
+  AppsPageView: () =>
+    React.createElement("section", null, "AppsPageView Ready"),
+  AvatarLoader: () => React.createElement("div", null, "AvatarLoader"),
+  BugReportModal: () => React.createElement("div", null, "BugReportModal"),
+  CharacterEditor: () =>
+    React.createElement("section", null, "CharacterView Ready"),
+  ChatView: () => React.createElement("section", null, "ChatView Ready"),
+  CompanionShell: ({ tab }: { tab: string }) =>
+    React.createElement("main", null, `CompanionShell Ready: ${tab}`),
+  CompanionView: () =>
+    React.createElement("section", null, "CompanionView Ready"),
+  ConnectionFailedBanner: () =>
+    React.createElement("div", null, "ConnectionFailedBanner"),
+  ConnectorsPageView: () =>
+    React.createElement("section", null, "ConnectorsPageView Ready"),
+  ConversationsSidebar: () =>
+    React.createElement("aside", null, "ConversationsSidebar"),
+  CustomActionEditor: () =>
+    React.createElement("aside", null, "CustomActionEditor"),
+  CustomActionsPanel: () =>
+    React.createElement("aside", null, "CustomActionsPanel"),
+  GameViewOverlay: () => React.createElement("div", null, "GameViewOverlay"),
+  Header: () => React.createElement("header", null, "Header"),
+  HeartbeatsView: () =>
+    React.createElement("section", null, "HeartbeatsView Ready"),
+  InventoryView: () =>
+    React.createElement("section", null, "InventoryView Ready"),
+  KnowledgeView: () =>
+    React.createElement("section", null, "KnowledgeView Ready"),
+  OnboardingWizard: () =>
+    React.createElement("div", null, "OnboardingWizard"),
+  PairingView: () => React.createElement("div", null, "PairingView"),
+  SaveCommandModal: () =>
+    React.createElement("div", null, "SaveCommandModal"),
+  SettingsView: () =>
+    React.createElement("section", null, "SettingsView Ready"),
+  SharedCompanionScene: ({ children }: { children: React.ReactNode }) =>
+    React.createElement(React.Fragment, null, children),
+  ShellOverlays: () => null,
+  StartupFailureView: ({ error }: { error: { message: string } }) =>
+    React.createElement("div", null, error.message),
+  StreamView: () => React.createElement("section", null, "StreamView Ready"),
+  SystemWarningBanner: () =>
+    React.createElement("div", null, "SystemWarningBanner"),
+}));
+
+vi.mock("../../src/app-shell-components", () => ({
   AdvancedPageView: () =>
     React.createElement("section", null, "AdvancedPageView Ready"),
   AppsPageView: () =>
@@ -321,8 +382,24 @@ vi.mock("@miladyai/app-core/hooks", async () => {
   };
 });
 
+vi.mock("../../src/hooks", async () => {
+  const actual = await vi.importActual<typeof import("../../src/hooks")>(
+    "../../src/hooks",
+  );
+  return {
+    ...actual,
+    useContextMenu: () => ({
+      saveCommandModalOpen: false,
+      saveCommandText: "",
+      confirmSaveCommand: noop,
+      closeSaveCommandModal: noop,
+    }),
+  };
+});
+
 import { textOf } from "../../../../test/helpers/react-test";
-import { App } from "@miladyai/app-core/App";
+import { App } from "../../src/App";
+import { AppContext } from "../../src/state/useApp";
 
 type HarnessState = {
   cancelOnboardingHandoff: () => void;
@@ -392,20 +469,48 @@ function requireTree(
 async function _clickAndRerender(
   tree: TestRenderer.ReactTestRenderer,
   label: string,
+  state: HarnessState,
 ): Promise<void> {
   const button = getButtonByLabel(tree, label);
   await act(async () => {
     button.props.onClick();
   });
   await act(async () => {
-    tree.update(React.createElement(App));
+    tree.update(
+      React.createElement(
+        AppContext.Provider,
+        { value: state as never },
+        React.createElement(App),
+      ),
+    );
   });
+}
+
+function renderApp(state: HarnessState): React.ReactElement {
+  return React.createElement(
+    AppContext.Provider,
+    { value: state as never },
+    React.createElement(App),
+  );
 }
 
 describe("pages navigation smoke (e2e)", () => {
   let state: HarnessState;
 
   beforeEach(() => {
+    Object.defineProperty(window, "matchMedia", {
+      writable: true,
+      value: vi.fn().mockImplementation(() => ({
+        matches: false,
+        media: "",
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(() => false),
+      })),
+    });
     state = {
       t: (k: string) => {
         const labels: Record<string, string> = {
@@ -465,7 +570,7 @@ describe("pages navigation smoke (e2e)", () => {
 
     let tree: TestRenderer.ReactTestRenderer | null = null;
     await act(async () => {
-      tree = TestRenderer.create(React.createElement(App));
+      tree = TestRenderer.create(renderApp(state));
     });
     const renderedTree = requireTree(tree);
 
@@ -474,7 +579,7 @@ describe("pages navigation smoke (e2e)", () => {
       const nextTab = group.tabs[0];
       state.tab = nextTab;
       await act(async () => {
-        renderedTree.update(React.createElement(App));
+        renderedTree.update(renderApp(state));
       });
       const content = mainContent(renderedTree);
       expect(content).toContain(
@@ -528,14 +633,14 @@ describe("pages navigation smoke (e2e)", () => {
 
     let tree: TestRenderer.ReactTestRenderer | null = null;
     await act(async () => {
-      tree = TestRenderer.create(React.createElement(App));
+      tree = TestRenderer.create(renderApp(state));
     });
     const renderedTree = requireTree(tree);
 
     for (const tab of tabsToVerify) {
       state.tab = tab;
       await act(async () => {
-        renderedTree.update(React.createElement(App));
+        renderedTree.update(renderApp(state));
       });
       const content = mainContent(renderedTree);
       // Character tabs force native shell mode, so they render outside CompanionShell
@@ -662,7 +767,7 @@ describe("pages navigation smoke (e2e)", () => {
 
       let tree = undefined as unknown as TestRenderer.ReactTestRenderer;
       await act(async () => {
-        tree = TestRenderer.create(React.createElement(App));
+        tree = TestRenderer.create(renderApp(state));
       });
       const appText = textOf(tree?.root);
       expect(appText).toContain(entry.token);
@@ -726,7 +831,7 @@ describe("pages navigation smoke (e2e)", () => {
 
       let tree: TestRenderer.ReactTestRenderer | null = null;
       await act(async () => {
-        tree = TestRenderer.create(React.createElement(App));
+        tree = TestRenderer.create(renderApp(state));
       });
 
       const appText = textOf(requireTree(tree).root);

@@ -79,7 +79,11 @@ export function TradePanel({
       if (!getBscTradeQuote) return;
       const tokenAddress = quickTokenAddress.trim();
       if (!HEX_ADDRESS_RE.test(tokenAddress)) {
-        setActionNotice(t("bsctradepanel.EnterValidTokenAddress"), "error", 3200);
+        setActionNotice(
+          t("bsctradepanel.EnterValidTokenAddress"),
+          "error",
+          3200,
+        );
         setTradeFeedback({
           tone: "error",
           text: t("bsctradepanel.EnterValidTokenAddress"),
@@ -114,7 +118,8 @@ export function TradePanel({
             setTradeFeedback({
               tone: "error",
               text:
-                preflight.reasons[0] ?? t("bsctradepanel.PreflightChecksFailed"),
+                preflight.reasons[0] ??
+                t("bsctradepanel.PreflightChecksFailed"),
             });
             return;
           }
@@ -138,11 +143,7 @@ export function TradePanel({
             symbol: result.quoteOut?.symbol ?? "",
           },
         ).trim();
-        setActionNotice(
-          quoteMessage,
-          "success",
-          3200,
-        );
+        setActionNotice(quoteMessage, "success", 3200);
         setTradeFeedback({
           tone: "success",
           text: quoteMessage,
@@ -186,8 +187,7 @@ export function TradePanel({
         );
         setTradeFeedback({
           tone: "error",
-          text:
-            result.reasons[0] ?? t("bsctradepanel.PreflightChecksFailed"),
+          text: result.reasons[0] ?? t("bsctradepanel.PreflightChecksFailed"),
         });
         return;
       }

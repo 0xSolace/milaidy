@@ -61,6 +61,18 @@ describe("voice cloud default (e2e)", () => {
 
     vi.stubGlobal("fetch", fetchMock);
     vi.stubGlobal("AudioContext", MockAudioContext);
+    if (typeof window.addEventListener !== "function") {
+      Object.defineProperty(window, "addEventListener", {
+        configurable: true,
+        value: vi.fn(),
+      });
+    }
+    if (typeof window.removeEventListener !== "function") {
+      Object.defineProperty(window, "removeEventListener", {
+        configurable: true,
+        value: vi.fn(),
+      });
+    }
     Object.defineProperty(window, "speechSynthesis", {
       configurable: true,
       value: null,

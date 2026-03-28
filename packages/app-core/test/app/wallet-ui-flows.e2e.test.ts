@@ -25,6 +25,15 @@ import {
 } from "vitest";
 import { req } from "../../../../test/helpers/http";
 
+function translateTest(
+  key: string,
+  vars?: {
+    defaultValue?: string;
+  },
+): string {
+  return vars?.defaultValue ?? key;
+}
+
 // ---------------------------------------------------------------------------
 // Part 1: API Tests for Wallet Endpoints
 // ---------------------------------------------------------------------------
@@ -311,8 +320,8 @@ describe("InventoryView UI", () => {
     mockUseApp.mockReset();
     mockUseApp.mockImplementation(() => ({
       uiLanguage: "en",
-      t: (k: string) => k,
       ...state,
+      t: translateTest,
       walletAddresses: { evmAddress: "0x1234567890123456789012345678901234567890" },
       walletBalances: {
         evm: { chains: [] },
@@ -417,8 +426,8 @@ describe("Wallet Balance Integration", () => {
     mockUseApp.mockReset();
     mockUseApp.mockImplementation(() => ({
       uiLanguage: "en",
-      t: (k: string) => k,
       ...state,
+      t: translateTest,
       loadWalletBalances: vi.fn(),
       loadWalletNfts: vi.fn(),
       refreshWallet: async () => {
@@ -455,8 +464,8 @@ describe("Inventory View Toggle", () => {
     mockUseApp.mockReset();
     mockUseApp.mockImplementation(() => ({
       uiLanguage: "en",
-      t: (k: string) => k,
       ...state,
+      t: translateTest,
       loadWalletBalances: vi.fn(),
       loadWalletNfts: vi.fn(),
       refreshWallet: vi.fn(),
@@ -502,8 +511,8 @@ describe("Chain Selection", () => {
     mockUseApp.mockReset();
     mockUseApp.mockImplementation(() => ({
       uiLanguage: "en",
-      t: (k: string) => k,
       ...state,
+      t: translateTest,
       loadWalletBalances: vi.fn(),
       loadWalletNfts: vi.fn(),
       refreshWallet: vi.fn(),
@@ -547,8 +556,8 @@ describe("Address Copy Functionality", () => {
     mockUseApp.mockReset();
     mockUseApp.mockImplementation(() => ({
       uiLanguage: "en",
-      t: (k: string) => k,
       ...state,
+      t: translateTest,
       loadWalletBalances: vi.fn(),
       loadWalletNfts: vi.fn(),
       refreshWallet: vi.fn(),

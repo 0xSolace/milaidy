@@ -5,6 +5,7 @@ import React from "react";
 import type { ReactTestInstance } from "react-test-renderer";
 import TestRenderer, { act } from "react-test-renderer";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { textOf } from "../../../../test/helpers/react-test";
 
 const { mockUseApp } = vi.hoisted(() => ({
   mockUseApp: vi.fn(),
@@ -14,6 +15,19 @@ vi.mock("@miladyai/app-core/state", async () => {
   const actual = await vi.importActual<
     typeof import("@miladyai/app-core/state")
   >("@miladyai/app-core/state");
+  return {
+    ...actual,
+    useApp: () => mockUseApp(),
+    getVrmUrl: vi.fn(),
+    getVrmPreviewUrl: vi.fn(),
+    getVrmTitle: vi.fn(),
+  };
+});
+
+vi.mock("../../src/state", async () => {
+  const actual = await vi.importActual<typeof import("../../src/state")>(
+    "../../src/state",
+  );
   return {
     ...actual,
     useApp: () => mockUseApp(),
@@ -171,6 +185,53 @@ vi.mock("@miladyai/app-core/src/components/CompanionView", () => ({
   CompanionView: () => React.createElement("div", null, "CompanionView"),
 }));
 
+vi.mock("../../src/app-shell-components", () => ({
+  AdvancedPageView: () =>
+    React.createElement("div", null, "AdvancedPageView"),
+  AppsPageView: () => React.createElement("div", null, "AppsPageView"),
+  AvatarLoader: () => React.createElement("div", null, "AvatarLoader"),
+  BugReportModal: () => React.createElement("div", null, "BugReportModal"),
+  CharacterEditor: () => React.createElement("div", null, "CharacterView"),
+  ChatView: () => React.createElement("div", null, "ChatView"),
+  CompanionShell: ({ tab }: { tab: string }) =>
+    React.createElement("main", null, `CompanionShell:${tab}`),
+  CompanionView: () => React.createElement("div", null, "CompanionView"),
+  ConnectionFailedBanner: () =>
+    React.createElement("div", null, "ConnectionFailedBanner"),
+  ConnectorsPageView: () =>
+    React.createElement("div", null, "ConnectorsPageView"),
+  ConversationsSidebar: () =>
+    React.createElement("div", null, "ConversationsSidebar"),
+  CustomActionEditor: () =>
+    React.createElement("div", null, "CustomActionEditor"),
+  CustomActionsPanel: () =>
+    React.createElement("div", null, "CustomActionsPanel"),
+  GameViewOverlay: () => React.createElement("div", null, "GameViewOverlay"),
+  Header: ({ mobileLeft }: { mobileLeft?: React.ReactNode }) =>
+    React.createElement("div", null, "Header", mobileLeft),
+  HeartbeatsView: () => React.createElement("div", null, "HeartbeatsView"),
+  InventoryView: () => React.createElement("div", null, "InventoryView"),
+  KnowledgeView: () => React.createElement("div", null, "KnowledgeView"),
+  OnboardingWizard: () =>
+    React.createElement("div", null, "OnboardingWizard"),
+  PairingView: () => React.createElement("div", null, "PairingView"),
+  SaveCommandModal: () =>
+    React.createElement("div", null, "SaveCommandModal"),
+  SettingsView: () => React.createElement("div", null, "SettingsView"),
+  SharedCompanionScene: ({
+    children,
+  }: {
+    active: boolean;
+    children: React.ReactNode;
+  }) => React.createElement(React.Fragment, null, children),
+  ShellOverlays: () => null,
+  StartupFailureView: () =>
+    React.createElement("div", null, "StartupFailureView"),
+  StreamView: () => React.createElement("div", null, "StreamView"),
+  SystemWarningBanner: () =>
+    React.createElement("div", null, "SystemWarningBanner"),
+}));
+
 vi.mock(
   "@miladyai/app-core/src/components/companion/CompanionSceneHost",
   async () => {
@@ -188,7 +249,8 @@ vi.mock(
   },
 );
 
-import { App } from "@miladyai/app-core/App";
+import { App } from "../../src/App";
+import { AppContext } from "../../src/state/useApp";
 
 const ORIGINAL_INNER_WIDTH = window.innerWidth;
 const TRANSLATIONS: Record<string, string> = {
@@ -203,10 +265,15 @@ function setViewportWidth(width: number): void {
 }
 
 function buttonText(node: ReactTestInstance): string {
-  return node.children
-    .filter((child): child is string => typeof child === "string")
-    .join("")
-    .trim();
+  return textOf(node).trim();
+}
+
+function renderApp(): React.ReactElement {
+  return React.createElement(
+    AppContext.Provider,
+    { value: mockUseApp() as never },
+    React.createElement(App),
+  );
 }
 
 describe("app startup routing (e2e)", () => {
@@ -250,13 +317,10 @@ describe("app startup routing (e2e)", () => {
     let tree = undefined as unknown as TestRenderer.ReactTestRenderer;
     try {
       await act(async () => {
-        tree = TestRenderer.create(React.createElement(App));
+        tree = TestRenderer.create(renderApp());
       });
 
-      let renderedText = tree?.root
-        .findAllByType("div")
-        .map((node) => node.children.join(""))
-        .join("\n");
+      let renderedText = textOf(tree.root);
 
       expect(renderedText).toContain("ChatView");
       expect(renderedText).toContain("AvatarLoader");
@@ -267,10 +331,7 @@ describe("app startup routing (e2e)", () => {
         vi.advanceTimersByTime(801);
       });
 
-      renderedText = tree?.root
-        .findAllByType("div")
-        .map((node) => node.children.join(""))
-        .join("\n");
+      renderedText = textOf(tree.root);
 
       expect(renderedText).not.toContain("AvatarLoader");
     } finally {
@@ -307,13 +368,10 @@ describe("app startup routing (e2e)", () => {
 
     let tree = undefined as unknown as TestRenderer.ReactTestRenderer;
     await act(async () => {
-      tree = TestRenderer.create(React.createElement(App));
+      tree = TestRenderer.create(renderApp());
     });
 
-    const renderedText = tree?.root
-      .findAllByType("div")
-      .map((node) => node.children.join(""))
-      .join("\n");
+    const renderedText = textOf(tree.root);
 
     expect(renderedText).toContain("InventoryView");
     expect(renderedText).not.toContain("ChatView");
@@ -330,7 +388,7 @@ describe("app startup routing (e2e)", () => {
 
     let tree = undefined as unknown as TestRenderer.ReactTestRenderer;
     await act(async () => {
-      tree = TestRenderer.create(React.createElement(App));
+      tree = TestRenderer.create(renderApp());
     });
 
     const root = tree?.root;
@@ -342,27 +400,21 @@ describe("app startup routing (e2e)", () => {
     );
     expect(chatDrawerButton).toBeDefined();
 
-    let renderedText = root
-      .findAllByType("div")
-      .map((node) => node.children.join(""))
-      .join("\n");
+    let renderedText = textOf(root);
     expect(renderedText).not.toContain("ConversationsSidebar");
 
     await act(async () => {
       chatDrawerButton?.props.onClick();
     });
 
-    renderedText = root
-      .findAllByType("div")
-      .map((node) => node.children.join(""))
-      .join("\n");
+    renderedText = textOf(root);
     expect(renderedText).toContain("ConversationsSidebar");
   });
 
   it("keeps the desktop chat workspace height-bounded", async () => {
     let tree = undefined as unknown as TestRenderer.ReactTestRenderer;
     await act(async () => {
-      tree = TestRenderer.create(React.createElement(App));
+      tree = TestRenderer.create(renderApp());
     });
 
     const main = tree.root.findByType("main");
@@ -375,7 +427,7 @@ describe("app startup routing (e2e)", () => {
 
     let tree = undefined as unknown as TestRenderer.ReactTestRenderer;
     await act(async () => {
-      tree = TestRenderer.create(React.createElement(App));
+      tree = TestRenderer.create(renderApp());
     });
 
     const main = tree.root.findByType("main");

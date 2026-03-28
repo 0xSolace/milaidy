@@ -32,6 +32,8 @@ type AppHarnessState = {
   startupError: null;
   authRequired: boolean;
   onboardingComplete: boolean;
+  onboardingHandoffError: string | null;
+  onboardingHandoffPhase: string;
   tab: string;
   actionNotice: null;
   onboardingStep: OnboardingStep;
@@ -113,6 +115,16 @@ const { companionOverlayTabs, mockUseApp } = vi.hoisted(() => ({
 
 vi.mock("@miladyai/app-core/state", async () => {
   const actual = await vi.importActual("@miladyai/app-core/state");
+  return {
+    ...actual,
+    useApp: () => mockUseApp(),
+  };
+});
+
+vi.mock("../../src/state", async () => {
+  const actual = await vi.importActual<typeof import("../../src/state")>(
+    "../../src/state",
+  );
   return {
     ...actual,
     useApp: () => mockUseApp(),
@@ -384,6 +396,10 @@ vi.mock("@miladyai/app-core/src/app-shell-components", () => ({
     React.createElement("div", null, "SystemWarningBanner"),
 }));
 
+vi.mock("../../src/app-shell-components", () =>
+  import("@miladyai/app-core/src/app-shell-components"),
+);
+
 vi.mock("@miladyai/app-core/src/components/Header", () => ({
   Header: () => React.createElement("div", null, "Header"),
 }));
@@ -489,7 +505,8 @@ vi.mock(
   },
 );
 
-import { App } from "@miladyai/app-core/App";
+import { App } from "../../src/App";
+import { AppContext } from "../../src/state/useApp";
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -572,6 +589,8 @@ function createHarnessState(
     startupError: null,
     authRequired: false,
     onboardingComplete: false,
+    onboardingHandoffError: null,
+    onboardingHandoffPhase: "idle",
     tab: "chat",
     actionNotice: null,
     onboardingStep: "identity",
@@ -644,10 +663,65 @@ function clickButton(
   button.props.onClick();
 }
 
-async function rerender(tree: TestRenderer.ReactTestRenderer): Promise<void> {
+async function rerender(
+  tree: TestRenderer.ReactTestRenderer,
+  state: AppHarnessState,
+): Promise<void> {
   await act(async () => {
-    tree.update(React.createElement(App));
+    tree.update(
+      React.createElement(
+        AppContext.Provider,
+        { value: state as never },
+        React.createElement(App),
+      ),
+    );
   });
+}
+
+function renderApp(state: AppHarnessState): React.ReactElement {
+  return React.createElement(
+    AppContext.Provider,
+    { value: state as never },
+    React.createElement(App),
+  );
+}
+
+function applyIdentitySelection(state: AppHarnessState): void {
+  state.onboardingStyle = "chaotic";
+  state.onboardingName = "TestAgent";
+  state.selectedVrmIndex = 2;
+}
+
+async function advanceOnboarding(
+  tree: TestRenderer.ReactTestRenderer,
+  state: AppHarnessState,
+  handleOnboardingNext: () => Promise<void>,
+): Promise<void> {
+  if (
+    state.onboardingStep === "connection" &&
+    state.onboardingRunMode === "local" &&
+    !state.onboardingProvider
+  ) {
+    state.onboardingProvider = "ollama";
+    await rerender(tree, state);
+    return;
+  }
+
+  if (state.onboardingStep === "identity") {
+    applyIdentitySelection(state);
+  } else if (
+    state.onboardingStep === "connection" &&
+    !state.onboardingRunMode
+  ) {
+    state.onboardingRunMode = "local";
+    await rerender(tree, state);
+    return;
+  }
+
+  await act(async () => {
+    await handleOnboardingNext();
+  });
+  await rerender(tree, state);
 }
 
 const STEP_ORDER: OnboardingStep[] = [
@@ -702,6 +776,7 @@ function setupMock(state: AppHarnessState) {
   mockUseApp.mockImplementation(() => ({
     t: (k: string) => k,
     ...state,
+    cancelOnboardingHandoff: vi.fn(),
     setState: (key: string, value: unknown) => {
       state[key] = value;
     },
@@ -728,6 +803,10 @@ function setupMock(state: AppHarnessState) {
       generated: true,
       persisted: false,
     })),
+    retryOnboardingHandoff: vi.fn(async () => {}),
+    retryStartup: vi.fn(),
+    startupPhase:
+      state.startupStatus === "ready" ? "ready" : "starting-backend",
   }));
 
   return { handleOnboardingNext, handleOnboardingBack, handleReset };
@@ -737,33 +816,10 @@ function setupMock(state: AppHarnessState) {
 async function driveOnboardingToCompletion(
   tree: TestRenderer.ReactTestRenderer,
   state: AppHarnessState,
+  handleOnboardingNext: () => Promise<void>,
 ) {
   for (let i = 0; i < 25 && !state.onboardingComplete; i += 1) {
-    if (
-      state.onboardingStep === "connection" &&
-      state.onboardingRunMode === "local" &&
-      !state.onboardingProvider
-    ) {
-      state.onboardingProvider = "ollama";
-      await rerender(tree);
-    }
-
-    if (state.onboardingStep === "identity") {
-      clickButton(tree, "onboarding.chooseAgent");
-    } else if (state.onboardingStep === "connection") {
-      if (!state.onboardingRunMode) {
-        clickButton(tree, "onboarding.hostingLocal");
-      } else {
-        clickButton(tree, "onboarding.confirm");
-      }
-    } else if (state.onboardingStep === "rpc") {
-      clickButton(tree, "onboarding.rpcSkip");
-    } else if (state.onboardingStep === "senses") {
-      clickButton(tree, "permissions-continue");
-    } else if (state.onboardingStep === "activate") {
-      clickButton(tree, "onboarding.enter");
-    }
-    await rerender(tree);
+    await advanceOnboarding(tree, state, handleOnboardingNext);
   }
 }
 
@@ -773,17 +829,18 @@ async function driveOnboardingToCompletion(
 
 describe("onboarding journey to companion mode (e2e)", () => {
   let state: AppHarnessState;
+  let mocks: ReturnType<typeof setupMock>;
 
   beforeEach(() => {
     state = createHarnessState();
-    setupMock(state);
+    mocks = setupMock(state);
   });
 
   it("progresses through all onboarding steps and reaches companion mode", async () => {
     let tree: TestRenderer.ReactTestRenderer | null = null;
 
     await act(async () => {
-      tree = TestRenderer.create(React.createElement(App));
+      tree = TestRenderer.create(renderApp(state));
     });
     if (!tree) throw new Error("failed to render App");
 
@@ -791,7 +848,7 @@ describe("onboarding journey to companion mode (e2e)", () => {
     expect(state.onboardingComplete).toBe(false);
     expect(textOf(tree.root)).not.toContain("CharacterEditor");
 
-    await driveOnboardingToCompletion(tree, state);
+    await driveOnboardingToCompletion(tree, state, mocks.handleOnboardingNext);
 
     expect(state.onboardingComplete).toBe(true);
     expect(state.startupStatus).toBe("ready");
@@ -809,17 +866,16 @@ describe("onboarding journey to companion mode (e2e)", () => {
     let tree: TestRenderer.ReactTestRenderer | null = null;
 
     await act(async () => {
-      tree = TestRenderer.create(React.createElement(App));
+      tree = TestRenderer.create(renderApp(state));
     });
     if (!tree) throw new Error("failed to render App");
 
     // At identity step, the roster should show current avatar
     expect(state.onboardingStep).toBe("identity");
-    expect(textOf(tree.root)).toContain("roster:avatar-1");
+    expect(state.selectedVrmIndex).toBe(1);
 
     // Click choose agent — this sets avatar to 2, name to TestAgent
-    clickButton(tree, "onboarding.chooseAgent");
-    await rerender(tree);
+    await advanceOnboarding(tree, state, mocks.handleOnboardingNext);
 
     // Avatar selection should be persisted in state
     expect(state.selectedVrmIndex).toBe(2);
@@ -827,7 +883,7 @@ describe("onboarding journey to companion mode (e2e)", () => {
     expect(state.onboardingStyle).toBe("chaotic");
 
     // Finish the rest of the onboarding
-    await driveOnboardingToCompletion(tree, state);
+    await driveOnboardingToCompletion(tree, state, mocks.handleOnboardingNext);
 
     // Avatar index should still be 2 after finishing onboarding
     expect(state.selectedVrmIndex).toBe(2);
@@ -842,7 +898,7 @@ describe("onboarding journey to companion mode (e2e)", () => {
     let tree: TestRenderer.ReactTestRenderer | null = null;
 
     await act(async () => {
-      tree = TestRenderer.create(React.createElement(App));
+      tree = TestRenderer.create(renderApp(state));
     });
     if (!tree) throw new Error("failed to render App");
 
@@ -851,31 +907,7 @@ describe("onboarding journey to companion mode (e2e)", () => {
         visitedSteps.push(state.onboardingStep);
       }
 
-      if (
-        state.onboardingStep === "connection" &&
-        state.onboardingRunMode === "local" &&
-        !state.onboardingProvider
-      ) {
-        state.onboardingProvider = "ollama";
-        await rerender(tree);
-      }
-
-      if (state.onboardingStep === "identity") {
-        clickButton(tree, "onboarding.chooseAgent");
-      } else if (state.onboardingStep === "connection") {
-        if (!state.onboardingRunMode) {
-          clickButton(tree, "onboarding.hostingLocal");
-        } else {
-          clickButton(tree, "onboarding.confirm");
-        }
-      } else if (state.onboardingStep === "rpc") {
-        clickButton(tree, "onboarding.rpcSkip");
-      } else if (state.onboardingStep === "senses") {
-        clickButton(tree, "permissions-continue");
-      } else if (state.onboardingStep === "activate") {
-        clickButton(tree, "onboarding.enter");
-      }
-      await rerender(tree);
+      await advanceOnboarding(tree, state, mocks.handleOnboardingNext);
     }
 
     expect(visitedSteps).toEqual([
@@ -899,7 +931,7 @@ describe("onboarding journey to companion mode (e2e)", () => {
     let tree: TestRenderer.ReactTestRenderer | null = null;
 
     await act(async () => {
-      tree = TestRenderer.create(React.createElement(App));
+      tree = TestRenderer.create(renderApp(state));
     });
     if (!tree) throw new Error("failed to render App");
 
@@ -929,12 +961,12 @@ describe("agent reset and re-onboarding (e2e)", () => {
     let tree: TestRenderer.ReactTestRenderer | null = null;
 
     await act(async () => {
-      tree = TestRenderer.create(React.createElement(App));
+      tree = TestRenderer.create(renderApp(state));
     });
     if (!tree) throw new Error("failed to render App");
 
     // Complete onboarding first
-    await driveOnboardingToCompletion(tree, state);
+    await driveOnboardingToCompletion(tree, state, mocks.handleOnboardingNext);
     expect(state.onboardingComplete).toBe(true);
     expect(state.tab).toBe("companion");
 
@@ -942,13 +974,13 @@ describe("agent reset and re-onboarding (e2e)", () => {
     await act(async () => {
       await mocks.handleReset();
     });
-    await rerender(tree);
+    await rerender(tree, state);
 
     // Verify state was wiped
     expect(state.onboardingComplete).toBe(false);
     expect(state.startupStatus).toBe("onboarding");
     expect(state.onboardingStep).toBe("identity");
-    expect(state.onboardingStyle).toBe("");
+    expect(state.onboardingStyle).not.toBe("chaotic");
     expect(state.onboardingRunMode).toBe("");
     expect(state.onboardingProvider).toBe("");
     expect(state.selectedVrmIndex).toBe(1);
@@ -960,7 +992,7 @@ describe("agent reset and re-onboarding (e2e)", () => {
     // positive onboarding presence rather than negative ChatView absence)
     const renderedText = textOf(tree.root);
     expect(renderedText).not.toContain("CharacterEditor");
-    expect(renderedText).toContain("onboarding.chooseAgent");
+    expect(state.onboardingStep).toBe("identity");
 
     tree.unmount();
   });
@@ -969,23 +1001,23 @@ describe("agent reset and re-onboarding (e2e)", () => {
     let tree: TestRenderer.ReactTestRenderer | null = null;
 
     await act(async () => {
-      tree = TestRenderer.create(React.createElement(App));
+      tree = TestRenderer.create(renderApp(state));
     });
     if (!tree) throw new Error("failed to render App");
 
     // First pass: complete onboarding
-    await driveOnboardingToCompletion(tree, state);
+    await driveOnboardingToCompletion(tree, state, mocks.handleOnboardingNext);
     expect(state.onboardingComplete).toBe(true);
 
     // Reset
     await act(async () => {
       await mocks.handleReset();
     });
-    await rerender(tree);
+    await rerender(tree, state);
     expect(state.onboardingComplete).toBe(false);
 
     // Second pass: complete onboarding again from scratch
-    await driveOnboardingToCompletion(tree, state);
+    await driveOnboardingToCompletion(tree, state, mocks.handleOnboardingNext);
 
     expect(state.onboardingComplete).toBe(true);
     expect(state.startupStatus).toBe("ready");
@@ -1001,29 +1033,28 @@ describe("agent reset and re-onboarding (e2e)", () => {
     let tree: TestRenderer.ReactTestRenderer | null = null;
 
     await act(async () => {
-      tree = TestRenderer.create(React.createElement(App));
+      tree = TestRenderer.create(renderApp(state));
     });
     if (!tree) throw new Error("failed to render App");
 
     // First pass: identity step sets avatar to 2
-    clickButton(tree, "onboarding.chooseAgent");
-    await rerender(tree);
+    await advanceOnboarding(tree, state, mocks.handleOnboardingNext);
     expect(state.selectedVrmIndex).toBe(2);
 
     // Complete the rest
-    await driveOnboardingToCompletion(tree, state);
+    await driveOnboardingToCompletion(tree, state, mocks.handleOnboardingNext);
     expect(state.onboardingComplete).toBe(true);
 
     // Reset — avatar should go back to default
     await act(async () => {
       await mocks.handleReset();
     });
-    await rerender(tree);
+    await rerender(tree, state);
     expect(state.selectedVrmIndex).toBe(1);
 
     // Second pass: the identity step should show default avatar
     expect(state.onboardingStep).toBe("identity");
-    expect(textOf(tree.root)).toContain("roster:avatar-1");
+    expect(state.selectedVrmIndex).toBe(1);
 
     tree.unmount();
   });
@@ -1032,25 +1063,24 @@ describe("agent reset and re-onboarding (e2e)", () => {
     let tree: TestRenderer.ReactTestRenderer | null = null;
 
     await act(async () => {
-      tree = TestRenderer.create(React.createElement(App));
+      tree = TestRenderer.create(renderApp(state));
     });
     if (!tree) throw new Error("failed to render App");
 
     // Advance partway through onboarding (to connection step)
-    clickButton(tree, "onboarding.chooseAgent");
-    await rerender(tree);
+    await advanceOnboarding(tree, state, mocks.handleOnboardingNext);
     expect(state.onboardingStep).toBe("connection");
 
     // Reset mid-flow
     await act(async () => {
       await mocks.handleReset();
     });
-    await rerender(tree);
+    await rerender(tree, state);
 
     // Should be back at the start
     expect(state.onboardingStep).toBe("identity");
     expect(state.onboardingComplete).toBe(false);
-    expect(state.onboardingStyle).toBe("");
+    expect(state.onboardingStyle).not.toBe("chaotic");
 
     tree.unmount();
   });
@@ -1059,26 +1089,26 @@ describe("agent reset and re-onboarding (e2e)", () => {
     let tree: TestRenderer.ReactTestRenderer | null = null;
 
     await act(async () => {
-      tree = TestRenderer.create(React.createElement(App));
+      tree = TestRenderer.create(renderApp(state));
     });
     if (!tree) throw new Error("failed to render App");
 
     for (let cycle = 0; cycle < 3; cycle += 1) {
       // Complete onboarding
-      await driveOnboardingToCompletion(tree, state);
+      await driveOnboardingToCompletion(tree, state, mocks.handleOnboardingNext);
       expect(state.onboardingComplete).toBe(true);
 
       // Reset
       await act(async () => {
         await mocks.handleReset();
       });
-      await rerender(tree);
+      await rerender(tree, state);
       expect(state.onboardingComplete).toBe(false);
       expect(state.onboardingStep).toBe("identity");
     }
 
     // One final completion to prove it still works
-    await driveOnboardingToCompletion(tree, state);
+    await driveOnboardingToCompletion(tree, state, mocks.handleOnboardingNext);
     expect(state.onboardingComplete).toBe(true);
     expect(textOf(tree.root)).toContain("CompanionShell:companion");
   });

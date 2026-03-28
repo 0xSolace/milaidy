@@ -137,7 +137,7 @@
     "test:regression-matrix:release-contract": "node scripts/validate-regression-matrix.mjs --workflow release-contract",
     "test:release:contract": "node scripts/run-release-contract-suite.mjs",
     "test:startup:contract": "bunx vitest run scripts/startup-e2e-script-drift.test.ts",
-    "test:startup:e2e": "bunx vitest run --config vitest.e2e.config.ts packages/app-core/test/app/startup-chat.e2e.test.ts packages/app-core/test/app/startup-onboarding.e2e.test.ts packages/app-core/test/app/startup-backend-missing.e2e.test.ts packages/app-core/test/app/startup-token-401.e2e.test.ts",
+    "test:startup:e2e": "bunx vitest run --config vitest.startup-e2e.config.ts packages/app-core/test/app/startup-chat.e2e.test.ts packages/app-core/test/app/startup-onboarding.e2e.test.ts packages/app-core/test/app/startup-backend-missing.e2e.test.ts packages/app-core/test/app/startup-token-401.e2e.test.ts",
     "test:watch": "bunx vitest",
     "typecheck": "tsc --noEmit",
     "db:reset": "scripts/rt.sh scripts/run-node.mjs db reset",
