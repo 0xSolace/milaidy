@@ -114,6 +114,7 @@ import {
   type Tab,
   tabFromPath,
 } from "../navigation";
+import { getResetConnectionWizardToHostingStepPatch } from "../onboarding/connection-flow";
 import {
   canRevertOnboardingTo,
   getFlaminaTopicForOnboardingStep,
@@ -1036,6 +1037,8 @@ function AppProviderInner({
       cloudProvider: onboardingCloudProvider,
       provider: onboardingProvider,
       apiKey: onboardingApiKey,
+      voiceProvider: onboardingVoiceProvider,
+      voiceApiKey: onboardingVoiceApiKey,
       smallModel: onboardingSmallModel,
       largeModel: onboardingLargeModel,
       openRouterModel: onboardingOpenRouterModel,
@@ -1120,6 +1123,14 @@ function AppProviderInner({
   );
   const setOnboardingApiKey = useCallback(
     (v: string) => setOnboardingField("apiKey", v),
+    [setOnboardingField],
+  );
+  const setOnboardingVoiceProvider = useCallback(
+    (v: string) => setOnboardingField("voiceProvider", v),
+    [setOnboardingField],
+  );
+  const setOnboardingVoiceApiKey = useCallback(
+    (v: string) => setOnboardingField("voiceApiKey", v),
     [setOnboardingField],
   );
   const setOnboardingExistingInstallDetected = useCallback(
@@ -2857,7 +2868,7 @@ function AppProviderInner({
           setOnboardingLoading(false);
           setOnboardingComplete(false);
           onboardingResumeConnectionRef.current = null;
-          setOnboardingStep("welcome");
+          setOnboardingStep("cloud_login");
           setOnboardingMode("basic");
           setOnboardingActiveGuide(null);
           setOnboardingDeferredTasks([]);
@@ -2868,6 +2879,8 @@ function AppProviderInner({
           setOnboardingCloudProvider("");
           setOnboardingProvider("");
           setOnboardingApiKey("");
+          setOnboardingVoiceProvider("");
+          setOnboardingVoiceApiKey("");
           setOnboardingPrimaryModel("");
           setOnboardingOpenRouterModel("");
           setOnboardingRemoteConnected(false);
@@ -5288,6 +5301,8 @@ function AppProviderInner({
           onboardingCloudProvider,
           onboardingProvider,
           onboardingApiKey,
+          onboardingVoiceProvider,
+          onboardingVoiceApiKey,
           onboardingPrimaryModel,
           onboardingOpenRouterModel,
           onboardingRemoteConnected,
@@ -5324,7 +5339,7 @@ function AppProviderInner({
         if (startOver) {
           clearPersistedOnboardingStep();
           onboardingResumeConnectionRef.current = null;
-          setOnboardingStep("welcome");
+          setOnboardingStep("cloud_login");
           setOnboardingMode("basic");
           setOnboardingActiveGuide(null);
           setOnboardingDeferredTasks([]);
@@ -5336,6 +5351,8 @@ function AppProviderInner({
           setOnboardingCloudProvider("");
           setOnboardingProvider("");
           setOnboardingApiKey("");
+          setOnboardingVoiceProvider("");
+          setOnboardingVoiceApiKey("");
           setOnboardingPrimaryModel("");
           setOnboardingOpenRouterModel("");
           setOnboardingRemoteConnected(false);
@@ -5510,7 +5527,7 @@ function AppProviderInner({
       if (startOver) {
         clearPersistedOnboardingStep();
         onboardingResumeConnectionRef.current = null;
-        setOnboardingStep("welcome");
+        setOnboardingStep("cloud_login");
         setOnboardingMode("basic");
         setOnboardingActiveGuide(null);
         setOnboardingDeferredTasks([]);
@@ -5522,6 +5539,8 @@ function AppProviderInner({
         setOnboardingCloudProvider("");
         setOnboardingProvider("");
         setOnboardingApiKey("");
+        setOnboardingVoiceProvider("");
+        setOnboardingVoiceApiKey("");
         setOnboardingPrimaryModel("");
         setOnboardingOpenRouterModel("");
         setOnboardingRemoteConnected(false);
@@ -5609,6 +5628,39 @@ function AppProviderInner({
     [onboardingMode, setOnboardingStep, setOnboardingActiveGuide],
   );
 
+  const applyResetConnectionWizardToHostingStep = useCallback(() => {
+    const patch = getResetConnectionWizardToHostingStepPatch();
+    if (patch.onboardingRunMode !== undefined) {
+      setOnboardingRunMode(patch.onboardingRunMode);
+    }
+    if (patch.onboardingCloudProvider !== undefined) {
+      setOnboardingCloudProvider(patch.onboardingCloudProvider);
+    }
+    if (patch.onboardingProvider !== undefined) {
+      setOnboardingProvider(patch.onboardingProvider);
+    }
+    if (patch.onboardingApiKey !== undefined) {
+      setOnboardingApiKey(patch.onboardingApiKey);
+    }
+    if (patch.onboardingPrimaryModel !== undefined) {
+      setOnboardingPrimaryModel(patch.onboardingPrimaryModel);
+    }
+    if (patch.onboardingRemoteError !== undefined) {
+      setOnboardingRemoteError(patch.onboardingRemoteError);
+    }
+    if (patch.onboardingRemoteConnecting !== undefined) {
+      setOnboardingRemoteConnecting(patch.onboardingRemoteConnecting);
+    }
+  }, [
+    setOnboardingApiKey,
+    setOnboardingCloudProvider,
+    setOnboardingPrimaryModel,
+    setOnboardingProvider,
+    setOnboardingRemoteConnecting,
+    setOnboardingRemoteError,
+    setOnboardingRunMode,
+  ]);
+
   const advanceOnboarding = useCallback(
     async (options?: OnboardingNextOptions) => {
       if (
@@ -5646,8 +5698,21 @@ function AppProviderInner({
         }
       }
 
-      const nextStep = resolveOnboardingNextStep(onboardingStep);
+      let nextStep = resolveOnboardingNextStep(onboardingStep);
+
+      // Skip voice provider selection if they set up Eliza Cloud
+      if (
+        nextStep === "voice" &&
+        onboardingRunMode === "cloud" &&
+        onboardingCloudProvider === "elizacloud"
+      ) {
+        nextStep = resolveOnboardingNextStep(nextStep);
+      }
+
       if (nextStep) {
+        if (nextStep === "hosting") {
+          applyResetConnectionWizardToHostingStep();
+        }
         setOnboardingStep(nextStep);
         setOnboardingActiveGuide(
           onboardingMode === "advanced"
@@ -5658,6 +5723,7 @@ function AppProviderInner({
     },
     [
       addDeferredOnboardingTask,
+      applyResetConnectionWizardToHostingStep,
       handleOnboardingFinish,
       onboardingDetectedProviders,
       onboardingMode,
@@ -5669,6 +5735,7 @@ function AppProviderInner({
       setOnboardingActiveGuide,
       setOnboardingApiKey,
       setOnboardingProvider,
+      onboardingCloudProvider,
     ],
   );
 
@@ -5678,8 +5745,21 @@ function AppProviderInner({
   );
 
   const revertOnboarding = useCallback(() => {
-    const previousStep = resolveOnboardingPreviousStep(onboardingStep);
+    let previousStep = resolveOnboardingPreviousStep(onboardingStep);
+
+    // Skip voice provider selection if they set up Eliza Cloud
+    if (
+      previousStep === "voice" &&
+      onboardingRunMode === "cloud" &&
+      onboardingCloudProvider === "elizacloud"
+    ) {
+      previousStep = resolveOnboardingPreviousStep(previousStep);
+    }
+
     if (!previousStep) return;
+    if (previousStep === "hosting") {
+      applyResetConnectionWizardToHostingStep();
+    }
     setOnboardingStep(previousStep);
     setOnboardingActiveGuide(
       onboardingMode === "advanced"
@@ -5687,10 +5767,12 @@ function AppProviderInner({
         : null,
     );
   }, [
+    applyResetConnectionWizardToHostingStep,
     onboardingMode,
     onboardingStep,
-    setOnboardingStep,
     setOnboardingActiveGuide,
+    onboardingRunMode,
+    onboardingCloudProvider,
   ]);
 
   const handleOnboardingBack = revertOnboarding;
@@ -5698,6 +5780,9 @@ function AppProviderInner({
   const handleOnboardingJumpToStep = useCallback(
     (target: OnboardingStep) => {
       if (!canRevertOnboardingTo({ current: onboardingStep, target })) return;
+      if (target === "hosting") {
+        applyResetConnectionWizardToHostingStep();
+      }
       setOnboardingStep(target);
       setOnboardingActiveGuide(
         onboardingMode === "advanced"
@@ -5706,6 +5791,7 @@ function AppProviderInner({
       );
     },
     [
+      applyResetConnectionWizardToHostingStep,
       onboardingMode,
       onboardingStep,
       setOnboardingStep,
@@ -6332,6 +6418,8 @@ function AppProviderInner({
         onboardingLargeModel: setOnboardingLargeModel,
         onboardingProvider: setOnboardingProvider,
         onboardingApiKey: setOnboardingApiKey,
+        onboardingVoiceProvider: setOnboardingVoiceProvider,
+        onboardingVoiceApiKey: setOnboardingVoiceApiKey,
         onboardingExistingInstallDetected: setOnboardingExistingInstallDetected,
         onboardingDetectedProviders: setOnboardingDetectedProviders,
         onboardingRemoteApiBase: setOnboardingRemoteApiBase,
@@ -6467,6 +6555,11 @@ function AppProviderInner({
       setTabRaw,
     ],
   );
+
+  const requestGreetingWhenRunningRef = useRef(requestGreetingWhenRunning);
+  useEffect(() => {
+    requestGreetingWhenRunningRef.current = requestGreetingWhenRunning;
+  }, [requestGreetingWhenRunning]);
 
   // ── Initialization ─────────────────────────────────────────────────
 
@@ -6812,6 +6905,9 @@ function AppProviderInner({
             if (resumeFields.onboardingProvider !== undefined) {
               setOnboardingProvider(resumeFields.onboardingProvider);
             }
+            if (resumeFields.onboardingVoiceProvider !== undefined) {
+              setOnboardingVoiceProvider(resumeFields.onboardingVoiceProvider);
+            }
             if (resumeFields.onboardingApiKey !== undefined) {
               setOnboardingApiKey(resumeFields.onboardingApiKey);
             }
@@ -6958,7 +7054,9 @@ function AppProviderInner({
       setStartupPhase("ready");
       setOnboardingLoading(false);
       if (greetConvId) {
-        void requestGreetingWhenRunning(greetConvId, { showOverlay: true });
+        void requestGreetingWhenRunningRef.current(greetConvId, {
+          showOverlay: true,
+        });
       }
 
       void loadWorkbench();
@@ -7499,11 +7597,15 @@ function AppProviderInner({
     loadWalletConfig,
     loadWorkbench, // Cloud polling
     pollCloudCredits,
-    requestGreetingWhenRunning,
     setSelectedVrmIndex,
     startupRetryNonce,
     uiLanguage,
   ]);
+
+  const requestGreetingWhenRunningRef2 = useRef(requestGreetingWhenRunning);
+  useEffect(() => {
+    requestGreetingWhenRunningRef2.current = requestGreetingWhenRunning;
+  }, [requestGreetingWhenRunning]);
 
   // When agent transitions to "running", send a greeting if conversation is empty
   useEffect(() => {
@@ -7804,6 +7906,8 @@ function AppProviderInner({
     onboardingLargeModel,
     onboardingProvider,
     onboardingApiKey,
+    onboardingVoiceProvider,
+    onboardingVoiceApiKey,
     onboardingExistingInstallDetected,
     onboardingDetectedProviders,
     onboardingRemoteApiBase,

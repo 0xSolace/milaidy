@@ -33,7 +33,7 @@ export function ConnectionHostingScreen({
           appNameInterpolationVars(branding),
         )}
       />
-      <div className="mb-4 flex flex-col gap-1.5">
+      <div className="flex flex-col gap-2">
         {showHostingLocalCard ? (
           <Button
             type="button"

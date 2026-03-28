@@ -56,7 +56,6 @@ import {
   APP_SIDEBAR_CARD_ACTIVE_CLASSNAME,
   APP_SIDEBAR_CARD_BASE_CLASSNAME,
   APP_SIDEBAR_CARD_INACTIVE_CLASSNAME,
-  APP_SIDEBAR_HEADER_CLASSNAME,
   APP_SIDEBAR_INNER_CLASSNAME,
   APP_SIDEBAR_KICKER_CLASSNAME,
   APP_SIDEBAR_META_CLASSNAME,
@@ -208,8 +207,6 @@ function InstallModal({
             Add skills from the marketplace or a GitHub repository.
           </DialogDescription>
         </DialogHeader>
-
-        {/* Tabs */}
         <div
           className={ADMIN_SEGMENTED_TABLIST_CLASSNAME}
           role="tablist"
@@ -225,19 +222,16 @@ function InstallModal({
               id={`skills-install-tab-${t.id}`}
               aria-selected={tab === t.id}
               aria-controls={`skills-install-panel-${t.id}`}
-              className={`${ADMIN_SEGMENTED_TAB_CLASSNAME} ${
-                tab === t.id
+              className={`${ADMIN_SEGMENTED_TAB_CLASSNAME} ${tab === t.id
                   ? ADMIN_SEGMENTED_TAB_ACTIVE_CLASSNAME
                   : ADMIN_SEGMENTED_TAB_INACTIVE_CLASSNAME
-              }`}
+                }`}
               onClick={() => setTab(t.id)}
             >
               {t.label}
             </Button>
           ))}
         </div>
-
-        {/* Body */}
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {tab === "search" && (
             <div
@@ -548,8 +542,6 @@ function EditSkillModal({
             </span>
           </div>
         </DialogHeader>
-
-        {/* Editor body */}
         <div className="flex-1 overflow-hidden">
           {loading ? (
             <div className="flex h-full items-center justify-center text-sm text-muted">
@@ -577,8 +569,6 @@ function EditSkillModal({
             />
           )}
         </div>
-
-        {/* Footer */}
         <div className="flex shrink-0 items-center justify-between border-t border-border px-5 py-3">
           <div className="text-[11px] text-muted">
             {content ? `${content.split("\n").length} lines` : ""}
@@ -598,11 +588,10 @@ function EditSkillModal({
             <Button
               variant="default"
               size="sm"
-              className={`text-xs font-medium ${
-                saveSuccess
+              className={`text-xs font-medium ${saveSuccess
                   ? "border-ok/40 bg-ok text-white hover:bg-ok/90"
                   : ""
-              }`}
+                }`}
               onClick={() => handleSave()}
               disabled={saving || !hasChanges}
             >
@@ -648,7 +637,9 @@ function SkillsModalView() {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filterText, setFilterText] = useState("");
-  const [filterTab, setFilterTab] = useState<"all" | "on" | "off" | "binance">("all");
+  const [filterTab, setFilterTab] = useState<"all" | "on" | "off" | "binance">(
+    "all",
+  );
   const [editingSkill, setEditingSkill] = useState<SkillInfo | null>(null);
   const [installModalOpen, setInstallModalOpen] = useState(false);
 
@@ -690,7 +681,6 @@ function SkillsModalView() {
 
   return (
     <div className="plugins-game-modal">
-      {/* ── Left sidebar ── */}
       <div className="plugins-game-list-panel">
         <div className="plugins-game-list-head">
           <div className="plugins-game-section-title">
@@ -701,8 +691,6 @@ function SkillsModalView() {
             {t("skillsview.installed", { defaultValue: "installed" })}
           </div>
         </div>
-
-        {/* Search + Install */}
         <div className="plugins-game-list-search">
           <div className="plugins-game-list-search-row">
             <Input
@@ -729,8 +717,6 @@ function SkillsModalView() {
             </Button>
           </div>
         </div>
-
-        {/* Filter tabs */}
         <div className="plugins-game-chip-row">
           {tabs.map((tab) => (
             <Button
@@ -745,8 +731,6 @@ function SkillsModalView() {
             </Button>
           ))}
         </div>
-
-        {/* Skill list */}
         <div
           className="plugins-game-list-scroll"
           role="listbox"
@@ -791,8 +775,6 @@ function SkillsModalView() {
           )}
         </div>
       </div>
-
-      {/* ── Right detail panel ── */}
       <div className="plugins-game-detail-panel">
         {selected ? (
           <>
@@ -928,7 +910,9 @@ function SkillsFullView() {
 
   const [installModalOpen, setInstallModalOpen] = useState(false);
   const [filterText, setFilterText] = useState("");
-  const [filterTab, setFilterTab] = useState<"all" | "on" | "off" | "binance">("all");
+  const [filterTab, setFilterTab] = useState<"all" | "on" | "off" | "binance">(
+    "all",
+  );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingSkill, setEditingSkill] = useState<SkillInfo | null>(null);
 
@@ -942,7 +926,8 @@ function SkillsFullView() {
     return skills.filter((skill) => {
       if (filterTab === "on" && !skill.enabled) return false;
       if (filterTab === "off" && skill.enabled) return false;
-      if (filterTab === "binance" && !BINANCE_SKILL_IDS.has(skill.id)) return false;
+      if (filterTab === "binance" && !BINANCE_SKILL_IDS.has(skill.id))
+        return false;
       if (
         query &&
         !skill.name.toLowerCase().includes(query) &&
@@ -962,7 +947,9 @@ function SkillsFullView() {
     ? (skills.find((skill) => skill.id === selectedSkillId) ?? null)
     : null;
 
-  const binanceSkillCount = skills.filter((skill) => BINANCE_SKILL_IDS.has(skill.id)).length;
+  const binanceSkillCount = skills.filter((skill) =>
+    BINANCE_SKILL_IDS.has(skill.id),
+  ).length;
   const filterTabs: { key: typeof filterTab; label: string }[] = [
     { key: "all", label: `ALL (${skills.length})` },
     {
@@ -1001,26 +988,15 @@ function SkillsFullView() {
           className={APP_DESKTOP_SIDEBAR_RAIL_STANDARD_CLASSNAME}
         >
           <div className={APP_SIDEBAR_INNER_CLASSNAME}>
-            <div className={APP_SIDEBAR_HEADER_CLASSNAME}>
-              <div className={APP_SIDEBAR_KICKER_CLASSNAME}>
-                {t("nav.skills", { defaultValue: "Skills" })}
-              </div>
-              <div className={APP_SIDEBAR_META_CLASSNAME}>
-                {skills.length}{" "}
-                {t("skillsview.installed", { defaultValue: "installed" })}
-              </div>
-            </div>
-
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <Button
                 variant={skillCreateFormOpen ? "outline" : "default"}
                 size="sm"
                 type="button"
-                className={`h-9 flex-1 rounded-full px-4 text-[11px] font-bold tracking-[0.12em] ${
-                  skillCreateFormOpen
+                className={`h-9 flex-1 rounded-full px-4 text-[11px] font-bold tracking-[0.12em] ${skillCreateFormOpen
                     ? "border-border/50 bg-bg/25 text-txt"
                     : "text-txt-strong"
-                }`}
+                  }`}
                 onClick={() => {
                   setState("skillCreateFormOpen", !skillCreateFormOpen);
                   if (skillCreateFormOpen) {
@@ -1073,11 +1049,10 @@ function SkillsFullView() {
                   size="sm"
                   key={tab.key}
                   type="button"
-                  className={`h-8 rounded-full border px-3 text-[10px] font-bold tracking-[0.14em] ${
-                    filterTab === tab.key
+                  className={`h-8 rounded-full border px-3 text-[10px] font-bold tracking-[0.14em] ${filterTab === tab.key
                       ? "border-accent/30 bg-accent/10 text-txt"
                       : "border-border/45 text-muted hover:border-border/70 hover:bg-bg/35 hover:text-txt"
-                  }`}
+                    }`}
                   onClick={() => setFilterTab(tab.key)}
                 >
                   {tab.label}
@@ -1108,11 +1083,10 @@ function SkillsFullView() {
                     <div
                       key={skill.id}
                       data-testid={`skill-row-${skill.id}`}
-                      className={`${APP_SIDEBAR_CARD_BASE_CLASSNAME} items-start gap-2 ${
-                        selectedSkillId === skill.id
+                      className={`${APP_SIDEBAR_CARD_BASE_CLASSNAME} items-start gap-2 ${selectedSkillId === skill.id
                           ? APP_SIDEBAR_CARD_ACTIVE_CLASSNAME
                           : APP_SIDEBAR_CARD_INACTIVE_CLASSNAME
-                      }`}
+                        }`}
                     >
                       <Button
                         variant="ghost"
@@ -1128,11 +1102,10 @@ function SkillsFullView() {
                         }
                       >
                         <span
-                          className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border p-2 text-sm font-bold ${
-                            selectedSkillId === skill.id
+                          className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border p-2 text-sm font-bold ${selectedSkillId === skill.id
                               ? "border-accent/30 bg-accent/18 text-txt-strong"
                               : "border-border/50 bg-bg-accent/80 text-muted"
-                          }`}
+                            }`}
                         >
                           {skill.name.charAt(0).toUpperCase()}
                         </span>
@@ -1147,11 +1120,10 @@ function SkillsFullView() {
                       </Button>
                       <div className="flex shrink-0 flex-col items-end gap-2">
                         <span
-                          className={`rounded-full border px-2.5 py-1 text-[10px] font-bold tracking-[0.16em] ${
-                            skill.enabled
+                          className={`rounded-full border px-2.5 py-1 text-[10px] font-bold tracking-[0.16em] ${skill.enabled
                               ? "border-accent bg-accent text-accent-fg"
                               : "border-border bg-transparent text-muted"
-                          }`}
+                            }`}
                         >
                           {skill.enabled ? "ON" : "OFF"}
                         </span>
@@ -1256,7 +1228,7 @@ function SkillsFullView() {
                       <StatusBadge
                         label={
                           selectedSkill.scanStatus === "blocked" ||
-                          selectedSkill.scanStatus === "critical"
+                            selectedSkill.scanStatus === "critical"
                             ? t("skillsview.statusBlocked")
                             : selectedSkill.scanStatus === "warning"
                               ? t("skillsview.statusWarning")
@@ -1268,7 +1240,7 @@ function SkillsFullView() {
                           selectedSkill.scanStatus === "warning"
                             ? "warning"
                             : selectedSkill.scanStatus === "blocked" ||
-                                selectedSkill.scanStatus === "critical"
+                              selectedSkill.scanStatus === "critical"
                               ? "danger"
                               : selectedSkill.enabled
                                 ? "success"
@@ -1369,16 +1341,14 @@ function SkillsFullView() {
                           {skillReviewReport.findings.map((finding, idx) => (
                             <div
                               key={`${finding.file}:${finding.line}:${finding.message}`}
-                              className={`flex items-start gap-2 px-3 py-2 text-[11px] ${
-                                idx > 0 ? "border-t border-border/30" : ""
-                              }`}
+                              className={`flex items-start gap-2 px-3 py-2 text-[11px] ${idx > 0 ? "border-t border-border/30" : ""
+                                }`}
                             >
                               <span
-                                className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] ${
-                                  finding.severity === "critical"
+                                className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] ${finding.severity === "critical"
                                     ? "bg-danger/12 text-danger"
                                     : "bg-warn/12 text-warn"
-                                }`}
+                                  }`}
                               >
                                 {finding.severity}
                               </span>
@@ -1446,8 +1416,6 @@ function SkillsFullView() {
           </div>
         </div>
       </div>
-
-      {/* Edit modal */}
       {editingSkill && (
         <EditSkillModal
           skillId={editingSkill.id}
@@ -1456,8 +1424,6 @@ function SkillsFullView() {
           onSaved={() => void refreshSkills()}
         />
       )}
-
-      {/* Install modal */}
       {installModalOpen && (
         <InstallModal
           skills={skills}

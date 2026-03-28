@@ -27,11 +27,11 @@ import path from "node:path";
 import process from "node:process";
 import { ethers } from "ethers";
 import * as JSON5Module from "json5";
+import { CAPACITOR_PLUGIN_NAMES } from "../apps/app/scripts/capacitor-plugin-names.mjs";
 import {
   resolveDesktopApiPort,
   resolveDesktopUiPort,
 } from "../packages/shared/src/runtime-env.ts";
-import { CAPACITOR_PLUGIN_NAMES } from "../apps/app/scripts/capacitor-plugin-names.mjs";
 import { getBunVersionAdvisory } from "./lib/bun-version-guard.mjs";
 import { capacitorPluginsBuildNeeded } from "./lib/capacitor-plugin-build-needed.mjs";
 import {

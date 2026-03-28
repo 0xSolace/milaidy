@@ -29,6 +29,31 @@ class FakeElectrobunWebview extends HTMLElement {
   }
 }
 
+/** Simulates a custom webview element where `sandbox` is a read-only getter
+ * (i.e. setAttribute would normally throw or be a no-op on the property).
+ * Used to verify the component handles the setter-missing case gracefully. */
+class GetterOnlySandboxWebview extends HTMLElement {
+  static latest: GetterOnlySandboxWebview | null = null;
+
+  loadURL = vi.fn();
+  goBack = vi.fn();
+  goForward = vi.fn();
+  reload = vi.fn();
+  canGoBack = vi.fn(async () => false);
+  canGoForward = vi.fn(async () => false);
+  on = vi.fn();
+  off = vi.fn();
+
+  get sandbox(): string {
+    return this.getAttribute("sandbox") ?? "";
+  }
+
+  constructor() {
+    super();
+    GetterOnlySandboxWebview.latest = this;
+  }
+}
+
 describe("BrowserSurfaceWindow", () => {
   let host: HTMLDivElement;
   let root: Root;
@@ -40,6 +65,7 @@ describe("BrowserSurfaceWindow", () => {
     root = createRoot(host);
     elementName = `electrobun-webview-test-${Math.random().toString(36).slice(2)}`;
     FakeElectrobunWebview.latest = null;
+    GetterOnlySandboxWebview.latest = null;
   });
 
   afterEach(async () => {
@@ -120,6 +146,45 @@ describe("BrowserSurfaceWindow", () => {
       expect(FakeElectrobunWebview.latest?.getAttribute("sandbox")).toBe(
         "allow-scripts allow-same-origin allow-forms allow-popups",
       );
+    } finally {
+      getSpy.mockRestore();
+      createSpy.mockRestore();
+    }
+  });
+
+  it("does not throw when sandbox is getter-only on the custom element", async () => {
+    customElements.define(elementName, GetterOnlySandboxWebview);
+    const originalGet = window.customElements.get.bind(window.customElements);
+    const getSpy = vi
+      .spyOn(window.customElements, "get")
+      .mockImplementation((name: string) =>
+        name === "electrobun-webview"
+          ? GetterOnlySandboxWebview
+          : originalGet(name),
+      );
+    const originalCreateElement = document.createElement.bind(document);
+    const createSpy = vi
+      .spyOn(document, "createElement")
+      .mockImplementation(((
+        tagName: string,
+        options?: ElementCreationOptions,
+      ) =>
+        originalCreateElement(
+          tagName === "electrobun-webview" ? elementName : tagName,
+          options,
+        )) as typeof document.createElement);
+
+    try {
+      await act(async () => {
+        root.render(React.createElement(BrowserSurfaceWindow));
+      });
+
+      expect(host.textContent).not.toContain(
+        "Browser surface failed to initialize.",
+      );
+      expect(
+        GetterOnlySandboxWebview.latest?.getAttribute("sandbox"),
+      ).toContain("allow-scripts");
     } finally {
       getSpy.mockRestore();
       createSpy.mockRestore();

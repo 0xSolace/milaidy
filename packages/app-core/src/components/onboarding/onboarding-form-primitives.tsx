@@ -1,9 +1,9 @@
 import {
+  cn,
   Field,
   FieldDescription,
   FieldLabel,
   FieldMessage,
-  cn,
 } from "@miladyai/ui";
 import * as React from "react";
 
@@ -21,16 +21,13 @@ export const onboardingReadableTextSubtleClassName =
   "text-[var(--onboarding-text-subtle)] [text-shadow:var(--onboarding-text-shadow-muted)]";
 export const onboardingReadableTextFaintClassName =
   "text-[var(--onboarding-text-faint)] [text-shadow:var(--onboarding-text-shadow-muted)]";
-export const onboardingHelperTextClassName =
-  `text-[12px] leading-relaxed ${onboardingReadableTextMutedClassName}`;
-export const onboardingSubtleTextClassName =
-  `text-[11px] leading-relaxed ${onboardingReadableTextSubtleClassName}`;
-export const onboardingFieldLabelClassName =
-  `text-xs font-semibold uppercase tracking-[0.14em] ${onboardingReadableTextMutedClassName}`;
+export const onboardingHelperTextClassName = `text-[12px] leading-relaxed ${onboardingReadableTextMutedClassName}`;
+export const onboardingSubtleTextClassName = `text-[11px] leading-relaxed ${onboardingReadableTextSubtleClassName}`;
+export const onboardingFieldLabelClassName = `text-xs font-semibold uppercase tracking-[0.14em] ${onboardingReadableTextMutedClassName}`;
 export const onboardingInlineSupportClassName =
   "rounded-md border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.05)] px-1 py-0.5 backdrop-blur-[10px]";
 export const onboardingTextSupportClassName =
-  "rounded-xl bg-[var(--onboarding-text-support-bg)] px-3 py-2 shadow-[var(--onboarding-text-support-shadow)] backdrop-blur-[14px]";
+  "rounded-xl bg-[var(--onboarding-text-support-bg)] px-3 py-2 my-2 shadow-[var(--onboarding-text-support-shadow)] backdrop-blur-[14px]";
 export const onboardingCardSurfaceClassName =
   "border border-[var(--onboarding-card-border)] bg-[var(--onboarding-card-bg)] shadow-[var(--onboarding-card-shadow)]";
 export const onboardingCardSurfaceHoverClassName =
@@ -41,14 +38,10 @@ export const onboardingRecommendedSurfaceHoverClassName =
   "hover:border-[var(--onboarding-recommended-border-strong)] hover:bg-[var(--onboarding-recommended-bg-hover)]";
 export const onboardingInputSurfaceClassName =
   "border border-[var(--onboarding-input-border)] bg-[var(--onboarding-input-bg)] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]";
-export const onboardingInfoPanelClassName =
-  `rounded-2xl px-4 py-4 backdrop-blur-[18px] backdrop-saturate-[1.15] ${onboardingCardSurfaceClassName}`;
-export const onboardingInputClassName =
-  `h-12 w-full rounded-xl px-4 text-left ${onboardingReadableTextPrimaryClassName} transition-[border-color,box-shadow,background-color] duration-200 placeholder:text-[var(--onboarding-text-subtle)] focus-visible:border-[var(--onboarding-field-focus-border)] focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:shadow-[var(--onboarding-field-focus-shadow)] ${onboardingInputSurfaceClassName}`;
-export const onboardingChoiceCardTitleClassName =
-  `text-[12px] font-medium leading-[1.3] ${onboardingReadableTextPrimaryClassName}`;
-export const onboardingChoiceCardDescriptionClassName =
-  `mt-1 text-[11px] leading-[1.35] ${onboardingReadableTextMutedClassName}`;
+export const onboardingInfoPanelClassName = `rounded-2xl px-4 py-4 backdrop-blur-[18px] backdrop-saturate-[1.15] ${onboardingCardSurfaceClassName}`;
+export const onboardingInputClassName = `h-12 w-full rounded-xl px-4 text-left ${onboardingReadableTextPrimaryClassName} transition-[border-color,box-shadow,background-color] duration-200 placeholder:text-[var(--onboarding-text-subtle)] focus-visible:border-[var(--onboarding-field-focus-border)] focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:shadow-[var(--onboarding-field-focus-shadow)] ${onboardingInputSurfaceClassName}`;
+export const onboardingChoiceCardTitleClassName = `text-[12px] font-medium leading-[1.3] ${onboardingReadableTextPrimaryClassName}`;
+export const onboardingChoiceCardDescriptionClassName = `mt-1 text-[11px] leading-[1.35] ${onboardingReadableTextMutedClassName}`;
 export const onboardingChoiceCardBadgeClassName =
   "ml-auto shrink-0 whitespace-nowrap rounded-full bg-[var(--onboarding-accent-bg)] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-[var(--onboarding-accent-foreground)] [text-shadow:0_1px_6px_rgba(3,5,10,0.45)]";
 export const onboardingChoiceCardDetectedBadgeClassName =

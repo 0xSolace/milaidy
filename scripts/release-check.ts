@@ -144,6 +144,25 @@ const requiredWorkflowSnippets = [
   "if ($null -eq $resolvedRceditPackageJson)",
   '$resolvedRceditPackageJson = "$resolvedRceditPackageJson".Trim()',
 ];
+const _requiredPatchedElectrobunCliSnippets = [
+  "https://github.com/blackboardsh/electrobun.git",
+  '"sparse-checkout", "set", "package"',
+  'writeGitHubEnv("ELECTROBUN_RCEDIT_PACKAGE_JSON", resolvedRceditPackageJson);',
+  'const overridePackageJson = process.env["ELECTROBUN_RCEDIT_PACKAGE_JSON"];',
+  'const overrideEntry = overrideRequire.resolve("rcedit");',
+  "--target=bun-windows-x64-baseline",
+  "const installedBinPath = path.join(",
+  "const installedCachePath = path.join(",
+];
+
+export function findMissingPatchedElectrobunCliSnippets(
+  source: string,
+): string[] {
+  return _requiredPatchedElectrobunCliSnippets.filter(
+    (snippet) => !source.includes(snippet),
+  );
+}
+
 const forbiddenWorkflowSnippets = [
   ' -name "*.exe" -o \\',
   'bun install -g "rcedit@4.0.1"',
@@ -159,6 +178,11 @@ const forbiddenWorkflowSnippets = [
     "-$" +
     "{{ hashFiles('bun.lock') }}",
   `TAG="v$(node -p "require('./package.json').version")"`,
+  "name: Ensure Windows rcedit binary is available for Electrobun",
+  "name: Pre-extract electrobun native CLI on Windows",
+  "https://api.github.com/repos/blackboardsh/electrobun/releases/tags/v$version",
+  "electrobun CLI checksum mismatch",
+  '$extractionBases = @("D:\\a\\electrobun\\electrobun\\package")',
 ];
 const requiredElectrobunPrWorkflowSnippets = [
   "name: Validate Electrobun Release Workflow",
@@ -701,10 +725,10 @@ function assertWindowsSmokeScriptHasLeadingParamBlock() {
     "Find-Launcher $selfExtractionRoot",
     "Started extracted launcher:",
     '$startupSessionId = "milady-windows-smoke-"',
-    '$startupStateFile = Join-Path $env:RUNNER_TEMP',
+    "$startupStateFile = Join-Path $env:RUNNER_TEMP",
     '$startupBootstrapFile = Join-Path $startupBundleRoot "startup-session.json"',
     "Write-StartupBootstrap",
-    'if ($state.session_id -ne $startupSessionId)',
+    "if ($state.session_id -ne $startupSessionId)",
     "$handler.UseProxy = $false",
     '--noproxy "127.0.0.1"',
     "function Test-BackendProbeStatus",
@@ -844,7 +868,7 @@ function assertMacSmokeScriptLaunchesPackagedLauncherDirectly() {
     "launch_packaged_app_with_open()",
     'OPEN_LAUNCH_ATTEMPTED="1"',
     'STARTUP_BOOTSTRAP_FILE="$LAUNCH_APP_BUNDLE/Contents/Resources/startup-session.json"',
-    'const [filePath, expectedSession] = process.argv.slice(1);',
+    "const [filePath, expectedSession] = process.argv.slice(1);",
     'TERM="$' + "{TERM:-dumb}" + '"',
     "attach_dmg_with_retry()",
     'MOUNT_POINT="$(attach_dmg_with_retry "$DMG_PATH")"',

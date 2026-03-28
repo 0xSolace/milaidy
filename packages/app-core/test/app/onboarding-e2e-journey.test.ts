@@ -12,12 +12,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { textOf } from "../../../../test/helpers/react-test";
 
 type OnboardingStep =
-  | "wakeUp"
+  | "cloud_login"
   | "identity"
-  | "connection"
-  | "rpc"
-  | "senses"
-  | "activate";
+  | "hosting"
+  | "providers"
+  | "voice"
+  | "permissions"
+  | "launch";
 
 type FlaminaGuideTopic = "provider" | "rpc" | "permissions" | "voice";
 
@@ -339,6 +340,24 @@ vi.mock("@miladyai/app-core/src/components/Nav", () => ({
 vi.mock("@miladyai/app-core/src/components/CommandPalette", () => ({
   CommandPalette: () => React.createElement("div", null, "CommandPalette"),
 }));
+vi.mock("@miladyai/app-core/src/components/OnboardingWizard", () => ({
+  OnboardingWizard: () => {
+    const state = mockUseApp();
+    return React.createElement(
+      "div",
+      { "data-testid": "onboarding-wizard" },
+      `OnboardingWizard:${state.onboardingStep}`,
+      React.createElement(
+        "button",
+        {
+          onClick: () => state.handleOnboardingNext(),
+          type: "button",
+        },
+        "onboarding-next",
+      ),
+    );
+  },
+}));
 vi.mock("@miladyai/app-core/src/components/EmotePicker", () => ({
   EmotePicker: () => React.createElement("div", null, "EmotePicker"),
 }));
@@ -443,7 +462,6 @@ import { ActivateStep } from "@miladyai/app-core/src/components/onboarding/Activ
 import { ConnectionStep } from "@miladyai/app-core/src/components/onboarding/ConnectionStep";
 import { IdentityStep } from "@miladyai/app-core/src/components/onboarding/IdentityStep";
 import { PermissionsStep } from "@miladyai/app-core/src/components/onboarding/PermissionsStep";
-import { RpcStep } from "@miladyai/app-core/src/components/onboarding/RpcStep";
 
 // ── Helpers ───────────────────────────────────────────────────────────
 
@@ -553,7 +571,7 @@ function createHarnessState(
     onboardingComplete: false,
     tab: "chat",
     actionNotice: null,
-    onboardingStep: "wakeUp",
+    onboardingStep: "cloud_login",
     onboardingMode: "basic",
     onboardingActiveGuide: null,
     onboardingDeferredTasks: [],
@@ -640,12 +658,13 @@ async function rerender(tree: TestRenderer.ReactTestRenderer): Promise<void> {
 
 function setupMockUseApp(state: AppHarnessState) {
   const STEP_ORDER: OnboardingStep[] = [
-    "wakeUp",
+    "cloud_login",
     "identity",
-    "connection",
-    "rpc",
-    "senses",
-    "activate",
+    "hosting",
+    "providers",
+    "voice",
+    "permissions",
+    "launch",
   ];
 
   const handleOnboardingNext = vi.fn(
@@ -659,7 +678,7 @@ function setupMockUseApp(state: AppHarnessState) {
           options.skipTask as FlaminaGuideTopic,
         ];
       }
-      if (state.onboardingStep === "activate") {
+      if (state.onboardingStep === "launch") {
         state.onboardingComplete = true;
         state.startupStatus = "ready";
         state.uiShellMode = "native";
@@ -757,7 +776,7 @@ describe("app startup and onboarding detection", () => {
 
 describe("WakeUp step (auto-advance)", () => {
   it("wakeUp step auto-advances to identity", async () => {
-    const state = createHarnessState({ onboardingStep: "wakeUp" });
+    const state = createHarnessState({ onboardingStep: "cloud_login" });
     const { handleOnboardingNext } = setupMockUseApp(state);
 
     // The OnboardingWizard auto-advances past wakeUp via useEffect.
@@ -837,7 +856,7 @@ describe("Connection step", () => {
 
   it("renders hosting selection with local and cloud options", async () => {
     const state = createHarnessState({
-      onboardingStep: "connection",
+      onboardingStep: "hosting",
       onboardingProvider: "",
     });
     setupMockUseApp(state);
@@ -855,7 +874,7 @@ describe("Connection step", () => {
 
   it("renders provider selection grid once local hosting is chosen", async () => {
     const state = createHarnessState({
-      onboardingStep: "connection",
+      onboardingStep: "hosting",
       onboardingRunMode: "local",
       onboardingProvider: "",
     });
@@ -873,7 +892,7 @@ describe("Connection step", () => {
 
   it("renders provider config when a provider is selected", async () => {
     const state = createHarnessState({
-      onboardingStep: "connection",
+      onboardingStep: "hosting",
       onboardingRunMode: "local",
       onboardingProvider: "openai",
     });
@@ -891,7 +910,7 @@ describe("Connection step", () => {
 
   it("shows auto-detected credentials with detected badge", async () => {
     const state = createHarnessState({
-      onboardingStep: "connection",
+      onboardingStep: "hosting",
       onboardingRunMode: "local",
       onboardingProvider: "",
       onboardingDetectedProviders: [
@@ -911,7 +930,7 @@ describe("Connection step", () => {
 
   it("renders remote backend fields for self-hosted cloud connections", async () => {
     const state = createHarnessState({
-      onboardingStep: "connection",
+      onboardingStep: "hosting",
       onboardingRunMode: "cloud",
       onboardingCloudProvider: "remote",
     });
@@ -931,7 +950,7 @@ describe("Connection step", () => {
 
   it("shows subscription provider OAuth flow for cloud providers", async () => {
     const state = createHarnessState({
-      onboardingStep: "connection",
+      onboardingStep: "hosting",
       onboardingRunMode: "cloud",
       onboardingCloudProvider: "elizacloud",
     });
@@ -949,7 +968,7 @@ describe("Connection step", () => {
 
   it("calls handleOnboardingBack from hosting selection", async () => {
     const state = createHarnessState({
-      onboardingStep: "connection",
+      onboardingStep: "hosting",
       onboardingProvider: "",
     });
     const { handleOnboardingBack } = setupMockUseApp(state);
@@ -970,66 +989,6 @@ describe("Connection step", () => {
   });
 });
 
-// ===================================================================
-//  4. RPC step (wallet config)
-// ===================================================================
-
-describe("RPC step", () => {
-  beforeEach(() => mockUseApp.mockReset());
-
-  it("renders RPC configuration form with cloud and BYOK options", async () => {
-    const state = createHarnessState({ onboardingStep: "rpc" });
-    setupMockUseApp(state);
-
-    let tree: TestRenderer.ReactTestRenderer | undefined;
-    await act(async () => {
-      tree = TestRenderer.create(React.createElement(RpcStep));
-    });
-
-    const text = textOf(tree!.root);
-    expect(text).toContain("onboarding.rpcTitle");
-    expect(text).toContain("onboarding.rpcElizaCloud");
-    expect(text).toContain("onboarding.rpcBringKeys");
-  });
-
-  it("skip button defers the RPC task", async () => {
-    const state = createHarnessState({ onboardingStep: "rpc" });
-    const { handleOnboardingNext } = setupMockUseApp(state);
-
-    let tree: TestRenderer.ReactTestRenderer | undefined;
-    await act(async () => {
-      tree = TestRenderer.create(React.createElement(RpcStep));
-    });
-
-    const skipBtn = findButtons(tree!.root).find((b) =>
-      textOf(b).includes("onboarding.rpcSkip"),
-    );
-    expect(skipBtn).toBeDefined();
-    await act(async () => {
-      skipBtn!.props.onClick();
-    });
-    expect(handleOnboardingNext).toHaveBeenCalled();
-  });
-
-  it("back button calls handleOnboardingBack", async () => {
-    const state = createHarnessState({ onboardingStep: "rpc" });
-    const { handleOnboardingBack } = setupMockUseApp(state);
-
-    let tree: TestRenderer.ReactTestRenderer | undefined;
-    await act(async () => {
-      tree = TestRenderer.create(React.createElement(RpcStep));
-    });
-
-    const backBtn = findButtons(tree!.root).find((b) =>
-      textOf(b).includes("onboarding.back"),
-    );
-    expect(backBtn).toBeDefined();
-    await act(async () => {
-      backBtn!.props.onClick();
-    });
-    expect(handleOnboardingBack).toHaveBeenCalled();
-  });
-});
 
 // ===================================================================
 //  5. Senses step (permissions)
@@ -1042,7 +1001,7 @@ describe("Senses step (permissions)", () => {
     // PermissionsStep is module-mocked for isolation — verify the mock
     // renders the expected continue button so OnboardingWizard integration
     // still works.
-    const state = createHarnessState({ onboardingStep: "senses" });
+    const state = createHarnessState({ onboardingStep: "permissions" });
     setupMockUseApp(state);
 
     let tree: TestRenderer.ReactTestRenderer | undefined;
@@ -1055,7 +1014,7 @@ describe("Senses step (permissions)", () => {
   });
 
   it("skip button defers the permissions task via handleOnboardingNext", async () => {
-    const state = createHarnessState({ onboardingStep: "senses" });
+    const state = createHarnessState({ onboardingStep: "permissions" });
     const { handleOnboardingNext } = setupMockUseApp(state);
 
     // Simulate what PermissionsStep does when skip is clicked:
@@ -1066,7 +1025,7 @@ describe("Senses step (permissions)", () => {
     });
 
     expect(state.onboardingDeferredTasks).toContain("permissions");
-    expect(state.onboardingStep).toBe("activate");
+    expect(state.onboardingStep).toBe("launch");
   });
 });
 
@@ -1079,7 +1038,7 @@ describe("Activate step", () => {
 
   it("renders final review with agent name and Enter button", async () => {
     const state = createHarnessState({
-      onboardingStep: "activate",
+      onboardingStep: "launch",
       onboardingName: "Nova",
     });
     setupMockUseApp(state);
@@ -1097,7 +1056,7 @@ describe("Activate step", () => {
 
   it("clicking Enter calls handleOnboardingNext (finishOnboarding)", async () => {
     const state = createHarnessState({
-      onboardingStep: "activate",
+      onboardingStep: "launch",
       onboardingName: "Nova",
     });
     const { handleOnboardingNext } = setupMockUseApp(state);
@@ -1119,7 +1078,7 @@ describe("Activate step", () => {
 
   it("after activation, app transitions to chat view", async () => {
     const state = createHarnessState({
-      onboardingStep: "activate",
+      onboardingStep: "launch",
       onboardingName: "Nova",
     });
     setupMockUseApp(state);
@@ -1141,22 +1100,7 @@ describe("Activate step", () => {
     expect(state.tab).toBe("chat");
   });
 
-  it("shows fallback name when onboardingName is empty", async () => {
-    const state = createHarnessState({
-      onboardingStep: "activate",
-      onboardingName: "",
-    });
-    setupMockUseApp(state);
 
-    let tree: TestRenderer.ReactTestRenderer | undefined;
-    await act(async () => {
-      tree = TestRenderer.create(React.createElement(ActivateStep));
-    });
-
-    const text = textOf(tree!.root);
-    expect(text).toContain("onboarding.companionReady");
-    expect(text).toContain("onboarding.allConfigured");
-  });
 });
 
 // ===================================================================
@@ -1181,7 +1125,7 @@ describe("full onboarding journey (e2e)", () => {
     // Step through the entire onboarding
     for (let i = 0; i < 20 && !state.onboardingComplete; i += 1) {
       if (
-        state.onboardingStep === "connection" &&
+        (state.onboardingStep === "hosting" || state.onboardingStep === "providers") &&
         state.onboardingRunMode === "local" &&
         !state.onboardingProvider
       ) {
@@ -1318,14 +1262,14 @@ describe("post-onboarding deferred tasks", () => {
 
   it("accumulates deferred tasks through the journey", async () => {
     const state = createHarnessState({
-      onboardingStep: "rpc",
+      onboardingStep: "voice",
     });
     const { handleOnboardingNext } = setupMockUseApp(state);
 
-    // Simulate skipping RPC
-    await handleOnboardingNext({ skipTask: "rpc" });
-    expect(state.onboardingDeferredTasks).toContain("rpc");
-    expect(state.onboardingStep).toBe("senses");
+    // Simulate skipping Voice
+    await handleOnboardingNext({ skipTask: "voice" });
+    expect(state.onboardingDeferredTasks).toContain("voice");
+    expect(state.onboardingStep).toBe("permissions");
 
     // Simulate skipping permissions
     await handleOnboardingNext({

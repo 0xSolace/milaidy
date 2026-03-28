@@ -36,10 +36,7 @@ import {
 
 import { resolveDesktopRuntimeMode } from "../api-base";
 import { DEFAULT_PORT } from "../constants";
-import {
-  recordStartupPhase,
-  resolveStartupBundlePath,
-} from "../startup-trace";
+import { recordStartupPhase, resolveStartupBundlePath } from "../startup-trace";
 import type { SendToWebview } from "../types.js";
 import { findFirstAvailableLoopbackPort } from "./loopback-port";
 
@@ -477,7 +474,6 @@ function sanitizeBugReportPrefix(prefix: string | undefined): string {
 
   return sanitized || "bug-report";
 }
-
 export function createBugReportBundle(options: {
   reportMarkdown: string;
   reportJson: Record<string, unknown>;
@@ -579,10 +575,7 @@ export function isPackagedDesktopRuntime(
     normalizedExecPath.includes("/self-extraction/") ||
     normalizedExecPath.endsWith("/launcher") ||
     normalizedExecPath.endsWith("/launcher.exe");
-  if (
-    process.env.MILADY_DIST_PATH?.trim() &&
-    !looksLikePackagedExec
-  ) {
+  if (process.env.MILADY_DIST_PATH?.trim() && !looksLikePackagedExec) {
     return false;
   }
   if (!normalizedModuleDir.includes("/src/")) {
@@ -608,13 +601,23 @@ export function resolveBunExecutablePath(opts?: {
   const packagedCandidates = [
     execPath,
     execDir ? joinPortable(execDir, executableName) : "",
-    execDir ? resolveRelativePortable(execDir, `../Resources/app/bun/${executableName}`) : "",
     execDir
-      ? resolveRelativePortable(execDir, `../Resources/app/bun/bin/${executableName}`)
+      ? resolveRelativePortable(
+          execDir,
+          `../Resources/app/bun/${executableName}`,
+        )
+      : "",
+    execDir
+      ? resolveRelativePortable(
+          execDir,
+          `../Resources/app/bun/bin/${executableName}`,
+        )
       : "",
     moduleDir ? joinPortable(moduleDir, executableName) : "",
     moduleDir ? joinPortable(moduleDir, "bin", executableName) : "",
-    moduleDir ? resolveRelativePortable(moduleDir, `../bun/${executableName}`) : "",
+    moduleDir
+      ? resolveRelativePortable(moduleDir, `../bun/${executableName}`)
+      : "",
     moduleDir
       ? resolveRelativePortable(moduleDir, `../bun/bin/${executableName}`)
       : "",
@@ -639,9 +642,10 @@ export function resolveBunExecutablePath(opts?: {
     );
   }
 
-  const candidates = [execPath, execDir ? joinPortable(execDir, executableName) : ""].filter(
-    Boolean,
-  );
+  const _candidates = [
+    execPath,
+    execDir ? joinPortable(execDir, executableName) : "",
+  ].filter(Boolean);
 
   const bunGlobal = Bun as { which?: (binary: string) => string | null };
   const whichCandidate =
@@ -676,7 +680,10 @@ export function resolveMiladyDistPath(opts?: {
   const moduleDir = opts?.moduleDir ?? getDefaultModuleDir();
   const execPath = opts?.execPath ?? process.execPath;
   const packagedRuntime = isPackagedDesktopRuntime(moduleDir, execPath);
-  const fallbackCandidates = getMiladyDistFallbackCandidates(moduleDir, execPath);
+  const fallbackCandidates = getMiladyDistFallbackCandidates(
+    moduleDir,
+    execPath,
+  );
 
   if (packagedRuntime) {
     for (const candidate of fallbackCandidates) {
@@ -1043,6 +1050,11 @@ export class AgentManager {
 
   /** Start the agent runtime as a child process. Idempotent. */
   async start(): Promise<AgentStatus> {
+    recordStartupPhase("agent_start_entered", {
+      pid: process.pid,
+      exec_path: process.execPath,
+      bundle_path: resolveStartupBundlePath(process.execPath),
+    });
     this.setStartupPhase("start_requested");
     recordStartupPhase("agent_start_entered", {
       pid: process.pid,
@@ -1100,6 +1112,10 @@ export class AgentManager {
         startedAt: null,
         error: msg,
       };
+      recordStartupPhase("fatal", {
+        port: null,
+        error: msg,
+      });
       this.setStartupPhase("port_allocation_failed", msg);
       recordStartupPhase("fatal", {
         port: null,
@@ -1155,6 +1171,10 @@ export class AgentManager {
           startedAt: null,
           error: errMsg,
         };
+        recordStartupPhase("fatal", {
+          port: apiPort,
+          error: errMsg,
+        });
         this.setStartupPhase("runtime_entry_missing", errMsg);
         recordStartupPhase("fatal", {
           port: apiPort,
@@ -1337,6 +1357,12 @@ export class AgentManager {
             startedAt: null,
             error: errMsg,
           };
+          recordStartupPhase("fatal", {
+            port: apiPort,
+            child_pid: proc.pid,
+            error: errMsg,
+            exit_code: proc.exitCode,
+          });
           this.setStartupPhase("startup_failed", errMsg);
           recordStartupPhase("fatal", {
             port: apiPort,
@@ -1359,6 +1385,11 @@ export class AgentManager {
           startedAt: null,
           error: errMsg,
         };
+        recordStartupPhase("fatal", {
+          port: apiPort,
+          child_pid: proc.pid,
+          error: errMsg,
+        });
         this.setStartupPhase("startup_failed", errMsg);
         recordStartupPhase("fatal", {
           port: apiPort,
@@ -1376,6 +1407,7 @@ export class AgentManager {
       this.setStartupPhase("fetching_agent_metadata");
       const startedAt = Date.now();
       const startupMs = startedAt - spawnTime;
+
       this.status = {
         state: "running",
         agentName: "Milady",
@@ -1545,28 +1577,6 @@ export class AgentManager {
     }
   }
 
-  private setStartupPhase(phase: string, lastError?: string | null): void {
-    this.startupPhase = phase;
-    this.persistStartupDiagnostics(lastError);
-  }
-
-  private persistStartupDiagnostics(lastError?: string | null): void {
-    writeStartupDiagnosticsSnapshot({
-      state: this.status.state,
-      phase: this.startupPhase,
-      updatedAt: new Date().toISOString(),
-      lastError: lastError ?? this.status.error,
-      agentName: this.status.agentName,
-      port: this.status.port,
-      startedAt: this.status.startedAt,
-      platform: process.platform,
-      arch: process.arch,
-      configDir: resolveConfigDir(),
-      logPath: getDiagnosticLogPath(),
-      statusPath: getStartupStatusPath(),
-    });
-  }
-
   private async refreshAgentMetadata(
     proc: BunSubprocess,
     port: number,
@@ -1595,6 +1605,27 @@ export class AgentManager {
     recordStartupPhase("metadata_ready", {
       port,
       child_pid: proc.pid,
+    });
+  }
+  private setStartupPhase(phase: string, lastError?: string | null): void {
+    this.startupPhase = phase;
+    this.persistStartupDiagnostics(lastError);
+  }
+
+  private persistStartupDiagnostics(lastError?: string | null): void {
+    writeStartupDiagnosticsSnapshot({
+      state: this.status.state,
+      phase: this.startupPhase,
+      updatedAt: new Date().toISOString(),
+      lastError: lastError ?? this.status.error,
+      agentName: this.status.agentName,
+      port: this.status.port,
+      startedAt: this.status.startedAt,
+      platform: process.platform,
+      arch: process.arch,
+      configDir: resolveConfigDir(),
+      logPath: getDiagnosticLogPath(),
+      statusPath: getStartupStatusPath(),
     });
   }
 

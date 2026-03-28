@@ -26,9 +26,7 @@ describe("OnboardingStatusBanner", () => {
     expect(content).toBeTruthy();
     expect(content?.className).toContain("inline-flex");
     expect(content?.className).not.toContain("flex-1");
-    expect(
-      banner.querySelector("[data-onboarding-status-action]"),
-    ).toBeNull();
+    expect(banner.querySelector("[data-onboarding-status-action]")).toBeNull();
   });
 
   it("keeps action-bearing neutral banners in the split layout", () => {

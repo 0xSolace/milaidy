@@ -40,12 +40,10 @@ import {
   APP_SIDEBAR_CARD_ACTIVE_CLASSNAME,
   APP_SIDEBAR_CARD_BASE_CLASSNAME,
   APP_SIDEBAR_CARD_INACTIVE_CLASSNAME,
-  APP_SIDEBAR_HEADER_CLASSNAME,
   APP_SIDEBAR_INNER_CLASSNAME,
   APP_SIDEBAR_KICKER_CLASSNAME,
-  APP_SIDEBAR_META_CLASSNAME,
   APP_SIDEBAR_SCROLL_REGION_CLASSNAME,
-  APP_SIDEBAR_SEARCH_INPUT_CLASSNAME,
+  APP_SIDEBAR_SEARCH_INPUT_CLASSNAME
 } from "./sidebar-shell-styles";
 
 interface SettingsSectionDef {
@@ -268,15 +266,6 @@ function SettingsSidebar({
       data-testid="settings-sidebar"
     >
       <div className={APP_SIDEBAR_INNER_CLASSNAME}>
-        <div className={APP_SIDEBAR_HEADER_CLASSNAME}>
-          <div className={APP_SIDEBAR_KICKER_CLASSNAME}>
-            {t("nav.settings")}
-          </div>
-          <div className={APP_SIDEBAR_META_CLASSNAME}>
-            {sections.length}{" "}
-            {t("settingsview.Sections", { defaultValue: "sections" })}
-          </div>
-        </div>
 
         <div className="mt-4">
           <Input
@@ -303,11 +292,10 @@ function SettingsSidebar({
                 type="button"
                 onClick={() => onSectionChange(section.id)}
                 aria-current={isActive ? "page" : undefined}
-                className={`${APP_SIDEBAR_CARD_BASE_CLASSNAME} ${
-                  isActive
-                    ? APP_SIDEBAR_CARD_ACTIVE_CLASSNAME
-                    : APP_SIDEBAR_CARD_INACTIVE_CLASSNAME
-                }`}
+                className={`${APP_SIDEBAR_CARD_BASE_CLASSNAME} ${isActive
+                  ? APP_SIDEBAR_CARD_ACTIVE_CLASSNAME
+                  : APP_SIDEBAR_CARD_INACTIVE_CLASSNAME
+                  }`}
               >
                 <div className="min-w-0 flex-1 text-left">
                   <div
@@ -400,7 +388,6 @@ function AdvancedSection() {
   return (
     <>
       <div className="space-y-6">
-        {/* Export/Import */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Button
             variant="outline"
@@ -442,8 +429,6 @@ function AdvancedSection() {
             </div>
           </Button>
         </div>
-
-        {/* Danger Zone */}
         <div className="border border-danger/30 rounded-2xl overflow-hidden bg-bg/40 backdrop-blur-sm">
           <div className="bg-danger/10 px-5 py-3 border-b border-danger/20 flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-danger" />

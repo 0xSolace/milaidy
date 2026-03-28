@@ -27,25 +27,19 @@ type RpcMode = "" | "cloud" | "byok";
 const rpcModeCardBaseClass =
   "flex min-h-[76px] w-full items-center justify-center rounded-2xl px-4 py-3 text-center backdrop-blur-[18px] backdrop-saturate-[1.2] transition-all duration-300";
 
-const rpcModeTitleClass =
-  `text-sm font-semibold leading-tight ${onboardingReadableTextPrimaryClassName}`;
+const rpcModeTitleClass = `text-sm font-semibold leading-tight ${onboardingReadableTextPrimaryClassName}`;
 
-const rpcModeDescriptionClass =
-  `mt-1 text-xs leading-[1.45] ${onboardingSubtleTextClassName}`;
+const rpcModeDescriptionClass = `mt-1 text-xs leading-[1.45] ${onboardingSubtleTextClassName}`;
 
-const rpcCalloutClass =
-  `mx-auto mt-4 flex w-full max-w-[25rem] items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm leading-relaxed backdrop-blur-sm ${onboardingCardSurfaceClassName}`;
+const rpcCalloutClass = `mx-auto mt-4 flex w-full max-w-[25rem] items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm leading-relaxed backdrop-blur-sm ${onboardingCardSurfaceClassName}`;
 
 const rpcFieldStackClass = "mx-auto w-full max-w-[27rem] space-y-4 text-left";
 
-const rpcFieldLabelClass =
-  `mb-1.5 block text-[11px] tracking-[0.14em] ${onboardingFieldLabelClassName}`;
+const rpcFieldLabelClass = `mb-1.5 block text-[11px] tracking-[0.14em] ${onboardingFieldLabelClassName}`;
 
-const rpcFieldHintClass =
-  `mb-2 ${onboardingSubtleTextClassName}`;
+const rpcFieldHintClass = `mb-2 ${onboardingSubtleTextClassName}`;
 
-const rpcInputClass =
-  `${onboardingInputClassName} h-auto px-4 py-3 text-sm tracking-[0.01em]`;
+const rpcInputClass = `${onboardingInputClassName} h-auto px-4 py-3 text-sm tracking-[0.01em]`;
 
 function RpcModeCard({
   title,

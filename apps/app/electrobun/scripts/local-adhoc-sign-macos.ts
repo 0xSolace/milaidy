@@ -157,8 +157,8 @@ export function signLocalAppBundle(args: {
   );
 
   try {
-    const signTargets = collectMacCodeSignTargets(appBundlePath).filter((target) =>
-      fs.existsSync(target),
+    const signTargets = collectMacCodeSignTargets(appBundlePath).filter(
+      (target) => fs.existsSync(target),
     );
 
     for (const target of signTargets) {

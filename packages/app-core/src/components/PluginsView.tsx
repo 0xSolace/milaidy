@@ -126,20 +126,16 @@ import { autoLabel } from "./labels";
 import { SHOWCASE_PLUGIN } from "./plugins/showcase-data";
 import { SETTINGS_FILTER_CONTROL_CLASSNAME } from "./settings-control-primitives";
 import {
-  APP_SIDEBAR_COMPACT_PILL_CLASSNAME,
   APP_DESKTOP_INLINE_SPLIT_SHELL_CLASSNAME,
   APP_DESKTOP_SIDEBAR_RAIL_STANDARD_CLASSNAME,
   APP_DESKTOP_SPLIT_SHELL_CLASSNAME,
   APP_SIDEBAR_CARD_ACTIVE_CLASSNAME,
   APP_SIDEBAR_CARD_BASE_CLASSNAME,
   APP_SIDEBAR_CARD_INACTIVE_CLASSNAME,
-  APP_SIDEBAR_HEADER_CLASSNAME,
   APP_SIDEBAR_INNER_CLASSNAME,
-  APP_SIDEBAR_KICKER_CLASSNAME,
-  APP_SIDEBAR_META_CLASSNAME,
   APP_SIDEBAR_RAIL_CLASSNAME,
   APP_SIDEBAR_SCROLL_REGION_CLASSNAME,
-  APP_SIDEBAR_SEARCH_INPUT_CLASSNAME,
+  APP_SIDEBAR_SEARCH_INPUT_CLASSNAME
 } from "./sidebar-shell-styles";
 import { WhatsAppQrOverlay } from "./WhatsAppQrOverlay";
 
@@ -701,9 +697,9 @@ function PluginConfigForm({
         if (isArrayField && typeof configValue === "string") {
           v[p.key] = configValue
             ? configValue
-                .split(",")
-                .map((s: string) => s.trim())
-                .filter(Boolean)
+              .split(",")
+              .map((s: string) => s.trim())
+              .filter(Boolean)
             : [];
         } else {
           v[p.key] = configValue;
@@ -712,9 +708,9 @@ function PluginConfigForm({
         if (isArrayField && typeof p.currentValue === "string") {
           v[p.key] = String(p.currentValue)
             ? String(p.currentValue)
-                .split(",")
-                .map((s: string) => s.trim())
-                .filter(Boolean)
+              .split(",")
+              .map((s: string) => s.trim())
+              .filter(Boolean)
             : [];
         } else {
           v[p.key] = p.currentValue;
@@ -1241,8 +1237,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
     new Set(),
   );
   const hasPluginToggleInFlight = togglingPlugins.size > 0;
-
-  // ── Drag-to-reorder state ────────────────────────────────────────
   const [pluginOrder, setPluginOrder] = useState<string[]>(() => {
     try {
       const stored = localStorage.getItem("pluginOrder");
@@ -1363,18 +1357,16 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
             variant="ghost"
             onClick={() => setSubgroupFilter(tag.id)}
             aria-current={isActive ? "page" : undefined}
-            className={`${APP_SIDEBAR_CARD_BASE_CLASSNAME} items-center ${
-              isActive
-                ? APP_SIDEBAR_CARD_ACTIVE_CLASSNAME
-                : APP_SIDEBAR_CARD_INACTIVE_CLASSNAME
-            }`}
+            className={`${APP_SIDEBAR_CARD_BASE_CLASSNAME} items-center ${isActive
+              ? APP_SIDEBAR_CARD_ACTIVE_CLASSNAME
+              : APP_SIDEBAR_CARD_INACTIVE_CLASSNAME
+              }`}
           >
             <span
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border ${
-                isActive
-                  ? "border-accent/30 bg-accent/18 text-txt-strong"
-                  : "border-border/50 bg-bg-accent/80 text-muted"
-              }`}
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border ${isActive
+                ? "border-accent/30 bg-accent/18 text-txt-strong"
+                : "border-border/50 bg-bg-accent/80 text-muted"
+                }`}
             >
               <Icon className="h-4 w-4" />
             </span>
@@ -1387,11 +1379,10 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
               </span>
             </span>
             <span
-              className={`rounded-full border px-2.5 py-1 text-[10px] font-bold tracking-[0.16em] ${
-                isActive
-                  ? "border-accent bg-accent text-accent-fg"
-                  : "border-border bg-transparent text-muted"
-              }`}
+              className={`rounded-full border px-2.5 py-1 text-[10px] font-bold tracking-[0.16em] ${isActive
+                ? "border-accent bg-accent text-accent-fg"
+                : "border-border bg-transparent text-muted"
+                }`}
             >
               {tag.count}
             </span>
@@ -1404,20 +1395,18 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
           key={tag.id}
           variant={isActive ? "default" : "outline"}
           size="sm"
-          className={`h-7 px-3 text-[11px] font-bold tracking-wide rounded-lg transition-all ${
-            isActive
-              ? "border-accent/55 bg-accent/16 text-txt-strong shadow-sm"
-              : "bg-card/40 backdrop-blur-sm border-border/40 text-muted hover:text-txt shadow-sm hover:border-accent/30"
-          }`}
+          className={`h-7 px-3 text-[11px] font-bold tracking-wide rounded-lg transition-all ${isActive
+            ? "border-accent/55 bg-accent/16 text-txt-strong shadow-sm"
+            : "bg-card/40 backdrop-blur-sm border-border/40 text-muted hover:text-txt shadow-sm hover:border-accent/30"
+            }`}
           onClick={() => setSubgroupFilter(tag.id)}
         >
           {tag.label}
           <span
-            className={`ml-1.5 rounded border px-1.5 py-0.5 text-[9px] font-mono leading-none ${
-              isActive
-                ? "border-accent/30 bg-accent/12 text-txt-strong"
-                : "border-border/50 bg-bg-accent/80 text-muted-strong"
-            }`}
+            className={`ml-1.5 rounded border px-1.5 py-0.5 text-[9px] font-mono leading-none ${isActive
+              ? "border-accent/30 bg-accent/12 text-txt-strong"
+              : "border-border/50 bg-bg-accent/80 text-muted-strong"
+              }`}
           >
             {tag.count}
           </span>
@@ -1426,8 +1415,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
     },
     [subgroupFilter],
   );
-
-  // ── Handlers ───────────────────────────────────────────────────────
 
   const toggleSettings = (pluginId: string) => {
     const next = new Set<string>();
@@ -1447,7 +1434,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
   };
 
   const handleConfigSave = async (pluginId: string) => {
-    // Showcase plugin: no-op save (it's not a real plugin)
     if (pluginId === "__ui-showcase__") return;
     const config = pluginConfigs[pluginId] ?? {};
     await handlePluginConfigSave(pluginId, config);
@@ -1561,8 +1547,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
     [setActionNotice],
   );
 
-  // ── Add from directory ──────────────────────────────────────────────
-
   const handleAddFromDirectory = async () => {
     const trimmed = addDirPath.trim();
     if (!trimmed) return;
@@ -1582,8 +1566,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
     }
     setAddDirLoading(false);
   };
-
-  // ── Drag-to-reorder handlers ─────────────────────────────────────
 
   const handleDragStart = useCallback(
     (e: React.DragEvent, pluginId: string) => {
@@ -1690,8 +1672,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
     [],
   );
 
-  // ── Card renderers ────────────────────────────────────────────────
-
   const renderPluginCard = (p: PluginInfo) => {
     const hasParams = p.parameters && p.parameters.length > 0;
     const isOpen = pluginSettingsOpen.has(p.id);
@@ -1744,12 +1724,10 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
         }
         onDrop={allowCustomOrder ? (e) => handleDrop(e, p.id) : undefined}
         onDragEnd={allowCustomOrder ? handleDragEnd : undefined}
-        className={`border border-border bg-card transition-colors duration-150 flex flex-col ${enabledBorder} ${
-          isOpen ? "ring-1 ring-accent" : "hover:border-accent/40"
-        } ${isDragging ? "opacity-30" : ""} ${isDragOver ? "ring-2 ring-accent/60" : ""}`}
+        className={`border border-border bg-card transition-colors duration-150 flex flex-col ${enabledBorder} ${isOpen ? "ring-1 ring-accent" : "hover:border-accent/40"
+          } ${isDragging ? "opacity-30" : ""} ${isDragOver ? "ring-2 ring-accent/60" : ""}`}
         data-plugin-id={p.id}
       >
-        {/* Top: drag handle + icon + name + toggle */}
         <div className="flex items-center gap-2 px-3 pt-3 pb-1">
           {allowCustomOrder && (
             <span
@@ -1793,15 +1771,13 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
               variant="outline"
               size="sm"
               data-plugin-toggle={p.id}
-              className={`text-[10px] font-bold tracking-wider px-2.5 py-[2px] h-auto rounded-none border transition-colors duration-150 shrink-0 ${
-                p.enabled
-                  ? "bg-accent text-accent-fg border-accent"
-                  : "bg-transparent text-muted border-border hover:text-txt"
-              } ${
-                toggleDisabled
+              className={`text-[10px] font-bold tracking-wider px-2.5 py-[2px] h-auto rounded-none border transition-colors duration-150 shrink-0 ${p.enabled
+                ? "bg-accent text-accent-fg border-accent"
+                : "bg-transparent text-muted border-border hover:text-txt"
+                } ${toggleDisabled
                   ? "opacity-60 cursor-not-allowed"
                   : "cursor-pointer"
-              }`}
+                }`}
               onClick={(e) => {
                 e.stopPropagation();
                 void handleTogglePlugin(p.id, !p.enabled);
@@ -1812,8 +1788,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
             </Button>
           )}
         </div>
-
-        {/* Badges: category + version + loaded status */}
         <div className="flex items-center gap-1.5 px-3 pb-1.5">
           <span className="text-[10px] px-1.5 py-px border border-border bg-surface text-muted lowercase tracking-wide whitespace-nowrap">
             {categoryLabel}
@@ -1825,11 +1799,10 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
           )}
           {p.enabled && !p.isActive && !isShowcase && (
             <span
-              className={`text-[10px] px-1.5 py-px border lowercase tracking-wide whitespace-nowrap ${
-                p.loadError
-                  ? "border-destructive bg-[rgba(153,27,27,0.04)] text-destructive"
-                  : "border-warn bg-[rgba(234,179,8,0.06)] text-warn"
-              }`}
+              className={`text-[10px] px-1.5 py-px border lowercase tracking-wide whitespace-nowrap ${p.loadError
+                ? "border-destructive bg-[rgba(153,27,27,0.04)] text-destructive"
+                : "border-warn bg-[rgba(234,179,8,0.06)] text-warn"
+                }`}
               title={
                 p.loadError || "Plugin is enabled but not loaded in the runtime"
               }
@@ -1843,8 +1816,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
             </span>
           )}
         </div>
-
-        {/* Description — clamped to 3 lines */}
         <p
           className="text-xs text-muted px-3 pb-2 flex-1"
           style={{
@@ -1889,17 +1860,14 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
             ))}
           </div>
         )}
-
-        {/* Bottom bar: config status + settings button */}
         <div className="mt-auto flex items-center gap-3 border-t border-border/40 bg-card/55 px-4 py-3">
           {hasParams && !isShowcase ? (
             <>
               <span
-                className={`inline-block w-2 h-2 rounded-full shadow-[0_0_10px_currentColor] shrink-0 ${
-                  allParamsSet
-                    ? "bg-ok text-ok"
-                    : "bg-destructive text-destructive"
-                }`}
+                className={`inline-block w-2 h-2 rounded-full shadow-[0_0_10px_currentColor] shrink-0 ${allParamsSet
+                  ? "bg-ok text-ok"
+                  : "bg-destructive text-destructive"
+                  }`}
               />
               <span className="text-[11px] font-bold tracking-wide text-muted">
                 {setCount}/{totalCount} {t("pluginsview.configured")}
@@ -1932,7 +1900,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
               >
                 {installingPlugins.has(p.id)
                   ? installProgress.get(p.npmName ?? "")?.message ||
-                    "Installing..."
+                  "Installing..."
                   : "Install"}
               </Button>
             )}
@@ -1940,11 +1908,10 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
             <Button
               variant="ghost"
               size="sm"
-              className={`h-7 px-2.5 text-[11px] font-bold transition-all flex items-center gap-1.5 ${
-                isOpen
-                  ? "text-txt bg-accent/10 hover:bg-accent/20"
-                  : "text-muted hover:bg-bg-hover hover:text-txt"
-              }`}
+              className={`h-7 px-2.5 text-[11px] font-bold transition-all flex items-center gap-1.5 ${isOpen
+                ? "text-txt bg-accent/10 hover:bg-accent/20"
+                : "text-muted hover:bg-bg-hover hover:text-txt"
+                }`}
               onClick={(e) => {
                 e.stopPropagation();
                 toggleSettings(p.id);
@@ -1960,8 +1927,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
             </Button>
           )}
         </div>
-
-        {/* Validation errors */}
         {p.enabled && p.validationErrors && p.validationErrors.length > 0 && (
           <div className="px-3 py-1.5 border-t border-destructive bg-[rgba(153,27,27,0.04)] text-xs">
             {p.validationErrors.map(
@@ -1976,8 +1941,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
             )}
           </div>
         )}
-
-        {/* Validation warnings */}
         {p.enabled &&
           p.validationWarnings &&
           p.validationWarnings.length > 0 && (
@@ -2011,8 +1974,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
     Array.from(pluginSettingsOpen)
       .map((id) => nonDbPlugins.find((plugin) => plugin.id === id) ?? null)
       .find((plugin) => (plugin?.parameters?.length ?? 0) > 0) ?? null;
-
-  // ── Game-modal state ──────────────────────────────────────────────
   const [gameSelectedId, setGameSelectedId] = useState<string | null>(null);
   const [gameMobileDetail, setGameMobileDetail] = useState(false);
   const gameNarrow =
@@ -2150,8 +2111,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
     },
     [desktopConnectorLayout, scrollConnectorIntoView],
   );
-
-  // ── Game-modal render ─────────────────────────────────────────────
   if (isSidebarEditorShellMode) {
     const connectorsShellClassName = APP_DESKTOP_SPLIT_SHELL_CLASSNAME;
     const shellTitle =
@@ -2177,9 +2136,8 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
       >
         <div
           data-testid="connectors-shell"
-          className={`${connectorsShellClassName} ${
-            desktopConnectorLayout ? "md:flex-row" : "flex-col"
-          }`}
+          className={`${connectorsShellClassName} ${desktopConnectorLayout ? "md:flex-row" : "flex-col"
+            }`}
         >
           {desktopConnectorLayout && (
             <aside
@@ -2187,30 +2145,10 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
               className={`flex min-h-0 w-[21rem] max-w-[352px] shrink-0 flex-col ${APP_SIDEBAR_RAIL_CLASSNAME}`}
             >
               <div className={APP_SIDEBAR_INNER_CLASSNAME}>
-                {showSidebarKicker ? (
-                  <div className={APP_SIDEBAR_HEADER_CLASSNAME}>
-                    <div className={APP_SIDEBAR_KICKER_CLASSNAME}>
-                      {shellTitle}
-                    </div>
-                    <div className={APP_SIDEBAR_META_CLASSNAME}>
-                      {visiblePlugins.length} available
-                    </div>
-                  </div>
-                ) : showSidebarAvailabilityPill ? (
-                  <div className="mb-3 flex items-center justify-end px-1">
-                    <div
-                      data-testid="connectors-available-pill"
-                      className={`${APP_SIDEBAR_COMPACT_PILL_CLASSNAME} text-[10px] font-semibold uppercase tracking-[0.14em] text-txt-strong`}
-                    >
-                      {visiblePlugins.length} available
-                    </div>
-                  </div>
-                ) : null}
 
                 <div
-                  className={`grid grid-cols-[minmax(0,1fr)_8.75rem] items-center gap-2 ${
-                    showSidebarKicker ? "mt-4" : ""
-                  }`}
+                  className={`grid grid-cols-[minmax(0,1fr)_8.75rem] items-center gap-2 ${showSidebarKicker ? "mt-4" : ""
+                    }`}
                 >
                   <Input
                     type="search"
@@ -2271,11 +2209,10 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                       return (
                         <div
                           key={plugin.id}
-                          className={`${APP_SIDEBAR_CARD_BASE_CLASSNAME} gap-2 ${
-                            isSelected
-                              ? APP_SIDEBAR_CARD_ACTIVE_CLASSNAME
-                              : APP_SIDEBAR_CARD_INACTIVE_CLASSNAME
-                          }`}
+                          className={`${APP_SIDEBAR_CARD_BASE_CLASSNAME} gap-2 ${isSelected
+                            ? APP_SIDEBAR_CARD_ACTIVE_CLASSNAME
+                            : APP_SIDEBAR_CARD_INACTIVE_CLASSNAME
+                            }`}
                         >
                           <Button
                             variant="ghost"
@@ -2286,11 +2223,10 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                             aria-current={isSelected ? "page" : undefined}
                           >
                             <span
-                              className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border p-2 ${
-                                isSelected
-                                  ? "border-accent/30 bg-accent/18 text-txt-strong"
-                                  : "border-border/50 bg-bg-accent/80 text-muted"
-                              }`}
+                              className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border p-2 ${isSelected
+                                ? "border-accent/30 bg-accent/18 text-txt-strong"
+                                : "border-border/50 bg-bg-accent/80 text-muted"
+                                }`}
                             >
                               {renderResolvedIcon(plugin, {
                                 className:
@@ -2311,15 +2247,13 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                           <Button
                             variant="outline"
                             size="sm"
-                            className={`shrink-0 rounded-full border px-2.5 py-1 h-auto text-[10px] font-bold tracking-[0.16em] transition-colors ${
-                              plugin.enabled
-                                ? "border-accent bg-accent text-accent-fg"
-                                : "border-border bg-transparent text-muted hover:border-accent/40 hover:text-txt"
-                            } ${
-                              toggleDisabled
+                            className={`shrink-0 rounded-full border px-2.5 py-1 h-auto text-[10px] font-bold tracking-[0.16em] transition-colors ${plugin.enabled
+                              ? "border-accent bg-accent text-accent-fg"
+                              : "border-border bg-transparent text-muted hover:border-accent/40 hover:text-txt"
+                              } ${toggleDisabled
                                 ? "cursor-not-allowed opacity-60"
                                 : "cursor-pointer"
-                            }`}
+                              }`}
                             onClick={() =>
                               void handleTogglePlugin(
                                 plugin.id,
@@ -2335,9 +2269,8 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                                 : "OFF"}
                           </Button>
                           <span
-                            className={`shrink-0 text-muted transition-transform ${
-                              isExpanded ? "rotate-90" : ""
-                            }`}
+                            className={`shrink-0 text-muted transition-transform ${isExpanded ? "rotate-90" : ""
+                              }`}
                           >
                             <ChevronRight className="h-4 w-4" />
                           </span>
@@ -2417,11 +2350,10 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                           connectorSectionRefs.current[plugin.id] = element;
                         }}
                         data-testid={`connector-section-${plugin.id}`}
-                        className={`${DESKTOP_SECTION_SHELL_CLASSNAME} transition-all ${
-                          isSelected
-                            ? "border-border/45 shadow-[0_18px_40px_rgba(3,5,10,0.16)]"
-                            : "border-border/50"
-                        }`}
+                        className={`${DESKTOP_SECTION_SHELL_CLASSNAME} transition-all ${isSelected
+                          ? "border-border/45 shadow-[0_18px_40px_rgba(3,5,10,0.16)]"
+                          : "border-border/50"
+                          }`}
                       >
                         <div className="flex items-start gap-3 px-4 py-4 sm:px-5">
                           <Button
@@ -2433,11 +2365,10 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                             }
                           >
                             <span
-                              className={`mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border p-2.5 ${
-                                isSelected
-                                  ? "border-accent/30 bg-accent/18 text-txt-strong"
-                                  : "border-border/50 bg-bg-accent/80 text-muted"
-                              }`}
+                              className={`mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border p-2.5 ${isSelected
+                                ? "border-accent/30 bg-accent/18 text-txt-strong"
+                                : "border-border/50 bg-bg-accent/80 text-muted"
+                                }`}
                             >
                               {renderResolvedIcon(plugin, {
                                 className:
@@ -2451,11 +2382,10 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                                   {plugin.name}
                                 </span>
                                 <span
-                                  className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${
-                                    allParamsSet
-                                      ? "border-ok/30 bg-ok/10 text-ok"
-                                      : "border-warn/30 bg-warn/10 text-warn"
-                                  }`}
+                                  className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${allParamsSet
+                                    ? "border-ok/30 bg-ok/10 text-ok"
+                                    : "border-warn/30 bg-warn/10 text-warn"
+                                    }`}
                                 >
                                   {allParamsSet ? "Ready" : "Needs setup"}
                                 </span>
@@ -2472,15 +2402,13 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                             <Button
                               variant="outline"
                               size="sm"
-                              className={`rounded-full border px-3 py-1.5 h-auto text-[10px] font-bold tracking-[0.16em] transition-colors ${
-                                plugin.enabled
-                                  ? "border-accent bg-accent text-accent-fg"
-                                  : "border-border bg-transparent text-muted hover:border-accent/40 hover:text-txt"
-                              } ${
-                                toggleDisabled
+                              className={`rounded-full border px-3 py-1.5 h-auto text-[10px] font-bold tracking-[0.16em] transition-colors ${plugin.enabled
+                                ? "border-accent bg-accent text-accent-fg"
+                                : "border-border bg-transparent text-muted hover:border-accent/40 hover:text-txt"
+                                } ${toggleDisabled
                                   ? "cursor-not-allowed opacity-60"
                                   : "cursor-pointer"
-                              }`}
+                                }`}
                               onClick={() =>
                                 void handleTogglePlugin(
                                   plugin.id,
@@ -2498,11 +2426,10 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                             <Button
                               variant="outline"
                               size="sm"
-                              className={`flex items-center gap-1 rounded-full border px-3 py-1.5 h-auto text-[11px] font-semibold transition-colors ${
-                                isExpanded
-                                  ? "border-border/50 bg-bg/25 text-txt"
-                                  : "border-border/50 text-muted hover:border-accent/40 hover:text-txt"
-                              }`}
+                              className={`flex items-center gap-1 rounded-full border px-3 py-1.5 h-auto text-[11px] font-semibold transition-colors ${isExpanded
+                                ? "border-border/50 bg-bg/25 text-txt"
+                                : "border-border/50 text-muted hover:border-accent/40 hover:text-txt"
+                                }`}
                               onClick={() =>
                                 handleConnectorSectionToggle(plugin.id)
                               }
@@ -2511,9 +2438,8 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                             >
                               <span>{isExpanded ? "Collapse" : "Expand"}</span>
                               <ChevronRight
-                                className={`h-4 w-4 transition-transform ${
-                                  isExpanded ? "rotate-90" : ""
-                                }`}
+                                className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-90" : ""
+                                  }`}
                               />
                             </Button>
                           </div>
@@ -2530,11 +2456,10 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                             </span>
                             {plugin.enabled && !plugin.isActive && (
                               <span
-                                className={`rounded-full border px-2 py-0.5 ${
-                                  plugin.loadError
-                                    ? "border-danger/30 bg-danger/10 text-danger"
-                                    : "border-warn/30 bg-warn/10 text-warn"
-                                }`}
+                                className={`rounded-full border px-2 py-0.5 ${plugin.loadError
+                                  ? "border-danger/30 bg-danger/10 text-danger"
+                                  : "border-warn/30 bg-warn/10 text-warn"
+                                  }`}
                               >
                                 {plugin.loadError
                                   ? "Load failed"
@@ -2619,8 +2544,8 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                                     >
                                       {installingPlugins.has(plugin.id)
                                         ? installProgress.get(
-                                            plugin.npmName ?? "",
-                                          )?.message || "Installing..."
+                                          plugin.npmName ?? "",
+                                        )?.message || "Installing..."
                                         : "Install Plugin"}
                                     </Button>
                                   </div>
@@ -2665,15 +2590,14 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                                         : "outline"
                                   }
                                   size="sm"
-                                  className={`h-8 rounded-xl px-4 text-[11px] font-bold transition-all ${
-                                    testResult?.loading
-                                      ? "cursor-wait opacity-70"
-                                      : testResult?.success
-                                        ? "border-ok bg-ok text-ok-fg hover:bg-ok/90"
-                                        : testResult?.error
-                                          ? "border-danger bg-danger text-danger-fg hover:bg-danger/90"
-                                          : "border-border/40 bg-card/40 hover:border-accent/40"
-                                  }`}
+                                  className={`h-8 rounded-xl px-4 text-[11px] font-bold transition-all ${testResult?.loading
+                                    ? "cursor-wait opacity-70"
+                                    : testResult?.success
+                                      ? "border-ok bg-ok text-ok-fg hover:bg-ok/90"
+                                      : testResult?.error
+                                        ? "border-danger bg-danger text-danger-fg hover:bg-danger/90"
+                                        : "border-border/40 bg-card/40 hover:border-accent/40"
+                                    }`}
                                   disabled={testResult?.loading}
                                   onClick={() =>
                                     void handleTestConnection(plugin.id)
@@ -2703,11 +2627,10 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                                       saveSuccess ? "default" : "secondary"
                                     }
                                     size="sm"
-                                    className={`h-8 rounded-xl px-4 text-[11px] font-bold transition-all ${
-                                      saveSuccess
-                                        ? "bg-ok text-ok-fg hover:bg-ok/90"
-                                        : "bg-accent text-accent-fg hover:bg-accent/90"
-                                    }`}
+                                    className={`h-8 rounded-xl px-4 text-[11px] font-bold transition-all ${saveSuccess
+                                      ? "bg-ok text-ok-fg hover:bg-ok/90"
+                                      : "bg-accent text-accent-fg hover:bg-accent/90"
+                                      }`}
                                     onClick={() =>
                                       void handleConfigSave(plugin.id)
                                     }
@@ -2741,9 +2664,8 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
     return (
       <div className="plugins-game-modal plugins-game-modal--inline">
         <div
-          className={`plugins-game-list-panel${
-            gameNarrow && gameMobileDetail ? " is-hidden" : ""
-          }`}
+          className={`plugins-game-list-panel${gameNarrow && gameMobileDetail ? " is-hidden" : ""
+            }`}
         >
           <div className="plugins-game-list-head">
             <div className="plugins-game-section-title">{sectionTitle}</div>
@@ -2765,9 +2687,8 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                   type="button"
                   role="option"
                   aria-selected={effectiveGameSelected === p.id}
-                  className={`plugins-game-card${
-                    effectiveGameSelected === p.id ? " is-selected" : ""
-                  }${!p.enabled ? " is-disabled" : ""} h-auto`}
+                  className={`plugins-game-card${effectiveGameSelected === p.id ? " is-selected" : ""
+                    }${!p.enabled ? " is-disabled" : ""} h-auto`}
                   onClick={() => {
                     setGameSelectedId(p.id);
                     if (gameNarrow) setGameMobileDetail(true);
@@ -2800,9 +2721,8 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                     <div className="plugins-game-card-name">{p.name}</div>
                     <div className="plugins-game-card-meta">
                       <span
-                        className={`plugins-game-badge ${
-                          p.enabled ? "is-on" : "is-off"
-                        }`}
+                        className={`plugins-game-badge ${p.enabled ? "is-on" : "is-off"
+                          }`}
                       >
                         {p.enabled ? "ON" : "OFF"}
                       </span>
@@ -2814,9 +2734,8 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
           </div>
         </div>
         <div
-          className={`plugins-game-detail-panel${
-            gameNarrow && !gameMobileDetail ? " is-hidden" : ""
-          }`}
+          className={`plugins-game-detail-panel${gameNarrow && !gameMobileDetail ? " is-hidden" : ""
+            }`}
         >
           {selectedPlugin ? (
             <>
@@ -2869,9 +2788,8 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                     variant="ghost"
                     size="sm"
                     type="button"
-                    className={`plugins-game-toggle ${
-                      selectedPlugin.enabled ? "is-on" : "is-off"
-                    }`}
+                    className={`plugins-game-toggle ${selectedPlugin.enabled ? "is-on" : "is-off"
+                      }`}
                     onClick={() =>
                       void handleTogglePlugin(
                         selectedPlugin.id,
@@ -2964,9 +2882,8 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                   variant="default"
                   size="sm"
                   type="button"
-                  className={`plugins-game-action-btn plugins-game-save-btn${
-                    pluginSaveSuccess.has(selectedPlugin.id) ? " is-saved" : ""
-                  }`}
+                  className={`plugins-game-action-btn plugins-game-save-btn${pluginSaveSuccess.has(selectedPlugin.id) ? " is-saved" : ""
+                    }`}
                   onClick={() => void handleConfigSave(selectedPlugin.id)}
                   disabled={pluginSaving.has(selectedPlugin.id)}
                 >
@@ -2993,8 +2910,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
     );
   }
 
-  // ── Main render ────────────────────────────────────────────────────
-
   const selectedSubgroupTag =
     subgroupTags.find((tag) => tag.id === subgroupFilter) ?? subgroupTags[0];
   const pluginSectionTitle =
@@ -3012,12 +2927,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
             aria-label="Plugin types"
           >
             <div className={APP_SIDEBAR_INNER_CLASSNAME}>
-              <div className={APP_SIDEBAR_HEADER_CLASSNAME}>
-                <div className={APP_SIDEBAR_KICKER_CLASSNAME}>Plugins</div>
-                <div className={APP_SIDEBAR_META_CLASSNAME}>
-                  {sorted.length} available
-                </div>
-              </div>
               <div
                 className={`mt-4 space-y-1.5 ${APP_SIDEBAR_SCROLL_REGION_CLASSNAME}`}
               >
@@ -3048,7 +2957,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
 
               <div className="bg-bg/18 px-4 py-4 sm:px-5">
                 {(allowCustomOrder && pluginOrder.length > 0) ||
-                showPluginManagementActions ? (
+                  showPluginManagementActions ? (
                   <div className="mb-4 flex flex-wrap items-center gap-3">
                     {allowCustomOrder && pluginOrder.length > 0 && (
                       <Button
@@ -3114,8 +3023,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
             </section>
           </div>
         </div>
-
-        {/* Settings dialog */}
         {settingsDialogPlugin &&
           (() => {
             const p = settingsDialogPlugin;
@@ -3137,7 +3044,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                 <DialogContent
                   className={`${ADMIN_DIALOG_CONTENT_CLASSNAME} max-h-[85vh] max-w-2xl`}
                 >
-                  {/* Dialog header */}
                   <DialogHeader
                     className={`${ADMIN_DIALOG_HEADER_CLASSNAME} flex flex-row items-center gap-3`}
                   >
@@ -3185,10 +3091,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                       </span>
                     )}
                   </DialogHeader>
-
-                  {/* Dialog body — scrollable */}
                   <div className="custom-scrollbar overflow-y-auto flex-1">
-                    {/* Plugin details */}
                     <div className="px-5 pt-4 pb-1 flex items-center gap-3 flex-wrap text-xs text-muted">
                       {p.description && (
                         <span className="text-[12px] text-muted leading-relaxed">
@@ -3210,29 +3113,29 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                     </div>
                     {(p.npmName ||
                       (p.pluginDeps && p.pluginDeps.length > 0)) && (
-                      <div className="px-5 pb-2 flex items-center gap-3 flex-wrap">
-                        {p.npmName && (
-                          <span className="font-mono text-[10px] text-muted opacity-50">
-                            {p.npmName}
-                          </span>
-                        )}
-                        {p.pluginDeps && p.pluginDeps.length > 0 && (
-                          <span className="flex items-center gap-1 flex-wrap">
-                            <span className="text-[10px] text-muted opacity-60">
-                              {t("pluginsview.dependsOn")}
+                        <div className="px-5 pb-2 flex items-center gap-3 flex-wrap">
+                          {p.npmName && (
+                            <span className="font-mono text-[10px] text-muted opacity-50">
+                              {p.npmName}
                             </span>
-                            {p.pluginDeps.map((dep: string) => (
-                              <span
-                                key={dep}
-                                className="text-[10px] px-1.5 py-px border border-border bg-accent-subtle text-muted rounded-sm"
-                              >
-                                {dep}
+                          )}
+                          {p.pluginDeps && p.pluginDeps.length > 0 && (
+                            <span className="flex items-center gap-1 flex-wrap">
+                              <span className="text-[10px] text-muted opacity-60">
+                                {t("pluginsview.dependsOn")}
                               </span>
-                            ))}
-                          </span>
-                        )}
-                      </div>
-                    )}
+                              {p.pluginDeps.map((dep: string) => (
+                                <span
+                                  key={dep}
+                                  className="text-[10px] px-1.5 py-px border border-border bg-accent-subtle text-muted rounded-sm"
+                                >
+                                  {dep}
+                                </span>
+                              ))}
+                            </span>
+                          )}
+                        </div>
+                      )}
 
                     <div className="px-5 py-3">
                       {p.id === "telegram" ? (
@@ -3253,8 +3156,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                       )}
                     </div>
                   </div>
-
-                  {/* Dialog footer — actions (hidden for showcase) */}
                   {!isShowcase && (
                     <div
                       className={`${ADMIN_DIALOG_FOOTER_CLASSNAME} flex justify-end gap-3`}
@@ -3274,7 +3175,7 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                           >
                             {installingPlugins.has(p.id)
                               ? installProgress.get(p.npmName ?? "")?.message ||
-                                "Installing..."
+                              "Installing..."
                               : "Install Plugin"}
                           </Button>
                         )}
@@ -3296,15 +3197,14 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                                 : "outline"
                           }
                           size="sm"
-                          className={`h-8 px-4 text-[11px] font-bold tracking-wide transition-all ${
-                            testResults.get(p.id)?.loading
-                              ? "opacity-70 cursor-wait"
-                              : testResults.get(p.id)?.success
-                                ? "bg-ok text-ok-fg border-ok hover:bg-ok/90"
-                                : testResults.get(p.id)?.error
-                                  ? "bg-danger text-danger-fg border-danger hover:bg-danger/90"
-                                  : "border-border/40 bg-card/40 backdrop-blur-md shadow-sm hover:border-accent/40"
-                          }`}
+                          className={`h-8 px-4 text-[11px] font-bold tracking-wide transition-all ${testResults.get(p.id)?.loading
+                            ? "opacity-70 cursor-wait"
+                            : testResults.get(p.id)?.success
+                              ? "bg-ok text-ok-fg border-ok hover:bg-ok/90"
+                              : testResults.get(p.id)?.error
+                                ? "bg-danger text-danger-fg border-danger hover:bg-danger/90"
+                                : "border-border/40 bg-card/40 backdrop-blur-md shadow-sm hover:border-accent/40"
+                            }`}
                           disabled={testResults.get(p.id)?.loading}
                           onClick={() => handleTestConnection(p.id)}
                         >
@@ -3328,11 +3228,10 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                       <Button
                         variant={saveSuccess ? "default" : "secondary"}
                         size="sm"
-                        className={`h-8 px-5 text-[12px] font-bold tracking-wide transition-all ${
-                          saveSuccess
-                            ? "bg-ok text-ok-fg hover:bg-ok/90"
-                            : "bg-accent text-accent-fg hover:bg-accent/90 shadow-lg shadow-accent/20"
-                        }`}
+                        className={`h-8 px-5 text-[12px] font-bold tracking-wide transition-all ${saveSuccess
+                          ? "bg-ok text-ok-fg hover:bg-ok/90"
+                          : "bg-accent text-accent-fg hover:bg-accent/90 shadow-lg shadow-accent/20"
+                          }`}
                         onClick={() => handleConfigSave(p.id)}
                         disabled={isSaving}
                       >
@@ -3349,8 +3248,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
             );
           })()}
       </div>
-
-      {/* Add from directory modal */}
       <Dialog
         open={addDirOpen}
         onOpenChange={(v) => {

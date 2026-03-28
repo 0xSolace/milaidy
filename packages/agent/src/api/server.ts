@@ -3727,6 +3727,8 @@ function wantsRawBinanceSkillResult(userText: string): boolean {
   );
 }
 
+const FENCED_JSON_RE_SERVER = /```(?:json)?\s*\n([\s\S]*?)```/;
+
 function unwrapDirectBinanceSkillResult(rawText: string): string {
   const fencedBlocks = Array.from(
     rawText.matchAll(new RegExp(FENCED_JSON_RE_SERVER.source, "g")),
@@ -7301,19 +7303,9 @@ export function resolveCorsOrigin(origin?: string): string | null {
   if (WILDCARD_BIND_RE.test(stripOptionalHostPort(bindHost))) return trimmed;
 
   // Explicit allowlist via env (comma-separated)
-<<<<<<< HEAD
-  const extra = process.env.ELIZA_ALLOWED_ORIGINS ?? process.env.CORS_ORIGINS;
-  if (extra) {
-    const allow = extra
-      .split(",")
-      .map((v) => v.trim())
-      .filter(Boolean);
-    if (allow.includes(trimmed)) return trimmed;
-=======
   const allow = resolveAllowedOrigins(process.env);
   if (allow.includes(trimmed)) {
     return trimmed;
->>>>>>> pr-1360
   }
 
   if (LOCAL_ORIGIN_RE.test(trimmed)) return trimmed;
@@ -9313,6 +9305,8 @@ async function handleRequest(
   }
   const pathname = url.pathname;
   const isAuthEndpoint = pathname.startsWith("/api/auth/");
+  const isHealthEndpoint =
+    method === "GET" && pathname === "/api/health";
   const isCloudOnboardingStatusEndpoint =
     method === "GET" &&
     pathname === "/api/onboarding/status" &&
@@ -9465,6 +9459,7 @@ async function handleRequest(
     method !== "OPTIONS" &&
     isAuthProtectedPath &&
     !isAuthEndpoint &&
+    !isHealthEndpoint &&
     !isCloudOnboardingStatusEndpoint &&
     !isAuthorized(req)
   ) {
@@ -9476,6 +9471,7 @@ async function handleRequest(
     method !== "OPTIONS" &&
     isAuthProtectedPath &&
     !isAuthEndpoint &&
+    !isHealthEndpoint &&
     !isCloudOnboardingStatusEndpoint &&
     !isAuthorized(req)
   ) {
@@ -18691,8 +18687,9 @@ export async function startApiServer(opts?: {
 
   // Optional auto-provision mode for legacy environments. Disabled by default
   // so startup does not silently create new wallets when keys are missing.
-  const walletAutoProvisionRaw =
-    process.env.MILADY_WALLET_AUTO_PROVISION?.trim().toLowerCase();
+  const walletAutoProvisionRaw = process.env.MILADY_WALLET_AUTO_PROVISION
+    ?.trim()
+    .toLowerCase();
   const walletAutoProvisionEnabled =
     walletAutoProvisionRaw === "1" ||
     walletAutoProvisionRaw === "true" ||

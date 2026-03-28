@@ -253,6 +253,54 @@ function collapseWhitespace(input: string): string {
   return input.replace(/\s+/g, " ").trim();
 }
 
+function normalizeTranscriptWord(word: string): string {
+  return word
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+}
+
+function mergeTranscriptWindows(existing: string, incoming: string): string {
+  const left = collapseWhitespace(existing);
+  const right = collapseWhitespace(incoming);
+
+  if (!left) return right;
+  if (!right) return left;
+
+  const exactMerged = mergeStreamingText(left, right);
+  if (
+    exactMerged === right ||
+    exactMerged === left ||
+    exactMerged === `${left}${right}`
+  ) {
+    const leftWords = left.split(" ");
+    const rightWords = right.split(" ");
+    const maxOverlap = Math.min(leftWords.length, rightWords.length);
+
+    for (let overlap = maxOverlap; overlap > 0; overlap -= 1) {
+      let matches = true;
+      for (let index = 0; index < overlap; index += 1) {
+        const leftWord = normalizeTranscriptWord(
+          leftWords[leftWords.length - overlap + index] ?? "",
+        );
+        const rightWord = normalizeTranscriptWord(rightWords[index] ?? "");
+        if (!leftWord || !rightWord || leftWord !== rightWord) {
+          matches = false;
+          break;
+        }
+      }
+      if (!matches) continue;
+
+      if (overlap === rightWords.length) {
+        return left;
+      }
+      return [...leftWords, ...rightWords.slice(overlap)].join(" ");
+    }
+  }
+
+  return exactMerged;
+}
+
 function normalizeMouthOpen(value: number): number {
   const clamped = Math.max(0, Math.min(1, value));
   const stepped = Math.round(clamped / MOUTH_OPEN_STEP) * MOUTH_OPEN_STEP;
@@ -633,6 +681,7 @@ export const __voiceChatInternals = {
   resolveVoiceMode,
   resolveVoiceProxyEndpoint,
   toSpeakableText,
+  mergeTranscriptWindows,
   webSpeechVoiceDebugFields,
   ASSISTANT_TTS_FINAL_ONLY,
   ASSISTANT_TTS_FIRST_FLUSH_CHARS,
@@ -975,7 +1024,7 @@ export function useVoiceChat(options: VoiceChatOptions): VoiceChatState {
       const normalized = collapseWhitespace(transcript);
       if (!normalized) return;
 
-      const nextText = mergeStreamingText(
+      const nextText = mergeTranscriptWindows(
         transcriptBufferRef.current,
         normalized,
       );
@@ -1674,16 +1723,6 @@ export function useVoiceChat(options: VoiceChatOptions): VoiceChatState {
                 matchesVoiceLocale(v, requestedLocale),
               );
             }
-          }
-
-          if (!selectedVoice) {
-            selectedVoice =
-              voices.find(
-                (v) =>
-                  v.lang === "en-US" &&
-                  !v.name.toLowerCase().includes("alex") &&
-                  !v.name.toLowerCase().includes("david"),
-              ) || voices.find((v) => v.lang.startsWith("en"));
           }
 
           if (selectedVoice) {

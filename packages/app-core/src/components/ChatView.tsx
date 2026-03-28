@@ -939,7 +939,6 @@ export function ChatView({
       onDragLeave={() => setImageDragOver(false)}
       onDrop={handleImageDrop}
     >
-      {/* ── Messages ───────────────────────────────────────────────── */}
       <div
         ref={messagesRef}
         data-testid="chat-messages-scroll"
@@ -1092,8 +1091,17 @@ export function ChatView({
         )}
       </div>
 
-      {/* Agent activity box — sticky status per active coding-agent task (default layout) */}
-      {!isGameModal && (
+      {/* Agent activity box — sticky status per active coding-agent task */}
+      {isGameModal ? (
+        <div className="pointer-events-auto">
+          <AgentActivityBox
+            sessions={ptySessions}
+            onSessionClick={(id) =>
+              setPtyDrawerSessionId((prev) => (prev === id ? null : id))
+            }
+          />
+        </div>
+      ) : (
         <AgentActivityBox
           sessions={ptySessions}
           onSessionClick={(id) =>
@@ -1101,8 +1109,6 @@ export function ChatView({
           }
         />
       )}
-
-      {/* PTY console drawer */}
       {ptyDrawerSessionId && ptySessions.length > 0 && (
         <PtyConsoleDrawer
           activeSessionId={ptyDrawerSessionId}
@@ -1110,8 +1116,6 @@ export function ChatView({
           onClose={() => setPtyDrawerSessionId(null)}
         />
       )}
-
-      {/* Share ingest notice */}
       {shareIngestNotice && (
         <div
           className={`text-xs text-ok py-1 relative${isGameModal ? " pointer-events-auto" : ""}`}
@@ -1120,8 +1124,6 @@ export function ChatView({
           {shareIngestNotice}
         </div>
       )}
-
-      {/* Dropped files */}
       {droppedFiles.length > 0 && (
         <div
           className={`text-xs text-muted py-0.5 flex gap-2 relative${isGameModal ? " pointer-events-auto" : ""}`}
@@ -1132,8 +1134,6 @@ export function ChatView({
           ))}
         </div>
       )}
-
-      {/* Pending image thumbnails */}
       {chatPendingImages.length > 0 && (
         <div
           className={`flex gap-2 flex-wrap py-1 relative${isGameModal ? " pointer-events-auto" : ""}`}
@@ -1182,8 +1182,6 @@ export function ChatView({
               : "uncached"}
         </div>
       )}
-
-      {/* ── Input row: mic + paperclip + textarea + send ───────────── */}
       <input
         ref={fileInputRef}
         type="file"

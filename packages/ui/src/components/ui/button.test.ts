@@ -3,7 +3,6 @@ import { buttonVariants } from "./button";
 
 describe("buttonVariants", () => {
   describe("default variant", () => {
-<<<<<<< HEAD
     it("includes bg-accent/18", () => {
       const classes = buttonVariants({ variant: "default" });
       expect(classes).toContain("bg-accent/18");
@@ -13,11 +12,6 @@ describe("buttonVariants", () => {
       const classes = buttonVariants({ variant: "default" });
       expect(classes).toContain("text-accent-fg");
       expect(classes).toContain("dark:text-accent");
-=======
-    it("includes the accent surface background", () => {
-      const classes = buttonVariants({ variant: "default" });
-      expect(classes).toContain("bg-accent/18");
->>>>>>> pr-1360
     });
 
     it("does not include bg-primary", () => {

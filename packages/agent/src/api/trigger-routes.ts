@@ -51,7 +51,7 @@ export interface TriggerRouteContext extends RouteRequestContext {
     runtime: AgentRuntime,
     task: Task,
     options: { source: string; force: boolean },
-  ) => Promise<unknown>;
+  ) => Promise<any>;
   getTriggerHealthSnapshot: (runtime: AgentRuntime) => Promise<object>;
   getTriggerLimit: (runtime: AgentRuntime) => number;
   listTriggerTasks: (runtime: AgentRuntime) => Promise<Task[]>;
