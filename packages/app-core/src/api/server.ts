@@ -123,8 +123,12 @@ import {
 } from "./dev-console-log";
 import { resolveDevStackFromEnv } from "./dev-stack";
 import {
+  approveStewardTransaction,
   createStewardClient,
+  denyStewardTransaction,
   getStewardBridgeStatus,
+  getStewardHistory,
+  getStewardPendingApprovals,
   isStewardConfigured,
   resolveStewardAgentId,
   signTransactionWithOptionalSteward,
@@ -2704,9 +2708,8 @@ async function handleMiladyCompatRoute(
       process.env,
       addresses.evmAddress,
     );
-    const stewardClient = createStewardClient();
 
-    if (!stewardClient || !agentId) {
+    if (!agentId || !createStewardClient()) {
       sendJsonResponse(res, 503, {
         error: "Steward not configured",
       });
@@ -2717,9 +2720,8 @@ async function handleMiladyCompatRoute(
       const status = url.searchParams.get("status") || undefined;
       const limit = parseInt(url.searchParams.get("limit") || "50", 10);
       const offset = parseInt(url.searchParams.get("offset") || "0", 10);
-      const history = await stewardClient.getHistory(agentId);
-      // History entries are basic {timestamp, value} — return as-is
-      // The frontend will format them. Apply pagination locally.
+      // getStewardHistory returns full TxRecord[] from the steward API
+      const history = await getStewardHistory(agentId);
       const filtered = status
         ? history.filter((h: any) => h.status === status)
         : history;
@@ -2753,9 +2755,8 @@ async function handleMiladyCompatRoute(
       process.env,
       addresses.evmAddress,
     );
-    const stewardClient = createStewardClient();
 
-    if (!stewardClient || !agentId) {
+    if (!agentId || !createStewardClient()) {
       sendJsonResponse(res, 503, {
         error: "Steward not configured",
       });
@@ -2763,24 +2764,8 @@ async function handleMiladyCompatRoute(
     }
 
     try {
-      // Try the pending approvals endpoint on the steward API directly.
-      // This isn't exposed in the SDK yet, so we call the base URL directly.
-      const baseUrl = (stewardClient as any).baseUrl as string;
-      const headers = (stewardClient as any).buildHeaders() as Headers;
-      const pendingRes = await fetch(
-        `${baseUrl}/vault/${encodeURIComponent(agentId)}/pending`,
-        { headers },
-      );
-      if (pendingRes.ok) {
-        const body = await pendingRes.json();
-        sendJsonResponse(res, 200, body.data ?? body);
-      } else if (pendingRes.status === 404) {
-        // Endpoint not available yet — return empty array
-        sendJsonResponse(res, 200, []);
-      } else {
-        const errText = await pendingRes.text().catch(() => "Unknown error");
-        sendJsonResponse(res, pendingRes.status, { error: errText });
-      }
+      const pending = await getStewardPendingApprovals(agentId);
+      sendJsonResponse(res, 200, pending);
     } catch (err) {
       const message =
         err instanceof Error
@@ -2816,32 +2801,23 @@ async function handleMiladyCompatRoute(
       process.env,
       addresses.evmAddress,
     );
-    const stewardClient = createStewardClient();
 
-    if (!stewardClient || !agentId) {
+    if (!agentId || !createStewardClient()) {
       sendJsonResponse(res, 503, {
         error: "Steward not configured",
       });
       return true;
     }
 
-    const action = url.pathname.includes("approve") ? "approve" : "deny";
+    const isApprove = url.pathname.includes("approve");
 
     try {
-      const baseUrl = (stewardClient as any).baseUrl as string;
-      const headers = (stewardClient as any).buildHeaders() as Headers;
-      const actionRes = await fetch(
-        `${baseUrl}/vault/${encodeURIComponent(agentId)}/${action}/${encodeURIComponent(txId)}`,
-        { method: "POST", headers },
-      );
-      if (actionRes.ok) {
-        const responseBody = await actionRes.json().catch(() => ({}));
-        sendJsonResponse(res, 200, responseBody.data ?? responseBody);
-      } else {
-        const errText = await actionRes.text().catch(() => "Unknown error");
-        sendJsonResponse(res, actionRes.status, { error: errText });
-      }
+      const result = isApprove
+        ? await approveStewardTransaction(agentId, txId)
+        : await denyStewardTransaction(agentId, txId);
+      sendJsonResponse(res, 200, { ok: true, ...result });
     } catch (err) {
+      const action = isApprove ? "approve" : "deny";
       const message =
         err instanceof Error
           ? err.message

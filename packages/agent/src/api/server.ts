@@ -7301,19 +7301,9 @@ export function resolveCorsOrigin(origin?: string): string | null {
   if (WILDCARD_BIND_RE.test(stripOptionalHostPort(bindHost))) return trimmed;
 
   // Explicit allowlist via env (comma-separated)
-<<<<<<< HEAD
-  const extra = process.env.ELIZA_ALLOWED_ORIGINS ?? process.env.CORS_ORIGINS;
-  if (extra) {
-    const allow = extra
-      .split(",")
-      .map((v) => v.trim())
-      .filter(Boolean);
-    if (allow.includes(trimmed)) return trimmed;
-=======
   const allow = resolveAllowedOrigins(process.env);
   if (allow.includes(trimmed)) {
     return trimmed;
->>>>>>> pr-1360
   }
 
   if (LOCAL_ORIGIN_RE.test(trimmed)) return trimmed;
