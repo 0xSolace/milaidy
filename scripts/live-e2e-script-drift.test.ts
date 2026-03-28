@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const PACKAGE_JSON_PATH = path.join(ROOT, "package.json");
+const LIVE_E2E_CONFIG_PATH = path.join(ROOT, "vitest.live-e2e.config.ts");
 
 describe("live E2E script contract", () => {
   it("targets the checked-in agent live specs without stale repo-root paths", () => {
@@ -55,6 +56,14 @@ describe("live E2E script contract", () => {
     );
     expect(liveScript).not.toMatch(
       /(^|\s)test\/cloud-providers\.e2e\.test\.ts(?=\s|$)/,
+    );
+  });
+
+  it("keeps the mixed cloud provider spec in the live config allowlist", () => {
+    const config = fs.readFileSync(LIVE_E2E_CONFIG_PATH, "utf8");
+
+    expect(config).toContain(
+      '"packages/agent/test/cloud-providers.e2e.test.ts"',
     );
   });
 });

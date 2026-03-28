@@ -18,6 +18,8 @@ export default defineConfig({
       "packages/agent/test/**/*.real.e2e.test.tsx",
       "packages/agent/test/**/*-live.e2e.test.ts",
       "packages/agent/test/**/*-live.e2e.test.tsx",
+      // Cloud provider coverage lives in a mixed E2E spec with gated live cases.
+      "packages/agent/test/cloud-providers.e2e.test.ts",
       "packages/app-core/test/**/*.live.e2e.test.ts",
       "packages/app-core/test/**/*.live.e2e.test.tsx",
       "packages/app-core/test/**/*.real.e2e.test.ts",
