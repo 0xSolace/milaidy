@@ -747,7 +747,7 @@ function assertWindowsSmokeScriptHasLeadingParamBlock() {
     "$startupStateFile = Join-Path $env:RUNNER_TEMP",
     '$startupBootstrapFile = Join-Path $startupBundleRoot "startup-session.json"',
     "Write-StartupBootstrap",
-    '$stopProtectedProcessIds = [System.Collections.Generic.HashSet[int]]::new()',
+    "$stopProtectedProcessIds = [System.Collections.Generic.HashSet[int]]::new()",
     'Get-CimInstance Win32_Process -Filter "ProcessId = $PID"',
     "-not $stopProtectedProcessIds.Contains([int]$_.Id)",
     "[int]::TryParse([string]$state.port, [ref]$observedPort)",

@@ -680,7 +680,7 @@ describe("Electrobun release workflow drift", () => {
     );
     expect(smokeScript).toContain("Set-Content -Path $persistLauncherPathFile");
     expect(smokeScript).toContain(
-      '$stopProtectedProcessIds = [System.Collections.Generic.HashSet[int]]::new()',
+      "$stopProtectedProcessIds = [System.Collections.Generic.HashSet[int]]::new()",
     );
     expect(smokeScript).toContain(
       'Get-CimInstance Win32_Process -Filter "ProcessId = $PID"',
