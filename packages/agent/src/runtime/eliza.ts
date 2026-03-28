@@ -63,6 +63,10 @@ import {
   type TargetInfo,
   type UUID,
 } from "@elizaos/core";
+import {
+  isMiladySettingsDebugEnabled,
+  settingsDebugCloudSummary,
+} from "@miladyai/shared";
 import * as pluginAgentOrchestrator from "@elizaos/plugin-agent-orchestrator";
 import * as pluginAgentSkills from "@elizaos/plugin-agent-skills";
 import * as pluginAnthropic from "@elizaos/plugin-anthropic";
@@ -1559,6 +1563,17 @@ export function isEnvKeyAllowedForForwarding(key: string): boolean {
   return true;
 }
 
+function isElizaCloudManagedProcessEnvKey(key: string): boolean {
+  const upper = key.toUpperCase();
+  return (
+    upper === "ELIZAOS_CLOUD_API_KEY" ||
+    upper === "ELIZAOS_CLOUD_ENABLED" ||
+    upper === "ELIZAOS_CLOUD_BASE_URL" ||
+    upper === "ELIZAOS_CLOUD_SMALL_MODEL" ||
+    upper === "ELIZAOS_CLOUD_LARGE_MODEL"
+  );
+}
+
 export function ensureBrowserServerLink(): boolean {
   try {
     // Resolve the plugin-browser package root via its package.json.
@@ -2240,29 +2255,41 @@ export function applyCloudConfigToEnv(config: ElizaConfig): void {
   // would count as enabled, causing the model to revert to cloud on restart.
   const effectivelyEnabled = cloudMode === true;
 
+  if (isMiladySettingsDebugEnabled()) {
+    const c = cloud as Record<string, unknown>;
+    logger.debug(
+      `[milady][settings][runtime] applyCloudConfigToEnv effectivelyEnabled=${effectivelyEnabled} cloud=${JSON.stringify(settingsDebugCloudSummary(c))} inferenceMode=${String(cloud.inferenceMode ?? "")} servicesInference=${String(cloud.services?.inference ?? "")}`,
+    );
+  }
+
   if (effectivelyEnabled) {
     process.env.ELIZAOS_CLOUD_ENABLED = "true";
     logger.info(
       `[eliza] Cloud config: enabled=${cloud.enabled}, hasApiKey=${Boolean(cloud.apiKey)}, baseUrl=${cloud.baseUrl ?? "(default)"}`,
     );
+    // Only propagate the API key when cloud is enabled AND it is a real
+    // credential — never set the literal "[REDACTED]" placeholder (which can
+    // leak into the config via UI round-trips through the redacted GET → PUT
+    // cycle). WHY: when enabled is false (BYOK / disconnected), leaving the key
+    // in process.env still auto-loads @elizaos/plugin-elizacloud and steals
+    // TEXT_LARGE even if the JSON says cloud is off.
+    const isRealApiKey =
+      cloud.apiKey && cloud.apiKey.trim().toUpperCase() !== "[REDACTED]";
+    if (isRealApiKey) {
+      process.env.ELIZAOS_CLOUD_API_KEY = cloud.apiKey;
+    } else {
+      delete process.env.ELIZAOS_CLOUD_API_KEY;
+    }
+    if (cloud.baseUrl) {
+      process.env.ELIZAOS_CLOUD_BASE_URL = cloud.baseUrl;
+    } else {
+      delete process.env.ELIZAOS_CLOUD_BASE_URL;
+    }
   } else {
     delete process.env.ELIZAOS_CLOUD_ENABLED;
     delete process.env.ELIZAOS_CLOUD_SMALL_MODEL;
     delete process.env.ELIZAOS_CLOUD_LARGE_MODEL;
-  }
-  // Only propagate the API key when it is a real credential — never set
-  // the literal "[REDACTED]" placeholder (which can leak into the config via
-  // UI round-trips through the redacted GET → PUT cycle).
-  const isRealApiKey =
-    cloud.apiKey && cloud.apiKey.trim().toUpperCase() !== "[REDACTED]";
-  if (isRealApiKey) {
-    process.env.ELIZAOS_CLOUD_API_KEY = cloud.apiKey;
-  } else {
     delete process.env.ELIZAOS_CLOUD_API_KEY;
-  }
-  if (cloud.baseUrl) {
-    process.env.ELIZAOS_CLOUD_BASE_URL = cloud.baseUrl;
-  } else {
     delete process.env.ELIZAOS_CLOUD_BASE_URL;
   }
 
@@ -4064,12 +4091,15 @@ export async function startEliza(
   // 2e. Propagate arbitrary env vars from config.env into process.env.
   // Eliza stores user-defined env vars (plugin settings, API URLs, etc.)
   // in config.env; elizaOS plugins read them via process.env / getSetting.
+  // Skip ELIZAOS_CLOUD_* — applyCloudConfigToEnv() owns those; otherwise a
+  // stale key in config.env refills process.env after disconnect cleared it.
   if (
     config.env &&
     typeof config.env === "object" &&
     !Array.isArray(config.env)
   ) {
     for (const [key, value] of Object.entries(config.env)) {
+      if (isElizaCloudManagedProcessEnvKey(key)) continue;
       if (typeof value === "string" && !process.env[key]) {
         process.env[key] = value;
       }

@@ -409,6 +409,7 @@ export function ProviderSwitcher(props: ProviderSwitcherProps = {}) {
               inferenceMode: "byok",
             },
             env: { vars: { ELIZA_USE_PI_AI: "" } },
+            agents: { defaults: { subscriptionProvider: null } },
           });
           setPiAiEnabled(false);
           setCloudHandlesInference(false);
@@ -466,18 +467,23 @@ export function ProviderSwitcher(props: ProviderSwitcherProps = {}) {
           env: { vars: { ELIZA_USE_PI_AI: "" } },
         });
         await client.switchProvider(getStoredSubscriptionProvider(providerId));
+
+        // Persist plugin toggles after successful switch to avoid inconsistent
+        // UI state if switchProvider fails.
+        if (target && !target.enabled) {
+          await handlePluginToggle(target.id, true);
+        }
+        for (const p of enabledAiProviders) {
+          if (!target || p.id !== target.id) {
+            await handlePluginToggle(p.id, false);
+          }
+        }
+
+        // Only update UI state after all operations succeed
         setCloudHandlesInference(false);
         setPiAiEnabled(false);
       } catch (err) {
         console.warn("[eliza] Provider switch failed", err);
-      }
-      if (target && !target.enabled) {
-        await handlePluginToggle(target.id, true);
-      }
-      for (const p of enabledAiProviders) {
-        if (!target || p.id !== target.id) {
-          await handlePluginToggle(p.id, false);
-        }
       }
     },
     [allAiProviders, enabledAiProviders, handlePluginToggle],
@@ -494,7 +500,9 @@ export function ProviderSwitcher(props: ProviderSwitcherProps = {}) {
           inferenceMode: "cloud",
         },
         env: { vars: { ELIZA_USE_PI_AI: "" } },
-        agents: { defaults: { model: { primary: null } } },
+        agents: {
+          defaults: { model: { primary: null }, subscriptionProvider: null },
+        },
         models: {
           small: currentSmallModel || "moonshotai/kimi-k2-turbo",
           large: currentLargeModel || "moonshotai/kimi-k2-0905",
@@ -503,16 +511,28 @@ export function ProviderSwitcher(props: ProviderSwitcherProps = {}) {
       setState("elizaCloudEnabled", true);
       setCloudHandlesInference(true);
       setPiAiEnabled(false);
+      for (const p of enabledAiProviders) {
+        await handlePluginToggle(p.id, false);
+      }
       await client.restartAgent();
     } catch (err) {
       console.warn("[eliza] Failed to select cloud provider", err);
     }
-  }, [currentSmallModel, currentLargeModel, setState]);
+  }, [
+    currentSmallModel,
+    currentLargeModel,
+    enabledAiProviders,
+    handlePluginToggle,
+    setState,
+  ]);
 
   const handlePiAiSave = useCallback(async () => {
     setPiAiSaving(true);
     setPiAiSaveSuccess(false);
     try {
+      for (const p of enabledAiProviders) {
+        await handlePluginToggle(p.id, false);
+      }
       await client.updateConfig({
         cloud: {
           enabled: false,
@@ -525,6 +545,7 @@ export function ProviderSwitcher(props: ProviderSwitcherProps = {}) {
             model: {
               primary: piAiModelSpec.trim() || null,
             },
+            subscriptionProvider: null,
           },
         },
       });
@@ -537,7 +558,7 @@ export function ProviderSwitcher(props: ProviderSwitcherProps = {}) {
     } finally {
       setPiAiSaving(false);
     }
-  }, [piAiModelSpec, setTimeout]);
+  }, [enabledAiProviders, handlePluginToggle, piAiModelSpec, setTimeout]);
 
   const handleSelectPiAi = useCallback(async () => {
     hasManualSelection.current = true;
@@ -787,12 +808,13 @@ export function ProviderSwitcher(props: ProviderSwitcherProps = {}) {
                       registry={defaultRegistry}
                       onChange={(key, value) => {
                         const val = String(value);
+                        const nextSmall =
+                          key === "small" ? val : currentSmallModel;
+                        const nextLarge =
+                          key === "large" ? val : currentLargeModel;
                         if (key === "small") setCurrentSmallModel(val);
                         if (key === "large") setCurrentLargeModel(val);
-                        const updated = {
-                          small: key === "small" ? val : currentSmallModel,
-                          large: key === "large" ? val : currentLargeModel,
-                        };
+                        const updated = { small: nextSmall, large: nextLarge };
                         void (async () => {
                           setModelSaving(true);
                           try {

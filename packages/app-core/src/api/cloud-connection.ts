@@ -1,5 +1,9 @@
 import type { AgentRuntime } from "@elizaos/core";
 import { logger } from "@elizaos/core";
+import {
+  isMiladySettingsDebugEnabled,
+  settingsDebugCloudSummary,
+} from "@miladyai/shared";
 import { resolveCloudApiBaseUrl as resolveCanonicalCloudApiBaseUrl } from "@miladyai/agent/cloud/base-url";
 import { validateCloudBaseUrl } from "@miladyai/agent/cloud/validate-url";
 import type { ElizaConfig } from "../config/config";
@@ -159,6 +163,19 @@ export function resolveCloudApiKey(
   config: Pick<ElizaConfig, "cloud"> | Record<string, unknown>,
   runtime?: { character?: { secrets?: Record<string, unknown> } } | null,
 ): string | undefined {
+  const cloudRecord = (config as { cloud?: { enabled?: unknown } }).cloud;
+  if (
+    cloudRecord &&
+    typeof cloudRecord === "object" &&
+    cloudRecord.enabled === false
+  ) {
+    // User disconnected cloud or chose BYOK — do not resurrect a key from env,
+    // sealed store, or agent DB. WHY: ~/.milady/.env may still hold
+    // ELIZAOS_CLOUD_API_KEY; without this guard the runtime looks "connected"
+    // and billing routes can rewrite enabled=true back onto disk.
+    return undefined;
+  }
+
   // 1. Config file (disk)
   const configApiKey = normalizeSecret(
     (config as { cloud?: { apiKey?: string } }).cloud?.apiKey,
@@ -496,6 +513,13 @@ export async function disconnectUnifiedCloudConnection(args: {
 }): Promise<void> {
   const { cloudManager = null, config, runtime, saveConfig } = args;
 
+  if (isMiladySettingsDebugEnabled()) {
+    const c = config.cloud as Record<string, unknown> | undefined;
+    logger.debug(
+      `[milady][settings][cloud] disconnectUnifiedCloudConnection start cloud=${JSON.stringify(settingsDebugCloudSummary(c))}`,
+    );
+  }
+
   if (typeof cloudManager?.disconnect === "function") {
     try {
       await cloudManager.disconnect();
@@ -517,6 +541,12 @@ export async function disconnectUnifiedCloudConnection(args: {
 
   try {
     saveConfig?.(config);
+    if (isMiladySettingsDebugEnabled()) {
+      const c = config.cloud as Record<string, unknown> | undefined;
+      logger.debug(
+        `[milady][settings][cloud] disconnectUnifiedCloudConnection saveConfig OK cloud=${JSON.stringify(settingsDebugCloudSummary(c))}`,
+      );
+    }
   } catch (err) {
     logger.warn(
       `[cloud/disconnect] Failed to save cloud disconnect state: ${
@@ -527,6 +557,12 @@ export async function disconnectUnifiedCloudConnection(args: {
 
   clearCloudEnv();
   await clearRuntimeCloudState(runtime);
+
+  if (isMiladySettingsDebugEnabled()) {
+    logger.debug(
+      "[milady][settings][cloud] disconnectUnifiedCloudConnection done (env cleared + runtime cloud state cleared)",
+    );
+  }
 }
 
 /** Matches `reason` from GET /api/cloud/status when connected via API key without CLOUD_AUTH. */

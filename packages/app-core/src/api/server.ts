@@ -107,6 +107,11 @@ import {
 } from "@miladyai/agent/config/config";
 import { resolveUserPath } from "@miladyai/agent/config/paths";
 import { resolveDefaultAgentWorkspaceDir } from "@miladyai/agent/providers/workspace";
+import {
+  isMiladySettingsDebugEnabled,
+  sanitizeForSettingsDebug,
+  settingsDebugCloudSummary,
+} from "@miladyai/shared";
 import { ethers } from "ethers";
 import {
   ensureRuntimeSqlCompatibility,
@@ -2020,6 +2025,30 @@ function resolveBscExecutionNetwork(): {
  */
 function resolveCloudConfig(runtime?: unknown): ElizaConfig {
   const config = loadElizaConfig();
+  const cloudRec =
+    config.cloud && typeof config.cloud === "object"
+      ? (config.cloud as Record<string, unknown>)
+      : undefined;
+  if (isMiladySettingsDebugEnabled()) {
+    logger.debug(
+      `[milady][settings][compat] resolveCloudConfig disk cloud=${JSON.stringify(settingsDebugCloudSummary(cloudRec))} topKeys=${Object.keys(
+        config as object,
+      )
+        .sort()
+        .join(",")}`,
+    );
+  }
+  if (cloudRec?.enabled === false) {
+    // Respect explicit disconnect / BYOK: never backfill cloud.apiKey from env
+    // or agent secrets into the file with enabled=true. WHY: that undoes
+    // Settings → disconnect + OpenRouter and breaks the next cold start.
+    if (isMiladySettingsDebugEnabled()) {
+      logger.debug(
+        "[milady][settings][compat] resolveCloudConfig skip backfill (cloud.enabled===false)",
+      );
+    }
+    return config;
+  }
   if (!config.cloud?.apiKey) {
     // Try multiple sources: sealed secrets → process.env → runtime character secrets
     const backfillKey =
@@ -2028,6 +2057,11 @@ function resolveCloudConfig(runtime?: unknown): ElizaConfig {
       (runtime as { character?: { secrets?: Record<string, string> } } | null)
         ?.character?.secrets?.ELIZAOS_CLOUD_API_KEY;
     if (backfillKey) {
+      if (isMiladySettingsDebugEnabled()) {
+        logger.debug(
+          "[milady][settings][compat] resolveCloudConfig backfilling cloud.apiKey from env/secrets/runtime",
+        );
+      }
       if (!config.cloud) {
         (config as Record<string, unknown>).cloud = {};
       }
@@ -2041,6 +2075,12 @@ function resolveCloudConfig(runtime?: unknown): ElizaConfig {
         // Non-fatal: the key is still available for this request
       }
     }
+  }
+  if (isMiladySettingsDebugEnabled()) {
+    const outCloud = config.cloud as Record<string, unknown> | undefined;
+    logger.debug(
+      `[milady][settings][compat] resolveCloudConfig → return cloud=${JSON.stringify(settingsDebugCloudSummary(outCloud))}`,
+    );
   }
   return config;
 }
@@ -2355,11 +2395,46 @@ async function handleMiladyCompatRoute(
       });
     }
 
-    return handleCloudRoute(req, res, url.pathname, method, {
+    const handled = await handleCloudRoute(req, res, url.pathname, method, {
       config,
       runtime: state.current,
       cloudManager: null,
     });
+
+    // After disconnect, sync the cloud disable into the upstream's in-memory
+    // state.config via a loopback PUT /api/config. Without this, the next
+    // upstream saveElizaConfig(state.config) (e.g. saving OpenRouter) reverts
+    // the disconnect because state.config still has cloud.enabled=true + apiKey.
+    if (
+      handled &&
+      method === "POST" &&
+      url.pathname === "/api/cloud/disconnect"
+    ) {
+      if (isMiladySettingsDebugEnabled()) {
+        logger.debug(
+          `[milady][settings][compat] POST /api/cloud/disconnect → loopback PUT /api/config patch=${JSON.stringify(sanitizeForSettingsDebug({ cloud: { enabled: false } }))}`,
+        );
+      }
+      try {
+        await compatLoopbackRequest(req, "/api/config", {
+          method: "PUT",
+          body: JSON.stringify({ cloud: { enabled: false } }),
+        });
+        if (isMiladySettingsDebugEnabled()) {
+          logger.debug(
+            "[milady][settings][compat] POST /api/cloud/disconnect loopback sync OK",
+          );
+        }
+      } catch (err) {
+        logger.warn(
+          `[milady][cloud/disconnect] Failed to sync cloud disable to upstream state: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+    }
+
+    return handled;
   }
 
   if (method === "POST" && url.pathname === "/api/agent/reset") {

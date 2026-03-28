@@ -27,6 +27,11 @@ import {
   type Task,
   type UUID,
 } from "@elizaos/core";
+import {
+  isMiladySettingsDebugEnabled,
+  sanitizeForSettingsDebug,
+  settingsDebugCloudSummary,
+} from "@miladyai/shared";
 import { ethers } from "ethers";
 import { type WebSocket, WebSocketServer } from "ws";
 import { getGlobalAwarenessRegistry } from "../awareness/registry.js";
@@ -968,6 +973,7 @@ export const CONFIG_WRITE_ALLOWED_TOP_KEYS = new Set([
   "gateway",
   "memory",
   "database",
+  "media",
   "cloud",
   "x402",
   "mcp",
@@ -5207,6 +5213,26 @@ function isRedactedSecretValue(value: unknown): boolean {
   return (
     typeof value === "string" && value.trim().toUpperCase() === "[REDACTED]"
   );
+}
+
+/** Remove UI round-trip placeholders so GET /api/config → PUT never persists "[REDACTED]". */
+function stripRedactedPlaceholderValuesDeep(value: unknown): void {
+  if (value === null || typeof value !== "object") return;
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      stripRedactedPlaceholderValuesDeep(item);
+    }
+    return;
+  }
+  const obj = value as Record<string, unknown>;
+  for (const key of Object.keys(obj)) {
+    const v = obj[key];
+    if (isRedactedSecretValue(v)) {
+      delete obj[key];
+    } else if (v !== null && typeof v === "object") {
+      stripRedactedPlaceholderValuesDeep(v);
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -11070,6 +11096,18 @@ async function handleRequest(
     }>(req, res);
     if (!body) return;
 
+    if (isMiladySettingsDebugEnabled()) {
+      logger.debug(
+        `[milady][settings][api] PUT /api/plugins/${pluginId} body=${JSON.stringify(
+          sanitizeForSettingsDebug({
+            enabled: body.enabled,
+            configKeys: body.config ? Object.keys(body.config).sort() : [],
+            config: body.config ?? {},
+          }),
+        )}`,
+      );
+    }
+
     // Search both bundled plugins AND store-installed plugins
     let plugin = state.plugins.find((p) => p.id === pluginId);
     if (!plugin) {
@@ -11239,6 +11277,15 @@ async function handleRequest(
       }
 
       scheduleRuntimeRestart(`Plugin toggle: ${pluginId}`);
+    }
+
+    if (isMiladySettingsDebugEnabled()) {
+      const cloud = (state.config as Record<string, unknown>).cloud as
+        | Record<string, unknown>
+        | undefined;
+      logger.debug(
+        `[milady][settings][api] PUT /api/plugins/${pluginId} → done configured=${plugin.configured} enabled=${plugin.enabled} cloud=${JSON.stringify(settingsDebugCloudSummary(cloud))}`,
+      );
     }
 
     json(res, { ok: true, plugin });
@@ -13920,6 +13967,13 @@ async function handleRequest(
 
   // ── GET /api/config ──────────────────────────────────────────────────────
   if (method === "GET" && pathname === "/api/config") {
+    if (isMiladySettingsDebugEnabled()) {
+      const cfg = state.config as Record<string, unknown>;
+      const cloud = cfg.cloud as Record<string, unknown> | undefined;
+      logger.debug(
+        `[milady][settings][api] GET /api/config → respond (redacted) topKeys=${Object.keys(cfg).sort().join(",")} cloud=${JSON.stringify(settingsDebugCloudSummary(cloud))}`,
+      );
+    }
     json(res, redactConfigSecrets(state.config));
     return;
   }
@@ -13928,6 +13982,19 @@ async function handleRequest(
   if (method === "PUT" && pathname === "/api/config") {
     const body = await readJsonBody(req, res);
     if (!body) return;
+
+    if (isMiladySettingsDebugEnabled()) {
+      const b = body as Record<string, unknown>;
+      const cloudBefore = (state.config as Record<string, unknown>).cloud as
+        | Record<string, unknown>
+        | undefined;
+      logger.debug(
+        `[milady][settings][api] PUT /api/config ← body topKeys=${Object.keys(b).sort().join(",")} snapshot=${JSON.stringify(sanitizeForSettingsDebug(b))}`,
+      );
+      logger.debug(
+        `[milady][settings][api] PUT /api/config state.config.cloud(before)=${JSON.stringify(settingsDebugCloudSummary(cloudBefore))}`,
+      );
+    }
 
     // --- Security: validate and safely merge config updates ----------------
 
@@ -14075,23 +14142,34 @@ async function handleRequest(
       }
     }
 
-    // Strip "[REDACTED]" placeholder values from secret fields before merge.
-    // The GET endpoint returns redacted secrets, and the UI may send them back
-    // via PUT — writing "[REDACTED]" as a literal value corrupts the config.
-    if (
-      filtered.cloud &&
-      typeof filtered.cloud === "object" &&
-      !Array.isArray(filtered.cloud)
-    ) {
-      const cloudPatch = filtered.cloud as Record<string, unknown>;
-      for (const key of Object.keys(cloudPatch)) {
-        if (isRedactedSecretValue(cloudPatch[key])) {
-          delete cloudPatch[key];
-        }
-      }
+    // Strip "[REDACTED]" from the whole patch (GET → PUT round-trips).
+    stripRedactedPlaceholderValuesDeep(filtered);
+
+    if (isMiladySettingsDebugEnabled()) {
+      logger.debug(
+        `[milady][settings][api] PUT /api/config filtered topKeys=${Object.keys(filtered).sort().join(",")} snapshot=${JSON.stringify(sanitizeForSettingsDebug(filtered))}`,
+      );
     }
 
     safeMerge(state.config as Record<string, unknown>, filtered);
+
+    // Deep-merge leaves stale `cloud.apiKey` when the client only sends
+    // `cloud: { enabled: false, … }` (e.g. switching to OpenRouter). Strip it
+    // so disk + hot-reload match "disconnected" and env backfill cannot revive
+    // Eliza Cloud on the next boot.
+    if (
+      filtered.cloud &&
+      typeof filtered.cloud === "object" &&
+      !Array.isArray(filtered.cloud) &&
+      (filtered.cloud as Record<string, unknown>).enabled === false
+    ) {
+      const mergedCloud = (state.config as Record<string, unknown>).cloud as
+        | Record<string, unknown>
+        | undefined;
+      if (mergedCloud && typeof mergedCloud === "object") {
+        delete mergedCloud.apiKey;
+      }
+    }
 
     // If the client updated env vars, synchronise them into process.env so
     // subsequent hot-restarts see the latest values (loadElizaConfig()
@@ -14145,6 +14223,13 @@ async function handleRequest(
 
     try {
       saveElizaConfig(state.config);
+      if (isMiladySettingsDebugEnabled()) {
+        const cfg = state.config as Record<string, unknown>;
+        const cloud = cfg.cloud as Record<string, unknown> | undefined;
+        logger.debug(
+          `[milady][settings][api] PUT /api/config → saveElizaConfig OK cloud(after)=${JSON.stringify(settingsDebugCloudSummary(cloud))}`,
+        );
+      }
     } catch (err) {
       logger.warn(
         `[api] Config save failed: ${err instanceof Error ? err.message : err}`,

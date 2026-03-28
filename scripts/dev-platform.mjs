@@ -2,7 +2,7 @@
 /**
  * dev:desktop — orchestrates Milady desktop local development (Vite, API, Electrobun).
  *
- * ## Why orchestrate instead of “just run electrbun”?
+ * ## Why orchestrate instead of "just run electrbun"?
  * Electrobun needs a renderer URL, usually the dashboard API, and (in dev) repo-root `dist/`
  * for the embedded runtime. One script keeps ports and env vars aligned and implements a
  * single shutdown policy so the terminal does not hang with stray children.
@@ -16,6 +16,7 @@
  * 3. **Long-lived children** (see `launch()`):
  *    - **API** — `bun --watch dev-server` unless `--no-api`.
  *    - **Watch + default** — Vite **dev** server + `MILADY_RENDERER_URL` for Electrobun (HMR).
+ *      Stale dep chunks: `MILADY_VITE_FORCE=1` (passes `vite --force`, same as dev-ui).
  *    - **Watch + `MILADY_DESKTOP_VITE_BUILD_WATCH=1`** — legacy `vite build --watch`
  *      (Rollup re-emits large chunks each save). **Why separate flag:** production watch is
  *      intentionally opt-in because it is much slower than the dev server on big graphs.
@@ -25,8 +26,8 @@
  * Before spawning API / Vite / Electrobun, `allocateFirstFreeLoopbackPort()` from
  * `scripts/lib/allocate-loopback-port.mjs` resolves **MILADY_API_PORT** (default
  * 31337) and, in Vite dev mode, **MILADY_PORT** (default 2138) if something else
- * already listens. **Why:** every child must agree on the same numbers; Vite’s
- * proxy is fixed at config load time, so “API picks a port later” desyncs the UI.
+ * already listens. **Why:** every child must agree on the same numbers; Vite's
+ * proxy is fixed at config load time, so "API picks a port later" desyncs the UI.
  *
  * ## Signals (Unix) — why `detached: true` on children
  * TTY Ctrl-C is sent to the **foreground process group**. Non-detached children share that
@@ -37,7 +38,7 @@
  *
  * ## Quit from the app
  * When Electrobun exits (user chose Quit), siblings would otherwise keep the orchestrator
- * alive. We detect electrbun’s `exit` and stop Vite/API the same way as signal shutdown.
+ * alive. We detect electrbun's `exit` and stop Vite/API the same way as signal shutdown.
  *
  * Docs: docs/apps/desktop-local-development.md
  *
@@ -77,6 +78,8 @@ const forceRenderer =
   process.env.MILADY_DESKTOP_RENDERER_BUILD === "always" ||
   process.env.MILADY_DESKTOP_RENDERER_BUILD === "1";
 const viteWatch = process.env.MILADY_DESKTOP_VITE_WATCH === "1";
+const viteDepForce =
+  process.env.MILADY_VITE_FORCE === "1" || process.env.ELIZA_VITE_FORCE === "1";
 /** Legacy: Rollup `vite build --watch` (tens of seconds per edit on large graphs). */
 const viteRollupWatch =
   viteWatch && process.env.MILADY_DESKTOP_VITE_BUILD_WATCH === "1";
@@ -266,14 +269,25 @@ async function launch() {
       "\n[eliza] Vite dev server (HMR) for desktop — Electrobun loads MILADY_RENDERER_URL.\n" +
         `    (Slow Rollup watch: MILADY_DESKTOP_VITE_BUILD_WATCH=1 with MILADY_DESKTOP_VITE_WATCH=1)\n`,
     );
-    pushChild("vite", "bun", ["run", "vite"], appDir, {
-      NODE_ENV: "development",
-      MILADY_PORT: String(uiDevPort),
-      MILADY_API_PORT: apiPort,
-      ELIZA_API_PORT: apiPort,
-      ELIZA_PORT: apiPort,
-      ELIZA_NAMESPACE: process.env.ELIZA_NAMESPACE ?? "milady",
-    });
+    if (viteDepForce) {
+      console.log(
+        "[eliza] Vite --force (MILADY_VITE_FORCE=1): re-optimizing dependencies.\n",
+      );
+    }
+    pushChild(
+      "vite",
+      "bun",
+      viteDepForce ? ["run", "vite", "--", "--force"] : ["run", "vite"],
+      appDir,
+      {
+        NODE_ENV: "development",
+        MILADY_PORT: String(uiDevPort),
+        MILADY_API_PORT: apiPort,
+        ELIZA_API_PORT: apiPort,
+        ELIZA_PORT: apiPort,
+        ELIZA_NAMESPACE: process.env.ELIZA_NAMESPACE ?? "milady",
+      },
+    );
     await waitForPort(uiDevPort);
     console.log(`[eliza] Vite ready on ${rendererUrlForShell}\n`);
   }
