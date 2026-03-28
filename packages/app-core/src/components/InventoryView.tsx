@@ -452,7 +452,10 @@ export function InventoryView() {
         <aside className={WALLET_SIDEBAR_CLASS}>
           <div className={APP_SIDEBAR_INNER_CLASSNAME}>
             {inventoryView === "tokens" ? (
-              <div className="space-y-2" data-testid="wallet-sidebar-sort-block">
+              <div
+                className="space-y-2"
+                data-testid="wallet-sidebar-sort-block"
+              >
                 <div className="px-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted/60">
                   {t("wallet.sort")}
                 </div>
@@ -491,7 +494,9 @@ export function InventoryView() {
                           className={`h-10 flex-1 rounded-none ${inventorySortDirection === "asc" ? "bg-accent/14 text-txt-strong" : "text-muted"}`}
                           aria-label={t("wallet.sortAscending")}
                           aria-pressed={inventorySortDirection === "asc"}
-                          onClick={() => setState("inventorySortDirection", "asc")}
+                          onClick={() =>
+                            setState("inventorySortDirection", "asc")
+                          }
                         >
                           <ArrowUp className="h-4 w-4" />
                         </Button>
