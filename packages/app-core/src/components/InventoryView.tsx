@@ -432,9 +432,9 @@ export function InventoryView() {
               {t("wallet.noOnchainWalletHint")}
             </p>
             <Button
-              variant="default"
+              variant="outline"
               size="sm"
-              className="mt-5 rounded-full px-5"
+              className="mt-5 rounded-full border-accent/40 bg-accent/15 px-5 font-semibold text-accent hover:bg-accent/25 hover:border-accent/55"
               onClick={() => setTab("settings")}
             >
               {t("nav.settings")}

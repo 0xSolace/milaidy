@@ -2496,32 +2496,6 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
 
                         {isExpanded && (
                           <div className="border-t border-border/40 bg-bg/18 px-4 py-4 sm:px-5">
-                            {plugin.validationErrors &&
-                              plugin.validationErrors.length > 0 && (
-                                <div className="mb-4 rounded-2xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
-                                  {plugin.validationErrors.map((error) => (
-                                    <div
-                                      key={`${plugin.id}:${error.field}:${error.message}`}
-                                    >
-                                      {error.field}: {error.message}
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-
-                            {plugin.validationWarnings &&
-                              plugin.validationWarnings.length > 0 && (
-                                <div className="mb-4 rounded-2xl border border-warn/30 bg-warn/10 px-4 py-3 text-sm text-warn">
-                                  {plugin.validationWarnings.map((warning) => (
-                                    <div
-                                      key={`${plugin.id}:${warning.field}:${warning.message}`}
-                                    >
-                                      {warning.message}
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-
                             {pluginLinks.length > 0 && (
                               <div className="mb-4 flex flex-wrap gap-2">
                                 {pluginLinks.map((link) => (
@@ -2603,6 +2577,35 @@ function PluginListView({ label, mode = "all", inModal }: PluginListViewProps) {
                                 No configuration needed.
                               </div>
                             )}
+
+                            {plugin.validationErrors &&
+                              plugin.validationErrors.length > 0 && (
+                                <div className="mt-3 rounded-xl border border-border/40 bg-card/30 px-4 py-3 text-xs text-muted">
+                                  {plugin.validationErrors.map((error) => (
+                                    <div
+                                      key={`${plugin.id}:${error.field}:${error.message}`}
+                                    >
+                                      <span className="font-medium text-warn">
+                                        {error.field}
+                                      </span>
+                                      : {error.message}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                            {plugin.validationWarnings &&
+                              plugin.validationWarnings.length > 0 && (
+                                <div className="mt-3 rounded-xl border border-border/40 bg-card/30 px-4 py-3 text-xs text-muted">
+                                  {plugin.validationWarnings.map((warning) => (
+                                    <div
+                                      key={`${plugin.id}:${warning.field}:${warning.message}`}
+                                    >
+                                      {warning.message}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
 
                             <div className="mt-4 flex flex-wrap items-center gap-2">
                               {plugin.isActive && (
