@@ -26,6 +26,13 @@ import { getGpuWindowManager } from "./native/gpu-window";
 import { getLocationManager } from "./native/location";
 import { getPermissionManager } from "./native/permissions";
 import { getScreenCaptureManager } from "./native/screencapture";
+import {
+  getStewardStatus,
+  isStewardLocalEnabled,
+  restartSteward,
+  resetSteward,
+  startSteward,
+} from "./native/steward";
 import { getSwabbleManager } from "./native/swabble";
 import { getTalkModeManager } from "./native/talkmode";
 import { isDetachedSurface } from "./surface-windows";
@@ -594,6 +601,28 @@ export function registerRpcHandlers(
       params: Parameters<typeof gpuWindow.getViewNativeHandle>[0],
     ) => gpuWindow.getViewNativeHandle(params),
     gpuViewList: async () => gpuWindow.listViews(),
+
+    // ---- Steward Sidecar ----
+    stewardGetStatus: async () => getStewardStatus(),
+    stewardIsLocalEnabled: async () => ({ enabled: isStewardLocalEnabled() }),
+    stewardStart: async () => {
+      if (!isStewardLocalEnabled()) {
+        return { state: "stopped" as const, error: "STEWARD_LOCAL not enabled" };
+      }
+      return startSteward();
+    },
+    stewardRestart: async () => {
+      if (!isStewardLocalEnabled()) {
+        return { state: "stopped" as const, error: "STEWARD_LOCAL not enabled" };
+      }
+      return restartSteward();
+    },
+    stewardReset: async () => {
+      if (!isStewardLocalEnabled()) {
+        return { state: "stopped" as const, error: "STEWARD_LOCAL not enabled" };
+      }
+      return resetSteward();
+    },
   });
 
   console.log("[RPC] All handlers registered");
