@@ -297,7 +297,7 @@ export async function runProviderWizard(
 export function registerSetupCommand(program: Command) {
   program
     .command("setup")
-    .description("Initialize ~/.eliza/eliza.json and the agent workspace")
+    .description("Initialize ~/.milady/milady.json and the agent workspace")
     .addHelpText(
       "after",
       () =>

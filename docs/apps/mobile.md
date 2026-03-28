@@ -36,7 +36,7 @@ The Milady mobile app brings the full dashboard experience to iOS and Android de
 
 ### Shared
 
-- **Node.js 18+** and the project's package manager (check `scripts/rt.sh` for the runtime wrapper)
+- **Node.js 22+** and the project's package manager (check `scripts/rt.sh` for the runtime wrapper)
 - The monorepo cloned and dependencies installed at the root level
 
 ## Building the App

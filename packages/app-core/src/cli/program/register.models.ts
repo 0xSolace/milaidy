@@ -10,11 +10,20 @@ export function registerModelsCli(program: Command) {
         ["ANTHROPIC_API_KEY", "Anthropic (Claude)"],
         ["OPENAI_API_KEY", "OpenAI (GPT)"],
         ["AI_GATEWAY_API_KEY", "Vercel AI Gateway"],
-        ["GEMINI_API_KEY", "Google (Gemini)"],
+        ["GOOGLE_API_KEY", "Google (Gemini)"],
+        ["GOOGLE_CLOUD_API_KEY", "Google Antigravity (Vertex AI)"],
         ["GROQ_API_KEY", "Groq"],
         ["XAI_API_KEY", "xAI (Grok)"],
         ["OPENROUTER_API_KEY", "OpenRouter"],
+        ["DEEPSEEK_API_KEY", "DeepSeek"],
+        ["TOGETHER_API_KEY", "Together AI"],
+        ["MISTRAL_API_KEY", "Mistral"],
+        ["COHERE_API_KEY", "Cohere"],
+        ["PERPLEXITY_API_KEY", "Perplexity"],
+        ["ZAI_API_KEY", "Zai"],
+        ["ELIZA_USE_PI_AI", "Pi AI"],
         ["OLLAMA_BASE_URL", "Ollama (local)"],
+        ["ELIZAOS_CLOUD_API_KEY", "elizaOS Cloud"],
       ] as const;
       console.log(`${getLogPrefix()} Model providers:`);
       for (const [key, name] of envKeys) {

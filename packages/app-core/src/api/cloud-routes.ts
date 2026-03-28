@@ -84,7 +84,7 @@ async function persistCloudLoginStatus(args: {
     saveElizaConfig(args.state.config);
     logger.info("[cloud-login] Saved cloud API key to config file");
     logger.warn(
-      "[cloud-login] Cloud API key is stored in cleartext in ~/.eliza/eliza.json. " +
+      "[cloud-login] Cloud API key is stored in cleartext in ~/.milady/milady.json. " +
         "Ensure this file has restrictive permissions (chmod 600).",
     );
   } catch (saveErr) {

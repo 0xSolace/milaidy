@@ -527,7 +527,7 @@ export function registerPluginsCli(program: Command): void {
   // ── test ─────────────────────────────────────────────────────────────
   pluginsCommand
     .command("test")
-    .description("Validate custom drop-in plugins in ~/.eliza/plugins/custom/")
+    .description("Validate custom drop-in plugins in ~/.milady/plugins/custom/")
     .action(async () => {
       try {
         const nodePath = await import("node:path");

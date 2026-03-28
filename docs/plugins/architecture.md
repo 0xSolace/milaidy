@@ -27,7 +27,7 @@ export const CORE_PLUGINS: readonly string[] = [
   "@elizaos/plugin-form",              // form handling for guided user journeys
   "@elizaos/plugin-knowledge",         // RAG knowledge management — required for knowledge tab
   "@elizaos/plugin-trajectory-logger", // trajectory logging for debugging and RL training
-  "@elizaos/plugin-agent-orchestrator",// multi-agent orchestration (PTY, SwarmCoordinator)
+  "@elizaos/plugin-agent-orchestrator",// multi-agent orchestration (PTY, SwarmCoordinator, workspace provisioning)
   "@elizaos/plugin-cron",              // scheduled jobs and automation
   "@elizaos/plugin-shell",             // shell command execution
   "@elizaos/plugin-agent-skills",      // skill execution and marketplace runtime

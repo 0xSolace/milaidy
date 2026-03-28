@@ -17,7 +17,7 @@ Get started with Milady's Telegram bot integration. This tutorial walks you thro
 Before you begin, make sure you have:
 
 - A Telegram account
-- Milady installed and running (`bun run dev`)
+- Milady installed and running (`milady` or `milady start`)
 - Access to the Milady dashboard (default: http://localhost:2138)
 
 ## Quick Setup via Dashboard
@@ -130,7 +130,7 @@ TELEGRAM_BOT_TOKEN=123456789:ABCdefGHIjklmNOpqrsTUVwxyzABC-defGHI
 Then start Milady:
 
 ```bash
-bun run dev
+milady
 ```
 
 ## Configuration Parameters

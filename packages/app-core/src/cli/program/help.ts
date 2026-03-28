@@ -10,7 +10,7 @@ const EXAMPLES = [
   ["eliza", "Start Eliza in the interactive TUI."],
   ["eliza start", "Start the classic runtime/chat loop."],
   ["eliza dashboard", "Open the Control UI in your browser."],
-  ["eliza setup", "Initialize ~/.eliza/eliza.json and the agent workspace."],
+  ["eliza setup", "Initialize ~/.milady/milady.json and the agent workspace."],
   ["eliza config get agents.defaults.model.primary", "Read a config value."],
   ["eliza models", "Show configured model providers."],
   ["eliza plugins list", "List available plugins."],
@@ -27,11 +27,11 @@ export function configureProgramHelp(program: Command, programVersion: string) {
     .option("--debug", "Enable debug-level runtime logs")
     .option(
       "--dev",
-      "Dev profile: isolate state under ~/.eliza-dev with separate config and ports",
+      "Dev profile: isolate state under ~/.milady-dev with separate config and ports",
     )
     .option(
       "--profile <name>",
-      "Use a named profile (isolates ELIZA_STATE_DIR/ELIZA_CONFIG_PATH under ~/.eliza-<name>)",
+      "Use a named profile (isolates state and config under ~/.milady-<name>)",
     );
 
   program.option("--no-color", "Disable ANSI colors", false);
