@@ -9,9 +9,9 @@ import { getGpuWindowManager } from "./gpu-window";
 import { getLocationManager } from "./location";
 import { getPermissionManager } from "./permissions";
 import { getScreenCaptureManager } from "./screencapture";
+import { isStewardLocalEnabled, stopSteward } from "./steward";
 import { getSwabbleManager } from "./swabble";
 import { getTalkModeManager } from "./talkmode";
-import { isStewardLocalEnabled, stopSteward } from "./steward";
 
 const NATIVE_DISPOSE_TIMEOUT_MS = 10_000;
 

@@ -91,13 +91,12 @@ import {
 } from "./agent-ready-state";
 import {
   isStewardLocalEnabled,
+  onStewardStatusChange,
+  resetSteward,
+  restartSteward,
+  setStewardSendToWebview,
   startSteward,
   stopSteward,
-  restartSteward,
-  resetSteward,
-  getStewardStatus,
-  onStewardStatusChange,
-  setStewardSendToWebview,
 } from "./native/steward";
 
 function resolveDesktopAppIconPath(): string {
@@ -1325,8 +1324,7 @@ async function setupUpdater(): Promise<void> {
               console.error("[Main] Steward restart failed:", err);
               Utils.showNotification({
                 title: "Steward Restart Failed",
-                body:
-                  err instanceof Error ? err.message : "Unknown error",
+                body: err instanceof Error ? err.message : "Unknown error",
               });
             });
           }
@@ -1336,8 +1334,7 @@ async function setupUpdater(): Promise<void> {
               console.error("[Main] Steward reset failed:", err);
               Utils.showNotification({
                 title: "Steward Reset Failed",
-                body:
-                  err instanceof Error ? err.message : "Unknown error",
+                body: err instanceof Error ? err.message : "Unknown error",
               });
             });
           }

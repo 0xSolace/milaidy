@@ -120,9 +120,7 @@ function configureStewardEnvFromCredentials(): void {
       `[Steward] Env configured: API=${apiBase} agent=${credentials.agentId} wallet=${credentials.walletAddress}`,
     );
   } else {
-    console.warn(
-      "[Steward] Sidecar running but no credentials available yet",
-    );
+    console.warn("[Steward] Sidecar running but no credentials available yet");
   }
 }
 
@@ -220,7 +218,10 @@ export async function resetSteward(): Promise<StewardSidecarStatus> {
   // deletion of unrelated directories via env var manipulation.
   const resolvedDataDir = path.resolve(dataDir);
   const miladyBase = path.resolve(path.join(home, ".milady"));
-  if (!resolvedDataDir.startsWith(miladyBase + path.sep) && resolvedDataDir !== miladyBase) {
+  if (
+    !resolvedDataDir.startsWith(miladyBase + path.sep) &&
+    resolvedDataDir !== miladyBase
+  ) {
     throw new Error(
       `[Steward] Refusing to delete dataDir outside ~/.milady/: ${resolvedDataDir}`,
     );

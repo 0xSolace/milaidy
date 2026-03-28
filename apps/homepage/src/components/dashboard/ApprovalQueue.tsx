@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { CloudApiClient, StewardPendingApproval, StewardPolicyResult } from "../../lib/cloud-api";
+import type {
+  CloudApiClient,
+  StewardPendingApproval,
+  StewardPolicyResult,
+} from "../../lib/cloud-api";
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -49,7 +53,9 @@ function PolicyTag({ policy }: { policy: StewardPolicyResult }) {
             : "text-red-400 border-red-500/20 bg-red-500/5"
         }`}
     >
-      <span className={`w-1 h-1 rounded-full ${passed ? "bg-emerald-500" : "bg-red-500"}`} />
+      <span
+        className={`w-1 h-1 rounded-full ${passed ? "bg-emerald-500" : "bg-red-500"}`}
+      />
       {label}
     </span>
   );
@@ -78,9 +84,12 @@ export function ApprovalQueue({ client }: ApprovalQueueProps) {
         setPending(Array.isArray(result) ? result : []);
       } catch (err) {
         if (!mountedRef.current) return;
-        const msg = err instanceof Error ? err.message : "Failed to load approvals";
+        const msg =
+          err instanceof Error ? err.message : "Failed to load approvals";
         if (msg.includes("503") || msg.includes("not configured")) {
-          setError("Steward is not configured for this agent. Approval queue requires a connected Steward instance.");
+          setError(
+            "Steward is not configured for this agent. Approval queue requires a connected Steward instance.",
+          );
         } else {
           setError(msg);
         }
@@ -96,7 +105,10 @@ export function ApprovalQueue({ client }: ApprovalQueueProps) {
     fetchPending(false);
 
     // Poll every 10s
-    intervalRef.current = setInterval(() => fetchPending(true), POLL_INTERVAL_MS);
+    intervalRef.current = setInterval(
+      () => fetchPending(true),
+      POLL_INTERVAL_MS,
+    );
 
     return () => {
       mountedRef.current = false;
@@ -121,7 +133,9 @@ export function ApprovalQueue({ client }: ApprovalQueueProps) {
         setPending((prev) => prev.filter((p) => p.transaction.id !== txId));
       } catch (err) {
         setActionError(
-          err instanceof Error ? err.message : `Failed to ${action} transaction`,
+          err instanceof Error
+            ? err.message
+            : `Failed to ${action} transaction`,
         );
       } finally {
         setActionLoading(null);
@@ -185,8 +199,19 @@ export function ApprovalQueue({ client }: ApprovalQueueProps) {
       {!loading && !error && pending.length === 0 && (
         <div className="border border-border bg-surface p-8 text-center">
           <div className="w-10 h-10 mx-auto mb-3 bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-            <svg aria-hidden="true" className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              aria-hidden="true"
+              className="w-5 h-5 text-emerald-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.5}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
           </div>
           <p className="font-mono text-sm text-text-light mb-1">ALL CLEAR</p>
@@ -276,9 +301,9 @@ export function ApprovalQueue({ client }: ApprovalQueueProps) {
                       POLICY CHECK
                     </p>
                     <div className="flex flex-wrap gap-1.5">
-                      {tx.policyResults.map((pr: StewardPolicyResult, i: number) => (
+                      {tx.policyResults.map((pr: StewardPolicyResult) => (
                         <PolicyTag
-                          key={`${pr.policyId || pr.name || "policy"}-${i}`}
+                          key={`${pr.policyId || pr.name || "policy"}-${pr.status}`}
                           policy={pr}
                         />
                       ))}
@@ -299,8 +324,19 @@ export function ApprovalQueue({ client }: ApprovalQueueProps) {
                     {isProcessing ? (
                       <div className="w-3 h-3 rounded-full border border-emerald-400/30 border-t-emerald-400 animate-spin" />
                     ) : (
-                      <svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      <svg
+                        aria-hidden="true"
+                        className="w-3.5 h-3.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2.5}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M5 13l4 4L19 7"
+                        />
                       </svg>
                     )}
                     APPROVE
@@ -316,8 +352,19 @@ export function ApprovalQueue({ client }: ApprovalQueueProps) {
                     {isProcessing ? (
                       <div className="w-3 h-3 rounded-full border border-red-400/30 border-t-red-400 animate-spin" />
                     ) : (
-                      <svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      <svg
+                        aria-hidden="true"
+                        className="w-3.5 h-3.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2.5}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
                       </svg>
                     )}
                     DENY

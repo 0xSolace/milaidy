@@ -1,8 +1,14 @@
-import { cleanup, fireEvent, render, screen, act } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AgentDetail } from "../components/dashboard/AgentDetail";
 import { WalletsPanel } from "../components/dashboard/WalletsPanel";
-import type { AgentStatus } from "../lib/cloud-api";
+import type { AgentStatus, CloudApiClient } from "../lib/cloud-api";
 
 // Mock clipboard API
 Object.assign(navigator, {
@@ -101,7 +107,7 @@ describe("WalletsPanel – no wallet", () => {
       source: "local" as const,
       status: "running" as const,
       sourceUrl: "http://localhost:2138",
-      client: mockClient as any,
+      client: mockClient as unknown as CloudApiClient,
     };
 
     render(<WalletsPanel managedAgent={managedAgent} />);
@@ -166,7 +172,7 @@ describe("WalletsPanel – with data", () => {
       source: "local" as const,
       status: "running" as const,
       sourceUrl: "http://localhost:2138",
-      client: mockClient as any,
+      client: mockClient as unknown as CloudApiClient,
     };
 
     render(<WalletsPanel managedAgent={managedAgent} />);
@@ -204,7 +210,10 @@ describe("WalletsPanel – with data", () => {
         solanaAddress: null,
       }),
       getWalletBalances: vi.fn().mockResolvedValue({
-        evm: { address: "0xABCDEF1234567890abcdef1234567890ABCDEF12", chains: [] },
+        evm: {
+          address: "0xABCDEF1234567890abcdef1234567890ABCDEF12",
+          chains: [],
+        },
         solana: null,
       }),
       getStewardStatus: vi.fn().mockResolvedValue({
@@ -220,7 +229,7 @@ describe("WalletsPanel – with data", () => {
       source: "local" as const,
       status: "running" as const,
       sourceUrl: "http://localhost:2138",
-      client: mockClient as any,
+      client: mockClient as unknown as CloudApiClient,
     };
 
     render(<WalletsPanel managedAgent={managedAgent} />);
@@ -245,7 +254,10 @@ describe("WalletsPanel – with data", () => {
         solanaAddress: null,
       }),
       getWalletBalances: vi.fn().mockResolvedValue({
-        evm: { address: "0x1111111111111111111111111111111111111111", chains: [] },
+        evm: {
+          address: "0x1111111111111111111111111111111111111111",
+          chains: [],
+        },
         solana: null,
       }),
       getStewardStatus: vi.fn().mockResolvedValue({
@@ -261,7 +273,7 @@ describe("WalletsPanel – with data", () => {
       source: "local" as const,
       status: "running" as const,
       sourceUrl: "http://localhost:2138",
-      client: mockClient as any,
+      client: mockClient as unknown as CloudApiClient,
     };
 
     render(<WalletsPanel managedAgent={managedAgent} />);
@@ -280,7 +292,10 @@ describe("WalletsPanel – with data", () => {
         solanaAddress: null,
       }),
       getWalletBalances: vi.fn().mockResolvedValue({
-        evm: { address: "0x2222222222222222222222222222222222222222", chains: [] },
+        evm: {
+          address: "0x2222222222222222222222222222222222222222",
+          chains: [],
+        },
         solana: null,
       }),
       getStewardStatus: vi.fn().mockResolvedValue({
@@ -296,7 +311,7 @@ describe("WalletsPanel – with data", () => {
       source: "local" as const,
       status: "running" as const,
       sourceUrl: "http://localhost:2138",
-      client: mockClient as any,
+      client: mockClient as unknown as CloudApiClient,
     };
 
     render(<WalletsPanel managedAgent={managedAgent} />);
@@ -357,7 +372,7 @@ describe("WalletsPanel – with data", () => {
       source: "local" as const,
       status: "running" as const,
       sourceUrl: "http://localhost:2138",
-      client: mockClient as any,
+      client: mockClient as unknown as CloudApiClient,
     };
 
     render(<WalletsPanel managedAgent={managedAgent} />);

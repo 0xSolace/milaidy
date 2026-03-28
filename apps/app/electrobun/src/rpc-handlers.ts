@@ -29,8 +29,8 @@ import { getScreenCaptureManager } from "./native/screencapture";
 import {
   getStewardStatus,
   isStewardLocalEnabled,
-  restartSteward,
   resetSteward,
+  restartSteward,
   startSteward,
 } from "./native/steward";
 import { getSwabbleManager } from "./native/swabble";
@@ -607,19 +607,28 @@ export function registerRpcHandlers(
     stewardIsLocalEnabled: async () => ({ enabled: isStewardLocalEnabled() }),
     stewardStart: async () => {
       if (!isStewardLocalEnabled()) {
-        return { state: "stopped" as const, error: "STEWARD_LOCAL not enabled" };
+        return {
+          state: "stopped" as const,
+          error: "STEWARD_LOCAL not enabled",
+        };
       }
       return startSteward();
     },
     stewardRestart: async () => {
       if (!isStewardLocalEnabled()) {
-        return { state: "stopped" as const, error: "STEWARD_LOCAL not enabled" };
+        return {
+          state: "stopped" as const,
+          error: "STEWARD_LOCAL not enabled",
+        };
       }
       return restartSteward();
     },
     stewardReset: async () => {
       if (!isStewardLocalEnabled()) {
-        return { state: "stopped" as const, error: "STEWARD_LOCAL not enabled" };
+        return {
+          state: "stopped" as const,
+          error: "STEWARD_LOCAL not enabled",
+        };
       }
       return resetSteward();
     },
