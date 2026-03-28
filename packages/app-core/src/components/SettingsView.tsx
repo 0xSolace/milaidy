@@ -31,6 +31,7 @@ import {
 import { CloudDashboard } from "./ElizaCloudDashboard";
 import { MediaSettingsSection } from "./MediaSettingsSection";
 import { PermissionsSection } from "./PermissionsSection";
+import { PolicyControlsView } from "./PolicyControlsView";
 import { ProviderSwitcher } from "./ProviderSwitcher";
 import { ReleaseCenterView } from "./ReleaseCenterView";
 import { SETTINGS_TOOLBAR_SELECT_TRIGGER_CLASSNAME } from "./settings-control-primitives";
@@ -61,7 +62,7 @@ const SETTINGS_CONTENT_CLASS =
   "settings-page-content flex-1 min-w-0 overflow-y-auto scroll-smooth bg-bg/10 px-4 pb-6 pt-4 sm:px-6 sm:pb-8 sm:pt-5 lg:px-7 lg:pb-10 lg:pt-6";
 const SETTINGS_CONTENT_WIDTH_CLASS = "mx-auto w-full max-w-[82rem]";
 const SETTINGS_SECTION_STACK_CLASS = "space-y-6 pb-14 sm:space-y-8 sm:pb-16";
-const SETTINGS_SECTION_CARD_CLASS = `overflow-hidden ${DESKTOP_SURFACE_PANEL_CLASSNAME}`;
+const SETTINGS_SECTION_CARD_CLASS = `overflow-visible ${DESKTOP_SURFACE_PANEL_CLASSNAME}`;
 
 const SETTINGS_SECTIONS: SettingsSectionDef[] = [
   {
@@ -106,6 +107,25 @@ const SETTINGS_SECTIONS: SettingsSectionDef[] = [
       "private key",
       "address",
       "network",
+    ],
+  },
+  {
+    id: "wallet-policies",
+    label: "settings.sections.walletpolicies.label",
+    description: "settings.sections.walletpolicies.desc",
+    keywords: [
+      "policy",
+      "policies",
+      "spending",
+      "limit",
+      "approved",
+      "addresses",
+      "rate limit",
+      "time window",
+      "auto approve",
+      "steward",
+      "safety",
+      "guardrails",
     ],
   },
   {
@@ -824,6 +844,22 @@ export function SettingsView({
           className={SETTINGS_SECTION_CARD_CLASS}
         >
           <ConfigPageView embedded />
+        </SectionCard>
+      )}
+
+      {visibleSectionIds.has("wallet-policies") && (
+        <SectionCard
+          id="wallet-policies"
+          title={t("settings.sections.walletpolicies.label", {
+            defaultValue: "Wallet Policies",
+          })}
+          description={t("settings.sections.walletpolicies.desc", {
+            defaultValue:
+              "Spending limits, address controls, rate limits, and transaction safety rules",
+          })}
+          className={SETTINGS_SECTION_CARD_CLASS}
+        >
+          <PolicyControlsView />
         </SectionCard>
       )}
 

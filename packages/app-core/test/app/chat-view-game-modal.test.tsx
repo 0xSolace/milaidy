@@ -34,6 +34,7 @@ interface ChatViewContextStub {
   chatAgentVoiceMuted: boolean;
   elizaCloudEnabled: boolean;
   elizaCloudConnected: boolean;
+  elizaCloudHasPersistedKey: boolean;
   selectedVrmIndex: number;
   uiLanguage: "en" | "zh-CN";
   t: (k: string) => string;
@@ -135,6 +136,8 @@ describe("ChatView game-modal variant", () => {
       speak: vi.fn(),
       queueAssistantSpeech: vi.fn(),
       stopSpeaking: vi.fn(),
+      voiceUnlockedGeneration: 0,
+      assistantTtsQuality: "standard",
     });
     mockClient.getConfig.mockResolvedValue({});
   });
@@ -203,7 +206,7 @@ describe("ChatView game-modal variant", () => {
     expect(text).not.toContain("five");
   });
 
-  it("stays idle instead of showing starter prompts when companion chat is empty", async () => {
+  it("keeps the companion empty state idle when chat is empty", async () => {
     mockUseApp.mockReturnValue(createContext({ conversationMessages: [] }));
 
     let tree: TestRenderer.ReactTestRenderer;
@@ -214,9 +217,13 @@ describe("ChatView game-modal variant", () => {
     });
 
     const text = textOf(tree?.root).toLowerCase();
-    expect(text).not.toContain("milady");
-    expect(text).not.toContain("startaconversation");
-    expect(text).not.toContain("tell me a joke");
+    expect(text).not.toContain("hey milady");
+    expect(text).not.toContain("draft welcome prompt");
+    expect(text).not.toContain(
+      "send me a message in the dock below to get started",
+    );
+    expect(text).not.toContain("give me a quick status update");
+    expect(text).not.toContain("help me decide what to do next");
   });
 
   it("queues assistant speech in companion mode while a response is streaming", async () => {
@@ -235,6 +242,8 @@ describe("ChatView game-modal variant", () => {
       speak: vi.fn(),
       queueAssistantSpeech,
       stopSpeaking: vi.fn(),
+      voiceUnlockedGeneration: 0,
+      assistantTtsQuality: "standard",
     });
     mockUseApp.mockReturnValue(
       createContext({
@@ -255,6 +264,51 @@ describe("ChatView game-modal variant", () => {
       "assistant-1",
       "hello",
       false,
+    );
+  });
+
+  it("queues companion auto-speak once under StrictMode (no duplicate greeting TTS)", async () => {
+    const queueAssistantSpeech = vi.fn();
+    mockUseVoiceChat.mockReturnValue({
+      supported: true,
+      isListening: false,
+      captureMode: "idle",
+      interimTranscript: "",
+      toggleListening: vi.fn(),
+      startListening: vi.fn(),
+      stopListening: vi.fn(),
+      mouthOpen: 0,
+      isSpeaking: false,
+      usingAudioAnalysis: false,
+      speak: vi.fn(),
+      queueAssistantSpeech,
+      stopSpeaking: vi.fn(),
+      voiceUnlockedGeneration: 0,
+      assistantTtsQuality: "standard",
+    });
+    mockUseApp.mockReturnValue(
+      createContext({
+        conversationMessages: [
+          { id: "assistant-1", role: "assistant", text: "hello", timestamp: 1 },
+        ],
+      }),
+    );
+
+    await act(async () => {
+      TestRenderer.create(
+        React.createElement(
+          React.StrictMode,
+          null,
+          React.createElement(ChatView, { variant: "game-modal" }),
+        ),
+      );
+    });
+
+    expect(queueAssistantSpeech).toHaveBeenCalledTimes(1);
+    expect(queueAssistantSpeech).toHaveBeenCalledWith(
+      "assistant-1",
+      "hello",
+      true,
     );
   });
 
@@ -433,6 +487,29 @@ describe("ChatView game-modal variant", () => {
     );
   });
 
+  it("treats persisted Eliza Cloud API key as voice cloud access without oauth", async () => {
+    mockUseApp.mockReturnValue(
+      createContext({
+        elizaCloudEnabled: false,
+        elizaCloudConnected: false,
+        elizaCloudHasPersistedKey: true,
+      }),
+    );
+
+    await act(async () => {
+      TestRenderer.create(
+        React.createElement(ChatView, { variant: "game-modal" }),
+      );
+    });
+
+    expect(mockUseVoiceChat).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cloudConnected: true,
+        interruptOnSpeech: true,
+      }),
+    );
+  });
+
   it("does not override persisted agent voice mute when mounting game-modal", async () => {
     const setState = vi.fn();
     mockUseApp.mockReturnValue(
@@ -474,6 +551,73 @@ describe("ChatView game-modal variant", () => {
       "aria-label": "chat.agentStarting",
     });
     expect(micButton.props.disabled).toBe(true);
+  });
+
+  it("keeps composer unlocked for zh-CN after turn lifecycle ends even with stale starting status", async () => {
+    const lifecycleScenarios: Array<{
+      label: string;
+      messages: ChatMessage[];
+    }> = [
+      {
+        label: "completion",
+        messages: [
+          { id: "user-1", role: "user", text: "你好", timestamp: 1 },
+          {
+            id: "assistant-1",
+            role: "assistant",
+            text: "你好呀",
+            timestamp: 2,
+          },
+        ],
+      },
+      {
+        label: "error",
+        messages: [
+          { id: "user-2", role: "user", text: "再试一次", timestamp: 3 },
+        ],
+      },
+      {
+        label: "cancel",
+        messages: [
+          { id: "user-3", role: "user", text: "先停一下", timestamp: 4 },
+          {
+            id: "assistant-3",
+            role: "assistant",
+            text: "好的，已停止",
+            timestamp: 5,
+          },
+        ],
+      },
+    ];
+
+    for (const scenario of lifecycleScenarios) {
+      mockUseApp.mockReturnValue(
+        createContext({
+          uiLanguage: "zh-CN",
+          agentStatus: { agentName: "Milady", state: "starting" },
+          chatSending: false,
+          chatFirstTokenReceived: false,
+          conversationMessages: scenario.messages,
+        }),
+      );
+
+      let tree: TestRenderer.ReactTestRenderer;
+      await act(async () => {
+        tree = TestRenderer.create(
+          React.createElement(ChatView, { variant: "game-modal" }),
+        );
+      });
+
+      const textarea = tree.root.findByType("textarea");
+      expect(textarea.props.disabled).toBe(
+        false,
+        `expected unlocked composer for ${scenario.label}`,
+      );
+
+      await act(async () => {
+        tree.unmount();
+      });
+    }
   });
 
   it("renders the game-modal composer unfocused with level control sizing", async () => {

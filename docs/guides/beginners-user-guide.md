@@ -128,7 +128,8 @@ milady dashboard          # open dashboard in browser
 milady configure          # configuration guidance
 milady config get <key>   # read config value
 milady models             # show model provider status
-milady plugins list       # list installed plugins
+milady plugins installed   # list installed plugins
+milady plugins list       # browse registry plugins
 ```
 
 Tip: Use `milady <command> --help` any time you feel stuck.
@@ -324,7 +325,7 @@ Use this staged path so you do not get overwhelmed.
 3. **App/platform specialization**
    - `/apps/desktop`
    - `/apps/mobile`
-   - `/apps/chrome-extension`
+   - Browser Relay release-status documentation when browser automation is relevant
 4. **Cloud and deployment**
    - `/guides/cloud`
    - `/deployment`

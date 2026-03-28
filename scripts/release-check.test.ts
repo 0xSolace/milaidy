@@ -1,9 +1,12 @@
-import { describe, expect, it } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
 
+import { describe, expect, it } from "vitest";
 import {
   bundlesDependency,
   findFloatingDependencySpecs,
   findLocalPackHotspots,
+  findMissingPatchedElectrobunCliSnippets,
   hasLifecycleScriptReferencingMissingFile,
   isExactVersion,
   isExactVersionSpecifier,
@@ -12,6 +15,11 @@ import {
   parseBunPackDryRunOutput,
   shouldSkipExactPackDryRun,
 } from "./release-check";
+
+const PATCHED_ELECTROBUN_CLI_PATH = path.resolve(
+  import.meta.dirname,
+  "build-patched-electrobun-cli.mjs",
+);
 
 describe("release-check local pack behavior", () => {
   it("detects configured local pack hotspots", () => {
@@ -221,5 +229,11 @@ miladyai-2.0.0-alpha.92.tgz
       "npm error code EOVERRIDE\nnpm error Override for @elizaos/core conflicts with direct dependency";
 
     expect(isNpmOverrideConflictError(error)).toBe(true);
+  });
+
+  it("accepts the patched Electrobun CLI helper contract", () => {
+    const helperSource = fs.readFileSync(PATCHED_ELECTROBUN_CLI_PATH, "utf8");
+
+    expect(findMissingPatchedElectrobunCliSnippets(helperSource)).toEqual([]);
   });
 });

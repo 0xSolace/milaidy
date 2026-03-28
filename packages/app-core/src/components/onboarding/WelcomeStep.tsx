@@ -5,12 +5,11 @@ import {
 import { useApp } from "@miladyai/app-core/state";
 import { Button } from "@miladyai/ui";
 import {
+  OnboardingSecondaryActionButton,
   OnboardingStepHeader,
   onboardingFooterClass,
   onboardingPrimaryActionClass,
   onboardingPrimaryActionTextShadowStyle,
-  onboardingSecondaryActionClass,
-  onboardingSecondaryActionTextShadowStyle,
   spawnOnboardingRipple,
 } from "./onboarding-step-chrome";
 
@@ -26,18 +25,18 @@ export function WelcomeStep() {
   } = useApp();
 
   const handleGetStarted = () => {
-    // Default to Chen (blue-haired anime character) — character selection
-    // happens after onboarding completes.
+    // Default to Chen (blue-haired anime character) — user picks their
+    // character in the identity step (now the very next screen).
     setState("onboardingStyle", "chen");
     setState("onboardingName", "Chen");
     setState("selectedVrmIndex", 1);
     // WHY goToOnboardingStep: syncs Flamina guide in advanced mode; persisted
     // step still goes through the same setter as the rest of onboarding.
-    goToOnboardingStep("hosting");
+    goToOnboardingStep("identity");
   };
 
   const handleUseExistingSetup = () => {
-    setState("onboardingStep", "hosting");
+    setState("onboardingStep", "identity");
   };
 
   return (
@@ -56,25 +55,19 @@ export function WelcomeStep() {
       />
       <div className={onboardingFooterClass}>
         {onboardingExistingInstallDetected ? (
-          <Button
-            variant="ghost"
-            className={onboardingSecondaryActionClass}
-            style={onboardingSecondaryActionTextShadowStyle}
+          <OnboardingSecondaryActionButton
             onClick={handleGetStarted}
             type="button"
           >
             {t("onboarding.customSetup")}
-          </Button>
+          </OnboardingSecondaryActionButton>
         ) : (
-          <Button
-            variant="ghost"
-            className={onboardingSecondaryActionClass}
-            style={onboardingSecondaryActionTextShadowStyle}
+          <OnboardingSecondaryActionButton
             onClick={() => handleOnboardingUseLocalBackend()}
             type="button"
           >
             {t("onboarding.checkExistingSetup")}
-          </Button>
+          </OnboardingSecondaryActionButton>
         )}
         <Button
           className={onboardingPrimaryActionClass}

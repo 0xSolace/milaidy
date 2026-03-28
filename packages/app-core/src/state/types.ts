@@ -36,6 +36,9 @@ import type {
   SkillInfo,
   SkillMarketplaceResult,
   SkillScanReportSummary,
+  StewardApprovalActionResponse,
+  StewardHistoryResponse,
+  StewardPendingResponse,
   StewardStatusResponse,
   StreamEventEnvelope,
   SystemPermissionId,
@@ -103,12 +106,17 @@ export interface OnboardingStepMeta {
   subtitle: string;
 }
 
-/** Unified 5-step onboarding flow. */
+/** Unified 6-step onboarding flow — identity (character select) is first. */
 export const ONBOARDING_STEPS: OnboardingStepMeta[] = [
   {
     id: "welcome",
     name: "onboarding.stepName.welcome",
     subtitle: "onboarding.stepSub.welcome",
+  },
+  {
+    id: "identity",
+    name: "onboarding.stepName.identity",
+    subtitle: "onboarding.stepSub.identity",
   },
   {
     id: "hosting",
@@ -124,11 +132,6 @@ export const ONBOARDING_STEPS: OnboardingStepMeta[] = [
     id: "permissions",
     name: "onboarding.stepName.permissions",
     subtitle: "onboarding.stepSub.permissions",
-  },
-  {
-    id: "identity",
-    name: "onboarding.stepName.identity",
-    subtitle: "onboarding.stepSub.identity",
   },
   {
     id: "launch",
@@ -418,6 +421,7 @@ export interface AppState {
   // Eliza Cloud
   elizaCloudEnabled: boolean;
   elizaCloudConnected: boolean;
+  elizaCloudHasPersistedKey: boolean;
   elizaCloudCredits: number | null;
   elizaCloudCreditsLow: boolean;
   elizaCloudCreditsCritical: boolean;
@@ -702,6 +706,14 @@ export interface AppActions {
   ) => Promise<BscTradeQuoteResponse>;
   getBscTradeTxStatus: (hash: string) => Promise<BscTradeTxStatusResponse>;
   getStewardStatus: () => Promise<StewardStatusResponse>;
+  getStewardHistory: (opts?: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }) => Promise<{ records: StewardHistoryResponse; total: number; offset: number; limit: number }>;
+  getStewardPending: () => Promise<StewardPendingResponse>;
+  approveStewardTx: (txId: string) => Promise<StewardApprovalActionResponse>;
+  rejectStewardTx: (txId: string, reason?: string) => Promise<StewardApprovalActionResponse>;
   loadWalletTradingProfile: (
     window?: WalletTradingProfileWindow,
     source?: WalletTradingProfileSourceFilter,

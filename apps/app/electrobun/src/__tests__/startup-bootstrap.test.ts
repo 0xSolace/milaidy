@@ -45,6 +45,15 @@ describe("Electrobun startup bootstrap", () => {
     );
   });
 
+  it("uses the packaged app icon for the main window and tray", () => {
+    const source = fs.readFileSync(INDEX_PATH, "utf8");
+
+    expect(source).toContain("function resolveDesktopAppIconPath()");
+    expect(source).toContain("icon: resolveDesktopAppIconPath(),");
+    expect(source).toContain('process.platform === "win32"');
+    expect(source).toContain('"../assets/appIcon.ico"');
+  });
+
   it("resolves the initial renderer API base from desktop runtime mode", () => {
     const source = fs.readFileSync(INDEX_PATH, "utf8");
 
@@ -57,6 +66,27 @@ describe("Electrobun startup bootstrap", () => {
 
     expect(source).toContain('if (runtimeResolution.mode !== "local")');
     expect(source).toContain("[Main] Skipping embedded agent startup");
+  });
+
+  it("prompts with startup crash report recovery instructions", () => {
+    const source = fs.readFileSync(INDEX_PATH, "utf8");
+
+    expect(source).toContain("maybePromptStartupCrashReport");
+    expect(source).toContain("Share this report in Discord and ping @iono.");
+    expect(source).toContain("App Version:");
+    expect(source).toContain("Runtime:");
+    expect(source).toContain("Startup Log Tail:");
+    expect(source).toContain("Copy Report");
+    expect(source).toContain("startup-crash-report-latest.md");
+  });
+
+  it("records machine-readable startup phases for packaged smoke", () => {
+    const source = fs.readFileSync(INDEX_PATH, "utf8");
+
+    expect(source).toContain('recordStartupPhase("main_start"');
+    expect(source).toContain('recordStartupPhase("window_ready"');
+    expect(source).toContain('recordStartupPhase("autostart_requested"');
+    expect(source).toContain("resolveStartupBundlePath");
   });
 
   it("does not load repo or ~/.eliza env files in packaged desktop builds", () => {

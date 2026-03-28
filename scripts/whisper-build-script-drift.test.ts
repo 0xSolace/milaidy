@@ -38,6 +38,34 @@ describe("Whisper build script drift", () => {
     );
   });
 
+  it("patches noisy macOS whisper.cpp Makefile probes before building only main", () => {
+    const buildWhisper = fs.readFileSync(BUILD_WHISPER_PATH, "utf8");
+    const buildWhisperUniversal = fs.readFileSync(
+      BUILD_WHISPER_UNIVERSAL_PATH,
+      "utf8",
+    );
+
+    expect(buildWhisper).toContain("patch_whisper_makefile()");
+    expect(buildWhisper).toContain("hw.optional.arm64 2>/dev/null || echo 0");
+    expect(buildWhisper).toContain(
+      "CFLAGS  += -DGGML_USE_ACCELERATE -Wno-deprecated-declarations",
+    );
+    expect(buildWhisper).toContain('make main -j"$(nproc');
+    expect(buildWhisper).not.toContain('make -j"$(nproc');
+
+    expect(buildWhisperUniversal).toContain("patch_whisper_makefile()");
+    expect(buildWhisperUniversal).toContain(
+      "hw.optional.arm64 2>/dev/null || echo 0",
+    );
+    expect(buildWhisperUniversal).toContain(
+      "CFLAGS  += -DGGML_USE_ACCELERATE -Wno-deprecated-declarations",
+    );
+    expect(buildWhisperUniversal).toContain('make main -j"$NCPU"');
+    expect(buildWhisperUniversal).toContain(
+      'arch -x86_64 make main -j"$NCPU" WHISPER_NO_METAL=1',
+    );
+  });
+
   it("retries whisper model downloads before failing CI", () => {
     const helper = fs.readFileSync(ENSURE_WHISPER_MODEL_PATH, "utf8");
 

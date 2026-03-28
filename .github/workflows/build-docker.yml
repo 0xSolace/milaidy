@@ -1,10 +1,10 @@
 # =============================================================================
-# build-docker.yml — Build milady agent Docker image and push to GHCR
+# build-docker.yml — Build the canonical Milady agent image and push to GHCR
 # =============================================================================
 #
 # Triggers:
 #   - Push of release tags: v2.0.0-alpha.*, v2.0.*
-#   - Reusable workflow call from release-electrobun.yml for tagged releases
+#   - Reusable workflow call from agent-release.yml for validated releases
 #   - Manual dispatch (workflow_dispatch) with optional override
 #   - Push to develop branch (produces :dev tag, no :latest)
 #
@@ -18,7 +18,7 @@
 # This produces a ~1.8GB image (vs 4GB baseline) via TIER 1+2 pruning.
 # =============================================================================
 
-name: Build Docker Image
+name: Build Agent Image
 
 on:
   push:
@@ -82,8 +82,8 @@ permissions:
 
 jobs:
   build:
-    name: Build & Push Docker Image
-    runs-on: ubuntu-latest
+    name: Build agent image
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 90
 
     steps:

@@ -262,7 +262,7 @@ describe("CharacterEditor voice cloud fallback (e2e)", () => {
     vi.unstubAllGlobals();
   });
 
-  it("speaks the character greeting through cloud TTS when only a masked ElevenLabs key is present", async () => {
+  it("speaks the character greeting through the Eliza Cloud proxy when only a masked key is present", async () => {
     await act(async () => {
       tree = TestRenderer.create(React.createElement(CharacterEditor));
     });

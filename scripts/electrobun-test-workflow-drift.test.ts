@@ -14,18 +14,34 @@ describe("Electrobun test workflow drift", () => {
   // smoke test) was moved to release-electrobun.yml. The old desktop-ui-e2e
   // and desktop-packaged-dmg-e2e jobs were removed from test.yml.
 
+  it("routes PR-required suites through named scripts", () => {
+    const workflow = fs.readFileSync(WORKFLOW_PATH, "utf8");
+
+    expect(workflow).toContain("bun run test:regression-matrix:pr");
+    expect(workflow).toContain("bun run test:e2e");
+    expect(workflow).toContain("bun run test:startup:contract");
+    expect(workflow).toContain("bun run test:startup:e2e");
+    expect(workflow).toContain("bun run test:desktop:contract");
+    expect(workflow).toContain("bun run test:live:cloud");
+    expect(workflow).toContain("bun run test:e2e:validation");
+    expect(workflow).not.toContain(
+      "--exclude packages/agent/test/anvil-contracts.e2e.test.ts",
+    );
+    expect(workflow).not.toContain(
+      "--exclude packages/agent/test/apps-e2e.e2e.test.ts",
+    );
+  });
+
   it("does not rerun postinstall in jobs that already use plain bun install", () => {
     const workflow = fs.readFileSync(WORKFLOW_PATH, "utf8");
 
     expect(workflow).toContain(
-      "name: Install dependencies\n        run: bun install",
+      "name: Setup workspace dependencies\n        uses: ./.github/actions/setup-bun-workspace",
     );
+    expect(workflow).toContain("install-command: bun install");
+    expect(workflow).toContain('run-postinstall: "false"');
     expect(workflow).not.toContain(
-      "name: Install dependencies\n        run: bun install\n        env:\n          npm_config_python: $" +
-        "{{ env.pythonLocation }}/bin/python3\n\n      - name: Run repository postinstall patches",
-    );
-    expect(workflow).not.toContain(
-      "name: Install dependencies\n        run: bun install\n\n      - name: Run repository postinstall patches",
+      'install-command: bun install\n          run-postinstall: "true"',
     );
   });
 
@@ -33,7 +49,7 @@ describe("Electrobun test workflow drift", () => {
     const workflow = fs.readFileSync(WORKFLOW_PATH, "utf8");
 
     expect(workflow).toContain(
-      'name: Run repository postinstall patches\n        run: bun run postinstall\n        env:\n          SKIP_AVATAR_CLONE: "1"\n          MILADY_NO_VISION_DEPS: "1"',
+      'skip-avatar-clone: "true"\n          no-vision-deps: "true"',
     );
   });
 
@@ -51,18 +67,8 @@ describe("Electrobun test workflow drift", () => {
       "bun install --frozen-lockfile --ignore-scripts",
     );
     expect(workflow).toContain("bun run postinstall");
-    expect(workflow).toContain("bunx vitest run");
-    expect(workflow).toContain(
-      "scripts/electrobun-release-workflow-drift.test.ts",
-    );
-    expect(workflow).toContain(
-      "scripts/electrobun-test-workflow-drift.test.ts",
-    );
-    expect(workflow).toContain("scripts/whisper-build-script-drift.test.ts");
-    expect(workflow).toContain("scripts/release-check.test.ts");
-    expect(workflow).toContain("bunx tsdown");
-    expect(workflow).toContain("node --import tsx scripts/write-build-info.ts");
-    expect(workflow).toContain("bun run release:check");
+    expect(workflow).toContain("bun run test:regression-matrix:release-contract");
+    expect(workflow).toContain("bun run test:release:contract");
     expect(workflow).not.toContain(
       "uses: ./.github/workflows/release-electrobun.yml",
     );

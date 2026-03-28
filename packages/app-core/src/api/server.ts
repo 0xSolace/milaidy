@@ -82,6 +82,7 @@ export {
   filterConfigEnvForResponse,
 } from "./server-config-filter";
 export {
+  __resetCloudBaseUrlCache,
   ensureCloudTtsApiKeyAlias,
   resolveCloudTtsBaseUrl,
   resolveElevenLabsApiKeyForCloudMode,
@@ -92,6 +93,7 @@ import {
   buildBscBuyUnsignedTx,
   buildBscSellUnsignedTx,
   buildBscTradeQuote,
+  resolveBscApprovalSpender,
   resolvePrimaryBscRpcUrl,
 } from "@miladyai/agent/api/bsc-trade";
 import { getWalletAddresses } from "@miladyai/agent/api/wallet";
@@ -121,8 +123,14 @@ import {
 } from "./dev-console-log";
 import { resolveDevStackFromEnv } from "./dev-stack";
 import {
+  approveStewardTransaction,
+  createStewardClient,
+  denyStewardTransaction,
   getStewardBridgeStatus,
+  getStewardHistory,
+  getStewardPendingApprovals,
   isStewardConfigured,
+  resolveStewardAgentId,
   signTransactionWithOptionalSteward,
 } from "./steward-bridge";
 
@@ -142,6 +150,20 @@ function syncMiladyEnvToEliza(): void {
 function syncElizaEnvToMilady(): void {
   const aliases = getBootConfig().envAliases;
   if (aliases) syncElizaEnvToBrand(aliases);
+}
+
+export function isLoopbackRemoteAddress(
+  remoteAddress: string | null | undefined,
+): boolean {
+  if (!remoteAddress) return false;
+  const normalized = remoteAddress.trim().toLowerCase();
+  return (
+    normalized === "127.0.0.1" ||
+    normalized === "::1" ||
+    normalized === "0:0:0:0:0:0:0:1" ||
+    normalized === "::ffff:127.0.0.1" ||
+    normalized === "::ffff:0:127.0.0.1"
+  );
 }
 
 function resolveWalletExecutionMode(
@@ -182,6 +204,7 @@ import {
 // ---------------------------------------------------------------------------
 
 import {
+  ensureCloudTtsApiKeyAlias,
   handleCloudTtsPreviewRoute as _handleCloudTtsPreviewRoute,
   mirrorCompatHeaders,
 } from "./server-cloud-tts";
@@ -969,233 +992,254 @@ async function handleTaskBackedWorkbenchTodoRoute(
     return true;
   }
 
-  const getTaskList = async () =>
-    (
-      (await runtime.getTasks({})) as unknown as Array<Record<string, unknown>>
-    ).map((task) => task as Record<string, unknown>);
+  let operation = "route";
+  try {
+    const getTaskList = async () =>
+      (
+        (await runtime.getTasks({})) as unknown as Array<
+          Record<string, unknown>
+        >
+      ).map((task) => task as Record<string, unknown>);
 
-  if (method === "GET" && pathname === "/api/workbench/todos") {
-    const todos = (await getTaskList())
-      .map((task) => toTaskBackedWorkbenchTodo(task))
-      .filter((todo): todo is WorkbenchTodoResponse => todo !== null)
-      .sort((left, right) => left.name.localeCompare(right.name));
+    if (method === "GET" && pathname === "/api/workbench/todos") {
+      operation = "list todos";
+      const todos = (await getTaskList())
+        .map((task) => toTaskBackedWorkbenchTodo(task))
+        .filter((todo): todo is WorkbenchTodoResponse => todo !== null)
+        .sort((left, right) => left.name.localeCompare(right.name));
 
-    sendJsonResponse(res, 200, { todos });
-    return true;
-  }
-
-  if (method === "POST" && pathname === "/api/workbench/todos") {
-    const body = await readCompatJsonBody(req, res);
-    if (body == null) {
+      sendJsonResponse(res, 200, { todos });
       return true;
     }
 
-    const name = typeof body.name === "string" ? body.name.trim() : "";
-    if (!name) {
-      sendJsonErrorResponse(res, 400, "name is required");
-      return true;
-    }
+    if (method === "POST" && pathname === "/api/workbench/todos") {
+      const body = await readCompatJsonBody(req, res);
+      if (body == null) {
+        return true;
+      }
 
-    const description =
-      typeof body.description === "string" ? body.description : "";
-    const type =
-      typeof body.type === "string" && body.type.trim().length > 0
-        ? body.type.trim()
-        : "task";
+      const name = typeof body.name === "string" ? body.name.trim() : "";
+      if (!name) {
+        sendJsonErrorResponse(res, 400, "name is required");
+        return true;
+      }
 
-    const taskId = await runtime.createTask({
-      name,
-      description,
-      tags: normalizeCompatTodoTags(body.tags, [WORKBENCH_TODO_TAG, "todo"]),
-      metadata: {
-        isCompleted: false,
-        workbenchTodo: {
-          description,
-          priority: parseCompatNullableNumber(body.priority),
-          isUrgent: body.isUrgent === true,
+      const description =
+        typeof body.description === "string" ? body.description : "";
+      const type =
+        typeof body.type === "string" && body.type.trim().length > 0
+          ? body.type.trim()
+          : "task";
+
+      operation = "create todo";
+      const taskId = await runtime.createTask({
+        name,
+        description,
+        tags: normalizeCompatTodoTags(body.tags, [WORKBENCH_TODO_TAG, "todo"]),
+        metadata: {
           isCompleted: false,
-          type,
+          workbenchTodo: {
+            description,
+            priority: parseCompatNullableNumber(body.priority),
+            isUrgent: body.isUrgent === true,
+            isCompleted: false,
+            type,
+          },
         },
-      },
-    });
+      });
 
-    const created = await runtime.getTask(taskId);
-    const todo = toTaskBackedWorkbenchTodo(
-      created as Record<string, unknown> | null,
-    );
-    if (!todo) {
-      sendJsonErrorResponse(res, 500, "Todo created but unavailable");
+      operation = "load created todo";
+      const created = await runtime.getTask(taskId);
+      const todo = toTaskBackedWorkbenchTodo(
+        created as Record<string, unknown> | null,
+      );
+      if (!todo) {
+        sendJsonErrorResponse(res, 500, "Todo created but unavailable");
+        return true;
+      }
+
+      sendJsonResponse(res, 201, { todo });
       return true;
     }
 
-    sendJsonResponse(res, 201, { todo });
-    return true;
-  }
+    const todoCompleteMatch =
+      /^\/api\/workbench\/todos\/([^/]+)\/complete$/.exec(pathname);
+    if (method === "POST" && todoCompleteMatch) {
+      const todoId = decodeCompatTodoId(todoCompleteMatch[1], res);
+      if (!todoId) {
+        return true;
+      }
 
-  const todoCompleteMatch = /^\/api\/workbench\/todos\/([^/]+)\/complete$/.exec(
-    pathname,
-  );
-  if (method === "POST" && todoCompleteMatch) {
-    const todoId = decodeCompatTodoId(todoCompleteMatch[1], res);
+      const body = await readCompatJsonBody(req, res);
+      if (body == null) {
+        return true;
+      }
+
+      operation = "load todo for completion";
+      const todoTask = (await runtime.getTask(todoId)) as Record<
+        string,
+        unknown
+      > | null;
+      const todo = toTaskBackedWorkbenchTodo(todoTask);
+      if (!todoTask || !todo) {
+        sendJsonErrorResponse(res, 404, "Todo not found");
+        return true;
+      }
+
+      const metadata = readCompatTaskMetadata(todoTask);
+      const todoMeta =
+        asCompatObject(metadata.workbenchTodo) ?? asCompatObject(metadata.todo);
+      const isCompleted = body.isCompleted === true;
+
+      operation = "update todo completion";
+      await runtime.updateTask(todoId, {
+        metadata: {
+          ...metadata,
+          isCompleted,
+          workbenchTodo: {
+            ...(todoMeta ?? {}),
+            isCompleted,
+          },
+        },
+      });
+
+      sendJsonResponse(res, 200, { ok: true });
+      return true;
+    }
+
+    const todoItemMatch = /^\/api\/workbench\/todos\/([^/]+)$/.exec(pathname);
+    if (!todoItemMatch) {
+      return false;
+    }
+
+    const todoId = decodeCompatTodoId(todoItemMatch[1], res);
     if (!todoId) {
       return true;
     }
 
-    const body = await readCompatJsonBody(req, res);
-    if (body == null) {
+    if (method === "GET") {
+      operation = "load todo";
+      const todoTask = (await runtime.getTask(todoId)) as Record<
+        string,
+        unknown
+      > | null;
+      const todo = toTaskBackedWorkbenchTodo(todoTask);
+      if (!todoTask || !todo) {
+        sendJsonErrorResponse(res, 404, "Todo not found");
+        return true;
+      }
+
+      sendJsonResponse(res, 200, { todo });
       return true;
     }
 
-    const todoTask = (await runtime.getTask(todoId)) as Record<
-      string,
-      unknown
-    > | null;
-    const todo = toTaskBackedWorkbenchTodo(todoTask);
-    if (!todoTask || !todo) {
-      sendJsonErrorResponse(res, 404, "Todo not found");
+    if (method === "DELETE") {
+      operation = "load todo for deletion";
+      const todoTask = (await runtime.getTask(todoId)) as Record<
+        string,
+        unknown
+      > | null;
+      if (!todoTask || !toTaskBackedWorkbenchTodo(todoTask)) {
+        sendJsonErrorResponse(res, 404, "Todo not found");
+        return true;
+      }
+
+      operation = "delete todo";
+      await runtime.deleteTask(todoId);
+      sendJsonResponse(res, 200, { ok: true });
       return true;
     }
 
-    const metadata = readCompatTaskMetadata(todoTask);
-    const todoMeta =
-      asCompatObject(metadata.workbenchTodo) ?? asCompatObject(metadata.todo);
-    const isCompleted = body.isCompleted === true;
+    if (method === "PUT") {
+      const body = await readCompatJsonBody(req, res);
+      if (body == null) {
+        return true;
+      }
 
-    await runtime.updateTask(todoId, {
-      metadata: {
+      operation = "load todo for update";
+      const todoTask = (await runtime.getTask(todoId)) as Record<
+        string,
+        unknown
+      > | null;
+      const existingTodo = toTaskBackedWorkbenchTodo(todoTask);
+      if (!todoTask || !existingTodo) {
+        sendJsonErrorResponse(res, 404, "Todo not found");
+        return true;
+      }
+
+      if (typeof body.name === "string" && body.name.trim().length === 0) {
+        sendJsonErrorResponse(res, 400, "name cannot be empty");
+        return true;
+      }
+
+      const metadata = readCompatTaskMetadata(todoTask);
+      const todoMeta =
+        asCompatObject(metadata.workbenchTodo) ?? asCompatObject(metadata.todo);
+      const nextTodoMeta: Record<string, unknown> = {
+        ...(todoMeta ?? {}),
+      };
+      const update: Record<string, unknown> = {};
+
+      if (typeof body.name === "string") {
+        update.name = body.name.trim();
+      }
+      if (typeof body.description === "string") {
+        update.description = body.description;
+        nextTodoMeta.description = body.description;
+      }
+      if (body.priority !== undefined) {
+        nextTodoMeta.priority = parseCompatNullableNumber(body.priority);
+      }
+      if (typeof body.isUrgent === "boolean") {
+        nextTodoMeta.isUrgent = body.isUrgent;
+      }
+      if (typeof body.type === "string" && body.type.trim().length > 0) {
+        nextTodoMeta.type = body.type.trim();
+      }
+      if (body.tags !== undefined) {
+        update.tags = normalizeCompatTodoTags(body.tags, [
+          WORKBENCH_TODO_TAG,
+          "todo",
+        ]);
+      }
+
+      const isCompleted =
+        typeof body.isCompleted === "boolean"
+          ? body.isCompleted
+          : existingTodo.isCompleted;
+      nextTodoMeta.isCompleted = isCompleted;
+
+      update.metadata = {
         ...metadata,
         isCompleted,
-        workbenchTodo: {
-          ...(todoMeta ?? {}),
-          isCompleted,
-        },
-      },
-    });
+        workbenchTodo: nextTodoMeta,
+      };
 
-    sendJsonResponse(res, 200, { ok: true });
-    return true;
-  }
+      operation = "update todo";
+      await runtime.updateTask(todoId, update);
 
-  const todoItemMatch = /^\/api\/workbench\/todos\/([^/]+)$/.exec(pathname);
-  if (!todoItemMatch) {
+      operation = "load updated todo";
+      const refreshed = await runtime.getTask(todoId);
+      const todo = toTaskBackedWorkbenchTodo(
+        refreshed as Record<string, unknown> | null,
+      );
+      if (!todo) {
+        sendJsonErrorResponse(res, 500, "Todo updated but unavailable");
+        return true;
+      }
+
+      sendJsonResponse(res, 200, { todo });
+      return true;
+    }
+
     return false;
-  }
-
-  const todoId = decodeCompatTodoId(todoItemMatch[1], res);
-  if (!todoId) {
-    return true;
-  }
-
-  if (method === "GET") {
-    const todoTask = (await runtime.getTask(todoId)) as Record<
-      string,
-      unknown
-    > | null;
-    const todo = toTaskBackedWorkbenchTodo(todoTask);
-    if (!todoTask || !todo) {
-      sendJsonErrorResponse(res, 404, "Todo not found");
-      return true;
-    }
-
-    sendJsonResponse(res, 200, { todo });
-    return true;
-  }
-
-  if (method === "DELETE") {
-    const todoTask = (await runtime.getTask(todoId)) as Record<
-      string,
-      unknown
-    > | null;
-    if (!todoTask || !toTaskBackedWorkbenchTodo(todoTask)) {
-      sendJsonErrorResponse(res, 404, "Todo not found");
-      return true;
-    }
-
-    await runtime.deleteTask(todoId);
-    sendJsonResponse(res, 200, { ok: true });
-    return true;
-  }
-
-  if (method === "PUT") {
-    const body = await readCompatJsonBody(req, res);
-    if (body == null) {
-      return true;
-    }
-
-    const todoTask = (await runtime.getTask(todoId)) as Record<
-      string,
-      unknown
-    > | null;
-    const existingTodo = toTaskBackedWorkbenchTodo(todoTask);
-    if (!todoTask || !existingTodo) {
-      sendJsonErrorResponse(res, 404, "Todo not found");
-      return true;
-    }
-
-    if (typeof body.name === "string" && body.name.trim().length === 0) {
-      sendJsonErrorResponse(res, 400, "name cannot be empty");
-      return true;
-    }
-
-    const metadata = readCompatTaskMetadata(todoTask);
-    const todoMeta =
-      asCompatObject(metadata.workbenchTodo) ?? asCompatObject(metadata.todo);
-    const nextTodoMeta: Record<string, unknown> = {
-      ...(todoMeta ?? {}),
-    };
-    const update: Record<string, unknown> = {};
-
-    if (typeof body.name === "string") {
-      update.name = body.name.trim();
-    }
-    if (typeof body.description === "string") {
-      update.description = body.description;
-      nextTodoMeta.description = body.description;
-    }
-    if (body.priority !== undefined) {
-      nextTodoMeta.priority = parseCompatNullableNumber(body.priority);
-    }
-    if (typeof body.isUrgent === "boolean") {
-      nextTodoMeta.isUrgent = body.isUrgent;
-    }
-    if (typeof body.type === "string" && body.type.trim().length > 0) {
-      nextTodoMeta.type = body.type.trim();
-    }
-    if (body.tags !== undefined) {
-      update.tags = normalizeCompatTodoTags(body.tags, [
-        WORKBENCH_TODO_TAG,
-        "todo",
-      ]);
-    }
-
-    const isCompleted =
-      typeof body.isCompleted === "boolean"
-        ? body.isCompleted
-        : existingTodo.isCompleted;
-    nextTodoMeta.isCompleted = isCompleted;
-
-    update.metadata = {
-      ...metadata,
-      isCompleted,
-      workbenchTodo: nextTodoMeta,
-    };
-
-    await runtime.updateTask(todoId, update);
-
-    const refreshed = await runtime.getTask(todoId);
-    const todo = toTaskBackedWorkbenchTodo(
-      refreshed as Record<string, unknown> | null,
+  } catch (err) {
+    logger.error(
+      `[workbench/todos] ${operation} failed: ${err instanceof Error ? err.message : String(err)}`,
     );
-    if (!todo) {
-      sendJsonErrorResponse(res, 500, "Todo updated but unavailable");
-      return true;
-    }
-
-    sendJsonResponse(res, 200, { todo });
+    sendJsonErrorResponse(res, 500, `Failed to ${operation}`);
     return true;
   }
-
-  return false;
 }
 
 async function _getTableColumnNames(
@@ -1953,6 +1997,27 @@ async function _sendLocalWalletTransaction(
   }
 }
 
+function resolveBscExecutionNetwork(): {
+  chainId: number;
+  explorerBaseUrl: string;
+} {
+  if (process.env.MILADY_WALLET_NETWORK?.trim().toLowerCase() === "testnet") {
+    const parsedChainId = Number.parseInt(
+      process.env.BSC_TESTNET_CHAIN_ID?.trim() ?? "97",
+      10,
+    );
+    return {
+      chainId: Number.isNaN(parsedChainId) ? 97 : parsedChainId,
+      explorerBaseUrl: "https://testnet.bscscan.com",
+    };
+  }
+
+  return {
+    chainId: 56,
+    explorerBaseUrl: "https://bscscan.com",
+  };
+}
+
 /**
  * Load config from disk and backfill cloud.apiKey from sealed secrets
  * if it's missing. This handles the case where the API key was persisted
@@ -2020,7 +2085,18 @@ async function handleMiladyCompatRoute(
   // Milady dev observability routes (loopback where noted). WHY: agents cannot see the Electrobun
   // window; these endpoints mirror orchestrator state (stack JSON), proxied screenshot, and log
   // tail — see docs/apps/desktop-local-development.md and dev-stack.ts / dev-console-log.ts.
+  if (url.pathname.startsWith("/api/dev/")) {
+    if (process.env.NODE_ENV === "production") {
+      sendJsonErrorResponse(res, 404, "Not found");
+      return true;
+    }
+  }
+
   if (method === "GET" && url.pathname === "/api/dev/stack") {
+    if (!isLoopbackRemoteAddress(req.socket.remoteAddress)) {
+      sendJsonErrorResponse(res, 403, "loopback only");
+      return true;
+    }
     if (!ensureCompatApiAuthorized(req, res)) {
       return true;
     }
@@ -2036,10 +2112,7 @@ async function handleMiladyCompatRoute(
 
   // Proxies Electrobun dev screenshot server (full-screen PNG via OS capture tools).
   if (method === "GET" && url.pathname === "/api/dev/cursor-screenshot") {
-    const ra = req.socket.remoteAddress;
-    const loopback =
-      ra === "127.0.0.1" || ra === "::1" || ra === "::ffff:127.0.0.1";
-    if (!loopback) {
+    if (!isLoopbackRemoteAddress(req.socket.remoteAddress)) {
       sendJsonErrorResponse(res, 403, "loopback only");
       return true;
     }
@@ -2107,10 +2180,7 @@ async function handleMiladyCompatRoute(
 
   // Tail of desktop dev orchestrator log (vite / api / electrobun), loopback only.
   if (method === "GET" && url.pathname === "/api/dev/console-log") {
-    const ra = req.socket.remoteAddress;
-    const loopback =
-      ra === "127.0.0.1" || ra === "::1" || ra === "::ffff:127.0.0.1";
-    if (!loopback) {
+    if (!isLoopbackRemoteAddress(req.socket.remoteAddress)) {
       sendJsonErrorResponse(res, 403, "loopback only");
       return true;
     }
@@ -2197,7 +2267,12 @@ async function handleMiladyCompatRoute(
       sendJsonErrorResponse(res, 403, "Pairing disabled");
       return true;
     }
-    if (!rateLimitPairing(req.socket.remoteAddress ?? null)) {
+    const remoteAddress = req.socket.remoteAddress;
+    if (!remoteAddress) {
+      sendJsonErrorResponse(res, 403, "Cannot determine client address");
+      return true;
+    }
+    if (!rateLimitPairing(remoteAddress)) {
       sendJsonErrorResponse(res, 429, "Too many attempts. Try again later.");
       return true;
     }
@@ -2417,6 +2492,11 @@ async function handleMiladyCompatRoute(
   // general-purpose key export endpoint.
 
   if (method === "GET" && url.pathname === "/api/wallet/keys") {
+    if (!isLoopbackRemoteAddress(req.socket.remoteAddress)) {
+      sendJsonErrorResponse(res, 403, "loopback only");
+      return true;
+    }
+
     if (!ensureCompatSensitiveRouteAuthorized(req, res)) {
       return true;
     }
@@ -2532,6 +2612,221 @@ async function handleMiladyCompatRoute(
     return true;
   }
 
+  /* ── Steward Policy CRUD ──────────────────────────────────────────── */
+
+  if (method === "GET" && url.pathname === "/api/wallet/steward-policies") {
+    if (!ensureCompatApiAuthorized(req, res)) {
+      return true;
+    }
+
+    const addresses = getWalletAddresses();
+    const agentId = resolveStewardAgentId(
+      process.env,
+      addresses.evmAddress,
+    );
+    const stewardClient = createStewardClient();
+
+    if (!stewardClient || !agentId) {
+      sendJsonResponse(res, 503, {
+        error: "Steward not configured",
+      });
+      return true;
+    }
+
+    try {
+      const policies = await stewardClient.getPolicies(agentId);
+      sendJsonResponse(res, 200, policies);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to fetch policies";
+      sendJsonResponse(res, 500, { error: message });
+    }
+    return true;
+  }
+
+  if (method === "PUT" && url.pathname === "/api/wallet/steward-policies") {
+    if (!ensureCompatApiAuthorized(req, res)) {
+      return true;
+    }
+
+    const body = await readCompatJsonBody(req, res);
+    if (!body) return true;
+
+    const { policies } = body as {
+      policies: Array<{
+        id: string;
+        type: string;
+        enabled: boolean;
+        config: Record<string, unknown>;
+      }>;
+    };
+
+    if (!Array.isArray(policies)) {
+      sendJsonResponse(res, 400, {
+        error: "policies must be an array",
+      });
+      return true;
+    }
+
+    const addresses = getWalletAddresses();
+    const agentId = resolveStewardAgentId(
+      process.env,
+      addresses.evmAddress,
+    );
+    const stewardClient = createStewardClient();
+
+    if (!stewardClient || !agentId) {
+      sendJsonResponse(res, 503, {
+        error: "Steward not configured",
+      });
+      return true;
+    }
+
+    try {
+      await stewardClient.setPolicies(
+        agentId,
+        policies as unknown as import("@stwd/sdk").PolicyRule[],
+      );
+      sendJsonResponse(res, 200, { ok: true });
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to save policies";
+      sendJsonResponse(res, 500, { error: message });
+    }
+    return true;
+  }
+
+  /* ── Steward Transaction Records ──────────────────────────────────── */
+
+  if (method === "GET" && url.pathname === "/api/wallet/steward-tx-records") {
+    if (!ensureCompatApiAuthorized(req, res)) {
+      return true;
+    }
+
+    const addresses = getWalletAddresses();
+    const agentId = resolveStewardAgentId(
+      process.env,
+      addresses.evmAddress,
+    );
+
+    if (!agentId || !createStewardClient()) {
+      sendJsonResponse(res, 503, {
+        error: "Steward not configured",
+      });
+      return true;
+    }
+
+    try {
+      const status = url.searchParams.get("status") || undefined;
+      const limit = parseInt(url.searchParams.get("limit") || "50", 10);
+      const offset = parseInt(url.searchParams.get("offset") || "0", 10);
+      // getStewardHistory returns full TxRecord[] from the steward API
+      const history = await getStewardHistory(agentId);
+      const filtered = status
+        ? history.filter((h: any) => h.status === status)
+        : history;
+      const paginated = filtered.slice(offset, offset + limit);
+      sendJsonResponse(res, 200, {
+        records: paginated,
+        total: filtered.length,
+        offset,
+        limit,
+      });
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to fetch tx records";
+      sendJsonResponse(res, 500, { error: message });
+    }
+    return true;
+  }
+
+  /* ── Steward Pending Approvals ────────────────────────────────────── */
+
+  if (
+    method === "GET" &&
+    url.pathname === "/api/wallet/steward-pending-approvals"
+  ) {
+    if (!ensureCompatApiAuthorized(req, res)) {
+      return true;
+    }
+
+    const addresses = getWalletAddresses();
+    const agentId = resolveStewardAgentId(
+      process.env,
+      addresses.evmAddress,
+    );
+
+    if (!agentId || !createStewardClient()) {
+      sendJsonResponse(res, 503, {
+        error: "Steward not configured",
+      });
+      return true;
+    }
+
+    try {
+      const pending = await getStewardPendingApprovals(agentId);
+      sendJsonResponse(res, 200, pending);
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Failed to fetch pending approvals";
+      sendJsonResponse(res, 500, { error: message });
+    }
+    return true;
+  }
+
+  /* ── Steward Approve/Deny Transaction ─────────────────────────────── */
+
+  if (
+    method === "POST" &&
+    (url.pathname === "/api/wallet/steward-approve-tx" ||
+      url.pathname === "/api/wallet/steward-deny-tx")
+  ) {
+    if (!ensureCompatApiAuthorized(req, res)) {
+      return true;
+    }
+
+    const body = await readCompatJsonBody(req, res);
+    if (!body) return true;
+
+    const txId = typeof body.txId === "string" ? body.txId : "";
+    if (!txId) {
+      sendJsonResponse(res, 400, { error: "txId is required" });
+      return true;
+    }
+
+    const addresses = getWalletAddresses();
+    const agentId = resolveStewardAgentId(
+      process.env,
+      addresses.evmAddress,
+    );
+
+    if (!agentId || !createStewardClient()) {
+      sendJsonResponse(res, 503, {
+        error: "Steward not configured",
+      });
+      return true;
+    }
+
+    const isApprove = url.pathname.includes("approve");
+
+    try {
+      const result = isApprove
+        ? await approveStewardTransaction(agentId, txId)
+        : await denyStewardTransaction(agentId, txId);
+      sendJsonResponse(res, 200, { ok: true, ...result });
+    } catch (err) {
+      const action = isApprove ? "approve" : "deny";
+      const message =
+        err instanceof Error
+          ? err.message
+          : `Failed to ${action} transaction`;
+      sendJsonResponse(res, 500, { error: message });
+    }
+    return true;
+  }
+
   if (method === "POST" && url.pathname === "/api/wallet/trade/execute") {
     if (!ensureCompatApiAuthorized(req, res)) {
       return true;
@@ -2546,6 +2841,12 @@ async function handleMiladyCompatRoute(
     const tokenAddress =
       typeof body.tokenAddress === "string" ? body.tokenAddress : "";
     const amount = typeof body.amount === "string" ? body.amount : "";
+    const routeProvider =
+      body.routeProvider === "0x" ||
+      body.routeProvider === "pancakeswap-v2" ||
+      body.routeProvider === "auto"
+        ? body.routeProvider
+        : undefined;
 
     if (!side || !tokenAddress || !amount) {
       sendJsonErrorResponse(
@@ -2573,6 +2874,7 @@ async function handleMiladyCompatRoute(
     const hasStewardSigner = isStewardConfigured();
     const canSign = hasLocalKey || hasStewardSigner;
     const rpcReadiness = resolveWalletRpcReadiness(config);
+    const bscExecutionNetwork = resolveBscExecutionNetwork();
 
     try {
       const quote = await buildBscTradeQuote({
@@ -2585,6 +2887,7 @@ async function handleMiladyCompatRoute(
           amount,
           slippageBps:
             typeof body.slippageBps === "number" ? body.slippageBps : undefined,
+          routeProvider,
         },
       });
 
@@ -2613,7 +2916,7 @@ async function handleMiladyCompatRoute(
         unsignedApprovalTx = buildBscApproveUnsignedTx(
           quote.tokenAddress,
           walletAddress,
-          quote.routerAddress,
+          resolveBscApprovalSpender(quote),
           quote.quoteIn.amountWei,
         );
         requiresApproval = true;
@@ -2644,20 +2947,109 @@ async function handleMiladyCompatRoute(
       });
 
       let approvalHash: string | undefined;
-      if (requiresApproval && unsignedApprovalTx) {
-        const approvalResult = await signTransactionWithOptionalSteward({
-          evmAddress: walletAddress,
-          tx: {
+      let finalHash = "";
+      let finalNonce: number | null = null;
+      let finalGasLimit = "0";
+      let finalMode: "local-key" | "steward" = hasLocalKey
+        ? "local-key"
+        : "steward";
+
+      if (hasLocalKey && canExecuteLocally) {
+        if (!rpcUrl) {
+          sendJsonErrorResponse(
+            res,
+            503,
+            "BSC RPC not configured for local execution",
+          );
+          return true;
+        }
+
+        if (requiresApproval && unsignedApprovalTx) {
+          const approvalResult = await _sendLocalWalletTransaction(rpcUrl, {
             to: unsignedApprovalTx.to,
             data: unsignedApprovalTx.data,
-            value: unsignedApprovalTx.valueWei,
+            value: BigInt(unsignedApprovalTx.valueWei),
             chainId: unsignedApprovalTx.chainId,
+          });
+          approvalHash = approvalResult.hash;
+          const provider = new ethers.JsonRpcProvider(rpcUrl);
+          try {
+            await provider.waitForTransaction(approvalHash, 1);
+          } finally {
+            provider.destroy();
+          }
+        }
+
+        const localExecution = await _sendLocalWalletTransaction(rpcUrl, {
+          to: unsignedTx.to,
+          data: unsignedTx.data,
+          value: BigInt(unsignedTx.valueWei),
+          chainId: unsignedTx.chainId,
+        });
+        finalHash = localExecution.hash;
+        finalNonce = localExecution.nonce;
+        finalGasLimit = localExecution.gasLimit;
+      } else {
+        finalMode = "steward";
+        if (requiresApproval && unsignedApprovalTx) {
+          const approvalResult = await signTransactionWithOptionalSteward({
+            evmAddress: walletAddress,
+            tx: {
+              to: unsignedApprovalTx.to,
+              data: unsignedApprovalTx.data,
+              value: unsignedApprovalTx.valueWei,
+              chainId: unsignedApprovalTx.chainId,
+            },
+          });
+
+          if (
+            approvalResult.mode === "steward" &&
+            approvalResult.pendingApproval
+          ) {
+            sendJsonResponse(res, 200, {
+              ok: true,
+              side: quote.side,
+              mode: "steward",
+              quote,
+              executed: false,
+              requiresUserSignature: false,
+              unsignedTx,
+              unsignedApprovalTx,
+              requiresApproval,
+              approval: {
+                status: "pending_approval",
+                policyResults: approvalResult.policyResults,
+              },
+            });
+            return true;
+          }
+
+          approvalHash =
+            "txHash" in approvalResult ? approvalResult.txHash : "";
+
+          if (approvalResult.mode === "steward" && rpcUrl) {
+            const provider = new ethers.JsonRpcProvider(rpcUrl);
+            try {
+              await provider.waitForTransaction(approvalHash, 1);
+            } finally {
+              provider.destroy();
+            }
+          }
+        }
+
+        const executionResult = await signTransactionWithOptionalSteward({
+          evmAddress: walletAddress,
+          tx: {
+            to: unsignedTx.to,
+            data: unsignedTx.data,
+            value: unsignedTx.valueWei,
+            chainId: unsignedTx.chainId,
           },
         });
 
         if (
-          approvalResult.mode === "steward" &&
-          approvalResult.pendingApproval
+          executionResult.mode === "steward" &&
+          executionResult.pendingApproval
         ) {
           sendJsonResponse(res, 200, {
             ok: true,
@@ -2669,64 +3061,17 @@ async function handleMiladyCompatRoute(
             unsignedTx,
             unsignedApprovalTx,
             requiresApproval,
-            approval: {
+            approvalHash,
+            execution: {
               status: "pending_approval",
-              policyResults: approvalResult.policyResults,
+              policyResults: executionResult.policyResults,
             },
           });
           return true;
         }
 
-        approvalHash = "txHash" in approvalResult ? approvalResult.txHash : "";
-
-        if (approvalResult.mode === "steward" && rpcUrl) {
-          const provider = new ethers.JsonRpcProvider(rpcUrl);
-          try {
-            await provider.waitForTransaction(approvalHash, 1);
-          } finally {
-            provider.destroy();
-          }
-        }
+        finalHash = "txHash" in executionResult ? executionResult.txHash : "";
       }
-
-      const executionResult = await signTransactionWithOptionalSteward({
-        evmAddress: walletAddress,
-        tx: {
-          to: unsignedTx.to,
-          data: unsignedTx.data,
-          value: unsignedTx.valueWei,
-          chainId: unsignedTx.chainId,
-        },
-      });
-
-      if (
-        executionResult.mode === "steward" &&
-        executionResult.pendingApproval
-      ) {
-        sendJsonResponse(res, 200, {
-          ok: true,
-          side: quote.side,
-          mode: "steward",
-          quote,
-          executed: false,
-          requiresUserSignature: false,
-          unsignedTx,
-          unsignedApprovalTx,
-          requiresApproval,
-          approvalHash,
-          execution: {
-            status: "pending_approval",
-            policyResults: executionResult.policyResults,
-          },
-        });
-        return true;
-      }
-
-      const finalHash =
-        "txHash" in executionResult ? executionResult.txHash : "";
-      const finalNonce = null;
-      const finalGasLimit = "0";
-      const finalMode = executionResult.mode;
 
       try {
         const tradeSource =
@@ -2757,7 +3102,7 @@ async function handleMiladyCompatRoute(
           blockNumber: null,
           gasUsed: null,
           effectiveGasPriceWei: null,
-          explorerUrl: `https://bscscan.com/tx/${finalHash}`,
+          explorerUrl: `${bscExecutionNetwork.explorerBaseUrl}/tx/${finalHash}`,
         });
       } catch (ledgerErr) {
         logger.warn(
@@ -2780,7 +3125,7 @@ async function handleMiladyCompatRoute(
           nonce: finalNonce,
           gasLimit: finalGasLimit,
           valueWei: unsignedTx.valueWei,
-          explorerUrl: `https://bscscan.com/tx/${finalHash}`,
+          explorerUrl: `${bscExecutionNetwork.explorerBaseUrl}/tx/${finalHash}`,
           blockNumber: null,
           status: "pending",
           approvalHash,
@@ -2847,6 +3192,7 @@ async function handleMiladyCompatRoute(
     const canSign = hasLocalKey || hasStewardSigner;
     const addresses = getWalletAddresses();
     const rpcReadiness = resolveWalletRpcReadiness(config);
+    const bscExecutionNetwork = resolveBscExecutionNetwork();
 
     let toAddress: string;
     try {
@@ -2882,7 +3228,7 @@ async function handleMiladyCompatRoute(
     }
 
     const unsignedTx = {
-      chainId: 56,
+      chainId: bscExecutionNetwork.chainId,
       from: addresses.evmAddress ?? null,
       to:
         isBnb || typeof body.tokenAddress !== "string"
@@ -2897,7 +3243,7 @@ async function handleMiladyCompatRoute(
             ethers.parseUnits(amount, decimals),
           ]),
       valueWei: isBnb ? ethers.parseEther(amount).toString() : "0",
-      explorerUrl: "https://bscscan.com",
+      explorerUrl: bscExecutionNetwork.explorerBaseUrl,
       assetSymbol,
       amount,
       tokenAddress:
@@ -2929,46 +3275,72 @@ async function handleMiladyCompatRoute(
     });
 
     try {
-      const executionResult = await signTransactionWithOptionalSteward({
-        evmAddress: addresses.evmAddress,
-        tx: {
+      let finalHash = "";
+      let finalNonce: number | null = null;
+      let finalGasLimit = "0";
+      let finalMode: "local-key" | "steward" = hasLocalKey
+        ? "local-key"
+        : "steward";
+
+      if (hasLocalKey && canExecuteLocally) {
+        if (!_rpcUrl) {
+          sendJsonErrorResponse(
+            res,
+            503,
+            "BSC RPC not configured for local execution",
+          );
+          return true;
+        }
+
+        const localExecution = await _sendLocalWalletTransaction(_rpcUrl, {
           to: unsignedTx.to,
           data: unsignedTx.data,
-          value: unsignedTx.valueWei,
+          value: BigInt(unsignedTx.valueWei),
           chainId: unsignedTx.chainId,
-        },
-      });
-
-      if (
-        executionResult.mode === "steward" &&
-        executionResult.pendingApproval
-      ) {
-        sendJsonResponse(res, 200, {
-          ok: true,
-          mode: "steward",
-          executed: false,
-          requiresUserSignature: false,
-          toAddress,
-          amount,
-          assetSymbol,
-          tokenAddress: unsignedTx.tokenAddress,
-          unsignedTx,
-          execution: {
-            status: "pending_approval",
-            policyResults: executionResult.policyResults,
+        });
+        finalHash = localExecution.hash;
+        finalNonce = localExecution.nonce;
+        finalGasLimit = localExecution.gasLimit;
+      } else {
+        finalMode = "steward";
+        const executionResult = await signTransactionWithOptionalSteward({
+          evmAddress: addresses.evmAddress,
+          tx: {
+            to: unsignedTx.to,
+            data: unsignedTx.data,
+            value: unsignedTx.valueWei,
+            chainId: unsignedTx.chainId,
           },
         });
-        return true;
-      }
 
-      const finalHash =
-        "txHash" in executionResult ? executionResult.txHash : "";
-      const finalNonce = null;
-      const finalGasLimit = "0";
+        if (
+          executionResult.mode === "steward" &&
+          executionResult.pendingApproval
+        ) {
+          sendJsonResponse(res, 200, {
+            ok: true,
+            mode: "steward",
+            executed: false,
+            requiresUserSignature: false,
+            toAddress,
+            amount,
+            assetSymbol,
+            tokenAddress: unsignedTx.tokenAddress,
+            unsignedTx,
+            execution: {
+              status: "pending_approval",
+              policyResults: executionResult.policyResults,
+            },
+          });
+          return true;
+        }
+
+        finalHash = "txHash" in executionResult ? executionResult.txHash : "";
+      }
 
       sendJsonResponse(res, 200, {
         ok: true,
-        mode: executionResult.mode,
+        mode: finalMode,
         executed: true,
         requiresUserSignature: false,
         toAddress,
@@ -2981,7 +3353,7 @@ async function handleMiladyCompatRoute(
           nonce: finalNonce,
           gasLimit: finalGasLimit,
           valueWei: unsignedTx.valueWei,
-          explorerUrl: `https://bscscan.com/tx/${finalHash}`,
+          explorerUrl: `${bscExecutionNetwork.explorerBaseUrl}/tx/${finalHash}`,
           blockNumber: null,
           status: "pending",
         },
@@ -3387,6 +3759,9 @@ export function patchHttpCreateServerForMiladyCompat(
     const wrappedListener: http.RequestListener = async (req, res) => {
       syncMiladyEnvToEliza();
       syncElizaEnvToMilady();
+      // Re-check cloud TTS key alias on each request so sign-in mid-session
+      // is picked up without a restart.
+      ensureCloudTtsApiKeyAlias();
       mirrorCompatHeaders(req);
       if (state) {
         patchCompatStatusResponse(req, res, state);
@@ -3478,7 +3853,14 @@ export function patchHttpCreateServerForMiladyCompat(
         }
       }
 
-      listener(req, res);
+      Promise.resolve(listener(req, res)).catch((err) => {
+        console.error("[milady-compat] upstream listener error", err);
+        if (!res.headersSent) {
+          res.statusCode = 500;
+          res.setHeader("content-type", "application/json; charset=utf-8");
+          res.end(JSON.stringify({ error: "Internal server error" }));
+        }
+      });
     };
 
     if (typeof firstArg === "function") {
@@ -3498,6 +3880,10 @@ export async function startApiServer(
 ): Promise<Awaited<ReturnType<typeof upstreamStartApiServer>>> {
   syncMiladyEnvToEliza();
   syncElizaEnvToMilady();
+  // Ensure cloud-backed ElevenLabs key is available as ELEVENLABS_API_KEY so
+  // the upstream Eliza TTS handler can use it (the `/api/tts/elevenlabs` route
+  // passes through to upstream which checks this env var).
+  ensureCloudTtsApiKeyAlias();
   await hydrateWalletKeysFromNodePlatformSecureStore();
   const compatState: CompatRuntimeState = {
     current: (args[0]?.runtime as AgentRuntime | null) ?? null,

@@ -24,7 +24,10 @@ describe.each(["light", "dark"] as const)("theme %s", (theme) => {
 
     expect(
       screen.getByRole("button", { name: "Continue" }).className,
-    ).toContain("text-accent-fg");
+    ).toContain("text-accent");
+    expect(
+      screen.getByRole("button", { name: "Continue" }).className,
+    ).toContain("dark:text-accent");
     expect(
       screen.getByRole("button", { name: "Continue" }).className,
     ).toContain("bg-accent/18");

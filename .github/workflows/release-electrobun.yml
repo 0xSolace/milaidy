@@ -38,11 +38,6 @@ on:
         required: false
         type: boolean
         default: false
-      publish_docker:
-        description: "Publish the Docker image after the release step"
-        required: false
-        type: boolean
-        default: false
   workflow_dispatch:
     inputs:
       tag:
@@ -87,7 +82,8 @@ jobs:
           elif [[ "${{ github.ref_type }}" == "tag" ]]; then
             TAG="${{ github.ref_name }}"
           else
-            TAG="v$(node -p "require('./package.json').version")"
+            echo "Manual branch dispatches must provide inputs.tag; refusing to derive a release tag from package.json." >&2
+            exit 1
           fi
           VERSION="${TAG#v}"
           # canary for pre-release tags, stable for everything else
@@ -129,6 +125,9 @@ jobs:
       - name: Run repository postinstall patches
         run: bun run postinstall
 
+      - name: Regression matrix contract
+        run: bun run test:regression-matrix:release
+
       - name: Prepare Whisper model artifact
         run: |
           bash apps/app/electrobun/scripts/ensure-whisper-model.sh base.en
@@ -155,6 +154,16 @@ jobs:
           bunx tsdown
           echo '{"type":"module"}' > dist/package.json
           node --import tsx scripts/write-build-info.ts
+
+      - name: Run heavy E2E regression suite
+        run: bun run test:e2e:heavy
+
+      - name: Run cloud live regression suite
+        run: bun run test:live:cloud
+        env:
+          MILADY_LIVE_TEST: "1"
+          ELIZAOS_CLOUD_API_KEY: ${{ secrets.ELIZAOS_CLOUD_API_KEY }}
+          ELIZAOS_CLOUD_BASE_URL: ${{ secrets.ELIZAOS_CLOUD_BASE_URL }}
 
       - name: Release readiness checks
         run: bun run release:check
@@ -401,160 +410,11 @@ jobs:
           key: electrobun-core-${{ matrix.platform.artifact-name }}-${{ hashFiles('apps/app/electrobun/package.json') }}
           restore-keys: electrobun-core-${{ matrix.platform.artifact-name }}-
 
-      - name: Ensure Windows rcedit binary is available for Electrobun
+      - name: Build patched Electrobun CLI for Windows
         if: matrix.platform.os == 'windows'
-        shell: pwsh
+        shell: bash
         run: |
-          $resolvedElectrobunDir = '${{ steps.resolve-electrobun.outputs.package-dir }}'
-
-          $resolvedRceditPackageJson = node -e @'
-            const { createRequire } = require("node:module");
-            const path = require("node:path");
-            const electrobunDir = process.argv[1];
-            try {
-              const req = createRequire(path.join(electrobunDir, "package.json"));
-              process.stdout.write(req.resolve("rcedit/package.json"));
-            } catch (error) {
-              process.stdout.write("");
-            }
-          '@ $resolvedElectrobunDir
-
-          if ($null -eq $resolvedRceditPackageJson) {
-            $resolvedRceditPackageJson = ""
-          } elseif ($resolvedRceditPackageJson -is [array]) {
-            $resolvedRceditPackageJson = ($resolvedRceditPackageJson -join "")
-          }
-
-          $resolvedRceditPackageJson = "$resolvedRceditPackageJson".Trim()
-          if ([string]::IsNullOrWhiteSpace($resolvedRceditPackageJson)) {
-            Write-Warning "Electrobun could not resolve rcedit/package.json; seeding a local copy under the electrobun package."
-            $resolvedRceditDir = Join-Path $resolvedElectrobunDir "node_modules\rcedit"
-          } else {
-            $resolvedRceditDir = Split-Path -Parent $resolvedRceditPackageJson
-          }
-          $resolvedRceditExe = Join-Path $resolvedRceditDir "bin\rcedit-x64.exe"
-
-          if (-not (Test-Path $resolvedRceditExe)) {
-            Write-Warning "Electrobun resolved rcedit without a bundled binary at $resolvedRceditExe; copying the workspace-installed package into place."
-            $seedRceditCandidates = @(
-              (Join-Path (Split-Path -Parent $resolvedElectrobunDir) "rcedit")
-            )
-            $seedRceditCandidates += Get-ChildItem -Path (Join-Path $PWD "node_modules\.bun") -Directory -Filter "rcedit@*" -ErrorAction SilentlyContinue |
-              Sort-Object Name -Descending |
-              ForEach-Object { Join-Path $_.FullName "node_modules\rcedit" }
-
-            $seedRceditDir = ""
-            foreach ($candidate in $seedRceditCandidates) {
-              if ($null -eq $candidate) {
-                continue
-              }
-
-              $candidatePath = "$candidate".Trim()
-              if ([string]::IsNullOrWhiteSpace($candidatePath)) {
-                continue
-              }
-
-              $candidateExe = Join-Path $candidatePath "bin\rcedit-x64.exe"
-              if (Test-Path $candidateExe) {
-                $seedRceditDir = $candidatePath
-                break
-              }
-            }
-
-            if ([string]::IsNullOrWhiteSpace($seedRceditDir)) {
-              Write-Error "Could not find a workspace-installed rcedit package with rcedit-x64.exe"
-              exit 1
-            }
-
-            Write-Host "Seeding rcedit from $seedRceditDir"
-            $resolvedNodeModulesDir = Split-Path -Parent $resolvedRceditDir
-            New-Item -ItemType Directory -Force -Path $resolvedNodeModulesDir | Out-Null
-            if (Test-Path $resolvedRceditDir) {
-              Remove-Item -Recurse -Force $resolvedRceditDir
-            }
-            Copy-Item -Recurse -Force $seedRceditDir $resolvedNodeModulesDir
-          }
-
-          if (-not (Test-Path $resolvedRceditExe)) {
-            Write-Error "rcedit-x64.exe is still missing at $resolvedRceditExe"
-            exit 1
-          }
-
-          Write-Host "Using rcedit from $resolvedRceditDir"
-
-      # electrobun.cjs downloads its native binary then calls:
-      #   execSync(`tar -xzf "${tarballPath}"`, { cwd: cacheDir })
-      # GNU tar (found first in PATH on Windows) treats the C: drive letter as
-      # user@host, failing with "Cannot connect to C:". We bypass this entirely
-      # by pre-downloading the tarball and extracting it with Windows' built-in
-      # BSD tar (C:\Windows\System32\tar.exe, full path) before the build runs.
-      # electrobun.cjs checks existsSync(cliBinary) first and skips the download.
-      - name: Pre-extract electrobun native CLI on Windows
-        if: matrix.platform.os == 'windows'
-        shell: pwsh
-        run: |
-          $resolvedElectrobunDir = '${{ steps.resolve-electrobun.outputs.package-dir }}'
-          $cacheDir     = Join-Path $resolvedElectrobunDir ".cache"
-          $binDir       = Join-Path $resolvedElectrobunDir "bin"
-          $cliBinary    = Join-Path $cacheDir "electrobun.exe"
-          $binBinary    = Join-Path $binDir "electrobun.exe"
-
-          if (Test-Path $binBinary) {
-            Write-Host "electrobun CLI already present at $binBinary — skipping download"
-            exit 0
-          }
-
-          $version      = (Get-Content (Join-Path $resolvedElectrobunDir "package.json") | ConvertFrom-Json).version
-          $assetName    = "electrobun-cli-win-x64.tar.gz"
-          $releaseApiUrl = "https://api.github.com/repos/blackboardsh/electrobun/releases/tags/v$version"
-          $headers = @{
-            Accept = "application/vnd.github+json"
-            "User-Agent" = "milady-release-electrobun"
-          }
-          if ($env:GITHUB_TOKEN) {
-            $headers.Authorization = "Bearer $env:GITHUB_TOKEN"
-          }
-
-          Write-Host "Fetching electrobun release metadata from $releaseApiUrl"
-          $release = Invoke-RestMethod -Uri $releaseApiUrl -Headers $headers
-          $asset = @($release.assets) | Where-Object { $_.name -eq $assetName } | Select-Object -First 1
-          if (-not $asset) {
-            Write-Error "Could not find $assetName in electrobun release v$version"
-            exit 1
-          }
-          if (-not $asset.digest -or -not $asset.digest.StartsWith("sha256:")) {
-            Write-Error "GitHub release metadata for $assetName is missing a sha256 digest"
-            exit 1
-          }
-
-          $tarUrl       = $asset.browser_download_url
-          $expectedHash = $asset.digest.Substring(7).ToLowerInvariant()
-          $tarPath      = Join-Path $cacheDir "electrobun-win-x64.tar.gz"
-
-          New-Item -ItemType Directory -Force -Path $cacheDir | Out-Null
-          Write-Host "Downloading electrobun CLI from $tarUrl"
-          Invoke-WebRequest -Uri $tarUrl -OutFile $tarPath -UseBasicParsing
-          $actualHash = (Get-FileHash -Path $tarPath -Algorithm SHA256).Hash.ToLowerInvariant()
-          if ($actualHash -ne $expectedHash) {
-            Write-Error "electrobun CLI checksum mismatch: expected $expectedHash but got $actualHash"
-            exit 1
-          }
-          Write-Host "Verified electrobun CLI SHA256: $actualHash"
-
-          Write-Host "Extracting with Windows BSD tar..."
-          & "C:\Windows\System32\tar.exe" -xzf $tarPath -C $cacheDir
-          Remove-Item $tarPath -Force
-
-          if (-not (Test-Path $cliBinary)) {
-            Write-Error "electrobun.exe not found in $cacheDir after extraction"
-            exit 1
-          }
-
-          New-Item -ItemType Directory -Force -Path $binDir | Out-Null
-          Copy-Item $cliBinary $binBinary
-          Write-Host "electrobun CLI ready at $binBinary"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          node scripts/build-patched-electrobun-cli.mjs "${{ steps.resolve-electrobun.outputs.package-dir }}"
 
       - name: Build Electrobun app
         run: |
@@ -787,7 +647,7 @@ jobs:
           Remove-Item $env:MILADY_TEST_WINDOWS_LAUNCHER_DIR -Recurse -Force -ErrorAction SilentlyContinue
           Remove-Item $env:MILADY_TEST_WINDOWS_LAUNCHER_PATH_FILE -Force -ErrorAction SilentlyContinue
 
-          pwsh -File apps/app/electrobun/scripts/smoke-test-windows.ps1
+          bun run test:desktop:packaged:windows
 
           if (-not (Test-Path $env:MILADY_TEST_WINDOWS_LAUNCHER_PATH_FILE)) {
             Write-Error "Smoke test did not emit a reusable Windows launcher path."
@@ -826,14 +686,12 @@ jobs:
         with:
           name: electrobun-windows-installer-proof
           path: apps/app/electrobun/artifacts/windows-installer-proof/**
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
 
       - name: Run Windows packaged renderer bootstrap check
         if: matrix.platform.os == 'windows'
-        run: |
-          cd apps/app
-          bunx playwright test --config playwright.electrobun.packaged.config.ts test/electrobun-packaged/electrobun-windows-startup.e2e.spec.ts
+        run: bun run test:desktop:playwright
 
       - name: Upload Windows Playwright UI diagnostics
         if: failure() && matrix.platform.os == 'windows'
@@ -952,6 +810,19 @@ jobs:
             -OutputDir (Join-Path $PWD "apps/app/electrobun/artifacts") `
             -Version "${{ needs.prepare.outputs.version }}"
 
+      # When building unsigned (skip_codesign=1), the CEF framework ships with
+      # a pre-existing signature.  Injecting version.json into Resources breaks
+      # that signature (resource hash mismatch).  Ad-hoc re-sign the .app so
+      # the bundle is internally consistent even without a Developer ID cert.
+      - name: Ad-hoc re-sign unsigned macOS bundle
+        if: matrix.platform.os == 'macos' && steps.macos-keychain.outputs.skip_codesign == '1'
+        run: |
+          for app in apps/app/electrobun/artifacts/*.app; do
+            [ -d "$app" ] || continue
+            echo "Ad-hoc signing: $app"
+            codesign --force --deep --sign - "$app" || echo "::warning::Ad-hoc re-sign failed for $app"
+          done
+
       - name: Verify macOS signature and notarization
         if: matrix.platform.os == 'macos'
         run: |
@@ -1050,7 +921,7 @@ jobs:
           LIVENESS_TIMEOUT=10 \
           SKIP_BUILD=1 \
           SKIP_SIGNATURE_CHECK=1 \
-          bash apps/app/electrobun/scripts/smoke-test.sh
+          bun run test:desktop:packaged
 
       - name: Collect Windows smoke diagnostics
         if: failure() && matrix.platform.os == 'windows'
@@ -1129,6 +1000,10 @@ jobs:
 
           $exeFiles = Get-ChildItem -Path $artifactsDir -File -Filter "*.exe" -ErrorAction SilentlyContinue
           foreach ($exe in $exeFiles) {
+            if ($exe.FullName -eq $canonicalInstaller.FullName) {
+              Write-Host "Keeping canonical Windows installer uncompressed for single-extract downloads: $($exe.Name)"
+              continue
+            }
             $zipPath = $exe.FullName + ".zip"
             Write-Host "Compressing $($exe.Name) -> $($exe.Name).zip"
             Compress-Archive -Path $exe.FullName -DestinationPath $zipPath -CompressionLevel Optimal
@@ -1137,6 +1012,67 @@ jobs:
             $compressedMB = [math]::Round((Get-Item $zipPath).Length / 1MB, 1)
             Write-Host "Compressed: ${originalMB}MB -> ${compressedMB}MB"
           }
+
+      - name: Prepare public canary Windows installer artifact
+        if: matrix.platform.os == 'windows' && needs.prepare.outputs.env == 'canary'
+        shell: pwsh
+        run: |
+          $artifactsDir = Join-Path $PWD "apps/app/electrobun/artifacts"
+          $publicCanaryDir = Join-Path $artifactsDir "public-canary-installer"
+          Remove-Item $publicCanaryDir -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path $publicCanaryDir | Out-Null
+
+          $canonicalInstallers = Get-ChildItem -Path $artifactsDir -File -Filter "Milady-Setup-*.exe" -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending
+          if ($canonicalInstallers) {
+            if ($canonicalInstallers.Count -gt 1) {
+              Write-Error "Multiple canonical Windows installers found for canary artifact publishing."
+              $canonicalInstallers | ForEach-Object { Write-Host "  - $($_.FullName)" }
+              exit 1
+            }
+            $canonicalInstaller = $canonicalInstallers | Select-Object -First 1
+            Copy-Item $canonicalInstaller.FullName -Destination $publicCanaryDir -Force
+          } else {
+            $canonicalInstallerZips = Get-ChildItem -Path $artifactsDir -File -Filter "Milady-Setup-*.exe.zip" -ErrorAction SilentlyContinue |
+              Sort-Object LastWriteTime -Descending
+            if (-not $canonicalInstallerZips) {
+              Write-Error "No canonical Windows installer (or zip fallback) found for canary artifact publishing."
+              exit 1
+            }
+            if ($canonicalInstallerZips.Count -gt 1) {
+              Write-Error "Multiple canonical Windows installer zips found for canary artifact publishing."
+              $canonicalInstallerZips | ForEach-Object { Write-Host "  - $($_.FullName)" }
+              exit 1
+            }
+
+            $canonicalInstallerZip = $canonicalInstallerZips | Select-Object -First 1
+            Expand-Archive -Path $canonicalInstallerZip.FullName -DestinationPath $publicCanaryDir -Force
+          }
+
+          $publicInstallers = Get-ChildItem -Path $publicCanaryDir -File -Filter "Milady-Setup-*.exe" -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending
+          if (-not $publicInstallers) {
+            Write-Error "Failed to stage a public Windows installer under $publicCanaryDir"
+            exit 1
+          }
+          if ($publicInstallers.Count -gt 1) {
+            Write-Error "Canary installer artifact contains multiple public installers."
+            $publicInstallers | ForEach-Object { Write-Host "  - $($_.FullName)" }
+            exit 1
+          }
+
+          $publicInstaller = $publicInstallers | Select-Object -First 1
+          Write-Host "Prepared public canary installer artifact: $($publicInstaller.FullName)"
+
+      - name: Upload public canary installer artifact
+        if: matrix.platform.os == 'windows' && needs.prepare.outputs.env == 'canary'
+        uses: actions/upload-artifact@v4
+        with:
+          name: electrobun-${{ matrix.platform.artifact-name }}-public-installer
+          path: apps/app/electrobun/artifacts/public-canary-installer/Milady-Setup-*.exe
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -1195,6 +1131,7 @@ jobs:
           # installer, not the raw Electrobun bootstrap stub.
           find release-artifacts -type f \( \
             -name "*.dmg" -o \
+            -name "Milady-Setup-*.exe" -o \
             -name "Milady-Setup-*.exe.zip" -o \
             -name "*Setup*.tar.gz" -o \
             -name "*.msix" \
@@ -1272,18 +1209,3 @@ jobs:
             update-channel/ \
             releases@milady.ai:/var/www/releases/
           rm -f /tmp/release_key
-
-  publish-docker:
-    name: Publish Docker Image
-    if: ${{ github.event_name != 'workflow_call' || inputs.publish_docker }}
-    needs: [prepare, release]
-    permissions:
-      contents: read
-      packages: write
-    uses: ./.github/workflows/build-docker.yml
-    with:
-      version: ${{ needs.prepare.outputs.tag }}
-      push_image: true
-      tag_latest: true
-      source_sha: ${{ needs.prepare.outputs.source_sha }}
-    secrets: inherit

@@ -1,5 +1,6 @@
 import { Button, Input } from "@miladyai/ui";
 import type { ChangeEvent } from "react";
+import { useBranding } from "../../../config";
 import type { ConnectionEvent } from "../../../onboarding/connection-flow";
 import { useApp } from "../../../state";
 import { openExternalUrl } from "../../../utils";
@@ -11,14 +12,15 @@ import {
   onboardingDetailStackClassName,
   onboardingHelperTextClassName,
   onboardingInputClassName,
+  onboardingSubtleTextClassName,
 } from "../onboarding-form-primitives";
 import {
+  OnboardingLinkActionButton,
+  OnboardingSecondaryActionButton,
   OnboardingStepHeader,
   onboardingFooterClass,
   onboardingPrimaryActionClass,
   onboardingPrimaryActionTextShadowStyle,
-  onboardingSecondaryActionClass,
-  onboardingSecondaryActionTextShadowStyle,
   spawnOnboardingRipple,
 } from "../onboarding-step-chrome";
 import { useAdvanceOnboardingWhenElizaCloudOAuthConnected } from "./useAdvanceOnboardingWhenElizaCloudOAuthConnected";
@@ -28,6 +30,7 @@ export function ConnectionElizaCloudPreProviderScreen({
 }: {
   dispatch: (event: ConnectionEvent) => void;
 }) {
+  const branding = useBranding();
   const {
     t,
     onboardingApiKey,
@@ -121,14 +124,12 @@ export function ConnectionElizaCloudPreProviderScreen({
                     <OnboardingStatusBanner
                       tone="neutral"
                       action={
-                        <Button
-                          variant="ghost"
+                        <OnboardingLinkActionButton
                           type="button"
-                          className="rounded-md px-2 py-1 text-[11px] text-[var(--onboarding-text-faint)] transition-colors duration-300 hover:text-[var(--onboarding-link)]"
                           onClick={() => openExternalUrl(urlMatch[1])}
                         >
                           Open login page in browser
-                        </Button>
+                        </OnboardingLinkActionButton>
                       }
                     >
                       Open the login page in your browser to continue.
@@ -141,8 +142,20 @@ export function ConnectionElizaCloudPreProviderScreen({
                   </OnboardingStatusBanner>
                 );
               })()}
+            {elizaCloudLoginError ? (
+              <OnboardingLinkActionButton
+                type="button"
+                className="mt-1 text-xs underline"
+                onClick={() => openExternalUrl(branding.bugReportUrl)}
+              >
+                {t("onboarding.reportIssue")}
+              </OnboardingLinkActionButton>
+            ) : null}
             <p className={`${onboardingHelperTextClassName} text-center`}>
               {t("onboarding.freeCredits")}
+            </p>
+            <p className={`${onboardingSubtleTextClassName} text-center`}>
+              {t("onboarding.cloudProviderBehaviorHint")}
             </p>
           </div>
         ) : (
@@ -183,15 +196,12 @@ export function ConnectionElizaCloudPreProviderScreen({
       </div>
 
       <div className={onboardingFooterClass}>
-        <Button
-          variant="ghost"
-          className={onboardingSecondaryActionClass}
-          style={onboardingSecondaryActionTextShadowStyle}
+        <OnboardingSecondaryActionButton
           onClick={() => dispatch({ type: "backElizaCloudPreProvider" })}
           type="button"
         >
           {t("onboarding.back")}
-        </Button>
+        </OnboardingSecondaryActionButton>
         <Button
           className={onboardingPrimaryActionClass}
           style={onboardingPrimaryActionTextShadowStyle}
@@ -208,6 +218,9 @@ export function ConnectionElizaCloudPreProviderScreen({
           {t("onboarding.confirm")}
         </Button>
       </div>
+      <p className={`${onboardingSubtleTextClassName} mt-3 text-center`}>
+        {t("onboarding.restartAfterProviderChangeHint")}
+      </p>
     </>
   );
 }

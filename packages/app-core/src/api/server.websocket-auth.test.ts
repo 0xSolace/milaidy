@@ -52,13 +52,13 @@ describe("resolveWebSocketUpgradeRejection", () => {
     expect(rejection).toEqual({ status: 403, reason: "Origin not allowed" });
   });
 
-  it("rejects unauthenticated upgrades when API token is enabled", () => {
+  it("allows upgrades without handshake auth so clients can authenticate after open", () => {
     process.env.ELIZA_API_TOKEN = "test-token";
     const rejection = resolveWebSocketUpgradeRejection(
       mockReq() as http.IncomingMessage,
       new URL("ws://localhost/ws"),
     );
-    expect(rejection).toEqual({ status: 401, reason: "Unauthorized" });
+    expect(rejection).toBeNull();
   });
 
   it("accepts valid bearer token", () => {
@@ -175,13 +175,13 @@ describe("resolveWebSocketUpgradeRejection", () => {
     expect(rejection).toBeNull();
   });
 
-  it("rejects whitespace-only bearer token", () => {
+  it("allows whitespace-only bearer token to fall back to post-open auth", () => {
     process.env.ELIZA_API_TOKEN = "test-token";
     const rejection = resolveWebSocketUpgradeRejection(
       mockReq({ authorization: "Bearer   " }) as http.IncomingMessage,
       new URL("ws://localhost/ws"),
     );
-    expect(rejection).toEqual({ status: 401, reason: "Unauthorized" });
+    expect(rejection).toBeNull();
   });
 
   it("accepts query token via apiKey param when enabled", () => {
@@ -207,6 +207,29 @@ describe("resolveWebSocketUpgradeRejection", () => {
   it("accepts null origin when ELIZA_ALLOW_NULL_ORIGIN=1", () => {
     delete process.env.ELIZA_API_TOKEN;
     process.env.ELIZA_ALLOW_NULL_ORIGIN = "1";
+    const rejection = resolveWebSocketUpgradeRejection(
+      mockReq({ origin: "null" }) as http.IncomingMessage,
+      new URL("ws://localhost/ws"),
+    );
+    expect(rejection).toBeNull();
+  });
+
+  it("prefers MILADY_ALLOWED_ORIGINS over ELIZA aliases", () => {
+    delete process.env.ELIZA_API_TOKEN;
+    process.env.MILADY_ALLOWED_ORIGINS = "https://milady.example.com";
+    process.env.ELIZA_ALLOWED_ORIGINS = "https://legacy.example.com";
+    const rejection = resolveWebSocketUpgradeRejection(
+      mockReq({
+        origin: "https://legacy.example.com",
+      }) as http.IncomingMessage,
+      new URL("ws://localhost/ws"),
+    );
+    expect(rejection).toEqual({ status: 403, reason: "Origin not allowed" });
+  });
+
+  it("accepts null origin when MILADY_ALLOW_NULL_ORIGIN=1", () => {
+    delete process.env.ELIZA_API_TOKEN;
+    process.env.MILADY_ALLOW_NULL_ORIGIN = "1";
     const rejection = resolveWebSocketUpgradeRejection(
       mockReq({ origin: "null" }) as http.IncomingMessage,
       new URL("ws://localhost/ws"),

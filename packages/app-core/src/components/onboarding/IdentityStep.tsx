@@ -1,29 +1,57 @@
-import { dispatchAppEmoteEvent } from "@miladyai/app-core/events";
+import {
+  dispatchAppEmoteEvent,
+  dispatchWindowEvent,
+  ONBOARDING_VOICE_PREVIEW_AWAIT_TELEPORT_EVENT,
+  VRM_TELEPORT_COMPLETE_EVENT,
+} from "@miladyai/app-core/events";
 import { useApp } from "@miladyai/app-core/state";
-import { PREMADE_VOICES } from "../../voice/types";
-import { getElizaApiToken, resolveApiUrl } from "../../utils";
 import { getStylePresets } from "@miladyai/shared/onboarding-presets";
 import { Button, Input } from "@miladyai/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  fetchWithTimeout,
+  resolveCompatApiToken,
+} from "../../utils/api-request";
+import { resolveApiUrl } from "../../utils/asset-url";
+import { getElizaApiToken } from "../../utils/eliza-globals";
+import { PREMADE_VOICES } from "../../voice/types";
 import {
   CharacterRoster,
   type CharacterRosterEntry,
   resolveRosterEntries,
 } from "../CharacterRoster";
+import { resolvePreviewTtsEndpoints } from "./identity-preview-tts";
 import {
+  onboardingInputClassName,
+  onboardingReadableTextMutedClassName,
+  onboardingReadableTextStrongClassName,
+} from "./onboarding-form-primitives";
+import { onboardingPanelSurfaceClassName } from "./OnboardingPanel";
+import {
+  OnboardingLinkActionButton,
+  OnboardingSecondaryActionButton,
   OnboardingStepHeader,
   onboardingBodyTextShadowStyle,
   onboardingFooterClass,
-  onboardingLinkActionClass,
   onboardingPrimaryActionClass,
   onboardingPrimaryActionTextShadowStyle,
-  onboardingSecondaryActionClass,
-  onboardingSecondaryActionTextShadowStyle,
   spawnOnboardingRipple,
 } from "./onboarding-step-chrome";
-import { resolvePreviewTtsEndpoints } from "./identity-preview-tts";
 
-export function IdentityStep() {
+const IMPORT_AGENT_FETCH_TIMEOUT_MS = 60_000;
+
+export interface IdentityStepProps {
+  /**
+   * When the onboarding VRM stage is off (`disableVrm`), `eliza:vrm-teleport-complete`
+   * never fires — play the voice preview immediately on character swap instead of
+   * waiting on an event that will not arrive.
+   */
+  gateVoicePreviewOnTeleport?: boolean;
+}
+
+export function IdentityStep({
+  gateVoicePreviewOnTeleport = true,
+}: IdentityStepProps) {
   const { onboardingStyle, handleOnboardingNext, setState, t, uiLanguage } =
     useApp();
 
@@ -46,7 +74,6 @@ export function IdentityStep() {
   const previewObjectUrlRef = useRef<string | null>(null);
   const previewRequestIdRef = useRef(0);
   const pendingPreviewEntryRef = useRef<CharacterRosterEntry | null>(null);
-  const teleportPreviewTimerRef = useRef<number | null>(null);
 
   const stopPreviewAudio = useCallback(() => {
     if (previewAudioRef.current) {
@@ -155,22 +182,26 @@ export function IdentityStep() {
         previewRequestIdRef.current += 1;
         stopPreviewAudio();
         pendingPreviewEntryRef.current = null;
-        if (teleportPreviewTimerRef.current != null) {
-          window.clearTimeout(teleportPreviewTimerRef.current);
-          teleportPreviewTimerRef.current = null;
-        }
-        // Character swaps trigger a teleport dissolve; wait for completion before
-        // greeting emote/voice or the emote can be swallowed during transition.
+        // Avatar swaps use a teleport dissolve when VrmStage is mounted; defer preview until
+        // `VRM_TELEPORT_COMPLETE_EVENT`. When onboarding skips VRM, OnboardingWizard listens
+        // for `ONBOARDING_VOICE_PREVIEW_AWAIT_TELEPORT_EVENT` and echoes teleport-complete.
         const avatarChanged = previousAvatarIndex !== entry.avatarIndex;
-        if (avatarChanged) {
+        if (avatarChanged && gateVoicePreviewOnTeleport) {
           pendingPreviewEntryRef.current = entry;
+          dispatchWindowEvent(ONBOARDING_VOICE_PREVIEW_AWAIT_TELEPORT_EVENT);
         } else {
-          pendingPreviewEntryRef.current = null;
           void playSelectionPreview(entry);
         }
       }
     },
-    [entries, playSelectionPreview, selectedId, setState, stopPreviewAudio],
+    [
+      entries,
+      gateVoicePreviewOnTeleport,
+      playSelectionPreview,
+      selectedId,
+      setState,
+      stopPreviewAudio,
+    ],
   );
 
   // Auto-select the first one if nothing is selected yet
@@ -188,18 +219,12 @@ export function IdentityStep() {
       const pending = pendingPreviewEntryRef.current;
       if (!pending) return;
       pendingPreviewEntryRef.current = null;
-      if (teleportPreviewTimerRef.current != null) {
-        window.clearTimeout(teleportPreviewTimerRef.current);
-      }
-      teleportPreviewTimerRef.current = window.setTimeout(() => {
-        teleportPreviewTimerRef.current = null;
-        void playSelectionPreview(pending);
-      }, 450);
+      void playSelectionPreview(pending);
     };
-    window.addEventListener("eliza:vrm-teleport-complete", onTeleportComplete);
+    window.addEventListener(VRM_TELEPORT_COMPLETE_EVENT, onTeleportComplete);
     return () => {
       window.removeEventListener(
-        "eliza:vrm-teleport-complete",
+        VRM_TELEPORT_COMPLETE_EVENT,
         onTeleportComplete,
       );
     };
@@ -209,10 +234,6 @@ export function IdentityStep() {
     return () => {
       pendingPreviewEntryRef.current = null;
       previewRequestIdRef.current += 1;
-      if (teleportPreviewTimerRef.current != null) {
-        window.clearTimeout(teleportPreviewTimerRef.current);
-        teleportPreviewTimerRef.current = null;
-      }
       stopPreviewAudio();
     };
   }, [stopPreviewAudio]);
@@ -232,11 +253,54 @@ export function IdentityStep() {
       setImportBusy(true);
       setImportError(null);
       setImportSuccess(null);
-      // Dynamic import to avoid hard dependency on client when server is absent
-      const { client } = await import("@miladyai/app-core/api");
       const fileBuffer = await importFile.arrayBuffer();
-      const result = await client.importAgent(importPassword, fileBuffer);
-      const counts = result.counts;
+      const passwordBytes = new TextEncoder().encode(importPassword);
+      const envelope = new Uint8Array(
+        4 + passwordBytes.length + fileBuffer.byteLength,
+      );
+      const view = new DataView(envelope.buffer);
+      view.setUint32(0, passwordBytes.length, false);
+      envelope.set(passwordBytes, 4);
+      envelope.set(new Uint8Array(fileBuffer), 4 + passwordBytes.length);
+
+      const apiToken = resolveCompatApiToken();
+      const response = await fetchWithTimeout(
+        resolveApiUrl("/api/agent/import"),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/octet-stream",
+            ...(apiToken ? { Authorization: `Bearer ${apiToken}` } : {}),
+          },
+          body: envelope,
+        },
+        IMPORT_AGENT_FETCH_TIMEOUT_MS,
+      );
+
+      const responseText = await response.text();
+      let result = {} as {
+        error?: string;
+        success?: boolean;
+        agentId?: string;
+        agentName?: string;
+        counts?: Record<string, number>;
+      };
+
+      if (responseText) {
+        try {
+          result = JSON.parse(responseText) as typeof result;
+        } catch {
+          if (!response.ok) {
+            throw new Error(`Import failed (${response.status})`);
+          }
+          throw new Error("Import failed (invalid server response)");
+        }
+      }
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error ?? `Import failed (${response.status})`);
+      }
+      const counts = result.counts ?? {};
       const summary = [
         counts.memories ? `${counts.memories} memories` : null,
         counts.entities ? `${counts.entities} entities` : null,
@@ -277,7 +341,7 @@ export function IdentityStep() {
             setImportFile(e.target.files?.[0] ?? null);
             setImportError(null);
           }}
-          className="w-full px-[20px] py-[16px] bg-[var(--onboarding-card-bg)] border border-[var(--onboarding-card-border)] rounded-[6px] text-[var(--onboarding-text-primary)] font-inherit outline-none tracking-[0.03em] transition-all duration-300 focus:border-[var(--onboarding-field-focus-border)] focus:shadow-[var(--onboarding-field-focus-shadow)] placeholder:text-[var(--onboarding-text-faint)] text-[13px] text-left"
+          className={`${onboardingInputClassName} h-auto rounded-[6px] px-[20px] py-[16px] text-[13px] font-inherit tracking-[0.03em] text-center`}
         />
 
         <Input
@@ -288,7 +352,7 @@ export function IdentityStep() {
             setImportPassword(e.target.value);
             setImportError(null);
           }}
-          className="w-full px-[20px] py-[16px] bg-[var(--onboarding-card-bg)] border border-[var(--onboarding-card-border)] rounded-[6px] text-[var(--onboarding-text-primary)] font-inherit outline-none tracking-[0.03em] text-center transition-all duration-300 focus:border-[var(--onboarding-field-focus-border)] focus:shadow-[var(--onboarding-field-focus-shadow)] placeholder:text-[var(--onboarding-text-faint)]"
+          className={`${onboardingInputClassName} h-auto rounded-[6px] px-[20px] py-[16px] font-inherit tracking-[0.03em] text-center`}
         />
 
         {importError && (
@@ -309,10 +373,7 @@ export function IdentityStep() {
         )}
 
         <div className={`${onboardingFooterClass} mt-2 w-full border-t-0 pt-0`}>
-          <Button
-            variant="ghost"
-            className={onboardingSecondaryActionClass}
-            style={onboardingSecondaryActionTextShadowStyle}
+          <OnboardingSecondaryActionButton
             onClick={() => {
               setShowImport(false);
               setImportError(null);
@@ -323,7 +384,7 @@ export function IdentityStep() {
             type="button"
           >
             {t("common.cancel")}
-          </Button>
+          </OnboardingSecondaryActionButton>
           <Button
             className={onboardingPrimaryActionClass}
             style={onboardingPrimaryActionTextShadowStyle}
@@ -358,16 +419,16 @@ export function IdentityStep() {
         style={{ animation: "onboarding-content-fade-in 0.5s ease 0.1s both" }}
       >
         <div
-          className="mb-2 text-xs font-semibold uppercase tracking-[0.3em] text-[var(--onboarding-text-muted)]"
+          className={`mb-2 text-xs font-semibold uppercase tracking-[0.3em] ${onboardingReadableTextMutedClassName}`}
           style={onboardingBodyTextShadowStyle}
         >
           {t("onboarding.stepSub.identity")}
         </div>
         <div
-          className="text-[28px] font-bold tracking-[0.12em] uppercase text-[var(--onboarding-text-strong)] transition-all duration-300 max-md:text-xl"
+          className={`text-[28px] font-bold tracking-[0.12em] uppercase transition-all duration-300 max-md:text-xl ${onboardingReadableTextStrongClassName}`}
           style={{
             textShadow:
-              "0 0 30px rgba(240,185,11,0.3), 0 2px 12px rgba(3,5,10,0.65)",
+              "0 0 24px rgba(240,185,11,0.18), var(--onboarding-text-shadow-strong)",
           }}
         >
           {selected?.name ?? ""}
@@ -376,7 +437,7 @@ export function IdentityStep() {
 
       {/* ── Roster bar ── */}
       <div
-        className="flex flex-nowrap items-end justify-center gap-0 w-full max-w-[900px] px-2 max-md:px-1 max-md:max-w-full border-t border-[var(--onboarding-roster-border)] bg-[var(--onboarding-roster-bg)] p-4 pb-8 backdrop-blur-md"
+        className={`flex w-full max-w-[900px] flex-nowrap items-end justify-center gap-0 rounded-[18px] p-4 pb-8 px-2 backdrop-blur-[36px] backdrop-saturate-[1.24] max-md:max-w-full max-md:px-1 ${onboardingPanelSurfaceClassName}`}
         style={{
           animation:
             "ob-roster-slide-up 0.5s cubic-bezier(0.25,0.46,0.45,0.94) 0.15s both",
@@ -414,14 +475,12 @@ export function IdentityStep() {
         >
           Continue
         </Button>
-        <Button
-          variant="link"
+        <OnboardingLinkActionButton
           type="button"
           onClick={() => setShowImport(true)}
-          className={onboardingLinkActionClass}
         >
           {t("onboarding.restoreFromBackup")}
-        </Button>
+        </OnboardingLinkActionButton>
       </div>
     </div>
   );

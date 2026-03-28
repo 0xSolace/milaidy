@@ -1,27 +1,54 @@
 import { useApp } from "@miladyai/app-core/state";
 import { Button, Spinner } from "@miladyai/ui";
 import { useEffect, useRef } from "react";
+import { useBranding } from "../../config";
+import { openExternalUrl } from "../../utils";
 import {
+  onboardingCardSurfaceClassName,
+  onboardingHelperTextClassName,
+  OnboardingStatusBanner,
+  onboardingReadableTextMutedClassName,
+  onboardingSubtleTextClassName,
+  onboardingTextSupportClassName,
+} from "./onboarding-form-primitives";
+import {
+  OnboardingLinkActionButton,
+  OnboardingSecondaryActionButton,
   OnboardingStepHeader,
   onboardingBodyTextShadowStyle,
   onboardingFooterClass,
   onboardingPrimaryActionClass,
   onboardingPrimaryActionTextShadowStyle,
-  onboardingSecondaryActionClass,
-  onboardingSecondaryActionTextShadowStyle,
   spawnOnboardingRipple,
 } from "./onboarding-step-chrome";
 
 const statusCardClass =
   "mx-auto mt-4 flex w-full max-w-[25rem] items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm leading-relaxed shadow-[0_18px_50px_rgba(3,5,10,0.2)] backdrop-blur-sm";
 
-const connectedCardClass = `${statusCardClass} border-[var(--ok-muted)] bg-[var(--ok-subtle)] text-[var(--ok)]`;
-
-const busyCardClass = `${statusCardClass} border-[var(--onboarding-card-border)] bg-[var(--onboarding-card-bg)] text-[var(--onboarding-text-muted)]`;
+const busyCardClass = `${statusCardClass} ${onboardingCardSurfaceClassName} ${onboardingReadableTextMutedClassName}`;
 
 const errorCardClass = `${statusCardClass} border-[color:color-mix(in_srgb,var(--danger)_42%,transparent)] bg-[color:color-mix(in_srgb,var(--danger)_12%,transparent)] text-[var(--danger)]`;
 
+function ConnectedIcon({ title }: { title: string }) {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <title>{title}</title>
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
 export function CloudLoginStep() {
+  const branding = useBranding();
   const {
     onboardingStep,
     elizaCloudConnected,
@@ -52,15 +79,18 @@ export function CloudLoginStep() {
         description={t("onboarding.cloudLoginDesc")}
         descriptionClassName="mx-auto mt-1 max-w-[34ch] text-balance"
       />
+      <p
+        className={`${onboardingHelperTextClassName} ${onboardingTextSupportClassName} mx-auto max-w-[40ch] text-center`}
+        style={onboardingBodyTextShadowStyle}
+      >
+        {t("onboarding.cloudProviderBehaviorHint")}
+      </p>
 
       {elizaCloudConnected ? (
-        <div
-          className={connectedCardClass}
-          role="status"
-          style={onboardingBodyTextShadowStyle}
-        >
+        <OnboardingStatusBanner tone="success" className="mt-4">
+          <ConnectedIcon title={t("onboarding.connected")} />
           {t("onboarding.cloudLoginConnected")}
-        </div>
+        </OnboardingStatusBanner>
       ) : elizaCloudLoginBusy ? (
         <div
           className={busyCardClass}
@@ -74,13 +104,22 @@ export function CloudLoginStep() {
       ) : (
         <>
           {elizaCloudLoginError ? (
-            <div
-              className={errorCardClass}
-              role="alert"
-              style={onboardingBodyTextShadowStyle}
-            >
-              {elizaCloudLoginError}
-            </div>
+            <>
+              <div
+                className={errorCardClass}
+                role="alert"
+                style={onboardingBodyTextShadowStyle}
+              >
+                {elizaCloudLoginError}
+              </div>
+              <OnboardingLinkActionButton
+                type="button"
+                className="mx-auto mt-2"
+                onClick={() => openExternalUrl(branding.bugReportUrl)}
+              >
+                {t("onboarding.reportIssue")}
+              </OnboardingLinkActionButton>
+            </>
           ) : null}
           <Button
             className={`${onboardingPrimaryActionClass} mx-auto mt-4 flex w-full max-w-[25rem]`}
@@ -98,19 +137,22 @@ export function CloudLoginStep() {
               ? t("onboarding.cloudLoginRetry")
               : t("onboarding.cloudLoginBtn")}
           </Button>
+          <p
+            className={`${onboardingSubtleTextClassName} mx-auto mt-3 max-w-[40ch] text-center`}
+            style={onboardingBodyTextShadowStyle}
+          >
+            {t("onboarding.restartAfterProviderChangeHint")}
+          </p>
         </>
       )}
 
       <div className={onboardingFooterClass}>
-        <Button
-          variant="ghost"
-          className={onboardingSecondaryActionClass}
-          style={onboardingSecondaryActionTextShadowStyle}
+        <OnboardingSecondaryActionButton
           onClick={() => handleOnboardingBack()}
           type="button"
         >
           {t("onboarding.back")}
-        </Button>
+        </OnboardingSecondaryActionButton>
       </div>
     </>
   );

@@ -2,6 +2,10 @@ import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  resolveDesktopApiPort,
+  resolveDesktopUiPort,
+} from "../../packages/shared/src/runtime-env.ts";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react-swc";
 import type { Plugin } from "vite";
@@ -9,18 +13,58 @@ import { defineConfig } from "vite";
 
 const _require = createRequire(import.meta.url);
 
-// Keep this as a workspace-relative import so Vite transpiles the TS module
-// while bundling the config instead of asking Node to load a package-exported
-// .ts file directly in CI.
+// Keep workspace-relative TS imports in this config so Vite transpiles them
+// while bundling the config instead of asking Node to load package-exported
+// .ts files directly in CI.
 const here = path.dirname(fileURLToPath(import.meta.url));
 const miladyRoot = path.resolve(here, "../..");
 
 // The dev script sets MILADY_API_PORT; default to 31337 for standalone vite dev.
-const apiPort = Number(process.env.MILADY_API_PORT) || 31337;
-const uiPort = Number(process.env.MILADY_PORT) || 2138;
+const apiPort = resolveDesktopApiPort(process.env);
+const uiPort = resolveDesktopUiPort(process.env);
 const enableAppSourceMaps = process.env.MILADY_APP_SOURCEMAP === "1";
 /** Set by scripts/dev-platform.mjs for `vite build --watch` (Electrobun desktop). */
 const desktopFastDist = process.env.MILADY_DESKTOP_VITE_FAST_DIST === "1";
+
+function pathIncludesAny(id: string, markers: string[]): boolean {
+  return markers.some((marker) => id.includes(marker));
+}
+
+function resolveManualChunk(id: string): string | undefined {
+  const normalizedId = id.split(path.sep).join("/");
+
+  if (normalizedId.includes("/node_modules/")) {
+    if (
+      pathIncludesAny(normalizedId, [
+        "/@react-spring/",
+        "/react-dom/",
+        "/react-is/",
+        "/scheduler/",
+        "/react/",
+      ])
+    ) {
+      return "vendor-react";
+    }
+
+    if (normalizedId.includes("/@pixiv/three-vrm/")) {
+      return "vendor-vrm";
+    }
+
+    if (normalizedId.includes("/@sparkjsdev/spark/")) {
+      return "vendor-spark";
+    }
+
+    if (normalizedId.includes("/three/examples/")) {
+      return "vendor-three-extras";
+    }
+
+    if (pathIncludesAny(normalizedId, ["/three/build/", "/three/src/"])) {
+      return "vendor-three";
+    }
+  }
+
+  return undefined;
+}
 
 /**
  * Dev-only middleware that handles CORS for the desktop custom-scheme origin
@@ -435,6 +479,10 @@ export default defineConfig({
   publicDir: path.resolve(here, "public"),
   define: {
     global: "globalThis",
+    // Mirror MILADY_TTS_DEBUG into the client bundle so one env enables UI + server TTS logs in dev.
+    "import.meta.env.MILADY_TTS_DEBUG": JSON.stringify(
+      process.env.MILADY_TTS_DEBUG ?? "",
+    ),
   },
   plugins: [
     nativeModuleStubPlugin(),
@@ -673,6 +721,8 @@ export default defineConfig({
     emptyOutDir: !desktopFastDist,
     sourcemap: desktopFastDist ? false : enableAppSourceMaps,
     target: "es2022",
+    // Keep warnings focused on regressions after splitting the heavy 3D vendor surface.
+    chunkSizeWarningLimit: 2300,
     minify: desktopFastDist ? false : undefined,
     cssMinify: desktopFastDist ? false : undefined,
     reportCompressedSize: !desktopFastDist,
@@ -741,9 +791,7 @@ export default defineConfig({
         screenshotter: path.resolve(here, "public_src/screenshotter.html"),
       },
       output: {
-        manualChunks: {
-          "vendor-3d": ["three", "@pixiv/three-vrm", "@sparkjsdev/spark"],
-        },
+        manualChunks: resolveManualChunk,
       },
     },
     commonjsOptions: {

@@ -29,23 +29,26 @@ import {
   getOnboardingChoiceCardClassName,
   OnboardingField,
   OnboardingStatusBanner,
+  onboardingCardSurfaceClassName,
   onboardingCenteredStackClassName,
   onboardingChoiceCardTitleClassName,
   onboardingDetailStackClassName,
+  onboardingFieldLabelClassName,
   onboardingHelperTextClassName,
   onboardingInfoPanelClassName,
+  onboardingInlineSupportClassName,
   onboardingInputClassName,
+  onboardingReadableTextPrimaryClassName,
   onboardingSubtleTextClassName,
 } from "../onboarding-form-primitives";
 import {
+  OnboardingLinkActionButton,
+  OnboardingSecondaryActionButton,
   OnboardingStepHeader,
   onboardingBodyTextShadowStyle,
   onboardingFooterClass,
-  onboardingLinkActionClass,
   onboardingPrimaryActionClass,
   onboardingPrimaryActionTextShadowStyle,
-  onboardingSecondaryActionClass,
-  onboardingSecondaryActionTextShadowStyle,
   spawnOnboardingRipple,
 } from "../onboarding-step-chrome";
 import { useAdvanceOnboardingWhenElizaCloudOAuthConnected } from "./useAdvanceOnboardingWhenElizaCloudOAuthConnected";
@@ -393,7 +396,9 @@ export function ConnectionProviderDetailScreen({
     <>
       {selectedProvider ? (
         <div className="mb-4 flex justify-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--onboarding-card-border)] bg-[var(--onboarding-card-bg)]/90 backdrop-blur-[18px] backdrop-saturate-[1.15]">
+          <div
+            className={`flex h-14 w-14 items-center justify-center rounded-2xl backdrop-blur-[18px] backdrop-saturate-[1.15] ${onboardingCardSurfaceClassName}`}
+          >
             <img
               src={getProviderLogo(
                 selectedProvider.id,
@@ -462,14 +467,12 @@ export function ConnectionProviderDetailScreen({
                       <OnboardingStatusBanner
                         tone="neutral"
                         action={
-                          <Button
-                            variant="ghost"
+                          <OnboardingLinkActionButton
                             type="button"
-                            className={onboardingLinkActionClass}
                             onClick={() => openExternalUrl(urlMatch[1])}
                           >
                             Open login page in browser
-                          </Button>
+                          </OnboardingLinkActionButton>
                         }
                       >
                         Open the login page in your browser to continue.
@@ -477,13 +480,24 @@ export function ConnectionProviderDetailScreen({
                     );
                   }
                   return (
-                    <OnboardingStatusBanner tone="error" live="assertive">
-                      {elizaCloudLoginError}
-                    </OnboardingStatusBanner>
+                    <div className={onboardingCenteredStackClassName}>
+                      <OnboardingStatusBanner tone="error" live="assertive">
+                        {elizaCloudLoginError}
+                      </OnboardingStatusBanner>
+                      <OnboardingLinkActionButton
+                        type="button"
+                        onClick={() => openExternalUrl(branding.bugReportUrl)}
+                      >
+                        {t("onboarding.reportIssue")}
+                      </OnboardingLinkActionButton>
+                    </div>
                   );
                 })()}
               <p className={`${onboardingHelperTextClassName} text-center`}>
                 {t("onboarding.freeCredits")}
+              </p>
+              <p className={`${onboardingSubtleTextClassName} text-center`}>
+                {t("onboarding.cloudProviderBehaviorHint")}
               </p>
             </div>
           ) : (
@@ -677,12 +691,14 @@ export function ConnectionProviderDetailScreen({
           ) : (
             <div className={onboardingDetailStackClassName}>
               <div className={onboardingInfoPanelClassName}>
-                <p className="mb-1 text-sm font-semibold text-[var(--onboarding-text-primary)]">
+                <p
+                  className={`mb-1 text-sm font-semibold ${onboardingReadableTextPrimaryClassName}`}
+                >
                   {t("onboarding.almostThere")}
                 </p>
                 <p className={onboardingHelperTextClassName}>
                   {t("onboarding.redirectInstructions")}{" "}
-                  <code className="rounded bg-[var(--bg-hover)] px-1 py-0.5 text-xs">
+                  <code className={`${onboardingInlineSupportClassName} text-xs`}>
                     localhost:1455
                   </code>
                   {t("onboarding.copyEntireUrl")}
@@ -728,11 +744,8 @@ export function ConnectionProviderDetailScreen({
                 >
                   {t("onboarding.completeLogin")}
                 </Button>
-                <Button
-                  variant="ghost"
+                <OnboardingSecondaryActionButton
                   type="button"
-                  className={onboardingSecondaryActionClass}
-                  style={onboardingSecondaryActionTextShadowStyle}
                   onClick={() => {
                     setOpenaiOAuthStarted(false);
                     setOpenaiCallbackUrl("");
@@ -740,7 +753,7 @@ export function ConnectionProviderDetailScreen({
                   }}
                 >
                   {t("onboarding.startOver")}
-                </Button>
+                </OnboardingSecondaryActionButton>
               </div>
             </div>
           )}
@@ -887,7 +900,7 @@ export function ConnectionProviderDetailScreen({
         <div className={`${onboardingDetailStackClassName} mt-4`}>
           <div
             id="openrouter-models-label"
-            className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--onboarding-text-muted)]"
+            className={onboardingFieldLabelClassName}
           >
             {t("onboarding.selectModel")}
           </div>
@@ -928,15 +941,12 @@ export function ConnectionProviderDetailScreen({
       ) : null}
 
       <div className={onboardingFooterClass}>
-        <Button
-          variant="ghost"
-          className={onboardingSecondaryActionClass}
-          style={onboardingSecondaryActionTextShadowStyle}
+        <OnboardingSecondaryActionButton
           onClick={clearProvider}
           type="button"
         >
           {t("onboarding.back")}
-        </Button>
+        </OnboardingSecondaryActionButton>
         <Button
           className={onboardingPrimaryActionClass}
           style={onboardingPrimaryActionTextShadowStyle}
@@ -953,6 +963,9 @@ export function ConnectionProviderDetailScreen({
           {t("onboarding.confirm")}
         </Button>
       </div>
+      <p className={`${onboardingSubtleTextClassName} mt-3 text-center`}>
+        {t("onboarding.restartAfterProviderChangeHint")}
+      </p>
     </>
   );
 }

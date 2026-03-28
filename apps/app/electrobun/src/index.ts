@@ -2,6 +2,10 @@ import fs from "node:fs";
 import { createServer as createNetServer } from "node:net";
 import os from "node:os";
 import path from "node:path";
+import {
+  resolveApiToken,
+  resolveDesktopApiPort,
+} from "@miladyai/shared/runtime-env";
 import Electrobun, {
   ApplicationMenu,
   BrowserWindow,
@@ -30,7 +34,14 @@ import {
   pickReachableMenuResetApiBase,
   runMainMenuResetAfterApiBaseResolved,
 } from "./menu-reset-from-main";
-import { configureDesktopLocalApiAuth, getAgentManager } from "./native/agent";
+import {
+  configureDesktopLocalApiAuth,
+  getAgentManager,
+  getDiagnosticLogPath,
+  getStartupDiagnosticLogTail,
+  getStartupDiagnosticsSnapshot,
+  getStartupStatusPath,
+} from "./native/agent";
 import { getDesktopManager } from "./native/desktop";
 import { disposeNativeModules, initializeNativeModules } from "./native/index";
 import {
@@ -45,6 +56,10 @@ import { readBuiltPreloadScript } from "./preload-validation";
 import { resolveRendererAsset } from "./renderer-static";
 import { registerRpcHandlers } from "./rpc-handlers";
 import { startScreenshotDevServer } from "./screenshot-dev-server";
+import {
+  recordStartupPhase,
+  resolveStartupBundlePath,
+} from "./startup-trace";
 import {
   isDetachedSurface,
   type ManagedWindowLike,
@@ -67,6 +82,8 @@ type HeartbeatMenuHealthResponse = {
 
 const HEARTBEAT_MENU_REFRESH_MS = 30_000;
 const CONFIG_EXPORT_FILE_NAME = "milady-config.json";
+const STARTUP_CRASH_REPORT_FILE = "startup-crash-report-latest.md";
+const STARTUP_CRASH_PROMPT_MARKER_FILE = "startup-crash-last-prompted.txt";
 // Browser surface ships enabled by default. Set
 // MILADY_ENABLE_BROWSER_SURFACE=0 to force-disable it for local debugging or
 // release triage.
@@ -82,7 +99,25 @@ import {
   onAgentReadyChange,
   setAgentReady,
 } from "./agent-ready-state";
-import { DEFAULT_PORT } from "./constants";
+import {
+  isStewardLocalEnabled,
+  startSteward,
+  stopSteward,
+  restartSteward,
+  resetSteward,
+  getStewardStatus,
+  onStewardStatusChange,
+  setStewardSendToWebview,
+} from "./native/steward";
+
+function resolveDesktopAppIconPath(): string {
+  return path.join(
+    import.meta.dir,
+    process.platform === "win32"
+      ? "../assets/appIcon.ico"
+      : "../assets/appIcon.png",
+  );
+}
 
 function setupApplicationMenu(): void {
   const isMac = process.platform === "darwin";
@@ -118,8 +153,7 @@ function buildApiRequestHeaders(contentType?: string): Record<string, string> {
   if (contentType) {
     headers["Content-Type"] = contentType;
   }
-  let apiToken =
-    process.env.MILADY_API_TOKEN?.trim() ?? process.env.ELIZA_API_TOKEN?.trim();
+  let apiToken = resolveApiToken(process.env);
   if (!apiToken) {
     const rt = resolveDesktopRuntimeMode(
       process.env as Record<string, string | undefined>,
@@ -381,8 +415,15 @@ async function refreshHeartbeatMenuSnapshot(): Promise<void> {
 function startHeartbeatMenuRefresh(): void {
   if (heartbeatMenuRefreshTimer) return;
   void refreshHeartbeatMenuSnapshot();
+  let heartbeatRefreshInProgress = false;
   heartbeatMenuRefreshTimer = setInterval(() => {
-    void refreshHeartbeatMenuSnapshot();
+    if (heartbeatRefreshInProgress) {
+      return;
+    }
+    heartbeatRefreshInProgress = true;
+    void refreshHeartbeatMenuSnapshot().finally(() => {
+      heartbeatRefreshInProgress = false;
+    });
   }, HEARTBEAT_MENU_REFRESH_MS);
 }
 
@@ -514,6 +555,8 @@ let rendererUrlPromise: Promise<string> | null = null;
 let backgroundWindowPromise: Promise<void> | null = null;
 let isQuitting = false;
 let lastFocusedWindow: ManagedWindowLike | null = null;
+let registeredCleanupFns: Array<() => void | Promise<void>> = [];
+let shutdownCleanupStarted = false;
 
 function sendToActiveRenderer(message: string, payload?: unknown): void {
   currentSendToWebview?.(message, payload);
@@ -582,9 +625,7 @@ async function startRendererServer(): Promise<string> {
     resolveDesktopRuntimeMode(process.env as Record<string, string | undefined>)
       .mode === "local"
       ? configureDesktopLocalApiAuth()
-      : (process.env.MILADY_API_TOKEN?.trim() ??
-        process.env.ELIZA_API_TOKEN?.trim() ??
-        "");
+      : (resolveApiToken(process.env) ?? "");
 
   // Inject the API base into index.html so it's available before React mounts.
   function injectApiBaseIntoHtml(html: string): string {
@@ -691,6 +732,7 @@ async function createMainWindow(): Promise<BrowserWindow> {
     title: "Milady",
     url: rendererUrl,
     preload,
+    icon: resolveDesktopAppIconPath(),
     frame: {
       width: state.width,
       height: state.height,
@@ -1013,6 +1055,7 @@ function wireRpcAndModules(
   };
 
   initializeNativeModules(win, sendToWebview);
+  setStewardSendToWebview(sendToWebview);
   registerRpcHandlers(rpc, sendToWebview);
 
   return sendToWebview;
@@ -1062,7 +1105,7 @@ function injectApiBase(win: BrowserWindow): void {
     pushApiBaseToRenderer(
       win,
       runtimeResolution.externalApi.base,
-      process.env.MILADY_API_TOKEN,
+      resolveApiToken(process.env) ?? undefined,
     );
     setAgentReady(true);
     return;
@@ -1070,7 +1113,7 @@ function injectApiBase(win: BrowserWindow): void {
 
   const agent = getAgentManager();
   const port =
-    agent.getPort() ?? (Number(process.env.MILADY_PORT) || DEFAULT_PORT);
+    agent.getPort() ?? resolveDesktopApiPort(process.env);
   const apiToken = configureDesktopLocalApiAuth();
   pushApiBaseToRenderer(
     win,
@@ -1117,12 +1160,17 @@ async function _startAgent(win: BrowserWindow): Promise<void> {
   }
 
   const agent = getAgentManager();
-  const apiToken = configureDesktopLocalApiAuth();
+  recordStartupPhase("autostart_requested", {
+    pid: process.pid,
+    exec_path: process.execPath,
+    bundle_path: resolveStartupBundlePath(process.execPath),
+  });
 
   try {
     const status = await agent.start();
 
     if (status.state === "running" && status.port) {
+      const apiToken = resolveApiToken(process.env) ?? undefined;
       pushApiBaseToRenderer(
         win,
         resolveRendererFacingApiBase(
@@ -1153,6 +1201,12 @@ async function setupUpdater(): Promise<void> {
             "[Updater] Skipping auto-update check:",
             updaterState.autoUpdateDisabledReason,
           );
+          if (notifyOnNoUpdate) {
+            Utils.showNotification({
+              title: "Updates Unavailable",
+              body: updaterState.autoUpdateDisabledReason,
+            });
+          }
         }
         return;
       }
@@ -1204,6 +1258,10 @@ async function setupUpdater(): Promise<void> {
     });
 
     const triggerManualUpdateCheck = () => {
+      Utils.showNotification({
+        title: "Checking for Updates",
+        body: "Milady is checking for a newer release.",
+      });
       void runUpdateCheck(true);
     };
 
@@ -1218,6 +1276,14 @@ async function setupUpdater(): Promise<void> {
         }
         if (action === "check-for-updates") {
           triggerManualUpdateCheck();
+        } else if (action === "open-about") {
+          const updaterState = await getDesktopManager().getUpdaterState();
+          const version = updaterState.currentVersion || "unknown";
+          Utils.showNotification({
+            title: "About Milady",
+            body: `Version ${version} (${process.platform}/${process.arch})`,
+          });
+          void createSettingsWindow("updates");
         } else if (action === "export-config") {
           void exportConfigFromMenu();
         } else if (action === "import-config") {
@@ -1260,12 +1326,36 @@ async function setupUpdater(): Promise<void> {
             body: "Native application menu actions are wired and responding.",
             urgency: "normal",
           });
+        } else if (action === "restart-steward") {
+          if (isStewardLocalEnabled()) {
+            restartSteward().catch((err: unknown) => {
+              console.error("[Main] Steward restart failed:", err);
+              Utils.showNotification({
+                title: "Steward Restart Failed",
+                body:
+                  err instanceof Error ? err.message : "Unknown error",
+              });
+            });
+          }
+        } else if (action === "reset-steward") {
+          if (isStewardLocalEnabled()) {
+            resetSteward().catch((err: unknown) => {
+              console.error("[Main] Steward reset failed:", err);
+              Utils.showNotification({
+                title: "Steward Reset Failed",
+                body:
+                  err instanceof Error ? err.message : "Unknown error",
+              });
+            });
+          }
         } else if (action === "restart-agent") {
           getAgentManager()
             .restart()
             .catch((err: unknown) => {
               console.error("[Main] Agent restart failed:", err);
             });
+        } else if (action === "quit") {
+          Utils.quit();
         } else if (action === "show") {
           void getDesktopManager().showWindow();
         } else if (action?.startsWith("navigate-")) {
@@ -1304,14 +1394,28 @@ function setupDockReopen(): void {
   });
 }
 
-function setupShutdown(cleanupFns: Array<() => void>): void {
+async function runShutdownCleanup(reason: string): Promise<void> {
+  if (shutdownCleanupStarted) {
+    return;
+  }
+  shutdownCleanupStarted = true;
+  console.log(`[Main] Running shutdown cleanup (${reason})...`);
+  for (const cleanupFn of registeredCleanupFns) {
+    try {
+      await cleanupFn();
+    } catch (err) {
+      console.warn("[Main] Cleanup handler failed:", err);
+    }
+  }
+  disposeNativeModules();
+}
+
+function setupShutdown(cleanupFns: Array<() => void | Promise<void>>): void {
+  registeredCleanupFns = cleanupFns;
   Electrobun.events.on("before-quit", () => {
     isQuitting = true;
     console.log("[Main] App quitting, disposing native modules...");
-    for (const cleanupFn of cleanupFns) {
-      cleanupFn();
-    }
-    disposeNativeModules();
+    void runShutdownCleanup("before-quit");
   });
 }
 
@@ -1415,6 +1519,11 @@ function checkWebGpuBrowserSupport(): void {
 }
 
 async function main(): Promise<void> {
+  recordStartupPhase("main_start", {
+    pid: process.pid,
+    exec_path: process.execPath,
+    bundle_path: resolveStartupBundlePath(process.execPath),
+  });
   await loadMiladyEnvFilesForMain();
   console.log("[Main] Starting Milady (Electrobun)");
   const normalizedModuleDir = import.meta.dir.replaceAll("\\", "/");
@@ -1430,6 +1539,8 @@ async function main(): Promise<void> {
   console.log(
     `[Env] desktopRuntimeMode=${runtimeResolution.mode} externalApi=${runtimeResolution.externalApi.base ?? "none"}`,
   );
+
+  await maybePromptStartupCrashReport();
   // On Windows (CEF renderer), clear stale CEF profile data when the app
   // version changes.  A leftover Partitions/default profile from a previous
   // install causes "Cannot create profile at path" errors that cascade into
@@ -1479,7 +1590,7 @@ async function main(): Promise<void> {
 
   initializeBundledWebGPU();
   checkWebGpuBrowserSupport();
-  const cleanupFns: Array<() => void> = [];
+  const cleanupFns: Array<() => void | Promise<void>> = [];
 
   // WHY push API base on every status tick with a port: embedded startup can
   // settle on a different loopback port than env/static HTML (allocation + stdout).
@@ -1498,11 +1609,15 @@ async function main(): Promise<void> {
       void refreshHeartbeatMenuSnapshot();
     }),
   );
+  cleanupFns.push(() => getAgentManager().stop());
 
   // Create window first — on Windows (CEF) the UI message loop must be
   // running before any synchronous FFI calls like setApplicationMenu().
   // Calling setupApplicationMenu() before createMainWindow() deadlocks.
   const mainWin = attachMainWindow(await createMainWindow());
+  recordStartupPhase("window_ready", {
+    pid: process.pid,
+  });
 
   surfaceWindowManager = new SurfaceWindowManager({
     createWindow: (options) =>
@@ -1560,7 +1675,7 @@ async function main(): Promise<void> {
   const desktop = getDesktopManager();
   try {
     await desktop.createTray({
-      icon: path.join(import.meta.dir, "../assets/appIcon.png"),
+      icon: resolveDesktopAppIconPath(),
       tooltip: "Milady",
       title: "Milady",
       menu: [
@@ -1608,6 +1723,47 @@ async function main(): Promise<void> {
     console.warn("[Main] Tray creation failed:", err);
   }
 
+  // ── Steward sidecar startup (must happen BEFORE agent) ────────────
+  // When STEWARD_LOCAL=true, start the steward sidecar first so it can
+  // set STEWARD_API_URL / STEWARD_AGENT_TOKEN env vars. The Milady agent's
+  // steward-bridge.ts reads these on boot to discover local steward.
+  if (isStewardLocalEnabled()) {
+    console.log("[Main] STEWARD_LOCAL=true — starting steward sidecar...");
+    cleanupFns.push(() => stopSteward());
+
+    // Listen for steward status changes and push to renderer
+    cleanupFns.push(
+      onStewardStatusChange((status) => {
+        sendToActiveRenderer("stewardStatusUpdate", status);
+      }),
+    );
+
+    try {
+      const stewardResult = await startSteward();
+      if (stewardResult.state === "running") {
+        console.log(
+          `[Main] Steward sidecar ready on port ${stewardResult.port}, wallet: ${stewardResult.walletAddress ?? "pending"}`,
+        );
+      } else {
+        console.warn(
+          `[Main] Steward sidecar in state "${stewardResult.state}": ${stewardResult.error ?? "unknown"}`,
+        );
+        sendToActiveRenderer("stewardStartupFailed", {
+          error: stewardResult.error ?? "Steward failed to start",
+          canRetry: true,
+        });
+      }
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      console.error("[Main] Steward sidecar startup failed:", error);
+      sendToActiveRenderer("stewardStartupFailed", {
+        error,
+        canRetry: true,
+      });
+      // Don't block agent startup — steward is optional
+    }
+  }
+
   // Agent startup: in local mode, start the embedded agent immediately.
   // The renderer's deferred RPC start path doesn't work reliably because
   // injectApiBaseIntoHtml sets window.__MILADY_API_BASE__ before React
@@ -1624,7 +1780,7 @@ async function main(): Promise<void> {
       pushApiBaseToRenderer(
         currentWindow,
         rt.externalApi.base,
-        process.env.MILADY_API_TOKEN,
+        resolveApiToken(process.env) ?? undefined,
       );
     } else if (rt.mode === "local") {
       // In local mode the embedded agent must be started by the main process.
@@ -1634,7 +1790,18 @@ async function main(): Promise<void> {
       // ensure the agent is running before the renderer starts polling.
       console.log("[Main] Starting embedded agent (local mode).");
       _startAgent(currentWindow).catch((err) => {
+        const error =
+          err instanceof Error
+            ? err.message
+            : typeof err === "string"
+              ? err
+              : "Unknown startup error";
         console.error("[Main] Agent auto-start failed:", err);
+        sendToActiveRenderer("agentStartupFailed", { error });
+        Utils.showNotification({
+          title: "Milady startup failed",
+          body: `Embedded agent failed to start: ${error}`,
+        });
       });
     }
   }
@@ -1643,20 +1810,192 @@ async function main(): Promise<void> {
   setupShutdown(cleanupFns);
 }
 
+function resolveStartupCrashReportPath(): string {
+  return path.join(
+    path.dirname(getDiagnosticLogPath()),
+    STARTUP_CRASH_REPORT_FILE,
+  );
+}
+
+function resolveStartupCrashPromptMarkerPath(): string {
+  return path.join(
+    path.dirname(getDiagnosticLogPath()),
+    STARTUP_CRASH_PROMPT_MARKER_FILE,
+  );
+}
+
+function buildStartupCrashDiscordReport(options: {
+  source: "startup-recovery" | "fatal-startup";
+  error: string | null;
+}): string {
+  const diagnostics = getStartupDiagnosticsSnapshot();
+  const startupLogTail = getStartupDiagnosticLogTail(8_000).trim();
+  const appVersion = process.env.npm_package_version?.trim() || "unknown";
+  const appRuntime = `electrobun/${Bun.version}`;
+  const reportLines = [
+    "Milady startup crash report",
+    "",
+    "Share this report in Discord and ping @iono.",
+    "",
+    `Source: ${options.source}`,
+    `Timestamp: ${new Date().toISOString()}`,
+    `App Version: ${appVersion}`,
+    `Runtime: ${appRuntime}`,
+    `Platform: ${process.platform} ${process.arch}`,
+    `State: ${diagnostics.state}`,
+    `Phase: ${diagnostics.phase}`,
+    `Last Error: ${options.error ?? diagnostics.lastError ?? "unknown"}`,
+    `Updated At: ${diagnostics.updatedAt}`,
+    `Log Path: ${diagnostics.logPath}`,
+    `Status Path: ${diagnostics.statusPath}`,
+    "",
+    startupLogTail ? "Startup Log Tail:" : "Startup Log Tail: unavailable",
+  ];
+
+  if (startupLogTail) {
+    reportLines.push("```");
+    reportLines.push(startupLogTail);
+    reportLines.push("```");
+  }
+  return `${reportLines.join("\n")}\n`;
+}
+
+function persistStartupCrashReport(options: {
+  source: "startup-recovery" | "fatal-startup";
+  error: string | null;
+}): { report: string; reportPath: string } {
+  const report = buildStartupCrashDiscordReport(options);
+  const primaryReportPath = resolveStartupCrashReportPath();
+  const fallbackReportPath = path.join(os.tmpdir(), STARTUP_CRASH_REPORT_FILE);
+  let reportPath = primaryReportPath;
+  try {
+    fs.mkdirSync(path.dirname(primaryReportPath), { recursive: true });
+    fs.writeFileSync(primaryReportPath, report, "utf8");
+  } catch (err) {
+    console.warn("[Main] Failed to write startup crash report:", err);
+    try {
+      fs.mkdirSync(path.dirname(fallbackReportPath), { recursive: true });
+      fs.writeFileSync(fallbackReportPath, report, "utf8");
+      reportPath = fallbackReportPath;
+    } catch (fallbackErr) {
+      console.warn(
+        "[Main] Failed to write fallback startup crash report:",
+        fallbackErr,
+      );
+    }
+  }
+  return { report, reportPath };
+}
+
+function wasStartupCrashAlreadyPrompted(updatedAt: string): boolean {
+  try {
+    const markerPath = resolveStartupCrashPromptMarkerPath();
+    return fs.readFileSync(markerPath, "utf8").trim() === updatedAt;
+  } catch {
+    return false;
+  }
+}
+
+function markStartupCrashPrompted(updatedAt: string): void {
+  try {
+    fs.writeFileSync(resolveStartupCrashPromptMarkerPath(), updatedAt, "utf8");
+  } catch {}
+}
+
+async function maybePromptStartupCrashReport(): Promise<void> {
+  const diagnostics = getStartupDiagnosticsSnapshot();
+  const looksLikeStartupFailure =
+    diagnostics.state === "error" &&
+    diagnostics.phase !== "ready" &&
+    diagnostics.phase !== "stopped";
+  if (!looksLikeStartupFailure) {
+    return;
+  }
+  if (wasStartupCrashAlreadyPrompted(diagnostics.updatedAt)) {
+    return;
+  }
+
+  const { report, reportPath } = persistStartupCrashReport({
+    source: "startup-recovery",
+    error: diagnostics.lastError,
+  });
+  markStartupCrashPrompted(diagnostics.updatedAt);
+
+  const dialog = await Utils.showMessageBox({
+    type: "warning",
+    title: "Milady recovered after a startup failure",
+    message:
+      "The previous launch failed. A crash report is ready to share with support.",
+    detail:
+      "Choose Copy Report, paste into Discord, and ping @iono. You can also open logs.",
+    buttons: ["Copy Report", "Open Logs Folder", "Continue"],
+    defaultId: 0,
+    cancelId: 2,
+  });
+  const response =
+    dialog && typeof dialog === "object" && "response" in dialog
+      ? (dialog as { response: number }).response
+      : typeof dialog === "number"
+        ? dialog
+        : 2;
+
+  if (response === 0) {
+    try {
+      Utils.clipboardWriteText(report);
+      Utils.showNotification({
+        title: "Crash report copied",
+        body: "Paste in Discord and ping @iono.",
+      });
+    } catch (err) {
+      console.warn("[Main] Failed to copy startup crash report:", err);
+    }
+  } else if (response === 1) {
+    try {
+      Utils.openPath(path.dirname(reportPath));
+    } catch (err) {
+      console.warn("[Main] Failed to open startup logs folder:", err);
+    }
+  }
+}
+
 main().catch((err) => {
   const msg = `[Main] Fatal error during startup: ${err?.stack ?? err}`;
   console.error(msg);
+  persistStartupCrashReport({
+    source: "fatal-startup",
+    error: msg,
+  });
+  recordStartupPhase("fatal", {
+    pid: process.pid,
+    exec_path: process.execPath,
+    bundle_path: resolveStartupBundlePath(process.execPath),
+    error: err instanceof Error ? err.stack || err.message : String(err),
+  });
   // Write to startup log so it's visible even without a console
   try {
-    const logDir =
-      process.platform === "win32"
-        ? path.join(process.env.APPDATA ?? "", "Milady")
-        : path.join(os.homedir(), ".config", "Milady");
-    fs.mkdirSync(logDir, { recursive: true });
-    fs.appendFileSync(
-      path.join(logDir, "milady-startup.log"),
-      `[${new Date().toISOString()}] ${msg}\n`,
+    const logPath = getDiagnosticLogPath();
+    fs.mkdirSync(path.dirname(logPath), { recursive: true });
+    fs.appendFileSync(logPath, `[${new Date().toISOString()}] ${msg}\n`);
+    fs.writeFileSync(
+      getStartupStatusPath(),
+      `${JSON.stringify(
+        {
+          state: "error",
+          phase: "fatal_startup",
+          updatedAt: new Date().toISOString(),
+          lastError: msg,
+          platform: process.platform,
+          arch: process.arch,
+          logPath,
+          statusPath: getStartupStatusPath(),
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
     );
   } catch {}
-  process.exit(1);
+  void runShutdownCleanup("fatal-startup").finally(() => {
+    process.exit(1);
+  });
 });

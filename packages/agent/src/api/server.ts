@@ -37,6 +37,17 @@ import {
   loadElizaConfig,
   saveElizaConfig,
 } from "../config/config.js";
+import {
+  isNullOriginAllowed,
+  resolveAllowedHosts,
+  resolveAllowedOrigins,
+  resolveApiBindHost,
+  resolveApiSecurityConfig,
+  resolveApiToken,
+  resolveServerOnlyPort,
+  setApiToken,
+  stripOptionalHostPort,
+} from "../config/runtime-env.js";
 import { resolveModelsCacheDir, resolveStateDir } from "../config/paths.js";
 import {
   isConnectorConfigured,
@@ -114,10 +125,7 @@ import {
   uninstallMarketplaceSkill,
 } from "../services/skill-marketplace.js";
 import { streamManager } from "../services/stream-manager.js";
-import {
-  isFatalTodoDbError,
-  TodoDbCircuitBreaker,
-} from "./todo-db-circuit.js";
+import { isFatalTodoDbError, TodoDbCircuitBreaker } from "./todo-db-circuit.js";
 import {
   sanitizeAccountId as sanitizeWhatsAppAccountId,
   WhatsAppPairingSession,
@@ -156,6 +164,7 @@ import {
   buildBscSellUnsignedTx,
   buildBscTradePreflight,
   buildBscTradeQuote,
+  resolveBscApprovalSpender,
   resolvePrimaryBscRpcUrl,
 } from "./bsc-trade.js";
 import { handleBugReportRoutes } from "./bug-report-routes.js";
@@ -173,9 +182,7 @@ import {
 } from "./compat-utils.js";
 import { ConnectorHealthMonitor } from "./connector-health.js";
 import { wireCoordinatorBridgesWhenReady } from "./coordinator-wiring.js";
-import {
-  isInsufficientCreditsMessage,
-} from "./credit-detection.js";
+import { isInsufficientCreditsMessage } from "./credit-detection.js";
 import { handleDatabaseRoute } from "./database.js";
 import { handleDiagnosticsRoutes } from "./diagnostics-routes.js";
 import { DropService } from "./drop-service.js";
@@ -232,7 +239,16 @@ import {
   verifyTweet,
 } from "./twitter-verify.js";
 import { TxService } from "./tx-service.js";
-import { generateWalletKeys, getWalletAddresses } from "./wallet.js";
+import {
+  fetchEvmBalances,
+  fetchSolanaBalances,
+  fetchSolanaNativeBalanceViaRpc,
+  generateWalletForChain,
+  generateWalletKeys,
+  getWalletAddresses,
+  importWallet,
+  validatePrivateKey,
+} from "./wallet.js";
 import { handleWalletRoutes } from "./wallet-routes.js";
 import { resolveWalletRpcReadiness } from "./wallet-rpc.js";
 import {
@@ -240,6 +256,7 @@ import {
   recordWalletTradeLedgerEntry,
   updateWalletTradeLedgerEntryStatus,
 } from "./wallet-trading-profile.js";
+import { handleWalletTradeExecuteRoute } from "./wallet-trade-routes.js";
 import {
   applyWhatsAppQrOverride,
   handleWhatsAppRoute,
@@ -427,15 +444,24 @@ function hasPersistedOnboardingState(config: ElizaConfig): boolean {
 function resolveConversationGreetingText(
   runtime: AgentRuntime,
   lang: string,
-  configuredPresetId?: string | null,
+  uiConfig?: ElizaConfig["ui"],
 ): string {
   const normalizedLanguage = normalizeCharacterLanguage(lang);
-  const presets = getStylePresets(normalizedLanguage);
+  const characterName = runtime.character.name?.trim();
+  const assistantName = uiConfig?.assistant?.name?.trim();
+
+  // Prefer explicit UI selections over the loaded character card: users pick a
+  // style in onboarding/roster (avatar + preset) while `runtime.character.name`
+  // can still be the default template (e.g. "Chen") until save/restart.
   const preset =
-    (configuredPresetId
-      ? presets.find((candidate) => candidate.id === configuredPresetId)
-      : undefined) ??
-    presets.find((candidate) => candidate.name === runtime.character.name);
+    resolveStylePresetByAvatarIndex(
+      uiConfig?.avatarIndex,
+      normalizedLanguage,
+    ) ??
+    resolveStylePresetById(uiConfig?.presetId, normalizedLanguage) ??
+    resolveStylePresetByName(characterName, normalizedLanguage) ??
+    resolveStylePresetByName(assistantName, normalizedLanguage);
+
   if (preset?.catchphrase?.trim()) {
     return preset.catchphrase.trim();
   }
@@ -604,6 +630,16 @@ interface PluginEntry {
   homepage?: string;
   repository?: string;
   setupGuideUrl?: string;
+  autoEnabled?: boolean;
+  managementMode?: "standard" | "core-optional";
+  capabilityStatus?:
+    | "loaded"
+    | "auto-enabled"
+    | "blocked"
+    | "missing-prerequisites"
+    | "disabled";
+  capabilityReason?: string | null;
+  prerequisites?: Array<{ label: string; met: boolean }>;
 }
 
 interface SkillEntry {
@@ -623,7 +659,10 @@ interface LogEntry {
   tags: string[];
 }
 
-export type StreamEventType = "agent_event" | "heartbeat_event" | "training_event";
+export type StreamEventType =
+  | "agent_event"
+  | "heartbeat_event"
+  | "training_event";
 
 interface StreamEventEnvelope {
   type: StreamEventType;
@@ -856,9 +895,11 @@ const BLOCKED_ENV_KEYS = new Set([
   "HOME",
   "SHELL",
   // Auth / step-up tokens — writable via API would grant privilege escalation
+  "MILADY_API_TOKEN",
   "ELIZA_API_TOKEN",
-  "ELIZA_API_TOKEN",
+  "MILADY_WALLET_EXPORT_TOKEN",
   "ELIZA_WALLET_EXPORT_TOKEN",
+  "MILADY_TERMINAL_RUN_TOKEN",
   "ELIZA_TERMINAL_RUN_TOKEN",
   "HYPERSCAPE_AUTH_TOKEN",
   // Wallet private keys — writable via API would enable key theft / replacement
@@ -1904,6 +1945,32 @@ function parseSkillDirsSetting(raw: unknown): string[] {
     .filter((dir) => dir.length > 0);
 }
 
+const EXPOSED_BINANCE_SKILL_IDS = new Set([
+  "binance-crypto-market-rank",
+  "binance-meme-rush",
+  "binance-query-address-info",
+  "binance-query-token-audit",
+  "binance-query-token-info",
+  "binance-trading-signal",
+]);
+
+function shouldExposeBinanceSkillId(skillId: string): boolean {
+  const normalized = skillId.trim();
+  if (!normalized.startsWith("binance-")) return true;
+  return EXPOSED_BINANCE_SKILL_IDS.has(normalized);
+}
+
+function shouldExposeBinanceSkillRecord(skill: {
+  id?: unknown;
+  slug?: unknown;
+}): boolean {
+  const slug = typeof skill.slug === "string" ? skill.slug.trim() : "";
+  if (slug) return shouldExposeBinanceSkillId(slug);
+  const id = typeof skill.id === "string" ? skill.id.trim() : "";
+  if (id) return shouldExposeBinanceSkillId(id);
+  return true;
+}
+
 /**
  * Discover skills from @elizaos/skills and workspace, applying
  * database preferences and config filtering.
@@ -1944,40 +2011,42 @@ async function discoverSkills(
         const loadedSkills = svc.getLoadedSkills();
 
         if (loadedSkills.length > 0) {
-          const skills: SkillEntry[] = loadedSkills.map((s) => {
-            // Get scan status from in-memory map (fast) or from disk report
-            let scanStatus: SkillEntry["scanStatus"] = null;
-            if (svc.getSkillScanStatus) {
-              scanStatus = svc.getSkillScanStatus(s.slug);
-            }
-            if (!scanStatus) {
-              // Check for .scan-results.json on disk
-              const reportPath = path.join(s.path, ".scan-results.json");
-              if (fs.existsSync(reportPath)) {
-                const raw = fs.readFileSync(reportPath, "utf-8");
-                try {
-                  const parsed = JSON.parse(raw) as { status?: string };
-                  if (parsed.status) {
-                    scanStatus = parsed.status as
-                      | "clean"
-                      | "warning"
-                      | "critical"
-                      | "blocked";
+          const skills: SkillEntry[] = loadedSkills
+            .filter((s) => shouldExposeBinanceSkillId(s.slug))
+            .map((s) => {
+              // Get scan status from in-memory map (fast) or from disk report
+              let scanStatus: SkillEntry["scanStatus"] = null;
+              if (svc.getSkillScanStatus) {
+                scanStatus = svc.getSkillScanStatus(s.slug);
+              }
+              if (!scanStatus) {
+                // Check for .scan-results.json on disk
+                const reportPath = path.join(s.path, ".scan-results.json");
+                if (fs.existsSync(reportPath)) {
+                  const raw = fs.readFileSync(reportPath, "utf-8");
+                  try {
+                    const parsed = JSON.parse(raw) as { status?: string };
+                    if (parsed.status) {
+                      scanStatus = parsed.status as
+                        | "clean"
+                        | "warning"
+                        | "critical"
+                        | "blocked";
+                    }
+                  } catch {
+                    // Malformed scan report — treat as unscanned.
                   }
-                } catch {
-                  // Malformed scan report — treat as unscanned.
                 }
               }
-            }
 
-            return {
-              id: s.slug,
-              name: s.name || s.slug,
-              description: (s.description || "").slice(0, 200),
-              enabled: resolveSkillEnabled(s.slug, config, dbPrefs),
-              scanStatus,
-            };
-          });
+              return {
+                id: s.slug,
+                name: s.name || s.slug,
+                description: (s.description || "").slice(0, 200),
+                enabled: resolveSkillEnabled(s.slug, config, dbPrefs),
+                scanStatus,
+              };
+            });
 
           return skills.sort((a, b) => a.name.localeCompare(b.name));
         }
@@ -2060,7 +2129,9 @@ async function discoverSkills(
     scanSkillsDir(dir, skills, seen, config, dbPrefs);
   }
 
-  return skills.sort((a, b) => a.name.localeCompare(b.name));
+  return skills
+    .filter((skill) => shouldExposeBinanceSkillId(skill.id))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**
@@ -2525,9 +2596,7 @@ function serveStaticUi(
   if (!root) return false;
 
   // Keep API and WebSocket namespaces exclusively owned by server handlers.
-  if (pathname === "/api" || pathname.startsWith("/api/")) return false;
-  if (pathname === "/v1" || pathname.startsWith("/v1/")) return false;
-  if (pathname === "/ws") return false;
+  if (isAuthProtectedRoute(pathname)) return false;
 
   let decodedPath: string;
   try {
@@ -2602,6 +2671,17 @@ function serveStaticUi(
   return true;
 }
 
+function isAuthProtectedRoute(pathname: string): boolean {
+  return (
+    pathname === "/api" ||
+    pathname.startsWith("/api/") ||
+    pathname === "/v1" ||
+    pathname.startsWith("/v1/") ||
+    pathname === "/ws" ||
+    pathname.startsWith("/ws/")
+  );
+}
+
 interface ChatGenerationResult {
   text: string;
   agentName: string;
@@ -2618,6 +2698,38 @@ interface ChatGenerateOptions {
   onSnapshot?: (text: string) => void;
   isAborted?: () => boolean;
   resolveNoResponseText?: () => string;
+  preferredLanguage?: string;
+}
+
+const CHAT_LANGUAGE_INSTRUCTION: Record<string, string> = {
+  en: "Reply in natural English unless the user explicitly requests another language.",
+  "zh-CN":
+    "Reply in natural Simplified Chinese unless the user explicitly requests another language.",
+  ko: "Reply in natural Korean unless the user explicitly requests another language.",
+  es: "Reply in natural Spanish unless the user explicitly requests another language.",
+  pt: "Reply in natural Brazilian Portuguese unless the user explicitly requests another language.",
+  vi: "Reply in natural Vietnamese unless the user explicitly requests another language.",
+  tl: "Reply in natural Tagalog unless the user explicitly requests another language.",
+};
+
+function maybeAugmentChatMessageWithLanguage(
+  message: ReturnType<typeof createMessageMemory>,
+  preferredLanguage?: string,
+): ReturnType<typeof createMessageMemory> {
+  if (!preferredLanguage) return message;
+  const instruction =
+    CHAT_LANGUAGE_INSTRUCTION[normalizeCharacterLanguage(preferredLanguage)];
+  if (!instruction) return message;
+  const originalText = extractCompatTextContent(message.content);
+  if (!originalText) return message;
+
+  return {
+    ...message,
+    content: {
+      ...(message.content as Content),
+      text: `${originalText}\n\n[Language instruction: ${instruction}]`,
+    },
+  };
 }
 
 const PROVIDER_ISSUE_CHAT_REPLY = "Sorry, I'm having a provider issue";
@@ -2931,7 +3043,32 @@ function shouldForceCheckBalanceFallback(
   return balanceIntent;
 }
 
-function parseFallbackActionBlocks(value: unknown): FallbackParsedAction[] {
+function isBalanceIntent(input: string): boolean {
+  const normalized = input.toLowerCase();
+  return /\b(balance|wallet|holdings|portfolio|funds|how much)\b/.test(
+    normalized,
+  );
+}
+
+/**
+ * Extract key-value params from the inside of an XML block.
+ * Matches `<key>value</key>` pairs, skipping nested XML.
+ */
+export function extractXmlParams(block: string): Record<string, string> {
+  const params: Record<string, string> = {};
+  const pairs = block.matchAll(
+    /<([A-Za-z_][A-Za-z0-9_-]*)>\s*([^<]+?)\s*<\/\1>/g,
+  );
+  for (const [, key, val] of pairs) {
+    params[key] = val.trim();
+  }
+  return params;
+}
+
+export function parseFallbackActionBlocks(
+  value: unknown,
+  responseText?: string,
+): FallbackParsedAction[] {
   const rawValues: string[] = [];
   if (typeof value === "string") {
     rawValues.push(value);
@@ -2951,7 +3088,20 @@ function parseFallbackActionBlocks(value: unknown): FallbackParsedAction[] {
     if (xmlActionMatches.length === 0) {
       const normalized = raw.trim().toUpperCase();
       if (/^[A-Z0-9_]+$/.test(normalized)) {
-        parsed.push({ name: normalized, parameters: {} });
+        // Plain action name — try to extract params from the response
+        // text where the LLM writes `<ACTION_NAME>..params..</ACTION_NAME>`
+        let params: Record<string, string> = {};
+        if (responseText) {
+          const actionBlockRe = new RegExp(
+            `<${normalized}>([\\s\\S]*?)<\\/${normalized}>`,
+            "i",
+          );
+          const actionBlock = responseText.match(actionBlockRe);
+          if (actionBlock?.[1]) {
+            params = extractXmlParams(actionBlock[1]);
+          }
+        }
+        parsed.push({ name: normalized, parameters: params });
       }
       continue;
     }
@@ -2962,12 +3112,7 @@ function parseFallbackActionBlocks(value: unknown): FallbackParsedAction[] {
       const params: Record<string, string> = {};
       const paramsMatch = block.match(/<params>([\s\S]*?)<\/params>/i);
       if (paramsMatch?.[1]) {
-        const paramPairs = paramsMatch[1].matchAll(
-          /<([A-Za-z_][A-Za-z0-9_-]*)>\s*([^<]+?)\s*<\/\1>/g,
-        );
-        for (const [, key, val] of paramPairs) {
-          params[key] = val.trim();
-        }
+        Object.assign(params, extractXmlParams(paramsMatch[1]));
       }
       parsed.push({
         name: nameMatch[1].trim().toUpperCase(),
@@ -2986,7 +3131,9 @@ async function executeFallbackParsedActions(
   appendIncomingText: (incoming: string) => void,
   onActionCallback: (actionTag: string, hasText: boolean) => void,
 ): Promise<void> {
-  const runtimeActions = Array.isArray((runtime as { actions?: unknown[] }).actions)
+  const runtimeActions = Array.isArray(
+    (runtime as { actions?: unknown[] }).actions,
+  )
     ? ((runtime as { actions: unknown[] }).actions as Array<{
         name?: string;
         similes?: string[];
@@ -2997,7 +3144,8 @@ async function executeFallbackParsedActions(
 
   const lookup = new Map<string, (typeof runtimeActions)[number]>();
   for (const action of runtimeActions) {
-    if (typeof action.name === "string") lookup.set(action.name.toUpperCase(), action);
+    if (typeof action.name === "string")
+      lookup.set(action.name.toUpperCase(), action);
     if (!Array.isArray(action.similes)) continue;
     for (const alias of action.similes) {
       if (typeof alias === "string") lookup.set(alias.toUpperCase(), action);
@@ -3005,18 +3153,25 @@ async function executeFallbackParsedActions(
   }
 
   for (const parsed of parsedActions) {
-    if (parsed.name === "REPLY" || parsed.name === "NONE" || parsed.name === "IGNORE") {
+    if (
+      parsed.name === "REPLY" ||
+      parsed.name === "NONE" ||
+      parsed.name === "IGNORE"
+    ) {
       continue;
     }
     const action = lookup.get(parsed.name);
     if (!action || typeof action.handler !== "function") continue;
 
     if (typeof action.validate === "function") {
-      const valid = await Promise.resolve(action.validate(runtime, message, undefined));
+      const valid = await Promise.resolve(
+        action.validate(runtime, message, undefined),
+      );
       if (!valid) continue;
     }
 
-    await Promise.resolve(
+    let callbackSeen = false;
+    const actionResult = await Promise.resolve(
       action.handler(
         runtime,
         message,
@@ -3035,6 +3190,7 @@ async function executeFallbackParsedActions(
             contentRecord && typeof contentRecord === "object"
               ? extractCompatTextContent(contentRecord as Content)
               : "";
+          callbackSeen = true;
           onActionCallback(actionTag, Boolean(chunk));
           if (chunk) appendIncomingText(chunk);
           return [];
@@ -3042,7 +3198,753 @@ async function executeFallbackParsedActions(
         [],
       ),
     );
+    if (!callbackSeen) {
+      const fallbackText =
+        actionResult && typeof actionResult === "object"
+          ? extractCompatTextContent(actionResult as Content)
+          : "";
+      if (fallbackText) {
+        onActionCallback(parsed.name, true);
+        appendIncomingText(fallbackText);
+      }
+    }
   }
+}
+
+/**
+ * Keyword-to-slug mapping for implicit Binance skill dispatch.
+ * Users don't need to type "binance-meme-rush" — natural language triggers work.
+ * Order matters: first match wins, so more specific patterns go first.
+ */
+const BINANCE_SKILL_KEYWORD_MAP: Array<{
+  pattern: RegExp;
+  slug: string;
+}> = [
+  // meme-rush: meme tokens, pump.fun, bonding curve, launchpad tokens
+  {
+    pattern:
+      /\b(?:meme\s*(?:token|coin|rush)?|pump\.?fun|four\.?meme|bonding\s*curve|launchpad\s*token|new\s*(?:token|coin)s?\s*on|trending\s*(?:token|coin))/i,
+    slug: "binance-meme-rush",
+  },
+  // trading-signal: smart money signals, whale signals
+  {
+    pattern: /\b(?:(?:trading|smart\s*money|whale)\s*signal|signal\s*(?:list|data))/i,
+    slug: "binance-trading-signal",
+  },
+  // crypto-market-rank: market rankings, trending, alpha, leaderboard
+  {
+    pattern:
+      /\b(?:(?:market|crypto)\s*rank|leader\s*board|top\s*(?:trader|search|token)|alpha\s*(?:token|rank)|smart\s*money\s*(?:rank|inflow))/i,
+    slug: "binance-crypto-market-rank",
+  },
+  // query-token-audit: token/contract audit, rug check, security scan
+  {
+    pattern:
+      /\b(?:(?:token|contract)\s*audit|audit\s*(?:this\s*)?(?:token|contract)|(?:rug|security|safety)\s*(?:check|scan)|check\s*(?:this\s*)?contract)/i,
+    slug: "binance-query-token-audit",
+  },
+  // query-token-info: token info, token price, token detail, search token
+  {
+    pattern:
+      /\b(?:(?:token|coin)\s*(?:info|detail|price|data|search)|search\s*(?:token|coin)|look\s*up\s*(?:token|coin))/i,
+    slug: "binance-query-token-info",
+  },
+  // query-address-info: wallet balance, address info, check wallet
+  {
+    pattern:
+      /\b(?:(?:wallet|address)\s*(?:balance|info|detail|holding)|check\s*(?:this\s*)?(?:wallet|address)|(?:wallet|address)\s*check)/i,
+    slug: "binance-query-address-info",
+  },
+];
+
+function extractDirectBinanceSkillSlug(userText: string): string | null {
+  const normalized = userText.toLowerCase();
+
+  // 1. Explicit slug mention: "use binance-meme-rush ..."
+  const skillMatch = normalized.match(/\b(binance-[a-z0-9-]+)\b/);
+  if (skillMatch) {
+    // Still require an action verb for explicit slugs to avoid false positives
+    if (/\b(use|run|show|fetch|pull|get)\b/.test(normalized)) {
+      return skillMatch[1];
+    }
+  }
+
+  // 2. Implicit keyword matching: "show me trending meme tokens on BSC"
+  for (const { pattern, slug } of BINANCE_SKILL_KEYWORD_MAP) {
+    if (pattern.test(normalized)) {
+      return slug;
+    }
+  }
+
+  return null;
+}
+
+function pickDirectBinanceLimit(
+  userText: string,
+  fallback: number,
+  max: number,
+): string {
+  const matches = userText.match(/\b([1-9]\d{0,2})\b/g);
+  if (!matches) return String(fallback);
+  for (const raw of matches) {
+    const value = Number(raw);
+    if (value >= 1 && value <= max) {
+      return String(value);
+    }
+  }
+  return String(fallback);
+}
+
+function extractExplicitDirectBinanceCount(
+  userText: string,
+  max: number,
+): number | null {
+  const matches = userText.match(/\b([1-9]\d{0,2})\b/g);
+  if (!matches) return null;
+  for (const raw of matches) {
+    const value = Number(raw);
+    if (value >= 1 && value <= max) {
+      return value;
+    }
+  }
+  return null;
+}
+
+function pickDirectBinanceChain(
+  userText: string,
+  allowed: string[],
+  fallback: string,
+): string {
+  const normalized = userText.toLowerCase();
+  const candidates: Array<[string, RegExp]> = [
+    ["solana", /\bsolana\b|\bsol\b|pump\.fun/],
+    ["bsc", /\bbsc\b|\bbnb\b|four\.meme/],
+    ["base", /\bbase\b/],
+    ["eth", /\beth\b|\bethereum\b/],
+  ];
+  for (const [chain, pattern] of candidates) {
+    if (allowed.includes(chain) && pattern.test(normalized)) {
+      return chain;
+    }
+  }
+  return fallback;
+}
+
+function resolveDirectBinanceMemeRushCommand(userText: string): {
+  script: string;
+  args: string[];
+} {
+  const normalized = userText.toLowerCase();
+  const chain = pickDirectBinanceChain(normalized, ["solana", "bsc"], "solana");
+  if (
+    /topic|topics|narrative|narratives|social rush|hot topic|hot topics/.test(
+      normalized,
+    )
+  ) {
+    const type = /rising|inflow/.test(normalized) ? "rising" : "latest";
+    const sort = /inflow/.test(normalized) ? "inflow" : "time";
+    const explicitCount = extractExplicitDirectBinanceCount(normalized, 50);
+    return {
+      script: "fetch-topics.sh",
+      args: explicitCount ? [chain, type, sort, String(explicitCount)] : [chain, type, sort],
+    };
+  }
+  const stage = /migrat/.test(normalized)
+    ? "migrated"
+    : /finaliz|about to migrate/.test(normalized)
+      ? "finalizing"
+      : "new";
+  const limit = pickDirectBinanceLimit(normalized, 20, 200);
+  return { script: "fetch-trending.sh", args: [chain, stage, limit] };
+}
+
+type DirectBinanceScriptResolution =
+  | {
+      kind: "run";
+      script: string;
+      args: string[];
+    }
+  | {
+      kind: "ask";
+      text: string;
+    };
+
+function extractQuotedUserText(userText: string): string | null {
+  const quotedMatch = userText.match(/["'`“”]([^"'`“”]{2,120})["'`“”]/);
+  return quotedMatch?.[1]?.trim() || null;
+}
+
+function extractFirstEvmAddress(userText: string): string | null {
+  return userText.match(/\b0x[a-fA-F0-9]{40}\b/)?.[0] ?? null;
+}
+
+function extractFirstSolanaAddress(userText: string): string | null {
+  const candidates = userText.match(/\b[1-9A-HJ-NP-Za-km-z]{32,44}\b/g) ?? [];
+  for (const candidate of candidates) {
+    if (
+      candidate.toLowerCase().startsWith("binance") ||
+      candidate.toLowerCase().startsWith("signal")
+    ) {
+      continue;
+    }
+    return candidate;
+  }
+  return null;
+}
+
+function extractDirectBinanceSearchKeyword(userText: string): string | null {
+  const quoted = extractQuotedUserText(userText);
+  if (quoted) return quoted;
+
+  const patterns = [
+    /\bsearch(?: for)?\s+(.+?)(?:\s+on\s+(?:bsc|bnb|solana|sol|base|eth|ethereum)\b|$)/i,
+    /\bfind\s+(.+?)(?:\s+on\s+(?:bsc|bnb|solana|sol|base|eth|ethereum)\b|$)/i,
+    /\blook up\s+(.+?)(?:\s+on\s+(?:bsc|bnb|solana|sol|base|eth|ethereum)\b|$)/i,
+    /\bfor\s+(.+?)(?:\s+on\s+(?:bsc|bnb|solana|sol|base|eth|ethereum)\b|$)/i,
+  ];
+  for (const pattern of patterns) {
+    const match = userText.match(pattern);
+    const value = match?.[1]?.trim();
+    if (value) return value.replace(/\s+/g, " ").trim();
+  }
+
+  const cleaned = userText
+    .replace(/\b(binance-[a-z0-9-]+)\b/gi, " ")
+    .replace(
+      /\b(use|run|show|tell|give|fetch|pull|get|search|find|lookup|look up|query|token|info|market|data|detail|details|price|please|me|and)\b/gi,
+      " ",
+    )
+    .replace(/\b(on|in)\s+(bsc|bnb|solana|sol|base|eth|ethereum)\b/gi, " ")
+    .replace(/\b0x[a-fA-F0-9]{40}\b/g, " ")
+    .replace(/\b[1-9A-HJ-NP-Za-km-z]{32,44}\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return cleaned || null;
+}
+
+function extractDirectBinanceAddressTarget(userText: string): {
+  address: string;
+  chain: string | null;
+} | null {
+  const solanaAddress = extractFirstSolanaAddress(userText);
+  if (solanaAddress) {
+    return {
+      address: solanaAddress,
+      chain: "solana",
+    };
+  }
+
+  const evmAddress = extractFirstEvmAddress(userText);
+  if (!evmAddress) return null;
+
+  const chain = pickDirectBinanceChain(userText, ["bsc", "base", "eth"], "");
+  return {
+    address: evmAddress,
+    chain: chain || null,
+  };
+}
+
+function resolveDirectBinanceTradingSignalCommand(
+  userText: string,
+): DirectBinanceScriptResolution {
+  const chain = pickDirectBinanceChain(userText, ["solana", "bsc"], "solana");
+  const limit = pickDirectBinanceLimit(userText, 20, 100);
+  return {
+    kind: "run",
+    script: "signals.sh",
+    args: [chain, limit],
+  };
+}
+
+function resolveDirectBinanceCryptoMarketRankCommand(
+  userText: string,
+): DirectBinanceScriptResolution {
+  const normalized = userText.toLowerCase();
+  let type = "trending";
+  if (/smart money|inflow/.test(normalized)) type = "smart-money";
+  else if (/trader|leaderboard|pnl|kol/.test(normalized)) type = "traders";
+  else if (/top search|searched|search ranking/.test(normalized))
+    type = "top-search";
+  else if (/\balpha\b/.test(normalized)) type = "alpha";
+  else if (/stock|tokenized/.test(normalized)) type = "stock";
+  else if (/meme/.test(normalized)) type = "meme";
+
+  const chain = pickDirectBinanceChain(
+    userText,
+    ["solana", "bsc", "base", "eth"],
+    "",
+  );
+  const limit = pickDirectBinanceLimit(userText, 20, 200);
+
+  return {
+    kind: "run",
+    script: "rankings.sh",
+    args: [type, chain || "all", limit],
+  };
+}
+
+function resolveDirectBinanceTokenInfoCommand(
+  userText: string,
+): DirectBinanceScriptResolution {
+  const chain = pickDirectBinanceChain(
+    userText,
+    ["solana", "bsc", "base", "eth"],
+    "",
+  );
+  const target = extractDirectBinanceAddressTarget(userText);
+  if (target?.address) {
+    const targetChain = target.chain ?? (chain || null);
+    if (targetChain) {
+      return {
+        kind: "run",
+        script: "token-detail.sh",
+        args: [target.address, targetChain],
+      };
+    }
+    return {
+      kind: "run",
+      script: "search.sh",
+      args: [target.address],
+    };
+  }
+
+  const keyword = extractDirectBinanceSearchKeyword(userText);
+  if (!keyword) {
+    return {
+      kind: "ask",
+      text: "Please provide a token keyword, symbol, or contract address for binance-query-token-info.",
+    };
+  }
+  return {
+    kind: "run",
+    script: "search.sh",
+    args: chain ? [keyword, chain] : [keyword],
+  };
+}
+
+function resolveDirectBinanceTokenAuditCommand(
+  userText: string,
+): DirectBinanceScriptResolution {
+  const target = extractDirectBinanceAddressTarget(userText);
+  if (!target?.address) {
+    return {
+      kind: "ask",
+      text: "Please provide a token contract address for binance-query-token-audit.",
+    };
+  }
+  if (!target.chain) {
+    return {
+      kind: "ask",
+      text: "Please specify the chain for that contract address: BSC, Base, Ethereum, or Solana.",
+    };
+  }
+  return {
+    kind: "run",
+    script: "audit.sh",
+    args: [target.address, target.chain],
+  };
+}
+
+function resolveDirectBinanceAddressInfoCommand(
+  userText: string,
+): DirectBinanceScriptResolution {
+  const target = extractDirectBinanceAddressTarget(userText);
+  if (!target?.address) {
+    return {
+      kind: "ask",
+      text: "Please provide a wallet address for binance-query-address-info.",
+    };
+  }
+  if (!target.chain) {
+    return {
+      kind: "ask",
+      text: "Please specify the chain for that wallet address: BSC, Base, Ethereum, or Solana.",
+    };
+  }
+  return {
+    kind: "run",
+    script: "balances.sh",
+    args: [target.address, target.chain],
+  };
+}
+
+function resolveDirectBinanceScriptCommand(
+  skillSlug: string,
+  userText: string,
+): DirectBinanceScriptResolution | null {
+  switch (skillSlug) {
+    case "binance-meme-rush":
+      return {
+        kind: "run",
+        ...resolveDirectBinanceMemeRushCommand(userText),
+      };
+    case "binance-trading-signal":
+      return resolveDirectBinanceTradingSignalCommand(userText);
+    case "binance-crypto-market-rank":
+      return resolveDirectBinanceCryptoMarketRankCommand(userText);
+    case "binance-query-token-info":
+      return resolveDirectBinanceTokenInfoCommand(userText);
+    case "binance-query-token-audit":
+      return resolveDirectBinanceTokenAuditCommand(userText);
+    case "binance-query-address-info":
+      return resolveDirectBinanceAddressInfoCommand(userText);
+    default:
+      return null;
+  }
+}
+
+const DIRECT_BINANCE_SUMMARY_INPUT_MAX_CHARS = 12_000;
+const DIRECT_BINANCE_SUMMARY_DEFAULT_ITEMS = 5;
+const DIRECT_BINANCE_SUMMARY_MAX_DEPTH = 4;
+
+function shouldOmitDirectBinanceSummaryKey(key: string): boolean {
+  return /^(?:icon|iconUrl|image|imageUrl|logo|logoUrl|avatar|avatarUrl|cover|coverUrl)$/i.test(
+    key,
+  ) ||
+    /^(?:website|websites|twitter|telegram|discord|medium|social|socials|links?|x)$/i.test(
+      key,
+    );
+}
+
+function compactDirectBinanceSummaryValue(
+  value: unknown,
+  itemLimit: number,
+  depth = 0,
+): unknown {
+  if (
+    value === null ||
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    return value;
+  }
+
+  if (depth >= DIRECT_BINANCE_SUMMARY_MAX_DEPTH) {
+    if (Array.isArray(value)) {
+      return value
+        .slice(0, Math.min(itemLimit, 3))
+        .map((item) => compactDirectBinanceSummaryValue(item, itemLimit, depth + 1));
+    }
+    if (typeof value === "object") {
+      const objectValue = value as Record<string, unknown>;
+      const compactObject: Record<string, unknown> = {};
+      for (const [key, entry] of Object.entries(objectValue).slice(0, 8)) {
+        if (shouldOmitDirectBinanceSummaryKey(key)) continue;
+        if (
+          entry === null ||
+          typeof entry === "string" ||
+          typeof entry === "number" ||
+          typeof entry === "boolean"
+        ) {
+          compactObject[key] = entry;
+        }
+      }
+      return compactObject;
+    }
+    return undefined;
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .slice(0, itemLimit)
+      .map((item) => compactDirectBinanceSummaryValue(item, itemLimit, depth + 1))
+      .filter((item) => item !== undefined);
+  }
+
+  if (typeof value === "object") {
+    const objectValue = value as Record<string, unknown>;
+    const scalarEntries: Array<[string, unknown]> = [];
+    const complexEntries: Array<[string, unknown]> = [];
+    for (const [key, entry] of Object.entries(objectValue)) {
+      if (shouldOmitDirectBinanceSummaryKey(key)) continue;
+      if (
+        entry === null ||
+        typeof entry === "string" ||
+        typeof entry === "number" ||
+        typeof entry === "boolean"
+      ) {
+        scalarEntries.push([key, entry]);
+      } else {
+        complexEntries.push([key, entry]);
+      }
+    }
+
+    const maxKeys = depth === 0 ? 24 : depth === 1 ? 16 : 10;
+    const compactObject: Record<string, unknown> = {};
+    for (const [key, entry] of [...scalarEntries, ...complexEntries].slice(0, maxKeys)) {
+      const compactEntry = compactDirectBinanceSummaryValue(
+        entry,
+        key === "data" ? itemLimit : Math.min(itemLimit, 6),
+        depth + 1,
+      );
+      if (compactEntry === undefined) continue;
+      if (Array.isArray(compactEntry) && compactEntry.length === 0) continue;
+      if (
+        compactEntry &&
+        typeof compactEntry === "object" &&
+        !Array.isArray(compactEntry) &&
+        Object.keys(compactEntry as Record<string, unknown>).length === 0
+      ) {
+        continue;
+      }
+      compactObject[key] = compactEntry;
+    }
+    return compactObject;
+  }
+
+  return String(value);
+}
+
+function buildDirectBinanceSummaryInput(
+  unwrapped: string,
+  explicitCount: number | null,
+): string {
+  const itemLimit = explicitCount ?? DIRECT_BINANCE_SUMMARY_DEFAULT_ITEMS;
+  try {
+    const parsed = JSON.parse(unwrapped) as unknown;
+    const compact = compactDirectBinanceSummaryValue(parsed, itemLimit);
+    if (compact !== undefined) {
+      const compactText = JSON.stringify(compact, null, 2);
+      if (compactText.trim()) {
+        return compactText;
+      }
+    }
+  } catch {
+    // Fall back to raw text for non-JSON outputs.
+  }
+  return unwrapped;
+}
+
+function wantsRawBinanceSkillResult(userText: string): boolean {
+  const normalized = userText.toLowerCase();
+  return (
+    /\braw\b/.test(normalized) ||
+    /\bjson\b/.test(normalized) ||
+    /\bverbatim\b/.test(normalized) ||
+    /\bfull (?:response|result|output)\b/.test(normalized) ||
+    /\bexact (?:response|result|output)\b/.test(normalized)
+  );
+}
+
+function unwrapDirectBinanceSkillResult(rawText: string): string {
+  const fencedBlocks = Array.from(
+    rawText.matchAll(new RegExp(FENCED_JSON_RE_SERVER.source, "g")),
+  )
+    .map((match) => match[1]?.trim() ?? "")
+    .filter((block) => block.length > 0);
+  if (fencedBlocks.length > 0) {
+    return fencedBlocks.join("\n\n");
+  }
+  return rawText
+    .replace(/^Script executed successfully:\s*/i, "")
+    .replace(/^Script execution failed:\s*/i, "")
+    .trim();
+}
+
+function normalizeDirectBinanceSummaryText(summary: string): string {
+  return summary
+    .replace(/\*\*/g, "")
+    .replace(/^[ \t]*[-*][ \t]+/gm, "")
+    .replace(/^[ \t]*\d+\.\s+/gm, "")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(
+      /\n?(?:For more details or the raw JSON, feel free to ask\.?|You can ask for the raw JSON if you want it\.?|If you need the raw JSON details, feel free to ask\.?)\s*$/i,
+      "",
+    )
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+async function summarizeDirectBinanceSkillResult(
+  runtime: AgentRuntime,
+  skillSlug: string,
+  userText: string,
+  rawText: string,
+): Promise<string> {
+  const unwrapped = unwrapDirectBinanceSkillResult(rawText);
+  if (!unwrapped) return rawText;
+  const explicitCount = extractExplicitDirectBinanceCount(userText, 50);
+  const compactInput = buildDirectBinanceSummaryInput(unwrapped, explicitCount);
+
+  const resultSnippet =
+    compactInput.length > DIRECT_BINANCE_SUMMARY_INPUT_MAX_CHARS
+      ? `${compactInput.slice(0, DIRECT_BINANCE_SUMMARY_INPUT_MAX_CHARS)}\n\n[truncated]`
+      : compactInput;
+  const prompt = [
+    "You are formatting the result of a Binance skill for the end user.",
+    "The official skill instructions say to run the skill first and then summarize the results.",
+    "",
+    `User request: ${userText}`,
+    `Skill: ${skillSlug}`,
+    explicitCount
+      ? `The user explicitly requested ${explicitCount} items. Return ${explicitCount} distinct items if the result contains that many.`
+      : "If the user did not request a count, choose a sensible concise amount.",
+    "",
+    "Rules:",
+    "- Answer the user's request directly using only the result below.",
+    "- Default to a concise summary, not raw JSON.",
+    "- If the result is a ranking or list, show at most 5 items unless the user explicitly requested a different count.",
+    "- Output plain text only.",
+    "- Do not use markdown, bullets, numbered lists, bold markers, or code fences.",
+    "- Prefer a clean title line followed by compact 'Label: value' lines, with blank lines between items when listing multiple entries.",
+    "- Do not prefix lines with generic labels like 'Label:' or 'Item:'. Use the actual field name directly.",
+    "- Mention the chain when it is present in the result.",
+    "- Ignore icon URLs, image links, and social links unless the user explicitly asked for them.",
+    "- Do not mention scripts, stdout, code fences, or internal tooling.",
+    "- Do not invent missing fields. If a field is unavailable, omit it.",
+    "- If the result is an error, explain it briefly and suggest one next step.",
+    "- Do not append any follow-up sentence about raw JSON, more details, or next questions.",
+    "",
+    "Skill result:",
+    resultSnippet,
+  ].join("\n");
+
+  try {
+    const summary = await runtime.useModel(ModelType.TEXT_SMALL, {
+      prompt,
+      maxTokens: 700,
+      temperature: 0.2,
+    });
+    const clean = summary?.trim()
+      ? normalizeDirectBinanceSummaryText(summary.trim())
+      : "";
+    return clean || rawText;
+  } catch (err) {
+    runtime.logger?.warn(
+      {
+        src: "eliza-api",
+        skillSlug,
+        error: err instanceof Error ? err.message : String(err),
+      },
+      "[eliza-api] Binance skill summarization failed; falling back to raw output",
+    );
+    return rawText;
+  }
+}
+
+async function maybeHandleDirectBinanceSkillRequest(
+  runtime: AgentRuntime,
+  message: ReturnType<typeof createMessageMemory>,
+  appendIncomingText: (incoming: string) => void,
+  replaceText?: (text: string) => void,
+): Promise<string | null> {
+  const userText = extractCompatTextContent(message.content)?.trim();
+  if (!userText) return null;
+
+  const skillSlug = extractDirectBinanceSkillSlug(userText);
+  if (!skillSlug) return null;
+  if (!shouldExposeBinanceSkillId(skillSlug)) {
+    const visibleSkills = Array.from(EXPOSED_BINANCE_SKILL_IDS).sort().join(", ");
+    return `The Binance skill "${skillSlug}" is currently hidden in this build. Available Binance skills: ${visibleSkills}.`;
+  }
+
+  const service = runtime.getService("AGENT_SKILLS_SERVICE") as
+    | {
+        getLoadedSkill?: (slug: string) => unknown;
+        getLoadedSkills?: () => Array<{ slug?: string }>;
+      }
+    | undefined;
+  const hasSkill =
+    typeof service?.getLoadedSkill === "function"
+      ? Boolean(service.getLoadedSkill(skillSlug))
+      : typeof service?.getLoadedSkills === "function"
+        ? service
+            .getLoadedSkills()
+            .some((skill) => typeof skill.slug === "string" && skill.slug === skillSlug)
+        : false;
+  if (!hasSkill) return null;
+
+  const runtimeActions = Array.isArray((runtime as { actions?: unknown[] }).actions)
+    ? ((runtime as { actions: unknown[] }).actions as Array<{
+        name?: string;
+        handler?: (...args: unknown[]) => unknown;
+      }>)
+    : [];
+  const runSkillAction = runtimeActions.find(
+    (action) => action.name === "RUN_SKILL_SCRIPT",
+  );
+  const command = resolveDirectBinanceScriptCommand(skillSlug, userText);
+  if (!command) {
+    return null;
+  }
+  if (command.kind === "ask") {
+    appendIncomingText(command.text);
+    return command.text;
+  }
+  if (typeof runSkillAction?.handler === "function") {
+    // Stream a loading hint so the user sees immediate feedback
+    const loadingHints: Record<string, string> = {
+      "binance-meme-rush": "Fetching meme tokens from Binance...",
+      "binance-trading-signal": "Fetching trading signals...",
+      "binance-crypto-market-rank": "Fetching market rankings...",
+      "binance-query-token-info": "Looking up token info...",
+      "binance-query-token-audit": "Running token audit...",
+      "binance-query-address-info": "Checking wallet balances...",
+    };
+    appendIncomingText(loadingHints[skillSlug] ?? "Fetching Binance data...");
+
+    let directRunText = "";
+    runtime.logger?.info(
+      {
+        src: "eliza-api",
+        action: "RUN_SKILL_SCRIPT",
+        skillSlug,
+        script: command.script,
+        args: command.args,
+      },
+      `[eliza-api] Direct Binance script dispatch: ${skillSlug}/${command.script}`,
+    );
+    const runResult = await Promise.resolve(
+      runSkillAction.handler(
+        runtime,
+        message,
+        undefined,
+        {
+          skillSlug,
+          script: command.script,
+          args: command.args,
+        },
+        async (content: unknown) => {
+          const chunk =
+            content && typeof content === "object"
+              ? extractCompatTextContent(content as Content)
+              : "";
+          if (!chunk) return [];
+          directRunText = chunk;
+          return [];
+        },
+        [],
+      ),
+    );
+    const rawDirectText =
+      directRunText.trim().length > 0
+        ? directRunText
+        : runResult &&
+            typeof runResult === "object" &&
+            "text" in runResult &&
+            typeof (runResult as { text?: unknown }).text === "string"
+          ? (runResult as { text: string }).text
+          : "";
+    if (rawDirectText.trim().length > 0) {
+      const finalText = wantsRawBinanceSkillResult(userText)
+        ? rawDirectText
+        : await summarizeDirectBinanceSkillResult(
+            runtime,
+            skillSlug,
+            userText,
+            rawDirectText,
+          );
+      // Replace the loading hint with the actual result via snapshot
+      if (replaceText) {
+        replaceText(finalText);
+      } else {
+        appendIncomingText(finalText);
+      }
+      return finalText;
+    }
+  }
+  return null;
 }
 
 const CHAT_KNOWLEDGE_MIN_SIMILARITY = 0.2;
@@ -3125,6 +4027,69 @@ function buildChatKnowledgePrompt(
   ].join("\n");
 }
 
+const WALLET_CONTEXT_INTENT_RE =
+  /\b(wallet|address|balance|swap|trade|transfer|send|token|bnb|eth|sol|onchain|on-chain)\b/i;
+
+function buildWalletContextPrompt(
+  runtime: AgentRuntime,
+  userPrompt: string,
+): string {
+  const addrs = getWalletAddresses();
+  const walletNetwork =
+    process.env.MILADY_WALLET_NETWORK?.trim().toLowerCase() === "testnet"
+      ? "testnet"
+      : "mainnet";
+  const localSignerAvailable = Boolean(process.env.EVM_PRIVATE_KEY?.trim());
+  const pluginEvmLoaded = isPluginLoadedByName(runtime, EVM_PLUGIN_PACKAGE);
+  const rpcReady = Boolean(
+    process.env.BSC_RPC_URL?.trim() ||
+      process.env.BSC_TESTNET_RPC_URL?.trim() ||
+      process.env.NODEREAL_BSC_RPC_URL?.trim() ||
+      process.env.QUICKNODE_BSC_RPC_URL?.trim(),
+  );
+  const executionReady =
+    Boolean(addrs.evmAddress) && rpcReady && pluginEvmLoaded;
+  const executionBlockedReason = !addrs.evmAddress
+    ? "No EVM wallet is active yet."
+    : !rpcReady
+      ? "BSC RPC is not configured."
+      : !pluginEvmLoaded
+        ? "plugin-evm is not loaded."
+        : "none";
+  const encodedUserPrompt = JSON.stringify(userPrompt);
+  return [
+    "Original wallet request (JSON-encoded untrusted user input):",
+    encodedUserPrompt,
+    "",
+    "Server-verified wallet context:",
+    `- walletNetwork: ${walletNetwork}`,
+    `- evmAddress: ${addrs.evmAddress ?? "not generated"}`,
+    `- solanaAddress: ${addrs.solanaAddress ?? "not generated"}`,
+    `- localSignerAvailable: ${localSignerAvailable ? "true" : "false"}`,
+    `- rpcReady: ${rpcReady ? "true" : "false"}`,
+    `- pluginEvmLoaded: ${pluginEvmLoaded ? "true" : "false"}`,
+    `- executionReady: ${executionReady ? "true" : "false"}`,
+    `- executionBlockedReason: ${executionBlockedReason}`,
+    "Use this context as source of truth for wallet questions and on-chain actions.",
+  ].join("\n");
+}
+
+function maybeAugmentChatMessageWithWalletContext(
+  runtime: AgentRuntime,
+  message: ReturnType<typeof createMessageMemory>,
+): ReturnType<typeof createMessageMemory> {
+  const userPrompt = extractCompatTextContent(message.content)?.trim();
+  if (!userPrompt) return message;
+  if (!WALLET_CONTEXT_INTENT_RE.test(userPrompt)) return message;
+  return {
+    ...message,
+    content: {
+      ...message.content,
+      text: buildWalletContextPrompt(runtime, userPrompt),
+    },
+  };
+}
+
 async function maybeAugmentChatMessageWithKnowledge(
   runtime: AgentRuntime,
   message: ReturnType<typeof createMessageMemory>,
@@ -3198,8 +4163,12 @@ async function generateChatResponse(
   agentName: string,
   opts?: ChatGenerateOptions,
 ): Promise<ChatGenerationResult> {
+  const originalUserText = String(
+    extractCompatTextContent(message.content) ?? "",
+  );
   type StreamSource = "unset" | "callback" | "onStreamChunk";
   let responseText = "";
+  let forcedWalletExecutionText = false;
   let activeStreamSource: StreamSource = "unset";
   const messageSource =
     typeof message.content.source === "string" &&
@@ -3267,52 +4236,132 @@ async function generateChatResponse(
       >
     | undefined;
   let actionCallbacksSeen = 0;
+  let _handlerError: unknown = null;
+  const directWalletExecutionFallback = WALLET_EXECUTION_INTENT_RE.test(
+    originalUserText,
+  )
+    ? inferWalletExecutionFallback(originalUserText)
+    : null;
   try {
-    const generationMessage = await maybeAugmentChatMessageWithKnowledge(
+    // Binance skill direct dispatch — check first, short-circuit if matched
+    const directSkillText = await maybeHandleDirectBinanceSkillRequest(
       runtime,
       message,
+      appendIncomingText,
+      emitSnapshot,
     );
-    result = await runtime.messageService?.handleMessage(
-      runtime,
-      generationMessage,
-      async (content: Content) => {
-        if (opts?.isAborted?.()) {
-          throw new Error("client_disconnected");
-        }
+    if (directSkillText) {
+      const finalText = isClientVisibleNoResponse(directSkillText)
+        ? directSkillText || "(no response)"
+        : directSkillText;
+      const promptText = extractCompatTextContent(message.content) ?? "";
+      const estPromptTokens = Math.ceil(promptText.length / 4);
+      const estCompletionTokens = Math.ceil(finalText.length / 4);
+      return {
+        text: finalText,
+        agentName,
+        usage: {
+          promptTokens: estPromptTokens,
+          completionTokens: estCompletionTokens,
+          totalTokens: estPromptTokens + estCompletionTokens,
+        },
+      };
+    }
 
-        // Trace action callback invocations so we can verify handlers execute.
-        const actionTag = (content as Record<string, unknown>)?.action;
-        if (actionTag) {
+    if (directWalletExecutionFallback?.errorText) {
+      forcedWalletExecutionText = true;
+      responseText = directWalletExecutionFallback.errorText;
+      result = {
+        didRespond: true,
+        responseContent: { text: directWalletExecutionFallback.errorText },
+        responseMessages: [],
+      };
+    } else if (directWalletExecutionFallback?.action) {
+      runtime.logger?.info(
+        {
+          src: "eliza-api",
+          action: directWalletExecutionFallback.action.name,
+          parameters: directWalletExecutionFallback.action.parameters,
+        },
+        "[eliza-api] Direct wallet execution dispatch from prompt intent",
+      );
+      await executeFallbackParsedActions(
+        runtime,
+        message,
+        [directWalletExecutionFallback.action],
+        appendIncomingText,
+        (actionTag, hasText) => {
           actionCallbacksSeen += 1;
           runtime.logger?.info(
             {
               src: "eliza-api",
               action: actionTag,
-              hasText: Boolean(extractCompatTextContent(content)),
+              hasText,
             },
             `[eliza-api] Action callback fired: ${actionTag}`,
           );
-        }
+        },
+      );
+      result = {
+        didRespond: true,
+        responseContent: { text: responseText },
+        responseMessages: [],
+      };
+    } else {
+      const languageAugmentedMessage = maybeAugmentChatMessageWithLanguage(
+        message,
+        opts?.preferredLanguage,
+      );
+      const walletAugmentedMessage = maybeAugmentChatMessageWithWalletContext(
+        runtime,
+        languageAugmentedMessage,
+      );
+      const generationMessage = await maybeAugmentChatMessageWithKnowledge(
+        runtime,
+        walletAugmentedMessage,
+      );
+      result = await runtime.messageService?.handleMessage(
+        runtime,
+        generationMessage,
+        async (content: Content) => {
+          if (opts?.isAborted?.()) {
+            throw new Error("client_disconnected");
+          }
 
-        const chunk = extractCompatTextContent(content);
-        if (!chunk) return [];
-        if (!claimStreamSource("callback")) return [];
-        appendIncomingText(chunk);
-        return [];
-      },
-      {
-        onStreamChunk: opts?.onChunk
-          ? async (chunk: string) => {
-              if (opts?.isAborted?.()) {
-                throw new Error("client_disconnected");
+          // Trace action callback invocations so we can verify handlers execute.
+          const actionTag = (content as Record<string, unknown>)?.action;
+          if (actionTag) {
+            actionCallbacksSeen += 1;
+            runtime.logger?.info(
+              {
+                src: "eliza-api",
+                action: actionTag,
+                hasText: Boolean(extractCompatTextContent(content)),
+              },
+              `[eliza-api] Action callback fired: ${actionTag}`,
+            );
+          }
+
+          const chunk = extractCompatTextContent(content);
+          if (!chunk) return [];
+          if (!claimStreamSource("callback")) return [];
+          appendIncomingText(chunk);
+          return [];
+        },
+        {
+          onStreamChunk: opts?.onChunk
+            ? async (chunk: string) => {
+                if (opts?.isAborted?.()) {
+                  throw new Error("client_disconnected");
+                }
+                if (!chunk) return;
+                if (!claimStreamSource("onStreamChunk")) return;
+                appendIncomingText(chunk);
               }
-              if (!chunk) return;
-              if (!claimStreamSource("onStreamChunk")) return;
-              appendIncomingText(chunk);
-            }
-          : undefined,
-      },
-    );
+            : undefined,
+        },
+      );
+    }
 
     // Ensure MESSAGE_SENT hooks run for API chat flows. Some runtimes emit this
     // internally, but API wrappers can bypass those hooks.
@@ -3350,6 +4399,7 @@ async function generateChatResponse(
       );
     }
   } catch (err) {
+    _handlerError = err;
     throw err;
   }
 
@@ -3369,29 +4419,103 @@ async function generateChatResponse(
     );
 
     const rawActionsPayload = rc?.actions ?? resultRecord.actions;
-    const parsedFallbackActions = parseFallbackActionBlocks(rawActionsPayload);
+    const modelText = String(
+      extractCompatTextContent(result.responseContent) ?? "",
+    );
+    const parsedFallbackActions = parseFallbackActionBlocks(
+      rawActionsPayload,
+      modelText,
+    );
     const userText = String(extractCompatTextContent(message.content) ?? "");
-    const modelText = String(extractCompatTextContent(result.responseContent) ?? "");
     const fallbackActionsToRun = [...parsedFallbackActions];
+    const inferredBalanceChain = inferBalanceChainFromText(userText);
 
     if (
-      shouldForceCheckBalanceFallback(fallbackActionsToRun, userText, modelText) &&
+      shouldForceCheckBalanceFallback(
+        fallbackActionsToRun,
+        userText,
+        modelText,
+      ) &&
       !fallbackActionsToRun.some((a) => a.name === "CHECK_BALANCE")
     ) {
       fallbackActionsToRun.push({
         name: "CHECK_BALANCE",
-        parameters: { chain: inferBalanceChainFromText(userText) },
+        parameters: { chain: inferredBalanceChain },
       });
       runtime.logger?.warn(
         {
           src: "eliza-api",
-          inferredChain: inferBalanceChainFromText(userText),
+          inferredChain: inferredBalanceChain,
         },
         "[eliza-api] Injecting CHECK_BALANCE fallback for REPLY-only malformed action payload",
       );
     }
 
-    if (actionCallbacksSeen === 0 && fallbackActionsToRun.length > 0) {
+    if (
+      actionCallbacksSeen === 0 &&
+      fallbackActionsToRun.length === 0 &&
+      isBalanceIntent(userText)
+    ) {
+      fallbackActionsToRun.push({
+        name: "CHECK_BALANCE",
+        parameters: { chain: inferredBalanceChain },
+      });
+      runtime.logger?.warn(
+        {
+          src: "eliza-api",
+          inferredChain: inferredBalanceChain,
+        },
+        "[eliza-api] Injecting CHECK_BALANCE fallback for balance intent without any action payload",
+      );
+    }
+
+    if (
+      actionCallbacksSeen === 0 &&
+      WALLET_EXECUTION_INTENT_RE.test(userText)
+    ) {
+      const inferredWalletFallback = inferWalletExecutionFallback(userText);
+      if (inferredWalletFallback?.action) {
+        const existingIndex = fallbackActionsToRun.findIndex(
+          (action) => action.name === inferredWalletFallback.action.name,
+        );
+        if (
+          existingIndex === -1 ||
+          !hasUsableWalletFallbackParams(fallbackActionsToRun[existingIndex]!)
+        ) {
+          if (existingIndex >= 0) {
+            fallbackActionsToRun.splice(existingIndex, 1);
+          }
+          fallbackActionsToRun.push(inferredWalletFallback.action);
+          runtime.logger?.warn(
+            {
+              src: "eliza-api",
+              action: inferredWalletFallback.action.name,
+              parameters: inferredWalletFallback.action.parameters,
+            },
+            "[eliza-api] Injecting wallet execution fallback from prompt intent",
+          );
+        }
+      } else if (inferredWalletFallback?.errorText) {
+        forcedWalletExecutionText = true;
+        if (opts?.onSnapshot) {
+          emitSnapshot(inferredWalletFallback.errorText);
+        } else {
+          responseText = inferredWalletFallback.errorText;
+        }
+      }
+    }
+
+    // Only run fallback execution when the core did NOT dispatch actions itself.
+    // When mode === "actions", processActions already invoked the handlers —
+    // their callbacks may still be pending (async work like cloning repos,
+    // spawning PTY sessions) so actionCallbacksSeen can be 0 even though
+    // the handlers ARE running. Re-executing them would double-spawn agents.
+    const coreHandledActions = resultRecord.mode === "actions";
+    if (
+      actionCallbacksSeen === 0 &&
+      !coreHandledActions &&
+      fallbackActionsToRun.length > 0
+    ) {
       runtime.logger?.warn(
         {
           src: "eliza-api",
@@ -3437,7 +4561,12 @@ async function generateChatResponse(
   ) {
     // Keep streaming monotonic when final text extends emitted chunks.
     emitChunk(resultText.slice(responseText.length));
-  } else if (actionCallbacksSeen === 0 && resultText && resultText !== responseText) {
+  } else if (
+    actionCallbacksSeen === 0 &&
+    resultText &&
+    resultText !== responseText &&
+    !forcedWalletExecutionText
+  ) {
     // Canonical final response may differ from streamed chunks (normalization).
     if (opts?.onSnapshot) {
       emitSnapshot(resultText);
@@ -3446,10 +4575,34 @@ async function generateChatResponse(
     }
   }
 
+  if (
+    actionCallbacksSeen === 0 &&
+    isWalletActionRequiredIntent(originalUserText)
+  ) {
+    const normalizedVisibleText = stripAssistantStageDirections(
+      (responseText || resultText || "").trim(),
+    );
+    if (
+      normalizedVisibleText.length === 0 ||
+      WALLET_PROGRESS_ONLY_RE.test(normalizedVisibleText)
+    ) {
+      const failureText = buildWalletActionNotExecutedReply(
+        runtime,
+        originalUserText.trim(),
+      );
+      if (opts?.onSnapshot) {
+        emitSnapshot(failureText);
+      } else {
+        responseText = failureText;
+      }
+    }
+  }
+
   const noResponseFallback = opts?.resolveNoResponseText?.();
-  const finalText = isClientVisibleNoResponse(responseText)
+  const normalizedResponseText = trimWalletProgressPrefix(responseText);
+  const finalText = isClientVisibleNoResponse(normalizedResponseText)
     ? (noResponseFallback ?? (responseText || "(no response)"))
-    : responseText;
+    : normalizedResponseText;
 
   // Estimate token usage from text lengths (~4 chars per token)
   const promptText = extractCompatTextContent(message.content) ?? "";
@@ -3840,12 +4993,14 @@ async function readChatRequestPayload(
   channelType: ChannelType;
   images?: ChatImageAttachment[];
   conversationMode?: "simple" | "power";
+  preferredLanguage?: string;
 } | null> {
   const body = await helpers.readJsonBody<{
     text?: string;
     channelType?: string;
     images?: ChatImageAttachment[];
     conversationMode?: string;
+    language?: string;
   }>(req, res, { maxBytes });
   if (!body) return null;
   const normalizedPrompt = normalizeIncomingChatPrompt(body.text, body.images);
@@ -3877,11 +5032,19 @@ async function readChatRequestPayload(
         mimeType: img.mimeType.toLowerCase(),
       }))
     : undefined;
+  const rawPreferredLanguage =
+    (typeof body.language === "string" && body.language.trim()
+      ? body.language
+      : undefined) ?? readUiLanguageHeader(req);
+  const preferredLanguage = rawPreferredLanguage
+    ? normalizeCharacterLanguage(rawPreferredLanguage)
+    : undefined;
   return {
     prompt: normalizedPrompt,
     channelType,
     images,
     ...(conversationMode ? { conversationMode } : {}),
+    ...(preferredLanguage ? { preferredLanguage } : {}),
   };
 }
 
@@ -4385,6 +5548,9 @@ import {
   getDefaultStylePreset,
   getStylePresets,
   normalizeCharacterLanguage,
+  resolveStylePresetByAvatarIndex,
+  resolveStylePresetById,
+  resolveStylePresetByName,
 } from "../onboarding-presets.js";
 
 import { pickRandomNames } from "../runtime/onboarding-names.js";
@@ -4427,7 +5593,9 @@ function readUiLanguageHeader(
   if (Array.isArray(header)) {
     return header.find((value) => value.trim())?.trim();
   }
-  return typeof header === "string" && header.trim() ? header.trim() : undefined;
+  return typeof header === "string" && header.trim()
+    ? header.trim()
+    : undefined;
 }
 
 function resolveConfiguredCharacterLanguage(
@@ -4454,7 +5622,10 @@ function resolveOnboardingStylePreset(
     if (byId) return byId;
   }
 
-  if (typeof body.avatarIndex === "number" && Number.isFinite(body.avatarIndex)) {
+  if (
+    typeof body.avatarIndex === "number" &&
+    Number.isFinite(body.avatarIndex)
+  ) {
     const byAvatar = presets.find(
       (preset) => preset.avatarIndex === Number(body.avatarIndex),
     );
@@ -5428,6 +6599,7 @@ import {
   type TradePermissionMode,
   assertQuoteFresh,
   canUseLocalTradeExecution,
+  recordAgentAutoTrade,
 } from "./trade-safety.js";
 
 export {
@@ -5452,6 +6624,7 @@ const AGENT_AUTOMATION_MODES = new Set<AgentAutomationMode>([
   "connectors-only",
   "full",
 ]);
+const EVM_PLUGIN_PACKAGE = "@elizaos/plugin-evm";
 
 function parseAgentAutomationMode(value: unknown): AgentAutomationMode | null {
   if (typeof value !== "string") return null;
@@ -5508,6 +6681,478 @@ function persistAgentAutomationMode(
     enabled: true,
     mode,
   };
+}
+
+function isPluginLoadedByName(
+  runtime: AgentRuntime | null,
+  pluginName: string,
+): boolean {
+  if (!runtime || !Array.isArray(runtime.plugins)) return false;
+  const shortId = pluginName.replace("@elizaos/plugin-", "");
+  const packageSuffix = `plugin-${shortId}`;
+  return runtime.plugins.some((plugin) => {
+    const name = typeof plugin?.name === "string" ? plugin.name : "";
+    return (
+      name === pluginName ||
+      name === shortId ||
+      name === packageSuffix ||
+      name.endsWith(`/${packageSuffix}`) ||
+      name.includes(shortId)
+    );
+  });
+}
+
+function resolveWalletCapabilityStatus(
+  state: Pick<ServerState, "config" | "runtime">,
+) {
+  const addrs = getWalletAddresses();
+  const rpcReadiness = resolveWalletRpcReadiness(state.config);
+  const automationMode = resolveAgentAutomationModeFromConfig(state.config);
+  const localSignerAvailable = Boolean(process.env.EVM_PRIVATE_KEY?.trim());
+  const hasWallet = Boolean(addrs.evmAddress || addrs.solanaAddress);
+  const hasEvm = Boolean(addrs.evmAddress);
+  const pluginEvmLoaded = isPluginLoadedByName(
+    state.runtime,
+    EVM_PLUGIN_PACKAGE,
+  );
+  const pluginEvmRequired = hasEvm || localSignerAvailable;
+  const rpcReady = Boolean(rpcReadiness.managedBscRpcReady);
+  const walletSource = localSignerAvailable
+    ? "local"
+    : hasWallet
+      ? "managed"
+      : "none";
+
+  let executionBlockedReason: string | null = null;
+  if (!hasEvm) {
+    executionBlockedReason = "No EVM wallet is active yet.";
+  } else if (!rpcReady) {
+    executionBlockedReason = "BSC RPC is not configured.";
+  } else if (!pluginEvmLoaded) {
+    executionBlockedReason =
+      "plugin-evm is not loaded, so EVM wallet execution is unavailable.";
+  } else if (automationMode !== "full") {
+    executionBlockedReason =
+      "Agent automation is in connectors-only mode, so wallet execution is blocked in chat.";
+  }
+
+  return {
+    walletSource,
+    walletNetwork: rpcReadiness.walletNetwork,
+    evmAddress: addrs.evmAddress ?? null,
+    solanaAddress: addrs.solanaAddress ?? null,
+    hasWallet,
+    hasEvm,
+    localSignerAvailable,
+    rpcReady,
+    automationMode,
+    pluginEvmLoaded,
+    pluginEvmRequired,
+    executionReady:
+      hasEvm && rpcReady && pluginEvmLoaded && automationMode === "full",
+    executionBlockedReason,
+  };
+}
+
+function buildPluginEvmDiagnosticEntry(
+  state: Pick<ServerState, "config" | "runtime">,
+): PluginEntry {
+  const capability = resolveWalletCapabilityStatus(state);
+  const enabled =
+    capability.pluginEvmLoaded ||
+    capability.pluginEvmRequired ||
+    (state.config.plugins?.allow ?? []).some((entry) => {
+      return entry === EVM_PLUGIN_PACKAGE || entry === "evm";
+    });
+
+  const capabilityStatus = capability.pluginEvmLoaded
+    ? capability.pluginEvmRequired
+      ? "loaded"
+      : "auto-enabled"
+    : enabled
+      ? capability.evmAddress || capability.localSignerAvailable
+        ? "blocked"
+        : "missing-prerequisites"
+      : "disabled";
+
+  return {
+    id: "evm",
+    name: "Plugin EVM",
+    description:
+      "EVM wallet runtime for balance, transfer, and trade actions. Required for wallet execution in chat.",
+    tags: ["wallet", "evm", "bsc", "onchain"],
+    enabled,
+    configured: capability.pluginEvmRequired,
+    envKey: "EVM_PRIVATE_KEY",
+    category: "feature",
+    source: "bundled",
+    configKeys: [
+      "EVM_PRIVATE_KEY",
+      "BSC_RPC_URL",
+      "BSC_TESTNET_RPC_URL",
+      "MILADY_WALLET_NETWORK",
+    ],
+    parameters: [],
+    validationErrors: [],
+    validationWarnings: [],
+    npmName: EVM_PLUGIN_PACKAGE,
+    isActive: capability.pluginEvmLoaded,
+    autoEnabled: capability.pluginEvmRequired && !capability.pluginEvmLoaded,
+    managementMode: "core-optional",
+    capabilityStatus,
+    capabilityReason: capability.executionReady
+      ? "Wallet execution is ready."
+      : capability.executionBlockedReason,
+    prerequisites: [
+      { label: "wallet present", met: Boolean(capability.evmAddress) },
+      { label: "rpc ready", met: capability.rpcReady },
+      { label: "plugin loaded", met: capability.pluginEvmLoaded },
+    ],
+  };
+}
+
+const WALLET_CHAT_INTENT_RE =
+  /\b(wallet|privy|onchain|on-chain|address|balance|swap|trade|transfer|send|token|bnb|eth|sol)\b/i;
+
+const WALLET_EXECUTION_INTENT_RE =
+  /\b(swap|trade|transfer|send|buy|sell|execute|approve)\b/i;
+
+const WALLET_IDENTITY_INTENT_RE = /\b(wallet\s*address|address)\b/i;
+
+const WALLET_ACTION_REQUIRED_INTENT_RE =
+  /\b(balance|portfolio|holdings|funds|swap|trade|transfer|send|buy|sell|execute|approve)\b/i;
+
+const WALLET_PROGRESS_ONLY_RE =
+  /\b(let me|i(?:'| wi)ll|checking|fetching|looking up|pulling|one moment|just a second|hold on)\b[\s\S]{0,80}\b(check|look|fetch|pull|get|verify|see|review)\b/i;
+
+const WALLET_PROGRESS_PREFIX_RE =
+  /^\s*(?:let me|i(?:'ll| will)|checking|fetching|looking up|pulling|one moment|just a second|hold on)[\s\S]{0,120}?(?:now|\.{3}|…)?\s*/i;
+
+function isWalletActionRequiredIntent(prompt: string): boolean {
+  return (
+    WALLET_CHAT_INTENT_RE.test(prompt) &&
+    !WALLET_IDENTITY_INTENT_RE.test(prompt) &&
+    WALLET_ACTION_REQUIRED_INTENT_RE.test(prompt)
+  );
+}
+
+const EVM_ADDRESS_CAPTURE_RE = /\b0x[a-fA-F0-9]{40}\b/g;
+const DECIMAL_AMOUNT_CAPTURE_RE = /\b(\d+(?:\.\d+)?)\b/;
+const SEND_NATIVE_ASSET_RE =
+  /\b(?:t?bnb|bnb|eth|usdt|usdc|busd|dai|weth|wbtc)\b/i;
+const SWAP_ROUTE_PROVIDER_RE = /\b(pancakeswap-v2|0x|auto)\b/i;
+
+type WalletIntentFallback =
+  | { action: FallbackParsedAction; errorText?: undefined }
+  | { action?: undefined; errorText: string };
+
+function normalizeWalletAssetSymbol(asset: string): string {
+  const normalized = asset.trim().toUpperCase();
+  if (normalized === "TBNB") return "BNB";
+  return normalized;
+}
+
+function resolveWalletDrillTokenAddress(): string | null {
+  if (process.env.NODE_ENV === "production" && !process.env.VITEST) {
+    return null;
+  }
+  const raw = process.env.WALLET_DRILL_TOKEN_ADDRESS?.trim();
+  return raw && /^0x[a-fA-F0-9]{40}$/.test(raw) ? raw : null;
+}
+
+function buildWalletParameterFailureReply(
+  actionName: "TRANSFER_TOKEN" | "EXECUTE_TRADE",
+  reason: string,
+): string {
+  const walletNetwork =
+    process.env.MILADY_WALLET_NETWORK?.trim().toLowerCase() === "testnet"
+      ? "BSC testnet"
+      : "BSC";
+  return [
+    `Action: ${actionName}`,
+    `Chain: ${walletNetwork}`,
+    "Executed: false",
+    `Reason: ${reason}`,
+  ].join("\n");
+}
+
+function inferTransferFallbackAction(
+  prompt: string,
+): WalletIntentFallback | null {
+  if (!/\b(send|transfer|pay)\b/i.test(prompt)) return null;
+
+  const recipient = prompt.match(EVM_ADDRESS_CAPTURE_RE)?.[0];
+  if (!recipient) {
+    return {
+      errorText: buildWalletParameterFailureReply(
+        "TRANSFER_TOKEN",
+        "I need a recipient EVM address to send funds.",
+      ),
+    };
+  }
+
+  const amount = prompt.match(DECIMAL_AMOUNT_CAPTURE_RE)?.[1];
+  if (!amount) {
+    return {
+      errorText: buildWalletParameterFailureReply(
+        "TRANSFER_TOKEN",
+        "I need a positive transfer amount.",
+      ),
+    };
+  }
+
+  const assetMatch = prompt.match(SEND_NATIVE_ASSET_RE)?.[0];
+  if (!assetMatch) {
+    return {
+      errorText: buildWalletParameterFailureReply(
+        "TRANSFER_TOKEN",
+        "I need an asset symbol such as BNB, USDT, or USDC.",
+      ),
+    };
+  }
+
+  return {
+    action: {
+      name: "TRANSFER_TOKEN",
+      parameters: {
+        toAddress: recipient,
+        amount,
+        assetSymbol: normalizeWalletAssetSymbol(assetMatch),
+      },
+    },
+  };
+}
+
+function inferTradeSide(prompt: string): "buy" | "sell" | null {
+  if (/\bsell\b/i.test(prompt)) return "sell";
+  if (/\b(buy|swap|trade)\b/i.test(prompt)) return "buy";
+  return null;
+}
+
+function inferTradeFallbackAction(prompt: string): WalletIntentFallback | null {
+  if (!/\b(swap|trade|buy|sell)\b/i.test(prompt)) return null;
+
+  const side = inferTradeSide(prompt);
+  if (!side) {
+    return {
+      errorText: buildWalletParameterFailureReply(
+        "EXECUTE_TRADE",
+        'I need a trade side ("buy" or "sell").',
+      ),
+    };
+  }
+
+  const amount = prompt.match(DECIMAL_AMOUNT_CAPTURE_RE)?.[1];
+  if (!amount) {
+    return {
+      errorText: buildWalletParameterFailureReply(
+        "EXECUTE_TRADE",
+        "I need a positive trade amount.",
+      ),
+    };
+  }
+
+  const addresses = prompt.match(EVM_ADDRESS_CAPTURE_RE) ?? [];
+  const drillTokenAddress = resolveWalletDrillTokenAddress();
+  const tokenAddress = addresses[0] ?? drillTokenAddress;
+  if (!tokenAddress) {
+    return {
+      errorText: buildWalletParameterFailureReply(
+        "EXECUTE_TRADE",
+        drillTokenAddress === null &&
+          process.env.NODE_ENV === "production" &&
+          !process.env.VITEST
+          ? "I need a target token contract address in the prompt."
+          : "I need a target token address. Set WALLET_DRILL_TOKEN_ADDRESS or include the token contract address in the prompt.",
+      ),
+    };
+  }
+
+  const routeProvider =
+    prompt.match(SWAP_ROUTE_PROVIDER_RE)?.[1]?.toLowerCase() ??
+    "pancakeswap-v2";
+
+  return {
+    action: {
+      name: "EXECUTE_TRADE",
+      parameters: {
+        side,
+        amount,
+        tokenAddress,
+        routeProvider,
+      },
+    },
+  };
+}
+
+function inferWalletExecutionFallback(
+  prompt: string,
+): WalletIntentFallback | null {
+  return (
+    inferTransferFallbackAction(prompt) ?? inferTradeFallbackAction(prompt)
+  );
+}
+
+function hasUsableWalletFallbackParams(action: FallbackParsedAction): boolean {
+  if (action.name === "TRANSFER_TOKEN") {
+    return (
+      typeof action.parameters.toAddress === "string" &&
+      /^0x[a-fA-F0-9]{40}$/.test(action.parameters.toAddress) &&
+      typeof action.parameters.amount === "string" &&
+      action.parameters.amount.trim().length > 0 &&
+      typeof action.parameters.assetSymbol === "string" &&
+      action.parameters.assetSymbol.trim().length > 0
+    );
+  }
+
+  if (action.name === "EXECUTE_TRADE") {
+    return (
+      (action.parameters.side === "buy" || action.parameters.side === "sell") &&
+      typeof action.parameters.amount === "string" &&
+      action.parameters.amount.trim().length > 0 &&
+      typeof action.parameters.tokenAddress === "string" &&
+      /^0x[a-fA-F0-9]{40}$/.test(action.parameters.tokenAddress)
+    );
+  }
+
+  return true;
+}
+
+function buildWalletActionNotExecutedReply(
+  runtime: AgentRuntime,
+  userPrompt: string,
+): string {
+  const addrs = getWalletAddresses();
+  const walletNetwork =
+    process.env.MILADY_WALLET_NETWORK?.trim().toLowerCase() === "testnet"
+      ? "testnet"
+      : "mainnet";
+  const pluginEvmLoaded = isPluginLoadedByName(runtime, EVM_PLUGIN_PACKAGE);
+  const rpcReady = Boolean(
+    process.env.BSC_RPC_URL?.trim() ||
+      process.env.BSC_TESTNET_RPC_URL?.trim() ||
+      process.env.NODEREAL_BSC_RPC_URL?.trim() ||
+      process.env.QUICKNODE_BSC_RPC_URL?.trim(),
+  );
+  const executionBlockedReason = !addrs.evmAddress
+    ? "No EVM wallet is active yet."
+    : !rpcReady
+      ? "BSC RPC is not configured."
+      : !pluginEvmLoaded
+        ? "plugin-evm is not loaded, so EVM wallet execution is unavailable."
+        : "A wallet action was not executed for this turn.";
+
+  return [
+    `I could not complete "${userPrompt}" because no wallet action actually ran.`,
+    `Wallet network: ${walletNetwork}.`,
+    `Detected wallets:`,
+    `- EVM: ${addrs.evmAddress ?? "not generated"}`,
+    `- Solana: ${addrs.solanaAddress ?? "not generated"}`,
+    `plugin-evm: ${pluginEvmLoaded ? "loaded" : "not loaded"}.`,
+    `RPC ready: ${rpcReady ? "yes" : "no"}.`,
+    `Blocked reason: ${executionBlockedReason}`,
+  ].join("\n");
+}
+
+function trimWalletProgressPrefix(text: string): string {
+  const balanceIdx = text.indexOf("Wallet Balances:");
+  if (balanceIdx > 0) {
+    return text.slice(balanceIdx).trimStart();
+  }
+
+  const markers = [
+    "Action: TRANSFER_TOKEN",
+    "Action: EXECUTE_TRADE",
+    "Transfer",
+    "Swap",
+    "Trade",
+    "Tx hash:",
+    "Transaction hash:",
+  ];
+  for (const marker of markers) {
+    const idx = text.indexOf(marker);
+    if (idx <= 0) continue;
+    const prefix = text.slice(0, idx);
+    if (WALLET_PROGRESS_PREFIX_RE.test(prefix)) {
+      return text.slice(idx).trimStart();
+    }
+  }
+  return text;
+}
+
+function resolveWalletModeGuidanceReply(
+  state: ServerState,
+  prompt: string,
+): string | null {
+  if (!WALLET_CHAT_INTENT_RE.test(prompt)) {
+    return null;
+  }
+
+  const capability = resolveWalletCapabilityStatus(state);
+  const {
+    automationMode,
+    evmAddress,
+    solanaAddress,
+    walletNetwork,
+    pluginEvmLoaded,
+    executionReady,
+    executionBlockedReason,
+  } = capability;
+  const walletSummary = `Detected wallets:
+- EVM: ${evmAddress ?? "not generated"}
+- Solana: ${solanaAddress ?? "not generated"}`;
+
+  if (automationMode === "connectors-only") {
+    if (!WALLET_EXECUTION_INTENT_RE.test(prompt)) {
+      return null;
+    }
+    return [
+      "I am in connectors-only mode, so wallet actions are disabled in chat right now.",
+      "Turn on full mode with one of these:",
+      '1) Settings -> Permissions -> Agent Automation Mode -> "Full".',
+      '2) API: PUT /api/permissions/automation-mode with {"mode":"full"}.',
+      "Then retry your wallet request.",
+      `Wallet network: ${walletNetwork}.`,
+      walletSummary,
+    ].join("\n");
+  }
+
+  if (
+    !evmAddress &&
+    !solanaAddress &&
+    WALLET_EXECUTION_INTENT_RE.test(prompt)
+  ) {
+    const privyConfigured = isPrivyWalletProvisioningEnabled();
+    return [
+      "No wallet is active yet.",
+      "Open Wallet page and choose one setup path:",
+      `- Managed (Privy): ${privyConfigured ? "available" : "blocked until PRIVY_APP_ID and PRIVY_APP_SECRET are set on the backend"}.`,
+      "- Local: Generate or Import wallet in the Wallet wizard.",
+      walletSummary,
+    ].join("\n");
+  }
+
+  if (WALLET_IDENTITY_INTENT_RE.test(prompt)) {
+    return [
+      `Wallet network: ${walletNetwork}.`,
+      walletSummary,
+      `plugin-evm: ${pluginEvmLoaded ? "loaded" : "not loaded"}.`,
+      `Execution readiness: ${executionReady ? "ready for wallet actions" : (executionBlockedReason ?? "blocked")}.`,
+      `Automation mode: ${automationMode}.`,
+    ].join("\n");
+  }
+
+  if (WALLET_EXECUTION_INTENT_RE.test(prompt) && !executionReady) {
+    return [
+      `Wallet execution is currently blocked: ${executionBlockedReason ?? "unknown reason"}`,
+      `Wallet network: ${walletNetwork}.`,
+      walletSummary,
+      `plugin-evm: ${pluginEvmLoaded ? "loaded" : "not loaded"}.`,
+      `Automation mode: ${automationMode}.`,
+    ].join("\n");
+  }
+
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -5592,11 +7237,6 @@ const LOCAL_HOST_RE =
 /** Wildcard bind addresses that listen on all interfaces. */
 const WILDCARD_BIND_RE = /^(0\.0\.0\.0|::|0:0:0:0:0:0:0:0)$/;
 
-/** Strip an optional port suffix from a hostname string. */
-function stripPort(host: string): string {
-  return host.replace(/:\d+$/, "");
-}
-
 export function isAllowedHost(req: http.IncomingMessage): boolean {
   const raw = req.headers.host;
   if (!raw) return true; // No Host header → non-browser client (e.g. curl)
@@ -5614,40 +7254,28 @@ export function isAllowedHost(req: http.IncomingMessage): boolean {
     hostname = trimmed;
   } else {
     // IPv4 or hostname: localhost:31337 → localhost
-    hostname = stripPort(trimmed);
+    hostname = stripOptionalHostPort(trimmed);
   }
 
   if (!hostname) return true;
 
-  const bindHost = (
-    process.env.ELIZA_API_BIND ??
-    process.env.ELIZA_API_BIND ??
-    ""
-  )
-    .trim()
-    .toLowerCase();
+  const bindHost = resolveApiBindHost(process.env).toLowerCase();
 
   // When binding on all interfaces (0.0.0.0 / ::), any Host is acceptable —
   // ensureApiTokenForBindHost already enforces a token for non-loopback binds.
-  if (WILDCARD_BIND_RE.test(stripPort(bindHost))) {
+  if (WILDCARD_BIND_RE.test(stripOptionalHostPort(bindHost))) {
     return true;
   }
 
   // Allow the exact configured bind hostname.
-  if (bindHost && hostname === stripPort(bindHost)) {
+  if (bindHost && hostname === stripOptionalHostPort(bindHost)) {
     return true;
   }
 
-  // Allow explicitly listed extra hostnames via ELIZA_ALLOWED_HOSTS / ELIZA_ALLOWED_HOSTS
-  // (comma-separated, e.g. "myserver.local,192.168.1.10").
-  const extra =
-    process.env.ELIZA_ALLOWED_HOSTS ?? process.env.ELIZA_ALLOWED_HOSTS;
-  if (extra) {
-    const allowed = extra
-      .split(",")
-      .map((h) => stripPort(h.trim().toLowerCase()))
-      .filter(Boolean);
-    if (allowed.includes(hostname)) return true;
+  for (const allowedHost of resolveAllowedHosts(process.env)) {
+    if (stripOptionalHostPort(allowedHost).toLowerCase() === hostname) {
+      return true;
+    }
   }
 
   return LOCAL_HOST_RE.test(hostname);
@@ -5669,29 +7297,19 @@ export function resolveCorsOrigin(origin?: string): string | null {
 
   // When bound to a wildcard address, allow any origin. Non-loopback binds still
   // require an explicit token, so this only relaxes the browser origin check.
-  const bindHost = (
-    process.env.ELIZA_API_BIND ??
-    process.env.ELIZA_API_BIND ??
-    ""
-  )
-    .trim()
-    .toLowerCase();
-  if (WILDCARD_BIND_RE.test(stripPort(bindHost))) return trimmed;
+  const bindHost = resolveApiBindHost(process.env).toLowerCase();
+  if (WILDCARD_BIND_RE.test(stripOptionalHostPort(bindHost))) return trimmed;
 
   // Explicit allowlist via env (comma-separated)
-  const extra = process.env.ELIZA_ALLOWED_ORIGINS ?? process.env.CORS_ORIGINS;
-  if (extra) {
-    const allow = extra
-      .split(",")
-      .map((v) => v.trim())
-      .filter(Boolean);
-    if (allow.includes(trimmed)) return trimmed;
+  const allow = resolveAllowedOrigins(process.env);
+  if (allow.includes(trimmed)) {
+    return trimmed;
   }
 
   if (LOCAL_ORIGIN_RE.test(trimmed)) return trimmed;
   if (APP_ORIGIN_RE.test(trimmed)) return trimmed;
   if (trimmed === "null" || trimmed === "file://") {
-    if (process.env.ELIZA_ALLOW_NULL_ORIGIN === "1") {
+    if (isNullOriginAllowed(process.env)) {
       return "null";
     }
   }
@@ -5742,7 +7360,10 @@ let pairingExpiresAt = 0;
 const pairingAttempts = new Map<string, { count: number; resetAt: number }>();
 
 function pairingEnabled(): boolean {
-  return Boolean(getConfiguredApiToken()) && process.env.ELIZA_PAIRING_DISABLED !== "1";
+  return (
+    Boolean(getConfiguredApiToken()) &&
+    process.env.ELIZA_PAIRING_DISABLED !== "1"
+  );
 }
 
 function normalizePairingCode(code: string): string {
@@ -5869,9 +7490,7 @@ function tokenMatches(expected: string, provided: string): boolean {
 }
 
 function getConfiguredApiToken(): string | undefined {
-  return (
-    process.env.ELIZA_API_TOKEN?.trim() || process.env.MILADY_API_TOKEN?.trim()
-  );
+  return resolveApiToken(process.env) ?? undefined;
 }
 
 function isLoopbackBindHost(host: string): boolean {
@@ -5916,24 +7535,27 @@ function isLoopbackBindHost(host: string): boolean {
 }
 
 export function ensureApiTokenForBindHost(host: string): void {
-  if (
-    process.env.MILADY_DISABLE_AUTO_API_TOKEN === "1" ||
-    process.env.ELIZA_DISABLE_AUTO_API_TOKEN === "1"
-  ) {
+  if (resolveApiSecurityConfig(process.env).disableAutoApiToken) {
     return;
   }
 
   const token = getConfiguredApiToken();
   if (token) return;
-  if (isLoopbackBindHost(host)) return;
+  const cloudProvisioned = isCloudProvisionedContainer();
+  if (!cloudProvisioned && isLoopbackBindHost(host)) return;
 
   const generated = crypto.randomBytes(32).toString("hex");
-  process.env.MILADY_API_TOKEN = generated;
-  process.env.ELIZA_API_TOKEN = generated;
+  setApiToken(process.env, generated);
 
-  logger.warn(
-    `[eliza-api] MILADY_API_BIND/ELIZA_API_BIND=${host} is non-loopback and MILADY_API_TOKEN/ELIZA_API_TOKEN is unset.`,
-  );
+  if (cloudProvisioned) {
+    logger.warn(
+      "[eliza-api] Steward-managed cloud container started without MILADY_API_TOKEN/ELIZA_API_TOKEN; generated a temporary inbound API token for this process.",
+    );
+  } else {
+    logger.warn(
+      `[eliza-api] MILADY_API_BIND/ELIZA_API_BIND=${host} is non-loopback and MILADY_API_TOKEN/ELIZA_API_TOKEN is unset.`,
+    );
+  }
   const tokenFingerprint = `${generated.slice(0, 4)}...${generated.slice(-4)}`;
   logger.warn(
     `[eliza-api] Generated temporary API token (${tokenFingerprint}) for this process. Set MILADY_API_TOKEN or ELIZA_API_TOKEN explicitly to override.`,
@@ -5942,7 +7564,7 @@ export function ensureApiTokenForBindHost(host: string): void {
 
 export function isAuthorized(req: http.IncomingMessage): boolean {
   const expected = getConfiguredApiToken();
-  if (!expected) return true;
+  if (!expected) return !isCloudProvisionedContainer();
   const provided = extractAuthToken(req);
   if (!provided) return false;
   return tokenMatches(expected, provided);
@@ -6006,12 +7628,14 @@ export function resolveWalletExportRejection(
     };
   }
 
-  const expected = process.env.ELIZA_WALLET_EXPORT_TOKEN?.trim();
+  const expected =
+    process.env.ELIZA_WALLET_EXPORT_TOKEN?.trim() ||
+    process.env.MILADY_WALLET_EXPORT_TOKEN?.trim();
   if (!expected) {
     return {
       status: 403,
       reason:
-        "Wallet export is disabled. Set ELIZA_WALLET_EXPORT_TOKEN to enable secure exports.",
+        "Wallet export is disabled. Set ELIZA_WALLET_EXPORT_TOKEN (or MILADY_WALLET_EXPORT_TOKEN) to enable secure exports.",
     };
   }
 
@@ -6105,19 +7729,33 @@ function extractWsQueryToken(url: URL): string | null {
   return token?.trim() || null;
 }
 
+function hasWsQueryToken(url: URL): boolean {
+  return (
+    url.searchParams.has("token") ||
+    url.searchParams.has("apiKey") ||
+    url.searchParams.has("api_key")
+  );
+}
+
+function extractWebSocketHandshakeToken(
+  request: http.IncomingMessage,
+  url: URL,
+): string | null {
+  const headerToken = extractAuthToken(request);
+  if (headerToken) return headerToken;
+  return extractWsQueryToken(url);
+}
+
 function isWebSocketAuthorized(
   request: http.IncomingMessage,
   url: URL,
 ): boolean {
   const expected = getConfiguredApiToken();
-  if (!expected) return true;
+  if (!expected) return !isCloudProvisionedContainer();
 
-  const headerToken = extractAuthToken(request);
-  if (headerToken) return tokenMatches(expected, headerToken);
-
-  const queryToken = extractWsQueryToken(url);
-  if (!queryToken) return false;
-  return tokenMatches(expected, queryToken);
+  const handshakeToken = extractWebSocketHandshakeToken(request, url);
+  if (!handshakeToken) return false;
+  return tokenMatches(expected, handshakeToken);
 }
 
 export interface WebSocketUpgradeRejection {
@@ -6140,7 +7778,28 @@ export function resolveWebSocketUpgradeRejection(
     return { status: 403, reason: "Origin not allowed" };
   }
 
-  if (!isWebSocketAuthorized(req, wsUrl)) {
+  const expected = getConfiguredApiToken();
+  if (!expected) {
+    return isCloudProvisionedContainer()
+      ? { status: 401, reason: "Unauthorized" }
+      : null;
+  }
+
+  if (
+    process.env.ELIZA_ALLOW_WS_QUERY_TOKEN !== "1" &&
+    hasWsQueryToken(wsUrl)
+  ) {
+    return { status: 401, reason: "Unauthorized" };
+  }
+
+  const handshakeToken = extractWebSocketHandshakeToken(req, wsUrl);
+  if (handshakeToken && !tokenMatches(expected, handshakeToken)) {
+    return { status: 401, reason: "Unauthorized" };
+  }
+
+  // Cloud containers must authenticate at the handshake level because there is
+  // no trusted upstream proxy handling auth for the WebSocket path.
+  if (!handshakeToken && isCloudProvisionedContainer()) {
     return { status: 401, reason: "Unauthorized" };
   }
 
@@ -7648,6 +9307,7 @@ async function handleRequest(
     method === "GET" &&
     pathname === "/api/onboarding/status" &&
     isCloudProvisionedContainer();
+  const isAuthProtectedPath = isAuthProtectedRoute(pathname);
   const registryService = state.registryService;
   const dropService = state.dropService;
 
@@ -7783,15 +9443,28 @@ async function handleRequest(
     return;
   }
 
-  // Serve dashboard static assets before the auth gate.  serveStaticUi
-  // already refuses /api/, /v1/, and /ws paths, so API endpoints remain
-  // fully protected by the token check below.
+  // Serve dashboard static assets before the auth gates. serveStaticUi already
+  // refuses /api/, /v1/, and /ws paths, so API endpoints remain protected
+  // while steward-managed containers can still reach the built-in dashboard.
   if (method === "GET" || method === "HEAD") {
     if (serveStaticUi(req, res, pathname)) return;
   }
 
   if (
+    isCloudProvisionedContainer() &&
     method !== "OPTIONS" &&
+    isAuthProtectedPath &&
+    !isAuthEndpoint &&
+    !isCloudOnboardingStatusEndpoint &&
+    !isAuthorized(req)
+  ) {
+    json(res, { error: "Unauthorized" }, 401);
+    return;
+  }
+
+  if (
+    method !== "OPTIONS" &&
+    isAuthProtectedPath &&
     !isAuthEndpoint &&
     !isCloudOnboardingStatusEndpoint &&
     !isAuthorized(req)
@@ -8502,7 +10175,9 @@ async function handleRequest(
 
     json(res, {
       names: pickRandomNames(5),
-      styles: getStylePresets(resolveConfiguredCharacterLanguage(state.config, req)),
+      styles: getStylePresets(
+        resolveConfiguredCharacterLanguage(state.config, req),
+      ),
       providers: getProviderOptions(),
       cloudProviders: getCloudProviderOptions(),
       models: getModelOptions(),
@@ -8610,7 +10285,10 @@ async function handleRequest(
       ...(config.ui.assistant ?? {}),
       name: agent.name,
     };
-    if (typeof body.avatarIndex === "number" && Number.isFinite(body.avatarIndex)) {
+    if (
+      typeof body.avatarIndex === "number" &&
+      Number.isFinite(body.avatarIndex)
+    ) {
       config.ui.avatarIndex = Number(body.avatarIndex);
     }
     config.ui.language = configuredLanguage;
@@ -8911,9 +10589,10 @@ async function handleRequest(
         ) as NonNullable<typeof runtimeCharacter.style>;
       }
       if (normalizedMessageExamples) {
-        runtimeCharacter.messageExamples = normalizedMessageExamples as NonNullable<
-          typeof runtimeCharacter.messageExamples
-        >;
+        runtimeCharacter.messageExamples =
+          normalizedMessageExamples as NonNullable<
+            typeof runtimeCharacter.messageExamples
+          >;
       }
       if (Array.isArray(agent.postExamples)) {
         runtimeCharacter.postExamples = [...agent.postExamples];
@@ -8923,9 +10602,8 @@ async function handleRequest(
         await state.runtime.updateAgent(state.runtime.agentId, {
           name: runtimeCharacter.name,
           metadata: {
-            ...(
-              runtimeCharacter as { metadata?: Record<string, unknown> }
-            ).metadata,
+            ...(runtimeCharacter as { metadata?: Record<string, unknown> })
+              .metadata,
             character: {
               name: runtimeCharacter.name,
               bio: runtimeCharacter.bio,
@@ -9199,6 +10877,27 @@ async function handleRequest(
     const bundledIds = new Set(state.plugins.map((p) => p.id));
     const installedEntries = discoverInstalledPlugins(freshConfig, bundledIds);
     const allPlugins: PluginEntry[] = [...state.plugins, ...installedEntries];
+    const evmDiagnostic = buildPluginEvmDiagnosticEntry({
+      config: state.config,
+      runtime: state.runtime,
+    });
+    const existingEvmPlugin = allPlugins.find(
+      (plugin) => plugin.id === "evm" || plugin.npmName === EVM_PLUGIN_PACKAGE,
+    );
+    if (existingEvmPlugin) {
+      existingEvmPlugin.autoEnabled = evmDiagnostic.autoEnabled;
+      existingEvmPlugin.managementMode = "core-optional";
+      existingEvmPlugin.capabilityStatus = evmDiagnostic.capabilityStatus;
+      existingEvmPlugin.capabilityReason = evmDiagnostic.capabilityReason;
+      existingEvmPlugin.prerequisites = evmDiagnostic.prerequisites;
+      existingEvmPlugin.setupGuideUrl =
+        existingEvmPlugin.setupGuideUrl ?? evmDiagnostic.setupGuideUrl;
+      existingEvmPlugin.tags = Array.from(
+        new Set([...(existingEvmPlugin.tags ?? []), ...evmDiagnostic.tags]),
+      );
+    } else {
+      allPlugins.push(evmDiagnostic);
+    }
 
     // Resolve enabled state from config and loaded state from runtime.
     // "enabled" = user wants it active (config). "isActive" = actually loaded.
@@ -9245,6 +10944,15 @@ async function handleRequest(
           plugin.loadError =
             "Plugin installed but failed to load — the package may be missing compiled files.";
         }
+      }
+      if (plugin.id === "evm" || plugin.npmName === EVM_PLUGIN_PACKAGE) {
+        plugin.enabled = evmDiagnostic.enabled;
+        plugin.isActive = evmDiagnostic.isActive;
+        plugin.autoEnabled = evmDiagnostic.autoEnabled;
+        plugin.managementMode = "core-optional";
+        plugin.capabilityStatus = evmDiagnostic.capabilityStatus;
+        plugin.capabilityReason = evmDiagnostic.capabilityReason;
+        plugin.prerequisites = evmDiagnostic.prerequisites;
       }
     }
 
@@ -10082,7 +11790,9 @@ async function handleRequest(
       const { getCatalogSkills } = await import(
         "../services/skill-catalog-client.js"
       );
-      const all = await getCatalogSkills();
+      const all = (await getCatalogSkills()).filter((skill) =>
+        shouldExposeBinanceSkillRecord(skill),
+      );
       const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
       const perPage = Math.min(
         100,
@@ -10117,6 +11827,7 @@ async function handleRequest(
             | undefined;
           if (svc && typeof svc.getLoadedSkills === "function") {
             for (const s of svc.getLoadedSkills()) {
+              if (!shouldExposeBinanceSkillId(s.slug)) continue;
               installedSlugs.add(s.slug);
             }
           }
@@ -10169,7 +11880,9 @@ async function handleRequest(
         100,
         Math.max(1, Number(url.searchParams.get("limit")) || 30),
       );
-      const results = await searchCatalogSkills(q, limit);
+      const results = (await searchCatalogSkills(q, limit)).filter((skill) =>
+        shouldExposeBinanceSkillRecord(skill),
+      );
       json(res, { query: q, count: results.length, results });
     } catch (err) {
       error(
@@ -10188,6 +11901,10 @@ async function handleRequest(
     );
     // Exclude "search" which is handled above
     if (slug && slug !== "search") {
+      if (!shouldExposeBinanceSkillId(slug)) {
+        error(res, `Skill "${slug}" not found in catalog`, 404);
+        return;
+      }
       try {
         const { getCatalogSkill } = await import(
           "../services/skill-catalog-client.js"
@@ -10915,7 +12632,9 @@ async function handleRequest(
       const limit = limitStr
         ? parseClampedInteger(limitStr, { min: 1, max: 50, fallback: 20 })
         : 20;
-      const results = await searchSkillsMarketplace(query, { limit });
+      const results = (await searchSkillsMarketplace(query, { limit })).filter(
+        (skill) => shouldExposeBinanceSkillRecord(skill),
+      );
       json(res, { ok: true, results });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -11244,6 +12963,15 @@ async function handleRequest(
       ensureWalletKeysInEnvAndConfig,
       resolveWalletExportRejection,
       scheduleRuntimeRestart,
+      deps: {
+        getWalletAddresses,
+        fetchEvmBalances,
+        fetchSolanaBalances,
+        fetchSolanaNativeBalanceViaRpc,
+        validatePrivateKey,
+        importWallet,
+        generateWalletForChain,
+      },
       readJsonBody,
       json,
       error,
@@ -11679,7 +13407,11 @@ async function handleRequest(
     }
     // Also remove from legacy channels key
     const stateConfigRecord = state.config as Record<string, unknown>;
-    if (stateConfigRecord.channels && typeof stateConfigRecord.channels === "object" && Object.hasOwn(stateConfigRecord.channels, name)) {
+    if (
+      stateConfigRecord.channels &&
+      typeof stateConfigRecord.channels === "object" &&
+      Object.hasOwn(stateConfigRecord.channels, name)
+    ) {
       delete (stateConfigRecord.channels as Record<string, unknown>)[name];
     }
 
@@ -12217,9 +13949,11 @@ async function handleRequest(
       // merge, even though BLOCKED_ENV_KEYS also blocks them during process.env
       // sync below. Keeping both guards prevents accidental persistence if one
       // path changes in future refactors.
+      delete envPatch.MILADY_API_TOKEN;
       delete envPatch.ELIZA_API_TOKEN;
-      delete envPatch.ELIZA_API_TOKEN;
+      delete envPatch.MILADY_WALLET_EXPORT_TOKEN;
       delete envPatch.ELIZA_WALLET_EXPORT_TOKEN;
+      delete envPatch.MILADY_TERMINAL_RUN_TOKEN;
       delete envPatch.ELIZA_TERMINAL_RUN_TOKEN;
       delete envPatch.HYPERSCAPE_AUTH_TOKEN;
       delete envPatch.EVM_PRIVATE_KEY;
@@ -12231,9 +13965,11 @@ async function handleRequest(
         !Array.isArray(envPatch.vars)
       ) {
         const vars = envPatch.vars as Record<string, unknown>;
+        delete vars.MILADY_API_TOKEN;
         delete vars.ELIZA_API_TOKEN;
-        delete vars.ELIZA_API_TOKEN;
+        delete vars.MILADY_WALLET_EXPORT_TOKEN;
         delete vars.ELIZA_WALLET_EXPORT_TOKEN;
+        delete vars.MILADY_TERMINAL_RUN_TOKEN;
         delete vars.ELIZA_TERMINAL_RUN_TOKEN;
         delete vars.HYPERSCAPE_AUTH_TOKEN;
         delete vars.EVM_PRIVATE_KEY;
@@ -12467,14 +14203,9 @@ async function handleRequest(
       ok: true,
       tradePermissionMode: newMode,
       canUserLocalExecute: canUseLocalTradeExecution(newMode, false),
-      canAgentAutoTrade: canUseLocalTradeExecution(
-        newMode,
-        true,
-        undefined,
-        {
-          consumeAgentQuota: false,
-        },
-      ),
+      canAgentAutoTrade: canUseLocalTradeExecution(newMode, true, undefined, {
+        consumeAgentQuota: false,
+      }),
     });
     return;
   }
@@ -12505,9 +14236,9 @@ async function handleRequest(
   // used by action handlers (can-i, etc.) to evaluate permissions.
   if (method === "GET" && pathname === "/api/agent/self-status") {
     const addrs = getWalletAddresses();
-    const evmAddress = addrs.evmAddress ?? null;
+    const capability = resolveWalletCapabilityStatus(state);
+    const evmAddress = capability.evmAddress;
     const tradePermissionMode = resolveTradePermissionMode(state.config);
-    const localSigner = Boolean(process.env.EVM_PRIVATE_KEY?.trim());
     const walletRpcReadiness = resolveWalletRpcReadiness(state.config);
     const bscRpcReady = walletRpcReadiness.managedBscRpcReady;
     const canLocalTrade = canUseLocalTradeExecution(tradePermissionMode, false);
@@ -12520,11 +14251,7 @@ async function handleRequest(
       },
     );
     const canTrade = Boolean(evmAddress) && bscRpcReady;
-    const automationMode: "connectors-only" | "full" =
-      (state.config.features as Record<string, unknown> | undefined)
-        ?.automationMode === "full"
-        ? "full"
-        : "connectors-only";
+    const automationMode = capability.automationMode;
 
     // Include registry snapshot summary if available
     let registrySummary: string | null = null;
@@ -12601,8 +14328,9 @@ async function handleRequest(
       tradePermissionMode,
       shellEnabled: state.shellEnabled !== false,
       wallet: {
-        hasWallet: Boolean(evmAddress || addrs.solanaAddress),
-        hasEvm: Boolean(evmAddress),
+        walletSource: capability.walletSource,
+        hasWallet: capability.hasWallet,
+        hasEvm: capability.hasEvm,
         hasSolana: Boolean(addrs.solanaAddress),
         evmAddress,
         evmAddressShort:
@@ -12614,8 +14342,13 @@ async function handleRequest(
           addrs.solanaAddress && addrs.solanaAddress.length >= 12
             ? `${addrs.solanaAddress.slice(0, 4)}...${addrs.solanaAddress.slice(-4)}`
             : (addrs.solanaAddress ?? null),
-        localSignerAvailable: localSigner,
+        localSignerAvailable: capability.localSignerAvailable,
         managedBscRpcReady: bscRpcReady,
+        rpcReady: capability.rpcReady,
+        pluginEvmLoaded: capability.pluginEvmLoaded,
+        pluginEvmRequired: capability.pluginEvmRequired,
+        executionReady: capability.executionReady,
+        executionBlockedReason: capability.executionBlockedReason,
       },
       plugins: {
         totalActive: pluginNames.length,
@@ -12625,8 +14358,10 @@ async function handleRequest(
       },
       capabilities: {
         canTrade,
-        canLocalTrade: canTrade && localSigner && canLocalTrade,
-        canAutoTrade: canTrade && localSigner && canAgentAutoTrade,
+        canLocalTrade:
+          canTrade && capability.localSignerAvailable && canLocalTrade,
+        canAutoTrade:
+          canTrade && capability.localSignerAvailable && canAgentAutoTrade,
         canUseBrowser: hasBrowserPlugin,
         canUseComputer: hasComputerPlugin,
         canRunTerminal: state.shellEnabled !== false,
@@ -12739,6 +14474,7 @@ async function handleRequest(
       tokenAddress?: string;
       amount?: string;
       slippageBps?: number;
+      routeProvider?: "auto" | "pancakeswap-v2" | "0x";
     }>(req, res);
     if (!body) return;
 
@@ -12759,6 +14495,7 @@ async function handleRequest(
           tokenAddress: body.tokenAddress,
           amount: body.amount,
           slippageBps: body.slippageBps,
+          routeProvider: body.routeProvider,
         },
       });
       json(res, result);
@@ -12776,249 +14513,37 @@ async function handleRequest(
   }
 
   // ── POST /api/wallet/trade/execute ─────────────────────────────────────
-  // Execute or prepare a BSC trade. In "user-sign-only" mode, returns an
-  // unsigned transaction for the user to sign. In local-key modes, executes
-  // using the server-side EVM private key.
-  if (method === "POST" && pathname === "/api/wallet/trade/execute") {
-    const body = await readJsonBody<{
-      side?: string;
-      tokenAddress?: string;
-      amount?: string;
-      slippageBps?: number;
-      deadlineSeconds?: number;
-      confirm?: boolean;
-      source?: "agent" | "manual";
-    }>(req, res);
-    if (!body) return;
-
-    if (!body.side || !body.tokenAddress || !body.amount) {
-      error(res, "side, tokenAddress, and amount are required", 400);
-      return;
-    }
-
-    const tradePermissionMode = resolveTradePermissionMode(state.config);
-    const isAgentRequest = isAgentAutomationRequest(req);
-    const hasLocalKey = Boolean(process.env.EVM_PRIVATE_KEY?.trim());
-    const canExecuteLocally = canUseLocalTradeExecution(
-      tradePermissionMode,
-      isAgentRequest,
-    );
-    const addrs = getWalletAddresses();
-    const walletRpcReadiness = resolveWalletRpcReadiness(state.config);
-
-    try {
-      const quote = await buildBscTradeQuote({
-        walletAddress: addrs.evmAddress ?? null,
-        rpcUrls: walletRpcReadiness.bscRpcUrls,
-        cloudManagedAccess: walletRpcReadiness.cloudManagedAccess,
-        request: {
-          side: body.side as "buy" | "sell",
-          tokenAddress: body.tokenAddress,
-          amount: body.amount,
-          slippageBps: body.slippageBps,
-        },
-      });
-
-      const walletAddress = addrs.evmAddress ?? null;
-
-      // Build the unsigned trade transaction
-      const unsignedTx =
-        quote.side === "buy"
-          ? buildBscBuyUnsignedTx(quote, walletAddress, body.deadlineSeconds)
-          : buildBscSellUnsignedTx(quote, walletAddress, body.deadlineSeconds);
-
-      // Build approval tx for sell (if needed)
-      let unsignedApprovalTx:
-        | import("../contracts/wallet.js").BscUnsignedApprovalTx
-        | undefined;
-      let requiresApproval = false;
-      if (quote.side === "sell" && walletAddress) {
-        unsignedApprovalTx = buildBscApproveUnsignedTx(
-          quote.tokenAddress,
-          walletAddress,
-          quote.routerAddress,
-          quote.quoteIn.amountWei,
-        );
-        requiresApproval = true;
-      }
-
-      // If local execution is not permitted or no private key, return unsigned tx
-      if (!hasLocalKey || !canExecuteLocally || body.confirm !== true) {
-        json(res, {
-          ok: true,
-          side: quote.side,
-          mode: hasLocalKey && canExecuteLocally ? "local-key" : "user-sign",
-          quote,
-          executed: false,
-          requiresUserSignature: true,
-          unsignedTx,
-          unsignedApprovalTx,
-          requiresApproval,
-        });
-        return;
-      }
-
-      // Execute locally with EVM private key
-      const rpcUrl = resolvePrimaryBscRpcUrl({
-        rpcUrls: walletRpcReadiness.bscRpcUrls,
-        cloudManagedAccess: walletRpcReadiness.cloudManagedAccess,
-      });
-
-      if (!rpcUrl) {
-        error(res, "BSC RPC not configured for local execution.", 503);
-        return;
-      }
-
-      const evmKey = process.env.EVM_PRIVATE_KEY ?? "";
-      const provider = new ethers.JsonRpcProvider(rpcUrl);
-      const wallet = new ethers.Wallet(
-        evmKey.startsWith("0x") ? evmKey : `0x${evmKey}`,
-        provider,
-      );
-
-      // Check quote freshness before executing
-      assertQuoteFresh(quote.quotedAt);
-
-      const nonce = await provider.getTransactionCount(
-        wallet.address,
-        "pending",
-      );
-
-      // Execute approval first if needed
-      let approvalHash: string | undefined;
-      if (requiresApproval && unsignedApprovalTx) {
-        const approvalTxReq: ethers.TransactionRequest = {
-          to: unsignedApprovalTx.to,
-          data: unsignedApprovalTx.data,
-          value: BigInt(unsignedApprovalTx.valueWei),
-          chainId: unsignedApprovalTx.chainId,
-          nonce,
-        };
-        const approvalResponse = await wallet.sendTransaction(approvalTxReq);
-        approvalHash = approvalResponse.hash;
-        // Wait for approval to be mined before submitting trade
-        const approvalReceipt = await approvalResponse.wait(1);
-        if (!approvalReceipt || approvalReceipt.status === 0) {
-          throw new Error("Token approval transaction reverted on-chain");
-        }
-      }
-
-      // Fetch fresh nonce for the trade tx (avoids stale nonce after approval)
-      const tradeNonce = requiresApproval
-        ? await provider.getTransactionCount(wallet.address, "pending")
-        : nonce;
-
-      const tradeTxReq: ethers.TransactionRequest = {
-        to: unsignedTx.to,
-        data: unsignedTx.data,
-        value: BigInt(unsignedTx.valueWei),
-        chainId: unsignedTx.chainId,
-        nonce: tradeNonce,
-      };
-
-      const tradeTxResponse = await wallet.sendTransaction(tradeTxReq);
-
-      const executionResult = {
-        hash: tradeTxResponse.hash,
-        nonce: tradeNonce,
-        gasLimit: tradeTxResponse.gasLimit?.toString() ?? "0",
-        valueWei: unsignedTx.valueWei,
-        explorerUrl: `https://bscscan.com/tx/${tradeTxResponse.hash}`,
-        blockNumber: null as number | null,
-        status: "submitted" as "submitted" | "success",
-        approvalHash,
-      };
-
-      // Record in ledger
-      const source = body.source ?? "manual";
-      try {
-        recordWalletTradeLedgerEntry({
-          hash: tradeTxResponse.hash,
-          source,
-          side: quote.side,
-          tokenAddress: quote.tokenAddress,
-          slippageBps: quote.slippageBps,
-          route: quote.route,
-          quoteIn: {
-            symbol: quote.quoteIn.symbol,
-            amount: quote.quoteIn.amount,
-            amountWei: quote.quoteIn.amountWei,
-          },
-          quoteOut: {
-            symbol: quote.quoteOut.symbol,
-            amount: quote.quoteOut.amount,
-            amountWei: quote.quoteOut.amountWei,
-          },
-          status: "pending",
-          confirmations: 0,
-          nonce: tradeNonce,
-          blockNumber: null,
-          gasUsed: null,
-          effectiveGasPriceWei: null,
-          explorerUrl: executionResult.explorerUrl,
-        });
-      } catch (ledgerErr) {
-        logger.warn(
-          `[api] Failed to record trade ledger entry (attempt 1): ${ledgerErr instanceof Error ? ledgerErr.message : ledgerErr}`,
-        );
-        // Retry once — ledger writes are important for audit trail.
-        try {
-          recordWalletTradeLedgerEntry({
-            hash: tradeTxResponse.hash,
-            source,
-            side: quote.side,
-            tokenAddress: quote.tokenAddress,
-            slippageBps: quote.slippageBps,
-            route: quote.route,
-            quoteIn: {
-              symbol: quote.quoteIn.symbol,
-              amount: quote.quoteIn.amount,
-              amountWei: quote.quoteIn.amountWei,
-            },
-            quoteOut: {
-              symbol: quote.quoteOut.symbol,
-              amount: quote.quoteOut.amount,
-              amountWei: quote.quoteOut.amountWei,
-            },
-            status: "pending",
-            confirmations: 0,
-            nonce: tradeNonce,
-            blockNumber: null,
-            gasUsed: null,
-            effectiveGasPriceWei: null,
-            explorerUrl: executionResult.explorerUrl,
-          });
-        } catch (retryErr) {
-          logger.error(
-            `[api] Ledger entry retry also failed: ${retryErr instanceof Error ? retryErr.message : retryErr}`,
-          );
-        }
-      }
-
-      provider.destroy();
-
-      json(res, {
-        ok: true,
-        side: quote.side,
-        mode: "local-key",
-        quote,
-        executed: true,
-        requiresUserSignature: false,
-        unsignedTx,
-        unsignedApprovalTx,
-        requiresApproval,
-        execution: executionResult,
-      });
-    } catch (err) {
-      logger.error(
-        `[api] BSC trade execute failed: ${err instanceof Error ? err.message : err}`,
-      );
-      error(
-        res,
-        `Trade execution failed: ${err instanceof Error ? err.message : "unknown error"}`,
-        500,
-      );
-    }
+  if (
+    await handleWalletTradeExecuteRoute({
+      req,
+      res,
+      method,
+      pathname,
+      readJsonBody,
+      json,
+      error,
+      state: { config: state.config },
+      deps: {
+        getWalletAddresses,
+        resolveWalletRpcReadiness,
+        resolveTradePermissionMode,
+        isAgentAutomationRequest,
+        canUseLocalTradeExecution,
+        buildBscTradeQuote,
+        buildBscBuyUnsignedTx,
+        buildBscSellUnsignedTx,
+        buildBscApproveUnsignedTx,
+        resolveBscApprovalSpender,
+        resolvePrimaryBscRpcUrl,
+        assertQuoteFresh,
+        recordWalletTradeLedgerEntry,
+        createProvider: (rpcUrl) => new ethers.JsonRpcProvider(rpcUrl),
+        createWallet: (privateKey, provider) =>
+          new ethers.Wallet(privateKey, provider as ethers.Provider),
+        logger,
+      },
+    })
+  ) {
     return;
   }
 
@@ -13693,7 +15218,7 @@ async function handleRequest(
     const greeting = resolveConversationGreetingText(
       runtime,
       lang,
-      state.config.ui?.presetId ?? null,
+      state.config.ui,
     ).trim();
     if (!greeting) {
       return {
@@ -14633,7 +16158,8 @@ async function handleRequest(
       error,
     });
     if (!chatPayload) return;
-    const { prompt, channelType, images, conversationMode } = chatPayload;
+    const { prompt, channelType, images, conversationMode, preferredLanguage } =
+      chatPayload;
 
     const runtime = state.runtime;
     if (!runtime) {
@@ -14669,6 +16195,42 @@ async function handleRequest(
       await persistConversationMemory(runtime, messageToStore);
     } catch (err) {
       error(res, `Failed to store user message: ${getErrorMessage(err)}`, 500);
+      return;
+    }
+
+    const walletModeGuidance = resolveWalletModeGuidanceReply(state, prompt);
+    if (walletModeGuidance) {
+      initSse(res);
+      let aborted = false;
+      req.on("close", () => {
+        aborted = true;
+      });
+      if (!aborted) {
+        writeChatTokenSse(res, walletModeGuidance, walletModeGuidance);
+        try {
+          await persistAssistantConversationMemory(
+            runtime,
+            conv.roomId,
+            walletModeGuidance,
+            channelType,
+            turnStartedAt,
+          );
+          conv.updatedAt = new Date().toISOString();
+        } catch (persistErr) {
+          writeSse(res, {
+            type: "error",
+            message: getErrorMessage(persistErr),
+          });
+          res.end();
+          return;
+        }
+        writeSseJson(res, {
+          type: "done",
+          fullText: walletModeGuidance,
+          agentName: state.agentName,
+        });
+      }
+      res.end();
       return;
     }
 
@@ -14711,6 +16273,7 @@ async function handleRequest(
           },
           resolveNoResponseText: () =>
             resolveNoResponseFallback(state.logBuffer, runtime),
+          preferredLanguage,
         },
       );
 
@@ -14779,7 +16342,8 @@ async function handleRequest(
       error,
     });
     if (!chatPayload) return;
-    const { prompt, channelType, images, conversationMode } = chatPayload;
+    const { prompt, channelType, images, conversationMode, preferredLanguage } =
+      chatPayload;
     const runtime = state.runtime;
     if (!runtime) {
       error(res, "Agent is not running", 503);
@@ -14816,6 +16380,27 @@ async function handleRequest(
       return;
     }
 
+    const walletModeGuidance = resolveWalletModeGuidanceReply(state, prompt);
+    if (walletModeGuidance) {
+      try {
+        await persistAssistantConversationMemory(
+          runtime,
+          conv.roomId,
+          walletModeGuidance,
+          channelType,
+          turnStartedAt,
+        );
+        conv.updatedAt = new Date().toISOString();
+        json(res, {
+          text: walletModeGuidance,
+          agentName: state.agentName,
+        });
+      } catch (persistErr) {
+        error(res, getErrorMessage(persistErr), 500);
+      }
+      return;
+    }
+
     try {
       const result = await generateChatResponse(
         runtime,
@@ -14824,6 +16409,7 @@ async function handleRequest(
         {
           resolveNoResponseText: () =>
             resolveNoResponseFallback(state.logBuffer, runtime),
+          preferredLanguage,
         },
       );
 
@@ -15028,7 +16614,8 @@ async function handleRequest(
       MAX_BODY_BYTES,
     );
     if (!chatPayload) return;
-    const { prompt, channelType, conversationMode } = chatPayload;
+    const { prompt, channelType, conversationMode, preferredLanguage } =
+      chatPayload;
 
     // Cloud proxy path
 
@@ -15055,6 +16642,19 @@ async function handleRequest(
     let streamedText = "";
 
     try {
+      const walletModeGuidance = resolveWalletModeGuidanceReply(state, prompt);
+      if (walletModeGuidance) {
+        if (!aborted) {
+          writeChatTokenSse(res, walletModeGuidance, walletModeGuidance);
+          writeSseJson(res, {
+            type: "done",
+            fullText: walletModeGuidance,
+            agentName: state.agentName,
+          });
+        }
+        return;
+      }
+
       const runtime = state.runtime;
       const agentName = runtime.character.name ?? "Eliza";
       await ensureLegacyChatConnection(runtime, agentName);
@@ -15095,6 +16695,7 @@ async function handleRequest(
           },
           resolveNoResponseText: () =>
             resolveNoResponseFallback(state.logBuffer, runtime),
+          preferredLanguage,
         },
       );
 
@@ -15142,7 +16743,8 @@ async function handleRequest(
       MAX_BODY_BYTES,
     );
     if (!chatPayload) return;
-    const { prompt, channelType, conversationMode } = chatPayload;
+    const { prompt, channelType, conversationMode, preferredLanguage } =
+      chatPayload;
 
     if (!state.runtime) {
       error(res, "Agent is not running", 503);
@@ -15159,6 +16761,15 @@ async function handleRequest(
     }
 
     try {
+      const walletModeGuidance = resolveWalletModeGuidanceReply(state, prompt);
+      if (walletModeGuidance) {
+        json(res, {
+          text: walletModeGuidance,
+          agentName: state.agentName,
+        });
+        return;
+      }
+
       const runtime = state.runtime;
       const agentName = runtime.character.name ?? "Eliza";
       await ensureLegacyChatConnection(runtime, agentName);
@@ -15188,6 +16799,7 @@ async function handleRequest(
         {
           resolveNoResponseText: () =>
             resolveNoResponseFallback(state.logBuffer, runtime),
+          preferredLanguage,
         },
       );
 
@@ -17031,13 +18643,8 @@ export async function startApiServer(opts?: {
   const apiStartTime = Date.now();
   console.log(`[eliza-api] startApiServer called`);
 
-  const port = opts?.port ?? 2138;
-  const host =
-    (
-      process.env.ELIZA_API_BIND ??
-      process.env.ELIZA_API_BIND ??
-      "127.0.0.1"
-    ).trim() || "127.0.0.1";
+  const port = opts?.port ?? resolveServerOnlyPort(process.env);
+  const host = resolveApiBindHost(process.env);
   ensureApiTokenForBindHost(host);
   console.log(`[eliza-api] Token check done (${Date.now() - apiStartTime}ms)`);
 
@@ -17072,9 +18679,16 @@ export async function startApiServer(opts?: {
     }
   }
 
-  // Self-heal older configs where wallet keys were never provisioned
-  // (e.g. RPC/cloud configured outside onboarding).
-  if (ensureWalletKeysInEnvAndConfig(config)) {
+  // Optional auto-provision mode for legacy environments. Disabled by default
+  // so startup does not silently create new wallets when keys are missing.
+  const walletAutoProvisionRaw =
+    process.env.MILADY_WALLET_AUTO_PROVISION?.trim().toLowerCase();
+  const walletAutoProvisionEnabled =
+    walletAutoProvisionRaw === "1" ||
+    walletAutoProvisionRaw === "true" ||
+    walletAutoProvisionRaw === "on" ||
+    walletAutoProvisionRaw === "yes";
+  if (walletAutoProvisionEnabled && ensureWalletKeysInEnvAndConfig(config)) {
     try {
       saveElizaConfig(config);
     } catch (err) {
@@ -17781,6 +19395,48 @@ export async function startApiServer(opts?: {
           destinations,
           activeDestinationId,
           activeStreamSource: { type: "stream-tab" as const },
+          mirrorStreamAvatarToElizaConfig: (avatarIndex: number) => {
+            try {
+              if (!Number.isFinite(avatarIndex)) {
+                return;
+              }
+              const diskCfg = loadElizaConfig();
+              const lang = state.config.ui?.language ?? diskCfg.ui?.language;
+              const preset = resolveStylePresetByAvatarIndex(avatarIndex, lang);
+              const nextUi: ElizaConfig["ui"] = {
+                ...(state.config.ui ?? {}),
+                avatarIndex,
+                ...(preset?.id ? { presetId: preset.id } : {}),
+              };
+              state.config = {
+                ...state.config,
+                ui: nextUi,
+              };
+              // Merge disk + live server config so we never persist a minimal
+              // snapshot (e.g. ENOENT default) and clobber milady.json during
+              // onboarding while state.config still holds the full boot payload.
+              const toSave: ElizaConfig = {
+                ...diskCfg,
+                ...state.config,
+                ui: {
+                  ...(diskCfg.ui ?? {}),
+                  ...(state.config.ui ?? {}),
+                  ...nextUi,
+                },
+              };
+              saveElizaConfig(toSave);
+              state.config = {
+                ...state.config,
+                ui: toSave.ui,
+              };
+            } catch (err) {
+              logger.warn(
+                `[eliza-api] mirrorStreamAvatarToElizaConfig failed: ${
+                  err instanceof Error ? err.message : String(err)
+                }`,
+              );
+            }
+          },
           get config() {
             const cfg = state.config as Record<string, unknown> | undefined;
             const msgs = cfg?.messages as Record<string, unknown> | undefined;
@@ -17869,8 +19525,9 @@ export async function startApiServer(opts?: {
 
   // Handle WebSocket connections
   wss.on("connection", (ws: WebSocket, request: http.IncomingMessage) => {
+    let wsUrl: URL;
     try {
-      const wsUrl = new URL(
+      wsUrl = new URL(
         request.url ?? "/",
         `http://${request.headers.host ?? "localhost"}`,
       );
@@ -17878,41 +19535,66 @@ export async function startApiServer(opts?: {
       if (clientId) wsClientIds.set(ws, clientId);
     } catch {
       // Ignore malformed WS URL metadata; auth/path were already validated.
+      wsUrl = new URL("ws://localhost/ws");
     }
 
-    wsClients.add(ws);
-    addLog("info", "WebSocket client connected", "websocket", [
-      "server",
-      "websocket",
-    ]);
+    let isAuthenticated = isWebSocketAuthorized(request, wsUrl);
 
-    // Send initial status and latest stream events.
-    try {
-      ws.send(
-        JSON.stringify({
-          type: "status",
-          state: state.agentState,
-          agentName: state.agentName,
-          model: state.model,
-          startedAt: state.startedAt,
-          startup: state.startup,
-          pendingRestart: state.pendingRestartReasons.length > 0,
-          pendingRestartReasons: state.pendingRestartReasons,
-        }),
-      );
-      const replay = state.eventBuffer.slice(-120);
-      for (const event of replay) {
-        ws.send(JSON.stringify(event));
+    const activateAuthenticatedConnection = () => {
+      wsClients.add(ws);
+      addLog("info", "WebSocket client connected", "websocket", [
+        "server",
+        "websocket",
+      ]);
+
+      try {
+        ws.send(
+          JSON.stringify({
+            type: "status",
+            state: state.agentState,
+            agentName: state.agentName,
+            model: state.model,
+            startedAt: state.startedAt,
+            startup: state.startup,
+            pendingRestart: state.pendingRestartReasons.length > 0,
+            pendingRestartReasons: state.pendingRestartReasons,
+          }),
+        );
+        const replay = state.eventBuffer.slice(-120);
+        for (const event of replay) {
+          ws.send(JSON.stringify(event));
+        }
+      } catch (err) {
+        logger.error(
+          `[eliza-api] WebSocket send error: ${err instanceof Error ? err.message : err}`,
+        );
       }
-    } catch (err) {
-      logger.error(
-        `[eliza-api] WebSocket send error: ${err instanceof Error ? err.message : err}`,
-      );
+    };
+
+    if (isAuthenticated) {
+      activateAuthenticatedConnection();
     }
 
     ws.on("message", (data) => {
       try {
         const msg = JSON.parse(data.toString());
+        if (!isAuthenticated) {
+          const expected = getConfiguredApiToken();
+          if (
+            expected &&
+            msg.type === "auth" &&
+            typeof msg.token === "string" &&
+            tokenMatches(expected, msg.token.trim())
+          ) {
+            isAuthenticated = true;
+            ws.send(JSON.stringify({ type: "auth-ok" }));
+            activateAuthenticatedConnection();
+          } else {
+            logger.warn("[eliza-api] WebSocket message rejected before auth");
+            ws.close(1008, "Unauthorized");
+          }
+          return;
+        }
         if (msg.type === "ping") {
           ws.send(JSON.stringify({ type: "pong" }));
         } else if (msg.type === "active-conversation") {
@@ -18263,7 +19945,8 @@ export async function startApiServer(opts?: {
     bindRuntimeStreams(rt);
     // AppManager doesn't need a runtime reference
     state.agentState = "running";
-    state.agentName = rt.character.name ?? resolveDefaultAgentName(state.config);
+    state.agentName =
+      rt.character.name ?? resolveDefaultAgentName(state.config);
     state.model = detectRuntimeModel(rt, state.config);
     state.startedAt = Date.now();
     state.startup = {

@@ -148,6 +148,34 @@ describe("Electrobun release workflow drift", () => {
     expect(workflow).toContain("needs: [prepare, validate-release]");
   });
 
+  it("runs the release regression contract before release-check", () => {
+    const workflow = fs.readFileSync(WORKFLOW_PATH, "utf8");
+    const regressionIndex = workflow.indexOf(
+      "run: bun run test:regression-matrix:release",
+    );
+    const heavyE2EIndex = workflow.indexOf("run: bun run test:e2e:heavy");
+    const liveCloudIndex = workflow.indexOf("run: bun run test:live:cloud");
+    const releaseCheckIndex = workflow.indexOf("run: bun run release:check");
+
+    expect(regressionIndex).toBeGreaterThan(-1);
+    expect(heavyE2EIndex).toBeGreaterThan(regressionIndex);
+    expect(liveCloudIndex).toBeGreaterThan(heavyE2EIndex);
+    expect(releaseCheckIndex).toBeGreaterThan(liveCloudIndex);
+  });
+
+  it("requires an explicit tag for manual non-tag runs", () => {
+    const workflow = fs.readFileSync(WORKFLOW_PATH, "utf8");
+
+    expect(workflow).toContain('if [[ -n "${{ inputs.tag }}" ]]; then');
+    expect(workflow).toContain('elif [[ "${{ github.ref_type }}" == "tag" ]]; then');
+    expect(workflow).toContain(
+      "Manual branch dispatches must provide inputs.tag; refusing to derive a release tag from package.json.",
+    );
+    expect(workflow).not.toContain(
+      `TAG="v$(node -p "require('./package.json').version")"`,
+    );
+  });
+
   it("retries bun install before failing the desktop build matrix", () => {
     const workflow = fs.readFileSync(WORKFLOW_PATH, "utf8");
 
@@ -226,20 +254,9 @@ describe("Electrobun release workflow drift", () => {
     expect(validateSection).not.toContain("matrix.platform.artifact-name");
   });
 
-  it("verifies the Windows electrobun tarball digest before extraction", () => {
+  it("builds a patched Windows electrobun CLI instead of relying on temp extraction heuristics", () => {
     const workflow = fs.readFileSync(WORKFLOW_PATH, "utf8");
 
-    expect(workflow).toContain(
-      "https://api.github.com/repos/blackboardsh/electrobun/releases/tags/v$version",
-    );
-    expect(workflow).toContain(
-      "$asset = @($release.assets) | Where-Object { $_.name -eq $assetName } | Select-Object -First 1",
-    );
-    expect(workflow).toContain(
-      "$actualHash = (Get-FileHash -Path $tarPath -Algorithm SHA256).Hash.ToLowerInvariant()",
-    );
-    expect(workflow).toContain("electrobun CLI checksum mismatch");
-    expect(workflow).toContain("Verified electrobun CLI SHA256:");
     expect(workflow).toContain("name: Resolve electrobun package dir");
     expect(workflow).toContain("id: resolve-electrobun");
     expect(workflow).toContain(
@@ -257,32 +274,28 @@ describe("Electrobun release workflow drift", () => {
       'echo "cache-dir=$package_dir/.cache" >> "$GITHUB_OUTPUT"',
     );
     expect(workflow).toContain(
-      "$resolvedElectrobunDir = '" +
-        "$" +
-        "{{ steps.resolve-electrobun.outputs.package-dir }}" +
-        "'",
+      "name: Build patched Electrobun CLI for Windows",
     );
     expect(workflow).toContain(
-      '$cacheDir     = Join-Path $resolvedElectrobunDir ".cache"',
+      'node scripts/build-patched-electrobun-cli.mjs "$' +
+        '{{ steps.resolve-electrobun.outputs.package-dir }}"',
     );
-    expect(workflow).toContain(
-      '$resolvedRceditDir = Join-Path $resolvedElectrobunDir "node_modules\\rcedit"',
-    );
-    expect(workflow).toContain(
-      '(Join-Path (Split-Path -Parent $resolvedElectrobunDir) "rcedit")',
-    );
-    expect(workflow).toContain(
-      'Get-ChildItem -Path (Join-Path $PWD "node_modules\\.bun") -Directory -Filter "rcedit@*"',
-    );
-    expect(workflow).toContain("Seeding rcedit from $seedRceditDir");
     expect(workflow).not.toContain(
       'Join-Path $PWD "apps/app/electrobun/node_modules/electrobun"',
     );
-    expect(workflow).not.toContain('bun install -g "rcedit@4.0.1"');
-    // The node here-string must receive $resolvedElectrobunDir, not the
-    // undefined $electrobunDir — see commit fixing this variable mismatch.
-    expect(workflow).toContain("'@ $resolvedElectrobunDir");
-    expect(workflow).not.toMatch(/'@ \$electrobunDir\b/);
+    expect(workflow).not.toContain(
+      "name: Ensure Windows rcedit binary is available for Electrobun",
+    );
+    expect(workflow).not.toContain(
+      "name: Pre-extract electrobun native CLI on Windows",
+    );
+    expect(workflow).not.toContain(
+      "https://api.github.com/repos/blackboardsh/electrobun/releases/tags/v$version",
+    );
+    expect(workflow).not.toContain("electrobun CLI checksum mismatch");
+    expect(workflow).not.toContain(
+      '$extractionBases = @("D:\\a\\electrobun\\electrobun\\package")',
+    );
   });
 
   it("treats auth-protected health probes as valid smoke-test success on every desktop platform", () => {
@@ -348,6 +361,7 @@ describe("Electrobun release workflow drift", () => {
 
     expect(workflow).toContain("name: Collect public release files");
     expect(workflow).toContain(' -name "*.dmg" -o \\');
+    expect(workflow).toContain(' -name "Milady-Setup-*.exe" -o \\');
     expect(workflow).toContain(' -name "Milady-Setup-*.exe.zip" -o \\');
     expect(workflow).toContain(' -name "*Setup*.tar.gz" -o \\');
     expect(workflow).toContain(' -name "*.msix" \\');
@@ -363,6 +377,9 @@ describe("Electrobun release workflow drift", () => {
 
   it("installs Inno Setup 6.7.1 and builds a standalone Windows installer", () => {
     const workflow = fs.readFileSync(WORKFLOW_PATH, "utf8");
+    const patchedCliIndex = workflow.indexOf(
+      "name: Build patched Electrobun CLI for Windows",
+    );
     const installIndex = workflow.lastIndexOf("name: Install Inno Setup 6.7.1");
     const extractIndex = workflow.indexOf(
       "name: Extract Windows app bundle for Inno Setup",
@@ -377,6 +394,8 @@ describe("Electrobun release workflow drift", () => {
     );
     expect(workflow).toContain("name: Build Inno Setup installer");
     expect(workflow).toContain("packaging/inno/build-inno.ps1");
+    expect(patchedCliIndex).toBeGreaterThan(-1);
+    expect(signIndex).toBeGreaterThan(patchedCliIndex);
     expect(installIndex).toBeGreaterThan(signIndex);
     expect(extractIndex).toBeGreaterThan(installIndex);
     expect(buildIndex).toBeGreaterThan(extractIndex);
@@ -437,12 +456,16 @@ describe("Electrobun release workflow drift", () => {
     const template = fs.readFileSync(INNO_TEMPLATE_PATH, "utf8");
 
     expect(template).toContain('#define MyAppExeName "bin\\launcher.exe"');
-    expect(template).toContain("UninstallDisplayIcon={app}\\{#MyAppExeName}");
+    expect(template).toContain('#define MyAppIconFile "Milady.ico"');
     expect(template).toContain(
-      'Name: "{autoprograms}\\{#MyDefaultGroupName}\\{#MyAppName}"; Filename: "{app}\\{#MyAppExeName}"',
+      'Source: "{#MySetupIconFile}"; DestDir: "{app}"; DestName: "{#MyAppIconFile}"; Flags: ignoreversion',
+    );
+    expect(template).toContain("UninstallDisplayIcon={app}\\{#MyAppIconFile}");
+    expect(template).toContain(
+      'Name: "{autoprograms}\\{#MyDefaultGroupName}\\{#MyAppName}"; Filename: "{app}\\{#MyAppExeName}"; IconFilename: "{app}\\{#MyAppIconFile}"',
     );
     expect(template).toContain(
-      'Name: "{autodesktop}\\{#MyAppName}"; Filename: "{app}\\{#MyAppExeName}"; Tasks: desktopicon',
+      'Name: "{autodesktop}\\{#MyAppName}"; Filename: "{app}\\{#MyAppExeName}"; Tasks: desktopicon; IconFilename: "{app}\\{#MyAppIconFile}"',
     );
     expect(template).not.toContain('#define MyAppExeName "launcher.exe"');
   });
@@ -504,8 +527,18 @@ describe("Electrobun release workflow drift", () => {
     expect(stageScript).not.toContain(
       'spctl -a -vv --type exec "$STAGED_APP_PATH"',
     );
-    expect(stageScript).toContain("xcrun notarytool submit \\");
+    expect(stageScript).toContain(
+      `REAL_XCRUN="\${ELECTROBUN_REAL_XCRUN:-/usr/bin/xcrun}"`,
+    );
+    expect(stageScript).toContain("wait_for_notary_acceptance()");
+    expect(stageScript).toContain('"$REAL_XCRUN" notarytool submit \\');
+    expect(stageScript).toContain(
+      'NOTARY_SUBMISSION_ID="$(parse_notary_submission_id "$NOTARY_SUBMIT_OUTPUT_PATH" || true)"',
+    );
+    expect(stageScript).toContain('"$REAL_XCRUN" notarytool info \\');
+    expect(stageScript).toContain('"$REAL_XCRUN" notarytool log \\');
     expect(stageScript).toContain('xcrun stapler staple "$TEMP_DMG_PATH"');
+    expect(stageScript).not.toContain("--wait \\");
   });
 
   it("rebuilds the staged macOS direct launcher with the packaged launcher architecture", () => {
@@ -573,14 +606,15 @@ describe("Electrobun release workflow drift", () => {
     expect(smokeScript).toContain("ANTHROPIC_API_KEY");
   });
 
-  it("resets stale Windows startup logs and classifies only true fatal startup lines", () => {
+  it("resets stale Windows startup logs and uses session-scoped startup trace files", () => {
     const smokeScript = fs.readFileSync(WINDOWS_SMOKE_PATH, "utf8");
 
     expect(smokeScript).toContain("Cleared stale startup log:");
-    expect(smokeScript).toContain("function Test-StartupLogFatalLine");
-    expect(smokeScript).toContain("optional plugin");
-    expect(smokeScript).toContain("@elizaos/plugin-");
-    expect(smokeScript).toContain("Fatal startup lines detected:");
+    expect(smokeScript).toContain('$startupSessionId = "milady-windows-smoke-"');
+    expect(smokeScript).toContain('$startupStateFile = Join-Path $env:RUNNER_TEMP');
+    expect(smokeScript).toContain('$startupBootstrapFile = Join-Path $startupBundleRoot "startup-session.json"');
+    expect(smokeScript).toContain("Write-StartupBootstrap");
+    expect(smokeScript).toContain('if ($state.session_id -ne $startupSessionId)');
   });
 
   it("bundles plugins.json and package.json into milady-dist for packaged builds", () => {
@@ -720,6 +754,40 @@ describe("Electrobun release workflow drift", () => {
     );
   });
 
+  it("publishes a plain Windows installer artifact for canary builds", () => {
+    const workflow = fs.readFileSync(WORKFLOW_PATH, "utf8");
+
+    expect(workflow).toContain(
+      "name: Prepare public canary Windows installer artifact",
+    );
+    expect(workflow).toContain(
+      "if: matrix.platform.os == 'windows' && needs.prepare.outputs.env == 'canary'",
+    );
+    expect(workflow).toContain(
+      '$canonicalInstallers = Get-ChildItem -Path $artifactsDir -File -Filter "Milady-Setup-*.exe"',
+    );
+    expect(workflow).toContain(
+      "Copy-Item $canonicalInstaller.FullName -Destination $publicCanaryDir -Force",
+    );
+    expect(workflow).toContain(
+      '$canonicalInstallerZips = Get-ChildItem -Path $artifactsDir -File -Filter "Milady-Setup-*.exe.zip"',
+    );
+    expect(workflow).toContain(
+      "No canonical Windows installer (or zip fallback) found for canary artifact publishing.",
+    );
+    expect(workflow).toContain(
+      '$publicInstallers = Get-ChildItem -Path $publicCanaryDir -File -Filter "Milady-Setup-*.exe"',
+    );
+    expect(workflow).toContain("name: Upload public canary installer artifact");
+    expect(workflow).toContain(
+      "name: electrobun-$" +
+        "{{ matrix.platform.artifact-name }}-public-installer",
+    );
+    expect(workflow).toContain(
+      "path: apps/app/electrobun/artifacts/public-canary-installer/Milady-Setup-*.exe",
+    );
+  });
+
   it("seeds the Windows embedding model cache before packaged smoke", () => {
     const workflow = fs.readFileSync(WORKFLOW_PATH, "utf8");
 
@@ -741,9 +809,7 @@ describe("Electrobun release workflow drift", () => {
     expect(workflow).toContain(
       "name: Run Windows packaged renderer bootstrap check",
     );
-    expect(workflow).toContain(
-      "bunx playwright test --config playwright.electrobun.packaged.config.ts test/electrobun-packaged/electrobun-windows-startup.e2e.spec.ts",
-    );
+    expect(workflow).toContain("bun run test:desktop:playwright");
     expect(workflow).toContain('MILADY_DISABLE_LOCAL_EMBEDDINGS: "1"');
     expect(workflow).not.toContain(
       "name: Install Playwright Chromium (Windows)",

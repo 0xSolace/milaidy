@@ -23,6 +23,10 @@ import {
   startEliza as upstreamStartEliza,
 } from "@miladyai/agent/runtime/eliza";
 import {
+  resolveServerOnlyPort,
+  syncResolvedApiPort,
+} from "@miladyai/shared/runtime-env";
+import {
   getBootConfig,
   syncBrandEnvToEliza,
   syncElizaEnvToBrand,
@@ -248,15 +252,39 @@ export async function ensureMiladyTextToSpeechHandler(
     return;
   }
 
+  type EdgeTtsPluginModule = {
+    default?: { models?: Record<string, TtsModelHandler> };
+  };
+
+  const readHandler = (
+    plugin: EdgeTtsPluginModule["default"],
+  ): TtsModelHandler | undefined => {
+    const h = plugin?.models?.[ModelType.TEXT_TO_SPEECH];
+    return typeof h === "function" ? h : undefined;
+  };
+
   try {
-    const mod = (await import("@elizaos/plugin-edge-tts")) as {
-      default?: { models?: Record<string, TtsModelHandler> };
-    };
-    const plugin = mod.default;
-    const handler = plugin?.models?.[ModelType.TEXT_TO_SPEECH];
-    if (typeof handler !== "function") {
+    // The package root export can resolve to the **browser stub** (`models: {}`)
+    // under Bun / some bundlers. The `/node` subpath always loads `node-edge-tts`.
+    let plugin: EdgeTtsPluginModule["default"] | undefined;
+    try {
+      const nodeMod = (await import(
+        "@elizaos/plugin-edge-tts/node"
+      )) as EdgeTtsPluginModule;
+      plugin = nodeMod.default;
+    } catch {
+      plugin = undefined;
+    }
+    let handler = readHandler(plugin);
+    if (!handler) {
+      const rootMod = (await import(
+        "@elizaos/plugin-edge-tts"
+      )) as EdgeTtsPluginModule;
+      handler = readHandler(rootMod.default);
+    }
+    if (!handler) {
       logger.warn(
-        "[milady] @elizaos/plugin-edge-tts: no TEXT_TO_SPEECH handler on default export",
+        "[milady] @elizaos/plugin-edge-tts: no TEXT_TO_SPEECH handler (browser stub or incompatible build — use @elizaos/plugin-edge-tts/node)",
       );
       return;
     }
@@ -806,8 +834,7 @@ export async function startEliza(
       }
 
       const { startApiServer } = await import("../api/server");
-      const apiPort =
-        Number(process.env.MILADY_PORT || process.env.ELIZA_PORT) || 2138;
+      const apiPort = resolveServerOnlyPort(process.env);
       const { port: actualApiPort } = await startApiServer({
         port: apiPort,
         runtime: currentRuntime,
@@ -840,9 +867,9 @@ export async function startEliza(
       // socket, upstream policy). Shells, scripts, and follow-up code reading
       // env must match the real listener or health checks and user-facing URLs
       // disagree with `GET /api/health`.
-      process.env.MILADY_PORT = String(actualApiPort);
-      process.env.MILADY_API_PORT = String(actualApiPort);
-      process.env.ELIZA_PORT = String(actualApiPort);
+      syncResolvedApiPort(process.env, actualApiPort, {
+        overwriteUiPort: true,
+      });
 
       logger.info(
         `[milady] API server listening on http://localhost:${actualApiPort}`,
@@ -851,7 +878,12 @@ export async function startEliza(
       console.log("[milady] Server running. Press Ctrl+C to stop.");
 
       const keepAlive = setInterval(() => {}, 1 << 30);
+      let isCleaningUp = false;
       const cleanup = async () => {
+        if (isCleaningUp) {
+          return;
+        }
+        isCleaningUp = true;
         clearInterval(keepAlive);
         // Force exit if graceful shutdown hangs for more than 10 seconds.
         const forceExitTimer = setTimeout(() => {

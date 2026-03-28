@@ -71,7 +71,7 @@ describe("voice cloud default (e2e)", () => {
     vi.unstubAllGlobals();
   });
 
-  it("uses cloud TTS when cloud is available and the stored ElevenLabs key is only a masked placeholder", async () => {
+  it("uses the Eliza Cloud proxy first when cloud is available and the stored key is only a masked placeholder", async () => {
     const { result } = renderHook(() =>
       useVoiceChat({
         cloudConnected: true,
