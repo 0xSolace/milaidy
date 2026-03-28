@@ -90,7 +90,7 @@ export function ApprovalQueue({
       try {
         const result = await approveStewardTx(txId);
         if (result.ok !== false) {
-          setActionNotice("Transaction approved ✓", "success", 3000);
+          setActionNotice("Transaction approved", "success", 3000);
           setItems((prev) =>
             prev.filter((item) => item.transaction.id !== txId),
           );

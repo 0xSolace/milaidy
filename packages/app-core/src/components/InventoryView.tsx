@@ -6,6 +6,7 @@
  */
 
 import type { StewardStatusResponse } from "@miladyai/app-core/api";
+import { StewardLogo } from "./steward/StewardLogo";
 import { useApp } from "@miladyai/app-core/state";
 import {
   Button,
@@ -748,9 +749,9 @@ export function InventoryView() {
                     data-testid="steward-status-badge"
                   >
                     <div className="inline-flex items-center gap-1.5">
-                      <span>🔐</span>
+                      <StewardLogo size={14} />
                       <span>
-                        Steward vault connected
+                        Vault connected
                         {stewardStatus.agentName && (
                           <span className="ml-1 text-muted">
                             ({stewardStatus.agentName})
@@ -781,7 +782,7 @@ export function InventoryView() {
                       {stewardStatus.walletAddresses?.evm &&
                         stewardStatus.walletAddresses.evm !== evmAddr && (
                           <span>
-                            🏦 Steward vault:{" "}
+                            Vault:{" "}
                             {stewardStatus.walletAddresses.evm.slice(0, 6)}…
                             {stewardStatus.walletAddresses.evm.slice(-4)}
                           </span>
@@ -790,14 +791,14 @@ export function InventoryView() {
                         stewardStatus.evmAddress &&
                         stewardStatus.evmAddress !== evmAddr && (
                           <span>
-                            🏦 Steward vault:{" "}
+                            Vault:{" "}
                             {stewardStatus.evmAddress.slice(0, 6)}…
                             {stewardStatus.evmAddress.slice(-4)}
                           </span>
                         )}
                       {stewardStatus.walletAddresses?.solana && (
                         <span>
-                          🏦 Solana vault:{" "}
+                          Solana:{" "}
                           {stewardStatus.walletAddresses.solana.slice(0, 6)}…
                           {stewardStatus.walletAddresses.solana.slice(-4)}
                         </span>
