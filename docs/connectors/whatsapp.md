@@ -20,7 +20,7 @@ The WhatsApp connector is an external elizaOS plugin that bridges your agent to 
 
 ## Minimal Configuration
 
-In your character file (Baileys / QR code):
+In `~/.milady/milady.json` (Baileys / QR code):
 
 ```json
 {
@@ -66,7 +66,7 @@ To explicitly disable the connector even when auth config is present:
 
 ## Auto-Enable Mechanism
 
-The `plugin-auto-enable.ts` module checks `connectors.whatsapp` in your character config. The plugin is loaded when any of the following is truthy (and `enabled` is not explicitly `false`):
+The `plugin-auto-enable.ts` module checks `connectors.whatsapp` in your config. The plugin is loaded when any of the following is truthy (and `enabled` is not explicitly `false`):
 
 - `authDir` is set at the top level
 - `authState` is set at the top level
@@ -106,7 +106,7 @@ These can also be placed in the `env` section of your config file. Baileys mode 
 
 ## Full Configuration Reference
 
-All fields are defined under `connectors.whatsapp` in your character file.
+All fields are defined under `connectors.whatsapp` in `milady.json`.
 
 ### Core Fields
 

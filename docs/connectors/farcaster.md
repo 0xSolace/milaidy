@@ -20,7 +20,7 @@ The Farcaster connector is an external elizaOS plugin that bridges your agent to
 
 ## Minimal Configuration
 
-In your character file:
+In `~/.milady/milady.json`:
 
 ```json
 {
@@ -53,13 +53,13 @@ To explicitly disable the connector even when an API key is present:
 
 ## Auto-Enable Mechanism
 
-The `plugin-auto-enable.ts` module checks `connectors.farcaster` in your character config. If the `apiKey` field is truthy (and `enabled` is not explicitly `false`), the runtime automatically loads `@elizaos/plugin-farcaster`.
+The `plugin-auto-enable.ts` module checks `connectors.farcaster` in your config. If the `apiKey` field is truthy (and `enabled` is not explicitly `false`), the runtime automatically loads `@elizaos/plugin-farcaster`.
 
 No environment variable is required to trigger auto-enable — it is driven entirely by the connector config object.
 
 ## Full Configuration Reference
 
-All fields are defined under `connectors.farcaster` in your character file.
+All fields are defined under `connectors.farcaster` in `milady.json`.
 
 ### Core Fields
 

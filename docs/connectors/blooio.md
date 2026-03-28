@@ -20,7 +20,7 @@ The Blooio connector is an external elizaOS plugin that bridges your agent to iM
 
 ## Minimal Configuration
 
-In your character file:
+In `~/.milady/milady.json`:
 
 ```json
 {
@@ -49,7 +49,7 @@ To explicitly disable the connector even when an API key is present:
 
 ## Auto-Enable Mechanism
 
-The `plugin-auto-enable.ts` module checks `connectors.blooio` in your character config. If the `apiKey` field is truthy (and `enabled` is not explicitly `false`), the runtime automatically loads `@elizaos/plugin-blooio`.
+The `plugin-auto-enable.ts` module checks `connectors.blooio` in your config. If the `apiKey` field is truthy (and `enabled` is not explicitly `false`), the runtime automatically loads `@elizaos/plugin-blooio`.
 
 No environment variable is required to trigger auto-enable — it is driven entirely by the connector config object.
 
@@ -68,7 +68,7 @@ No environment variable is required to trigger auto-enable — it is driven enti
 
 ## Full Configuration Reference
 
-All fields are defined under `connectors.blooio` in your character file.
+All fields are defined under `connectors.blooio` in `milady.json`.
 
 ### Core Fields
 

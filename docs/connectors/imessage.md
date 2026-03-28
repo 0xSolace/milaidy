@@ -26,7 +26,7 @@ The iMessage connector is an external elizaOS plugin that bridges your agent to 
 
 ## Minimal Configuration
 
-In your character file:
+In `~/.milady/milady.json`:
 
 ```json
 {
@@ -57,13 +57,13 @@ To explicitly disable the connector even when a CLI path is present:
 
 ## Auto-Enable Mechanism
 
-The `plugin-auto-enable.ts` module checks `connectors.imessage` in your character config. If the `cliPath` field is truthy (and `enabled` is not explicitly `false`), the runtime automatically loads `@elizaos/plugin-imessage`.
+The `plugin-auto-enable.ts` module checks `connectors.imessage` in your config. If the `cliPath` field is truthy (and `enabled` is not explicitly `false`), the runtime automatically loads `@elizaos/plugin-imessage`.
 
 No environment variable is required to trigger auto-enable — it is driven entirely by the connector config object.
 
 ## Full Configuration Reference
 
-All fields are defined under `connectors.imessage` in your character file.
+All fields are defined under `connectors.imessage` in `milady.json`.
 
 ### Core Fields
 
