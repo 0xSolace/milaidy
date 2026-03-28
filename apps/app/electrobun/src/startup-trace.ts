@@ -192,8 +192,9 @@ function readStartupTraceBootstrap(
 export function getStartupTraceConfig(
   env: NodeJS.ProcessEnv = process.env,
   execPath: string = process.execPath,
+  platform: NodeJS.Platform = process.platform,
 ): StartupTraceConfig {
-  const bootstrap = readStartupTraceBootstrap(execPath);
+  const bootstrap = readStartupTraceBootstrap(execPath, platform);
   const sessionId =
     trimEnv(env.MILADY_STARTUP_SESSION_ID) ??
     trimEnv(bootstrap?.session_id ?? undefined) ??
@@ -219,8 +220,9 @@ export function recordStartupPhase(
   update: StartupTraceUpdate = {},
   env: NodeJS.ProcessEnv = process.env,
   execPath: string = process.execPath,
+  platform: NodeJS.Platform = process.platform,
 ): StartupTraceState | null {
-  const config = getStartupTraceConfig(env, execPath);
+  const config = getStartupTraceConfig(env, execPath, platform);
   if (!config.enabled || !config.sessionId) {
     if (!disabledTraceLogged) {
       const bootstrapFile = resolveStartupTraceBootstrapFile(execPath);

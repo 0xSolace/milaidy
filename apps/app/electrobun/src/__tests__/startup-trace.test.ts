@@ -169,7 +169,7 @@ describe("startup trace", () => {
       "utf8",
     );
 
-    const config = getStartupTraceConfig(env, execPath);
+    const config = getStartupTraceConfig(env, execPath, "darwin");
     expect(config.enabled).toBe(true);
     expect(config.sessionId).toBe(sessionId);
     expect(config.stateFile).toBe(stateFile);
@@ -180,6 +180,7 @@ describe("startup trace", () => {
       { pid: 777 },
       env,
       execPath,
+      "darwin",
     );
     expect(snapshot?.session_id).toBe(sessionId);
     expect(readJson(stateFile).pid).toBe(777);
