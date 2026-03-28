@@ -37,6 +37,7 @@ describe("@miladyai/app-core package exports", () => {
     "./coding",
     "./providers",
     "./actions",
+    "./services/steward-sidecar",
     "./onboarding-config",
     "./companion",
     "./components",
