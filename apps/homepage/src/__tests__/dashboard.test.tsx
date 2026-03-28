@@ -333,6 +333,7 @@ describe("AgentDetail", () => {
     );
     // Tabs are now uppercase in the new design
     expect(screen.getByText("OVERVIEW")).toBeTruthy();
+    expect(screen.getByText("WALLETS")).toBeTruthy();
     expect(screen.getByText("METRICS")).toBeTruthy();
     expect(screen.getByText("LOGS")).toBeTruthy();
     expect(screen.getByText("SNAPSHOTS")).toBeTruthy();

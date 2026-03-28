@@ -1,6 +1,48 @@
 import { clearToken } from "./auth";
 import { CLOUD_BASE } from "./runtime-config";
 
+// ── Wallet types (re-exported from @miladyai/shared/contracts/wallet) ────
+export type {
+  EvmChainBalance,
+  EvmTokenBalance,
+  SolanaTokenBalance,
+  StewardApprovalActionResponse,
+  StewardPendingApproval,
+  StewardPolicyResult,
+  StewardStatusResponse,
+  StewardTxRecord,
+  StewardTxStatus,
+  WalletBalancesResponse,
+} from "@miladyai/shared/contracts/wallet";
+
+import type {
+  StewardApprovalActionResponse,
+  StewardPendingApproval,
+  StewardStatusResponse,
+  StewardTxRecord,
+  WalletBalancesResponse,
+} from "@miladyai/shared/contracts/wallet";
+
+// Wallet addresses response (same shape as WalletAddresses but with Response suffix for API clarity)
+export type { WalletAddresses as WalletAddressesResponse } from "@miladyai/shared/contracts/wallet";
+
+import type { WalletAddresses as WalletAddressesResponse } from "@miladyai/shared/contracts/wallet";
+
+// Steward policy types (not in shared — these are UI-specific config shapes)
+export type StewardPolicyType =
+  | "spending-limit"
+  | "approved-addresses"
+  | "auto-approve-threshold"
+  | "time-window"
+  | "rate-limit";
+
+export interface StewardPolicyRule {
+  id: string;
+  type: StewardPolicyType;
+  enabled: boolean;
+  config: Record<string, unknown>;
+}
+
 export interface CloudAgentDetail {
   id: string;
   name: string;
@@ -640,5 +682,75 @@ export class CloudApiClient {
 
   async getBilling(): Promise<object> {
     return this.request("/api/billing", { method: "GET" });
+  }
+
+  // Wallet
+
+  async getWalletAddresses(): Promise<WalletAddressesResponse> {
+    return this.request("/api/wallet/addresses", { method: "GET" });
+  }
+
+  async getWalletBalances(): Promise<WalletBalancesResponse> {
+    return this.request("/api/wallet/balances", { method: "GET" });
+  }
+
+  async getStewardStatus(): Promise<StewardStatusResponse> {
+    return this.request("/api/wallet/steward-status", { method: "GET" });
+  }
+
+  async getStewardTxRecords(options?: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{
+    records: StewardTxRecord[];
+    total: number;
+    offset: number;
+    limit: number;
+  }> {
+    const params = new URLSearchParams();
+    if (options?.status) params.set("status", options.status);
+    if (options?.limit) params.set("limit", String(options.limit));
+    if (options?.offset) params.set("offset", String(options.offset));
+    const qs = params.toString();
+    return this.request(`/api/wallet/steward-tx-records${qs ? `?${qs}` : ""}`, {
+      method: "GET",
+    });
+  }
+
+  async getStewardPendingApprovals(): Promise<StewardPendingApproval[]> {
+    return this.request("/api/wallet/steward-pending-approvals", {
+      method: "GET",
+    });
+  }
+
+  async approveStewardTx(txId: string): Promise<StewardApprovalActionResponse> {
+    return this.request("/api/wallet/steward-approve-tx", {
+      method: "POST",
+      body: JSON.stringify({ txId }),
+    });
+  }
+
+  async denyStewardTx(
+    txId: string,
+    reason?: string,
+  ): Promise<StewardApprovalActionResponse> {
+    return this.request("/api/wallet/steward-deny-tx", {
+      method: "POST",
+      body: JSON.stringify({ txId, ...(reason ? { reason } : {}) }),
+    });
+  }
+
+  async getStewardPolicies(): Promise<StewardPolicyRule[]> {
+    return this.request("/api/wallet/steward-policies", { method: "GET" });
+  }
+
+  async setStewardPolicies(
+    policies: StewardPolicyRule[],
+  ): Promise<{ ok: boolean }> {
+    return this.request("/api/wallet/steward-policies", {
+      method: "PUT",
+      body: JSON.stringify({ policies }),
+    });
   }
 }

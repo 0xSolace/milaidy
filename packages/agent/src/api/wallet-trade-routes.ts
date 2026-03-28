@@ -1,13 +1,13 @@
-import { ethers } from "ethers";
+import type { ethers } from "ethers";
 import type { ElizaConfig } from "../config/config";
 import type {
   BscTradeQuoteResponse,
   BscUnsignedApprovalTx,
   BscUnsignedTradeTx,
 } from "../contracts/wallet";
-import type { WalletTradeLedgerRecordInput } from "./wallet-trading-profile";
 import type { RouteRequestContext } from "./route-helpers";
 import type { TradePermissionMode } from "./trade-safety";
+import type { WalletTradeLedgerRecordInput } from "./wallet-trading-profile";
 
 type WalletAddresses = {
   evmAddress: string | null;
@@ -21,12 +21,12 @@ type WalletRpcReadiness = {
 
 type WalletForExecution = {
   address: string;
-  sendTransaction: (
-    tx: ethers.TransactionRequest,
-  ) => Promise<{
+  sendTransaction: (tx: ethers.TransactionRequest) => Promise<{
     hash: string;
     gasLimit?: bigint;
-    wait: (confirmations?: number) => Promise<{ status?: number | null } | null>;
+    wait: (
+      confirmations?: number,
+    ) => Promise<{ status?: number | null } | null>;
   }>;
 };
 
@@ -38,13 +38,26 @@ type ProviderForExecution = {
   destroy: () => void;
 };
 
+/** Result from steward signing: either a tx hash or a pending approval. */
+export interface StewardSignResult {
+  mode: "steward";
+  pendingApproval: boolean;
+  txHash?: string;
+  policyResults?: Array<{
+    policyId?: string;
+    type?: string;
+    passed?: boolean;
+    reason?: string;
+    name?: string;
+    status?: string;
+  }>;
+}
+
 export interface WalletTradeExecuteDeps {
   getWalletAddresses: () => WalletAddresses;
   resolveWalletRpcReadiness: (config: ElizaConfig) => WalletRpcReadiness;
   resolveTradePermissionMode: (config: ElizaConfig) => TradePermissionMode;
-  isAgentAutomationRequest: (
-    req: RouteRequestContext["req"],
-  ) => boolean;
+  isAgentAutomationRequest: (req: RouteRequestContext["req"]) => boolean;
   canUseLocalTradeExecution: (
     mode: TradePermissionMode,
     isAgentRequest: boolean,
@@ -85,11 +98,33 @@ export interface WalletTradeExecuteDeps {
   assertQuoteFresh: (quotedAt?: number) => void;
   recordWalletTradeLedgerEntry: (input: WalletTradeLedgerRecordInput) => void;
   createProvider: (rpcUrl: string) => ProviderForExecution;
-  createWallet: (privateKey: string, provider: ProviderForExecution) => WalletForExecution;
+  createWallet: (
+    privateKey: string,
+    provider: ProviderForExecution,
+  ) => WalletForExecution;
   logger: {
     warn: (message: string) => void;
     error: (message: string) => void;
   };
+  /** Return true when steward vault signing is configured (env vars present). */
+  isStewardConfigured?: () => boolean;
+  /** Sign a transaction via steward vault. Returns hash or pending approval. */
+  signTransactionWithSteward?: (tx: {
+    to: string;
+    value: string;
+    data?: string;
+    chainId: number;
+    broadcast?: boolean;
+  }) => Promise<StewardSignResult>;
+  /** Return true when the error represents a steward 403 policy rejection. */
+  isStewardPolicyRejection?: (error: unknown) => boolean;
+  /** Extract policy results from a steward rejection error. */
+  getStewardPolicyResults?: (error: unknown) => Array<{
+    policyId?: string;
+    name?: string;
+    status?: string;
+    reason?: string;
+  }>;
 }
 
 export interface WalletTradeExecuteRouteContext extends RouteRequestContext {
@@ -129,6 +164,10 @@ export async function handleWalletTradeExecuteRoute(
   const tradePermissionMode = deps.resolveTradePermissionMode(state.config);
   const isAgentRequest = deps.isAgentAutomationRequest(req);
   const hasLocalKey = Boolean(process.env.EVM_PRIVATE_KEY?.trim());
+  const hasStewardSigner =
+    typeof deps.isStewardConfigured === "function" &&
+    deps.isStewardConfigured();
+  const canSign = hasLocalKey || hasStewardSigner;
   const canExecuteLocally = deps.canUseLocalTradeExecution(
     tradePermissionMode,
     isAgentRequest,
@@ -154,7 +193,11 @@ export async function handleWalletTradeExecuteRoute(
     const unsignedTx =
       quote.side === "buy"
         ? deps.buildBscBuyUnsignedTx(quote, walletAddress, body.deadlineSeconds)
-        : deps.buildBscSellUnsignedTx(quote, walletAddress, body.deadlineSeconds);
+        : deps.buildBscSellUnsignedTx(
+            quote,
+            walletAddress,
+            body.deadlineSeconds,
+          );
 
     let unsignedApprovalTx: BscUnsignedApprovalTx | undefined;
     let requiresApproval = false;
@@ -168,11 +211,19 @@ export async function handleWalletTradeExecuteRoute(
       requiresApproval = true;
     }
 
-    if (!hasLocalKey || !canExecuteLocally || body.confirm !== true) {
+    // Resolve execution mode
+    const resolvedMode: "local-key" | "steward" | "user-sign" =
+      !canSign || !canExecuteLocally
+        ? "user-sign"
+        : hasStewardSigner
+          ? "steward"
+          : "local-key";
+
+    if (!canSign || !canExecuteLocally || body.confirm !== true) {
       json(res, {
         ok: true,
         side: quote.side,
-        mode: hasLocalKey && canExecuteLocally ? "local-key" : "user-sign",
+        mode: resolvedMode,
         quote,
         executed: false,
         requiresUserSignature: true,
@@ -183,6 +234,161 @@ export async function handleWalletTradeExecuteRoute(
       return true;
     }
 
+    // ── Steward signing path ──────────────────────────────────────────────
+    if (
+      hasStewardSigner &&
+      typeof deps.signTransactionWithSteward === "function"
+    ) {
+      let approvalHash: string | undefined;
+
+      // Handle token approval for sell orders via steward
+      if (requiresApproval && unsignedApprovalTx) {
+        const approvalResult = await deps.signTransactionWithSteward({
+          to: unsignedApprovalTx.to,
+          data: unsignedApprovalTx.data,
+          value: unsignedApprovalTx.valueWei,
+          chainId: unsignedApprovalTx.chainId,
+          broadcast: true,
+        });
+
+        if (approvalResult.pendingApproval) {
+          json(res, {
+            ok: true,
+            side: quote.side,
+            mode: "steward" as const,
+            quote,
+            executed: false,
+            requiresUserSignature: false,
+            unsignedTx,
+            unsignedApprovalTx,
+            requiresApproval,
+            approval: {
+              status: "pending_approval",
+              policyResults: approvalResult.policyResults ?? [],
+            },
+          });
+          return true;
+        }
+
+        approvalHash = approvalResult.txHash ?? "";
+
+        // Wait for approval confirmation if RPC is available
+        const rpcUrl = deps.resolvePrimaryBscRpcUrl({
+          rpcUrls: walletRpcReadiness.bscRpcUrls,
+          cloudManagedAccess: walletRpcReadiness.cloudManagedAccess,
+        });
+        if (rpcUrl && approvalHash) {
+          const provider = deps.createProvider(rpcUrl);
+          try {
+            const prov = provider as unknown as {
+              waitForTransaction?: (
+                hash: string,
+                confirmations?: number,
+              ) => Promise<unknown>;
+            };
+            if (typeof prov.waitForTransaction === "function") {
+              await prov.waitForTransaction(approvalHash, 1);
+            }
+          } finally {
+            provider.destroy();
+          }
+        }
+      }
+
+      // Execute the main swap via steward
+      deps.assertQuoteFresh(quote.quotedAt);
+
+      const executionResult = await deps.signTransactionWithSteward({
+        to: unsignedTx.to,
+        data: unsignedTx.data,
+        value: unsignedTx.valueWei,
+        chainId: unsignedTx.chainId,
+        broadcast: true,
+      });
+
+      if (executionResult.pendingApproval) {
+        json(res, {
+          ok: true,
+          side: quote.side,
+          mode: "steward" as const,
+          quote,
+          executed: false,
+          requiresUserSignature: false,
+          unsignedTx,
+          unsignedApprovalTx,
+          requiresApproval,
+          approvalHash,
+          execution: {
+            status: "pending_approval",
+            policyResults: executionResult.policyResults ?? [],
+          },
+        });
+        return true;
+      }
+
+      const finalHash = executionResult.txHash ?? "";
+      const source = body.source ?? "manual";
+
+      try {
+        deps.recordWalletTradeLedgerEntry({
+          hash: finalHash,
+          source,
+          side: quote.side,
+          tokenAddress: quote.tokenAddress,
+          slippageBps: quote.slippageBps,
+          route: quote.route,
+          quoteIn: {
+            symbol: quote.quoteIn.symbol,
+            amount: quote.quoteIn.amount,
+            amountWei: quote.quoteIn.amountWei,
+          },
+          quoteOut: {
+            symbol: quote.quoteOut.symbol,
+            amount: quote.quoteOut.amount,
+            amountWei: quote.quoteOut.amountWei,
+          },
+          status: "pending",
+          confirmations: 0,
+          nonce: null,
+          blockNumber: null,
+          gasUsed: null,
+          effectiveGasPriceWei: null,
+          explorerUrl: `https://bscscan.com/tx/${finalHash}`,
+        });
+      } catch (ledgerErr) {
+        deps.logger.warn(
+          `[api] Failed to record steward trade ledger entry: ${
+            ledgerErr instanceof Error ? ledgerErr.message : ledgerErr
+          }`,
+        );
+      }
+
+      json(res, {
+        ok: true,
+        side: quote.side,
+        mode: "steward" as const,
+        quote,
+        executed: true,
+        requiresUserSignature: false,
+        unsignedTx,
+        unsignedApprovalTx,
+        requiresApproval,
+        execution: {
+          hash: finalHash,
+          nonce: null,
+          gasLimit: "0",
+          valueWei: unsignedTx.valueWei,
+          explorerUrl: `https://bscscan.com/tx/${finalHash}`,
+          blockNumber: null,
+          status: "pending",
+          approvalHash,
+        },
+      });
+
+      return true;
+    }
+
+    // ── Local key signing path ────────────────────────────────────────────
     const rpcUrl = deps.resolvePrimaryBscRpcUrl({
       rpcUrls: walletRpcReadiness.bscRpcUrls,
       cloudManagedAccess: walletRpcReadiness.cloudManagedAccess,
@@ -327,6 +533,30 @@ export async function handleWalletTradeExecuteRoute(
       execution: executionResult,
     });
   } catch (err) {
+    // Handle steward policy rejections with structured response
+    if (
+      typeof deps.isStewardPolicyRejection === "function" &&
+      deps.isStewardPolicyRejection(err)
+    ) {
+      const policyResults =
+        typeof deps.getStewardPolicyResults === "function"
+          ? deps.getStewardPolicyResults(err)
+          : [];
+
+      json(res, {
+        ok: false,
+        mode: "steward" as const,
+        executed: false,
+        requiresUserSignature: false,
+        error: err instanceof Error ? err.message : "Policy rejected",
+        execution: {
+          status: "rejected",
+          policyResults,
+        },
+      });
+      return true;
+    }
+
     deps.logger.error(
       `[api] BSC trade execute failed: ${err instanceof Error ? err.message : err}`,
     );

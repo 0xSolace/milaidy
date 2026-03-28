@@ -17,6 +17,7 @@ import { Button, Input } from "@miladyai/ui";
 import { useCallback, useState } from "react";
 import { HEX_ADDRESS_RE } from "./companion/walletUtils";
 import { formatBalance, type TrackedToken } from "./inventory/constants";
+import { StewardLogo } from "./steward/StewardLogo";
 
 /* ── Constants ─────────────────────────────────────────────────────── */
 
@@ -37,6 +38,8 @@ export interface TradePanelProps {
     request: BscTradeExecuteRequest,
   ) => Promise<BscTradeExecuteResponse>;
   getBscTradeTxStatus?: (hash: string) => Promise<BscTradeTxStatusResponse>;
+  /** When true, trades are routed through Steward vault for policy enforcement. */
+  stewardConnected?: boolean;
 }
 
 /* ── Component ─────────────────────────────────────────────────────── */
@@ -49,6 +52,7 @@ export function TradePanel({
   getBscTradeQuote,
   executeBscTrade,
   getBscTradeTxStatus,
+  stewardConnected,
 }: TradePanelProps) {
   const { t, copyToClipboard, setActionNotice } = useApp();
   const [quickTokenAddress, setQuickTokenAddress] = useState("");
@@ -490,6 +494,15 @@ export function TradePanel({
             ? t("bsctradepanel.TradeReady")
             : t("bsctradepanel.TradeNotReady")}
         </span>
+        {stewardConnected && (
+          <span
+            data-testid="steward-trade-indicator"
+            className="text-purple-400 flex items-center gap-0.5"
+            title="Trades routed through Steward vault policy enforcement"
+          >
+            <StewardLogo size={14} className="inline-block" /> Steward
+          </span>
+        )}
         <span className="text-muted">
           {t("bsctradepanel.BNB")} {formatBalance(String(bnbBalance))}
         </span>

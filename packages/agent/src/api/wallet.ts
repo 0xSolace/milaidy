@@ -88,6 +88,10 @@ const FETCH_TIMEOUT_MS = 15_000;
 export const MANAGED_EVM_ADDRESS_ENV_KEY = "ELIZA_MANAGED_EVM_ADDRESS";
 export const MANAGED_SOLANA_ADDRESS_ENV_KEY = "ELIZA_MANAGED_SOLANA_ADDRESS";
 
+/** Module-level cache for steward wallet addresses (avoids process.env mutation). */
+let stewardAddressCache: { evm: string | null; solana: string | null } | null =
+  null;
+
 // ── EVM key derivation (secp256k1 via @noble/curves + keccak-256) ─────
 
 function generateEvmPrivateKey(): string {
@@ -340,27 +344,144 @@ export function importWallet(
   return { success: true, chain, address: v.address, error: null };
 }
 
-/** Derive addresses from env keys. Works without a running runtime. */
+// ── Steward wallet cache env keys ─────────────────────────────────────
+
+export const STEWARD_EVM_ADDRESS_ENV_KEY = "STEWARD_EVM_ADDRESS";
+export const STEWARD_SOLANA_ADDRESS_ENV_KEY = "STEWARD_SOLANA_ADDRESS";
+
+/**
+ * Initialise the steward wallet address cache.
+ *
+ * Call once during server startup.  Fetches addresses from the steward API
+ * and writes them to `process.env.STEWARD_EVM_ADDRESS` /
+ * `process.env.STEWARD_SOLANA_ADDRESS` so the synchronous
+ * `getWalletAddresses()` can use them without hitting the network.
+ */
+export async function initStewardWalletCache(): Promise<void> {
+  const stewardApiUrl = process.env.STEWARD_API_URL?.trim();
+  if (!stewardApiUrl) return;
+
+  const agentId =
+    process.env.STEWARD_AGENT_ID?.trim() ||
+    process.env.MILADY_STEWARD_AGENT_ID?.trim() ||
+    process.env.ELIZA_STEWARD_AGENT_ID?.trim() ||
+    null;
+
+  if (!agentId) return;
+
+  try {
+    const headers: Record<string, string> = { Accept: "application/json" };
+    const bearerToken = process.env.STEWARD_AGENT_TOKEN?.trim();
+    const apiKey = process.env.STEWARD_API_KEY?.trim();
+    const tenantId = process.env.STEWARD_TENANT_ID?.trim();
+
+    if (bearerToken) {
+      headers.Authorization = `Bearer ${bearerToken}`;
+    } else if (apiKey) {
+      headers["X-Steward-Key"] = apiKey;
+    }
+    if (tenantId) {
+      headers["X-Steward-Tenant"] = tenantId;
+    }
+
+    const res = await fetch(
+      `${stewardApiUrl}/agents/${encodeURIComponent(agentId)}`,
+      { headers, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) },
+    );
+
+    if (!res.ok) {
+      logger.warn(
+        `[wallet] Steward wallet cache init: agent lookup returned ${res.status}`,
+      );
+      return;
+    }
+
+    const body = (await res.json()) as {
+      ok?: boolean;
+      data?: {
+        walletAddress?: string;
+        walletAddresses?: { evm?: string; solana?: string };
+      };
+    };
+
+    const agent = body.data ?? (body as unknown as typeof body.data);
+    const stewardEvm =
+      agent?.walletAddresses?.evm?.trim() ||
+      agent?.walletAddress?.trim() ||
+      null;
+    const stewardSolana = agent?.walletAddresses?.solana?.trim() || null;
+
+    stewardAddressCache = { evm: stewardEvm, solana: stewardSolana };
+
+    if (stewardEvm) {
+      logger.info(
+        `[wallet] Steward EVM address cached: ${stewardEvm}`,
+      );
+    }
+    if (stewardSolana) {
+      logger.info(
+        `[wallet] Steward Solana address cached: ${stewardSolana}`,
+      );
+    }
+  } catch (err) {
+    logger.warn(`[wallet] Steward wallet cache init failed: ${err}`);
+  }
+}
+
+/**
+ * Derive addresses from env keys.  Works without a running runtime.
+ *
+ * Resolution order (steward-first):
+ *   1. Steward cached addresses  (`STEWARD_EVM_ADDRESS` / `STEWARD_SOLANA_ADDRESS`)
+ *   2. Local private key derivation  (`EVM_PRIVATE_KEY` / `SOLANA_PRIVATE_KEY`)
+ *   3. Managed address env vars  (`ELIZA_MANAGED_EVM_ADDRESS` / `ELIZA_MANAGED_SOLANA_ADDRESS`)
+ */
 export function getWalletAddresses(): WalletAddresses {
   let evmAddress: string | null = null;
   let solanaAddress: string | null = null;
-  const evmKey = process.env.EVM_PRIVATE_KEY;
-  if (evmKey && !PLACEHOLDER_RE.test(evmKey)) {
-    try {
-      evmAddress = deriveEvmAddress(evmKey);
-    } catch (e) {
-      logger.warn(`Bad EVM key: ${e}`);
-    }
+
+  // ── 1. Steward cached addresses (primary) ──────────────────────────
+  const stewardEvm = stewardAddressCache?.evm?.trim();
+  if (stewardEvm && /^0x[0-9a-fA-F]{40}$/.test(stewardEvm)) {
+    evmAddress = stewardEvm;
   }
-  const solKey = process.env.SOLANA_PRIVATE_KEY;
-  if (solKey && !PLACEHOLDER_RE.test(solKey)) {
+
+  const stewardSolana = stewardAddressCache?.solana?.trim();
+  if (stewardSolana) {
     try {
-      solanaAddress = deriveSolanaAddress(solKey);
-    } catch (e) {
-      logger.warn(`Bad SOL key: ${e}`);
+      const decoded = base58Decode(stewardSolana);
+      if (decoded.length === 32) {
+        solanaAddress = stewardSolana;
+      }
+    } catch {
+      // invalid — skip
     }
   }
 
+  // ── 2. Local private key derivation (fallback) ─────────────────────
+  if (!evmAddress) {
+    const evmKey = process.env.EVM_PRIVATE_KEY;
+    if (evmKey && !PLACEHOLDER_RE.test(evmKey)) {
+      try {
+        evmAddress = deriveEvmAddress(evmKey);
+      } catch (e) {
+        logger.warn(`Bad EVM key: ${e}`);
+      }
+    }
+  }
+
+  if (!solanaAddress) {
+    const solKey = process.env.SOLANA_PRIVATE_KEY;
+    if (solKey && !PLACEHOLDER_RE.test(solKey)) {
+      try {
+        solanaAddress = deriveSolanaAddress(solKey);
+      } catch (e) {
+        logger.warn(`Bad SOL key: ${e}`);
+      }
+    }
+  }
+
+  // ── 3. Managed address env vars (last resort) ──────────────────────
   if (!evmAddress) {
     const managedEvmAddress = process.env[MANAGED_EVM_ADDRESS_ENV_KEY];
     if (managedEvmAddress) {
@@ -391,6 +512,90 @@ export function getWalletAddresses(): WalletAddresses {
   }
 
   return { evmAddress, solanaAddress };
+}
+
+/**
+ * Extended wallet addresses including steward-managed wallets.
+ * Calls steward API (async) to discover additional addresses.
+ * Key-derived addresses are always preferred; steward addresses fill gaps.
+ */
+export async function getWalletAddressesWithSteward(): Promise<
+  WalletAddresses & {
+    stewardEvmAddress?: string | null;
+    stewardSolanaAddress?: string | null;
+  }
+> {
+  const base = getWalletAddresses();
+
+  // Only augment when steward is configured
+  const stewardApiUrl = process.env.STEWARD_API_URL?.trim();
+  if (!stewardApiUrl) {
+    return base;
+  }
+
+  const agentId =
+    process.env.STEWARD_AGENT_ID?.trim() ||
+    process.env.MILADY_STEWARD_AGENT_ID?.trim() ||
+    process.env.ELIZA_STEWARD_AGENT_ID?.trim() ||
+    base.evmAddress?.trim() ||
+    null;
+
+  if (!agentId) {
+    return base;
+  }
+
+  try {
+    const headers: Record<string, string> = {
+      Accept: "application/json",
+    };
+    const bearerToken = process.env.STEWARD_AGENT_TOKEN?.trim();
+    const apiKey = process.env.STEWARD_API_KEY?.trim();
+    const tenantId = process.env.STEWARD_TENANT_ID?.trim();
+
+    if (bearerToken) {
+      headers.Authorization = `Bearer ${bearerToken}`;
+    } else if (apiKey) {
+      headers["X-Steward-Key"] = apiKey;
+    }
+    if (tenantId) {
+      headers["X-Steward-Tenant"] = tenantId;
+    }
+
+    const res = await fetch(
+      `${stewardApiUrl}/agents/${encodeURIComponent(agentId)}`,
+      { headers, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) },
+    );
+
+    if (!res.ok) {
+      logger.warn(`Steward agent lookup returned ${res.status}`);
+      return base;
+    }
+
+    const body = (await res.json()) as {
+      ok?: boolean;
+      data?: {
+        walletAddress?: string;
+        walletAddresses?: { evm?: string; solana?: string };
+      };
+    };
+
+    const agent = body.data ?? (body as unknown as typeof body.data);
+    const stewardEvm =
+      agent?.walletAddresses?.evm?.trim() ||
+      agent?.walletAddress?.trim() ||
+      null;
+    const stewardSolana = agent?.walletAddresses?.solana?.trim() || null;
+
+    return {
+      evmAddress: base.evmAddress ?? stewardEvm,
+      solanaAddress: base.solanaAddress ?? stewardSolana,
+      stewardEvmAddress: stewardEvm,
+      stewardSolanaAddress: stewardSolana,
+    };
+  } catch (err) {
+    logger.warn(`Steward wallet address lookup failed: ${err}`);
+    return base;
+  }
 }
 
 // ── Helius API (Solana tokens + NFTs) ─────────────────────────────────
@@ -479,9 +684,7 @@ export async function fetchSolanaBalances(
     if (data.error?.message) throw new Error(data.error.message);
     solBalance = ((data.result?.value ?? 0) / 1e9).toFixed(9);
   } catch (err) {
-    logger.warn(
-      `SOL balance fetch failed: ${String(err)}`,
-    );
+    logger.warn(`SOL balance fetch failed: ${String(err)}`);
   }
 
   const tokens: SolanaTokenBalance[] = [];
@@ -528,9 +731,7 @@ export async function fetchSolanaBalances(
       });
     }
   } catch (err) {
-    logger.warn(
-      `Solana token fetch failed: ${String(err)}`,
-    );
+    logger.warn(`Solana token fetch failed: ${String(err)}`);
   }
 
   return { solBalance, solValueUsd: "0", tokens };

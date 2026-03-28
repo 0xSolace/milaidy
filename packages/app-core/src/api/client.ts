@@ -62,7 +62,10 @@ import type {
   EvmTokenBalance,
   SolanaNft,
   SolanaTokenBalance,
+  StewardApprovalActionResponse,
   StewardApprovalInfo,
+  StewardHistoryResponse,
+  StewardPendingResponse,
   StewardPolicyResult,
   StewardStatusResponse,
   WalletAddresses,
@@ -78,6 +81,13 @@ import type {
   WalletTradingProfileSourceFilter,
   WalletTradingProfileWindow,
 } from "@miladyai/agent/contracts/wallet";
+import type {
+  StewardPendingApproval,
+  StewardSignRequest,
+  StewardSignResponse,
+  StewardTxRecord,
+  StewardTxStatus,
+} from "@miladyai/shared/contracts/wallet";
 import {
   DEFAULT_WALLET_RPC_SELECTIONS,
   normalizeWalletRpcProviderId,
@@ -136,9 +146,17 @@ export type {
   RpcProviderOption,
   SolanaNft,
   SolanaTokenBalance,
+  StewardApprovalActionResponse,
   StewardApprovalInfo,
+  StewardHistoryResponse,
+  StewardPendingApproval,
+  StewardPendingResponse,
   StewardPolicyResult,
+  StewardSignRequest,
+  StewardSignResponse,
   StewardStatusResponse,
+  StewardTxRecord,
+  StewardTxStatus,
   StylePreset,
   SubscriptionProviderStatus,
   SubscriptionStatusResponse,
@@ -3546,6 +3564,69 @@ export class MiladyClient {
 
   async getStewardStatus(): Promise<StewardStatusResponse> {
     return this.fetch("/api/wallet/steward-status");
+  }
+
+  async getStewardPolicies(): Promise<
+    Array<{
+      id: string;
+      type: string;
+      enabled: boolean;
+      config: Record<string, unknown>;
+    }>
+  > {
+    return this.fetch("/api/wallet/steward-policies");
+  }
+
+  async setStewardPolicies(
+    policies: Array<{
+      id: string;
+      type: string;
+      enabled: boolean;
+      config: Record<string, unknown>;
+    }>,
+  ): Promise<void> {
+    await this.fetch("/api/wallet/steward-policies", {
+      method: "PUT",
+      body: JSON.stringify({ policies }),
+    });
+  }
+
+  async getStewardHistory(opts?: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ records: StewardHistoryResponse; total: number; offset: number; limit: number }> {
+    const params = new URLSearchParams();
+    if (opts?.status) params.set("status", opts.status);
+    if (opts?.limit) params.set("limit", String(opts.limit));
+    if (opts?.offset) params.set("offset", String(opts.offset));
+    const qs = params.toString();
+    return this.fetch(`/api/wallet/steward-tx-records${qs ? `?${qs}` : ""}`);
+  }
+
+  async getStewardPending(): Promise<StewardPendingResponse> {
+    return this.fetch("/api/wallet/steward-pending-approvals");
+  }
+
+  async approveStewardTx(txId: string): Promise<StewardApprovalActionResponse> {
+    return this.fetch("/api/wallet/steward-approve-tx", {
+      method: "POST",
+      body: JSON.stringify({ txId }),
+    });
+  }
+
+  async rejectStewardTx(txId: string, reason?: string): Promise<StewardApprovalActionResponse> {
+    return this.fetch("/api/wallet/steward-deny-tx", {
+      method: "POST",
+      body: JSON.stringify({ txId, reason }),
+    });
+  }
+
+  async signViaSteward(request: StewardSignRequest): Promise<StewardSignResponse> {
+    return this.fetch("/api/wallet/steward-sign", {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
   }
 
   async getWalletTradingProfile(

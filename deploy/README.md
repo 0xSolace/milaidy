@@ -218,7 +218,7 @@ The `build-cloud-image.yml` workflow:
 
 To use the CI-built image on nodes:
 ```bash
-# Pull the generic image from GHCR (requires login)
+# Pull the pinned generic image from GHCR (requires login)
 docker pull ghcr.io/milady-ai/agent:latest
 
 # Pull the cloud app image from GHCR

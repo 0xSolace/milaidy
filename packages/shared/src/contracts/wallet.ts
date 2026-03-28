@@ -469,6 +469,9 @@ export interface StewardStatusResponse {
   agentId?: string;
   evmAddress?: string;
   error?: string | null;
+  walletAddresses?: { evm: string | null; solana: string | null };
+  agentName?: string;
+  vaultHealth?: "ok" | "degraded" | "error";
 }
 
 export interface BscTradeExecuteResponse {
@@ -482,7 +485,10 @@ export interface BscTradeExecuteResponse {
   unsignedApprovalTx?: BscUnsignedApprovalTx;
   requiresApproval?: boolean;
   execution?: Omit<BscTradeExecutionResult, "status"> & {
-    status?: BscTradeExecutionResult["status"] | "pending_approval" | "rejected";
+    status?:
+      | BscTradeExecutionResult["status"]
+      | "pending_approval"
+      | "rejected";
     policyResults?: StewardPolicyResult[];
   };
   /** Present when the approval tx is pending Steward policy review. */
@@ -532,7 +538,10 @@ export interface BscTransferExecuteResponse {
   tokenAddress?: string;
   unsignedTx: BscUnsignedTransferTx;
   execution?: Omit<BscTransferExecutionResult, "status"> & {
-    status?: BscTransferExecutionResult["status"] | "pending_approval" | "rejected";
+    status?:
+      | BscTransferExecutionResult["status"]
+      | "pending_approval"
+      | "rejected";
     policyResults?: StewardPolicyResult[];
   };
   /** Steward error message on policy rejection (403). */
@@ -559,4 +568,78 @@ export interface WalletGenerateResult {
   chain: WalletChain;
   address: string;
   privateKey: string;
+}
+
+// ─── Steward Transaction History & Approval Queue ─────────────────────────────
+
+export type StewardTxStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "signed"
+  | "broadcast"
+  | "confirmed"
+  | "failed";
+
+/** A transaction record from the Steward vault history. */
+export interface StewardTxRecord {
+  id: string;
+  agentId: string;
+  status: StewardTxStatus;
+  request: {
+    agentId: string;
+    tenantId: string;
+    to: string;
+    value: string;
+    data?: string;
+    chainId: number;
+  };
+  txHash?: string;
+  policyResults: StewardPolicyResult[];
+  createdAt: string;
+  signedAt?: string;
+  confirmedAt?: string;
+}
+
+/** A pending approval entry from the Steward approval queue. */
+export interface StewardPendingApproval {
+  queueId: string;
+  status: "pending" | "approved" | "rejected";
+  requestedAt: string;
+  transaction: StewardTxRecord;
+}
+
+/** Response shape for GET /api/wallet/steward-history */
+export type StewardHistoryResponse = StewardTxRecord[];
+
+/** Response shape for GET /api/wallet/steward-pending */
+export type StewardPendingResponse = StewardPendingApproval[];
+
+/** Response shape for POST /api/wallet/steward-approve and steward-reject */
+export interface StewardApprovalActionResponse {
+  ok: boolean;
+  txHash?: string;
+  error?: string;
+}
+
+// ─── Steward Vault Signing ────────────────────────────────────────────────────
+
+/** Request body for signing a transaction through the Steward vault. */
+export interface StewardSignRequest {
+  to: string;
+  value: string;
+  chainId: number;
+  data?: string;
+  broadcast?: boolean;
+  description?: string;
+}
+
+/** Response from a Steward vault sign operation. */
+export interface StewardSignResponse {
+  approved: boolean;
+  txHash?: string;
+  txId?: string;
+  pending?: boolean;
+  denied?: boolean;
+  violations?: Array<{ policy: string; reason: string }>;
 }

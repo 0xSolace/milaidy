@@ -89,6 +89,15 @@ import {
   onAgentReadyChange,
   setAgentReady,
 } from "./agent-ready-state";
+import {
+  isStewardLocalEnabled,
+  onStewardStatusChange,
+  resetSteward,
+  restartSteward,
+  setStewardSendToWebview,
+  startSteward,
+  stopSteward,
+} from "./native/steward";
 
 function resolveDesktopAppIconPath(): string {
   return path.join(
@@ -1039,6 +1048,7 @@ function wireRpcAndModules(
   };
 
   initializeNativeModules(win, sendToWebview);
+  setStewardSendToWebview(sendToWebview);
   registerRpcHandlers(rpc, sendToWebview);
 
   return sendToWebview;
@@ -1308,6 +1318,26 @@ async function setupUpdater(): Promise<void> {
             body: "Native application menu actions are wired and responding.",
             urgency: "normal",
           });
+        } else if (action === "restart-steward") {
+          if (isStewardLocalEnabled()) {
+            restartSteward().catch((err: unknown) => {
+              console.error("[Main] Steward restart failed:", err);
+              Utils.showNotification({
+                title: "Steward Restart Failed",
+                body: err instanceof Error ? err.message : "Unknown error",
+              });
+            });
+          }
+        } else if (action === "reset-steward") {
+          if (isStewardLocalEnabled()) {
+            resetSteward().catch((err: unknown) => {
+              console.error("[Main] Steward reset failed:", err);
+              Utils.showNotification({
+                title: "Steward Reset Failed",
+                body: err instanceof Error ? err.message : "Unknown error",
+              });
+            });
+          }
         } else if (action === "restart-agent") {
           getAgentManager()
             .restart()
@@ -1656,6 +1686,47 @@ async function main(): Promise<void> {
     });
   } catch (err) {
     console.warn("[Main] Tray creation failed:", err);
+  }
+
+  // ── Steward sidecar startup (must happen BEFORE agent) ────────────
+  // When STEWARD_LOCAL=true, start the steward sidecar first so it can
+  // set STEWARD_API_URL / STEWARD_AGENT_TOKEN env vars. The Milady agent's
+  // steward-bridge.ts reads these on boot to discover local steward.
+  if (isStewardLocalEnabled()) {
+    console.log("[Main] STEWARD_LOCAL=true — starting steward sidecar...");
+    cleanupFns.push(() => stopSteward());
+
+    // Listen for steward status changes and push to renderer
+    cleanupFns.push(
+      onStewardStatusChange((status) => {
+        sendToActiveRenderer("stewardStatusUpdate", status);
+      }),
+    );
+
+    try {
+      const stewardResult = await startSteward();
+      if (stewardResult.state === "running") {
+        console.log(
+          `[Main] Steward sidecar ready on port ${stewardResult.port}, wallet: ${stewardResult.walletAddress ?? "pending"}`,
+        );
+      } else {
+        console.warn(
+          `[Main] Steward sidecar in state "${stewardResult.state}": ${stewardResult.error ?? "unknown"}`,
+        );
+        sendToActiveRenderer("stewardStartupFailed", {
+          error: stewardResult.error ?? "Steward failed to start",
+          canRetry: true,
+        });
+      }
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      console.error("[Main] Steward sidecar startup failed:", error);
+      sendToActiveRenderer("stewardStartupFailed", {
+        error,
+        canRetry: true,
+      });
+      // Don't block agent startup — steward is optional
+    }
   }
 
   // Agent startup: in local mode, start the embedded agent immediately.

@@ -9,6 +9,7 @@ import { getGpuWindowManager } from "./gpu-window";
 import { getLocationManager } from "./location";
 import { getPermissionManager } from "./permissions";
 import { getScreenCaptureManager } from "./screencapture";
+import { isStewardLocalEnabled, stopSteward } from "./steward";
 import { getSwabbleManager } from "./swabble";
 import { getTalkModeManager } from "./talkmode";
 
@@ -50,6 +51,18 @@ export async function disposeNativeModules(): Promise<void> {
     ["swabble", getSwabbleManager()],
     ["talkmode", getTalkModeManager()],
   ] as const;
+
+  // Stop steward sidecar if it was running
+  if (isStewardLocalEnabled()) {
+    try {
+      await stopSteward();
+    } catch (err) {
+      console.warn(
+        "[Native] steward dispose failed:",
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
 
   const settleDisposals = Promise.allSettled(
     managers.map(async ([name, manager]) => {
