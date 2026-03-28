@@ -733,23 +733,44 @@ export class StewardSidecar {
       const fs = require("node:fs") as typeof import("node:fs");
       const path = require("node:path") as typeof import("node:path");
 
-      // Check common locations
+      // Check common locations — prefer embedded.ts (PGLite mode) over index.ts
       const candidates = [
-        // Monorepo sibling
+        // Absolute paths from env (highest priority)
+        process.env.STEWARD_ENTRY_POINT,
+        // Monorepo sibling — embedded entry point (PGLite, no external DB needed)
+        path.resolve(
+          __dirname,
+          "../../../../steward-fi/packages/api/src/embedded.ts",
+        ),
+        // Known absolute path on dev machines
+        path.join(
+          process.env.HOME || process.env.USERPROFILE || "",
+          "projects/steward-fi/packages/api/src/embedded.ts",
+        ),
+        // Monorepo sibling — regular entry point (needs DATABASE_URL)
         path.resolve(
           __dirname,
           "../../../../steward-fi/packages/api/src/index.ts",
         ),
         // Installed as dependency
+        path.resolve(
+          __dirname,
+          "../../../node_modules/@stwd/api/src/embedded.ts",
+        ),
         path.resolve(__dirname, "../../../node_modules/@stwd/api/src/index.ts"),
         // Relative to workspace
+        path.resolve(
+          process.cwd(),
+          "node_modules/@stwd/api/src/embedded.ts",
+        ),
         path.resolve(process.cwd(), "node_modules/@stwd/api/src/index.ts"),
-        // Absolute paths from env
-        process.env.STEWARD_ENTRY_POINT,
       ].filter(Boolean) as string[];
 
       for (const candidate of candidates) {
         if (fs.existsSync(candidate)) {
+          console.log(
+            `[StewardSidecar] Found entry point: ${candidate}`,
+          );
           return candidate;
         }
       }

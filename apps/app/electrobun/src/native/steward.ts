@@ -6,6 +6,14 @@
  *
  * Follows the same pattern as `agent.ts` — spawns Steward as a child process
  * and manages its lifecycle from the Electrobun main process.
+ *
+ * When running in local mode (STEWARD_LOCAL=true), this module:
+ *   1. Starts the steward sidecar before the Milady agent
+ *   2. After sidecar is healthy and credentials are available, sets env vars
+ *      (STEWARD_API_URL, STEWARD_AGENT_TOKEN, etc.) so the Milady agent's
+ *      steward-bridge picks them up automatically
+ *   3. Pushes steward status to the renderer via sendToWebview
+ *   4. Stops the sidecar on app shutdown
  */
 
 import {
@@ -19,6 +27,7 @@ import {
 // ---------------------------------------------------------------------------
 
 type StatusChangeCallback = (status: StewardSidecarStatus) => void;
+type SendToWebviewFn = (message: string, payload?: unknown) => void;
 
 // ---------------------------------------------------------------------------
 // Singleton
@@ -26,10 +35,18 @@ type StatusChangeCallback = (status: StewardSidecarStatus) => void;
 
 let sidecar: StewardSidecar | null = null;
 let statusListeners: StatusChangeCallback[] = [];
+let sendToWebview: SendToWebviewFn | null = null;
 
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
+
+/**
+ * Set the sendToWebview function so steward status updates reach the renderer.
+ */
+export function setStewardSendToWebview(fn: SendToWebviewFn): void {
+  sendToWebview = fn;
+}
 
 /**
  * Get or create the Steward sidecar singleton.
@@ -41,6 +58,9 @@ export function getStewardSidecar(): StewardSidecar {
   if (!sidecar) {
     sidecar = createDesktopStewardSidecar({
       onStatusChange: (status) => {
+        // Push status to renderer
+        sendToWebview?.("stewardStatusUpdate", status);
+
         for (const listener of statusListeners) {
           try {
             listener(status);
@@ -62,8 +82,54 @@ export function getStewardSidecar(): StewardSidecar {
 }
 
 /**
+ * Configure process.env with steward credentials so the Milady agent's
+ * steward-bridge.ts can discover steward automatically.
+ *
+ * This must be called BEFORE the Milady agent starts so `createStewardClient()`
+ * in steward-bridge.ts picks up STEWARD_API_URL.
+ */
+function configureStewardEnvFromCredentials(): void {
+  if (!sidecar) return;
+
+  const credentials = sidecar.getCredentials();
+  const apiBase = sidecar.getApiBase();
+
+  // Set STEWARD_API_URL so steward-bridge.ts finds the local steward
+  process.env.STEWARD_API_URL = apiBase;
+
+  if (credentials) {
+    // Set agent token for bearer auth
+    if (credentials.agentToken) {
+      process.env.STEWARD_AGENT_TOKEN = credentials.agentToken;
+    }
+
+    // Set API key and tenant for tenant-scoped requests
+    if (credentials.tenantApiKey) {
+      process.env.STEWARD_API_KEY = credentials.tenantApiKey;
+    }
+    if (credentials.tenantId) {
+      process.env.STEWARD_TENANT_ID = credentials.tenantId;
+    }
+
+    // Set agent ID
+    if (credentials.agentId) {
+      process.env.STEWARD_AGENT_ID = credentials.agentId;
+    }
+
+    console.log(
+      `[Steward] Env configured: API=${apiBase} agent=${credentials.agentId} wallet=${credentials.walletAddress}`,
+    );
+  } else {
+    console.warn(
+      "[Steward] Sidecar running but no credentials available yet",
+    );
+  }
+}
+
+/**
  * Start the Steward sidecar and wait for it to be healthy.
  * Handles first-launch wallet creation automatically.
+ * Configures env vars for the Milady agent's steward bridge.
  *
  * Returns the status after startup (running or error).
  */
@@ -78,11 +144,28 @@ export async function startSteward(): Promise<StewardSidecarStatus> {
 
   console.log("[Steward] Starting sidecar...");
 
+  // Push initial "starting" status to renderer
+  sendToWebview?.("stewardStatusUpdate", {
+    state: "starting",
+    port: null,
+    pid: null,
+    error: null,
+    restartCount: 0,
+    walletAddress: null,
+    agentId: null,
+    tenantId: null,
+    startedAt: null,
+  });
+
   try {
     const result = await steward.start();
     console.log(
       `[Steward] Running on port ${result.port}, wallet: ${result.walletAddress ?? "none"}`,
     );
+
+    // Configure env vars so the Milady agent's steward bridge finds steward
+    configureStewardEnvFromCredentials();
+
     return result;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -100,6 +183,56 @@ export async function stopSteward(): Promise<void> {
   console.log("[Steward] Stopping sidecar...");
   await sidecar.stop();
   console.log("[Steward] Stopped");
+}
+
+/**
+ * Restart the Steward sidecar (stop + start).
+ * Useful for recovery from errors or after a reset.
+ */
+export async function restartSteward(): Promise<StewardSidecarStatus> {
+  if (!sidecar) {
+    return startSteward();
+  }
+  console.log("[Steward] Restarting sidecar...");
+  const result = await sidecar.restart();
+  configureStewardEnvFromCredentials();
+  return result;
+}
+
+/**
+ * Reset steward data — deletes credentials and PGLite data, then restarts.
+ * Use when PGLite data is corrupted or user wants a fresh wallet.
+ */
+export async function resetSteward(): Promise<StewardSidecarStatus> {
+  console.log("[Steward] Resetting steward data...");
+
+  // Stop the sidecar first
+  await stopSteward();
+
+  // Delete credentials and data directory
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  const home = process.env.HOME || process.env.USERPROFILE || "";
+  const dataDir =
+    process.env.STEWARD_DATA_DIR || path.join(home, ".milady", "steward");
+
+  if (fs.existsSync(dataDir)) {
+    console.log(`[Steward] Removing data directory: ${dataDir}`);
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+
+  // Clear env vars
+  delete process.env.STEWARD_API_URL;
+  delete process.env.STEWARD_AGENT_TOKEN;
+  delete process.env.STEWARD_API_KEY;
+  delete process.env.STEWARD_TENANT_ID;
+  delete process.env.STEWARD_AGENT_ID;
+
+  // Recreate sidecar (old one has stale state)
+  sidecar = null;
+
+  // Start fresh
+  return startSteward();
 }
 
 /**
