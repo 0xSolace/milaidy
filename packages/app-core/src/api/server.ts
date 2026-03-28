@@ -95,7 +95,10 @@ import {
   resolveBscApprovalSpender,
   resolvePrimaryBscRpcUrl,
 } from "@miladyai/agent/api/bsc-trade";
-import { getWalletAddresses, initStewardWalletCache } from "@miladyai/agent/api/wallet";
+import {
+  getWalletAddresses,
+  initStewardWalletCache,
+} from "@miladyai/agent/api/wallet";
 import { fetchEvmNfts } from "@miladyai/agent/api/wallet-evm-balance";
 import { resolveWalletRpcReadiness } from "@miladyai/agent/api/wallet-rpc";
 import { recordWalletTradeLedgerEntry } from "@miladyai/agent/api/wallet-trading-profile";
