@@ -48,7 +48,7 @@ import {
   APP_SIDEBAR_INNER_CLASSNAME,
   APP_SIDEBAR_KICKER_CLASSNAME,
   APP_SIDEBAR_PILL_CLASSNAME,
-  APP_SIDEBAR_RAIL_CLASSNAME
+  APP_SIDEBAR_RAIL_CLASSNAME,
 } from "./sidebar-shell-styles";
 
 const MAX_UPLOAD_REQUEST_BYTES = 32 * 1_048_576; // Must match server knowledge route limit
@@ -218,12 +218,6 @@ function UploadZone({
         onChange={handleFileSelect}
       />
       <div className="flex items-start justify-between gap-3 px-1">
-        <div className="min-w-0">
-          <div className={KNOWLEDGE_SECTION_LABEL_CLASS}>Add Content</div>
-          <div className="mt-1 text-[11px] leading-relaxed text-muted">
-            Import files or paste a source URL.
-          </div>
-        </div>
         <div className={KNOWLEDGE_META_PILL_CLASS}>
           {SUPPORTED_UPLOAD_EXTENSIONS.size} formats
         </div>
@@ -259,10 +253,11 @@ function UploadZone({
         <span className="min-w-0">{t("knowledgeview.IncludeAIImageDes")}</span>
       </label>
       <div
-        className={`mt-3 rounded-2xl border px-3 py-3 transition-colors ${dragOver
-          ? "border-accent/50 bg-accent/8 shadow-sm"
-          : "border-dashed border-border/35 bg-card/62"
-          } ${uploading ? "opacity-60" : ""}`}
+        className={`mt-3 rounded-2xl border px-3 py-3 transition-colors ${
+          dragOver
+            ? "border-accent/50 bg-accent/8 shadow-sm"
+            : "border-dashed border-border/35 bg-card/62"
+        } ${uploading ? "opacity-60" : ""}`}
       >
         {(dragOver || uploading) && (
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted/80">
@@ -339,16 +334,18 @@ function SearchResultListItem({
       type="button"
       onClick={() => onSelect(result.documentId || result.id)}
       aria-current={active ? "page" : undefined}
-      className={`${KNOWLEDGE_SIDEBAR_ITEM_BASE_CLASS} h-auto w-full ${active
-        ? KNOWLEDGE_SIDEBAR_ITEM_ACTIVE_CLASS
-        : KNOWLEDGE_SIDEBAR_ITEM_INACTIVE_CLASS
-        }`}
+      className={`${KNOWLEDGE_SIDEBAR_ITEM_BASE_CLASS} h-auto w-full ${
+        active
+          ? KNOWLEDGE_SIDEBAR_ITEM_ACTIVE_CLASS
+          : KNOWLEDGE_SIDEBAR_ITEM_INACTIVE_CLASS
+      }`}
     >
       <span
-        className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border text-[10px] font-semibold ${active
-          ? "border-accent/30 bg-accent/18 text-txt-strong"
-          : "border-border/50 bg-bg-accent/80 text-muted"
-          }`}
+        className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border text-[10px] font-semibold ${
+          active
+            ? "border-accent/30 bg-accent/18 text-txt-strong"
+            : "border-border/50 bg-bg-accent/80 text-muted"
+        }`}
       >
         {(result.similarity * 100).toFixed(0)}%
       </span>
@@ -384,16 +381,18 @@ function DocumentListItem({
 }) {
   return (
     <div
-      className={`${KNOWLEDGE_SIDEBAR_ITEM_BASE_CLASS} ${active
-        ? KNOWLEDGE_SIDEBAR_ITEM_ACTIVE_CLASS
-        : KNOWLEDGE_SIDEBAR_ITEM_INACTIVE_CLASS
-        }`}
+      className={`${KNOWLEDGE_SIDEBAR_ITEM_BASE_CLASS} ${
+        active
+          ? KNOWLEDGE_SIDEBAR_ITEM_ACTIVE_CLASS
+          : KNOWLEDGE_SIDEBAR_ITEM_INACTIVE_CLASS
+      }`}
     >
       <span
-        className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border text-[11px] font-semibold ${active
-          ? "border-accent/30 bg-accent/18 text-txt-strong"
-          : "border-border/50 bg-bg-accent/80 text-muted"
-          }`}
+        className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border text-[11px] font-semibold ${
+          active
+            ? "border-accent/30 bg-accent/18 text-txt-strong"
+            : "border-border/50 bg-bg-accent/80 text-muted"
+        }`}
       >
         {getKnowledgeTypeLabel(doc.contentType).slice(0, 3)}
       </span>
@@ -488,34 +487,16 @@ function DocumentViewer({ documentId }: { documentId: string | null }) {
     <section
       className={`${KNOWLEDGE_PANEL_CLASS} min-h-[62vh] overflow-hidden`}
     >
-      <div className="border-b border-border/30 px-5 py-5 sm:px-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0 flex-1">
-            <div className={KNOWLEDGE_KICKER_CLASS}>Viewer</div>
-            <h2 className="mt-1 text-2xl font-semibold text-txt-strong">
-              {loading
-                ? "Loading..."
-                : doc?.filename || "Select a document to inspect"}
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
-              {doc
-                ? "Review metadata, preview the source, and scan the indexed fragments without leaving the page."
-                : "Pick a document from the sidebar to review its metadata, preview text, and indexed fragments."}
-            </p>
-          </div>
-          {doc && (
-            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-              <span className="rounded-full border border-border/45 bg-bg/25 px-3 py-1.5 text-[11px] font-semibold text-muted">
-                {getKnowledgeTypeLabel(doc.contentType)}
-              </span>
-              <span className="rounded-full border border-accent/25 bg-accent/8 px-3 py-1.5 text-[11px] font-semibold text-txt-strong">
-                {getKnowledgeSourceLabel(doc.source)}
-              </span>
-            </div>
-          )}
+      {doc && (
+        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+          <span className="rounded-full border border-border/45 bg-bg/25 px-3 py-1.5 text-[11px] font-semibold text-muted">
+            {getKnowledgeTypeLabel(doc.contentType)}
+          </span>
+          <span className="rounded-full border border-accent/25 bg-accent/8 px-3 py-1.5 text-[11px] font-semibold text-txt-strong">
+            {getKnowledgeSourceLabel(doc.source)}
+          </span>
         </div>
-      </div>
-
+      )}
       <div className="space-y-4 px-5 py-5 sm:px-6">
         {loading && (
           <div className="py-12 text-center font-bold tracking-wide text-muted animate-pulse">
@@ -840,14 +821,14 @@ export function KnowledgeView({ inModal }: { inModal?: boolean } = {}) {
           typeof window === "undefined"
             ? true
             : await confirmDesktopAction({
-              title: "Upload Large Files",
-              message: `${largeFiles.length} large file(s) detected.`,
-              detail:
-                "Uploading can take longer and may increase embedding or vision costs.",
-              confirmLabel: "Continue",
-              cancelLabel: "Cancel",
-              type: "warning",
-            });
+                title: "Upload Large Files",
+                message: `${largeFiles.length} large file(s) detected.`,
+                detail:
+                  "Uploading can take longer and may increase embedding or vision costs.",
+                confirmLabel: "Continue",
+                cancelLabel: "Cancel",
+                type: "warning",
+              });
         if (!shouldContinue) return;
       }
 
@@ -1137,33 +1118,7 @@ export function KnowledgeView({ inModal }: { inModal?: boolean } = {}) {
       <div className={KNOWLEDGE_SHELL_CLASS}>
         <aside className={KNOWLEDGE_SIDEBAR_CLASS}>
           <div className={APP_SIDEBAR_INNER_CLASSNAME}>
-            <div className="mt-4 flex flex-wrap gap-2 px-1">
-              <span className={KNOWLEDGE_META_PILL_CLASS}>
-                {documents.length} {documents.length === 1 ? "doc" : "docs"}
-              </span>
-              <span className={KNOWLEDGE_META_PILL_CLASS}>
-                {totalFragments} fragments
-              </span>
-              {selectedDoc && (
-                <span className="rounded-full border border-accent/25 bg-accent/8 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-txt-strong">
-                  {getKnowledgeTypeLabel(selectedDoc.contentType)}
-                </span>
-              )}
-            </div>
-
             <div className="mt-4 border-b border-border/25 pb-4">
-              <UploadZone
-                onFilesUpload={handleFilesUpload}
-                onUrlUpload={handleUrlUpload}
-                uploading={uploading}
-                uploadStatus={uploadStatus}
-              />
-            </div>
-
-            <div className="mt-4 border-b border-border/25 pb-4">
-              <div className="px-1">
-                <div className={KNOWLEDGE_SECTION_LABEL_CLASS}>Search</div>
-              </div>
               <form
                 className="mt-3 w-full max-w-[500px] flex-[1_1_500px]"
                 onSubmit={handleSearchSubmit}
@@ -1191,17 +1146,6 @@ export function KnowledgeView({ inModal }: { inModal?: boolean } = {}) {
                 </div>
               </form>
               <div className="mt-3 flex flex-wrap items-center gap-2 px-1">
-                <span
-                  className={
-                    isShowingSearchResults
-                      ? "rounded-full border border-accent/25 bg-accent/8 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-txt-strong"
-                      : KNOWLEDGE_META_PILL_CLASS
-                  }
-                >
-                  {isShowingSearchResults
-                    ? `${visibleSearchResults.length} result${visibleSearchResults.length === 1 ? "" : "s"}`
-                    : "Search idle"}
-                </span>
                 {isShowingSearchResults && (
                   <Button
                     variant="ghost"
@@ -1268,25 +1212,25 @@ export function KnowledgeView({ inModal }: { inModal?: boolean } = {}) {
 
                 {isShowingSearchResults
                   ? visibleSearchResults.map((result) => (
-                    <SearchResultListItem
-                      key={result.id}
-                      result={result}
-                      active={
-                        selectedDocId === (result.documentId || result.id)
-                      }
-                      onSelect={setSelectedDocId}
-                    />
-                  ))
+                      <SearchResultListItem
+                        key={result.id}
+                        result={result}
+                        active={
+                          selectedDocId === (result.documentId || result.id)
+                        }
+                        onSelect={setSelectedDocId}
+                      />
+                    ))
                   : documents.map((doc) => (
-                    <DocumentListItem
-                      key={doc.id}
-                      doc={doc}
-                      active={selectedDocId === doc.id}
-                      onSelect={setSelectedDocId}
-                      onDelete={handleDelete}
-                      deleting={deleting === doc.id}
-                    />
-                  ))}
+                      <DocumentListItem
+                        key={doc.id}
+                        doc={doc}
+                        active={selectedDocId === doc.id}
+                        onSelect={setSelectedDocId}
+                        onDelete={handleDelete}
+                        deleting={deleting === doc.id}
+                      />
+                    ))}
               </div>
             </div>
           </div>
@@ -1316,27 +1260,6 @@ export function KnowledgeView({ inModal }: { inModal?: boolean } = {}) {
                 </Button>
               </div>
             )}
-
-            <section className={`${KNOWLEDGE_PANEL_CLASS} px-5 py-5 sm:px-6`}>
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div className="min-w-0 flex-1">
-                  <div className={KNOWLEDGE_KICKER_CLASS}>Knowledge</div>
-                  <h1 className="mt-1 text-2xl font-semibold text-txt-strong">
-                    {selectedDoc?.filename || "Knowledge workspace"}
-                  </h1>
-                  <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
-                    {selectedDoc
-                      ? getKnowledgeDocumentSummary(selectedDoc)
-                      : "Upload, search, and review documents."}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-                  <span className="rounded-full border border-border/45 bg-bg/25 px-3 py-1.5 text-[11px] font-semibold text-muted">
-                    {documents.length} docs
-                  </span>
-                </div>
-              </div>
-            </section>
 
             <div className="mt-4">
               <DocumentViewer documentId={selectedDocId} />

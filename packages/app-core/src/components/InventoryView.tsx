@@ -20,6 +20,8 @@ import {
   TooltipTrigger,
 } from "@miladyai/ui";
 import {
+  ArrowDown,
+  ArrowUp,
   Coins,
   Copy,
   Image as ImageIcon,
@@ -37,7 +39,6 @@ import {
 } from "./chainConfig";
 import {
   DESKTOP_PAGE_CONTENT_CLASSNAME,
-  DESKTOP_RAIL_SUMMARY_CARD_CLASSNAME,
   DESKTOP_SURFACE_PANEL_CLASSNAME,
   DesktopPageFrame,
 } from "./desktop-surface-primitives";
@@ -49,6 +50,10 @@ import {
   saveTrackedTokens,
   type TrackedToken,
 } from "./inventory";
+import {
+  type PrimaryInventoryChainKey,
+  toggleInventoryChainFilter,
+} from "./inventory/inventory-chain-filters";
 import { ChainIcon } from "./inventory/ChainIcon";
 import { NftGrid } from "./inventory/NftGrid";
 import { TokensTable } from "./inventory/TokensTable";
@@ -57,7 +62,6 @@ import {
   APP_PANEL_SHELL_CLASSNAME,
   APP_SIDEBAR_CARD_ACTIVE_CLASSNAME,
   APP_SIDEBAR_INNER_CLASSNAME,
-  APP_SIDEBAR_KICKER_CLASSNAME,
   APP_SIDEBAR_RAIL_CLASSNAME,
 } from "./sidebar-shell-styles";
 
@@ -65,14 +69,13 @@ import {
 
 const WALLET_SHELL_CLASS = APP_PANEL_SHELL_CLASSNAME;
 const WALLET_SIDEBAR_CLASS = `lg:w-[21rem] lg:max-w-[352px] ${APP_SIDEBAR_RAIL_CLASSNAME}`;
-const WALLET_SIDEBAR_KICKER_CLASS = APP_SIDEBAR_KICKER_CLASSNAME;
 const WALLET_SIDEBAR_ITEM_ACTIVE_CLASS = APP_SIDEBAR_CARD_ACTIVE_CLASSNAME;
 const WALLET_PANEL_CLASS = DESKTOP_SURFACE_PANEL_CLASSNAME;
 
 type InventorySortKey = "chain" | "symbol" | "value";
 
 function countVisibleAssetsForFocus(
-  focus: string,
+  focus: ChainKey,
   rows:
     | Array<{
         chain: string;
@@ -85,7 +88,6 @@ function countVisibleAssetsForFocus(
   return (rows ?? []).filter((row) => {
     const hasBalance = row.isTracked || row.balanceRaw > 0 || row.valueUsd > 0;
     if (!hasBalance) return false;
-    if (focus === "all") return true;
     return resolveChainKey(row.chain) === focus;
   }).length;
 }
@@ -104,7 +106,8 @@ export function InventoryView() {
     walletNftsLoading,
     inventoryView,
     inventorySort,
-    inventoryChainFocus,
+    inventorySortDirection,
+    inventoryChainFilters,
     walletError,
     loadBalances,
     loadNfts,
@@ -168,13 +171,12 @@ export function InventoryView() {
 
   // ── Derived data (hook) ───────────────────────────────────────────
   const {
-    chainFocus,
-    tokenRows,
+    singleChainFocus,
+    tokenRowsAllChains,
     allNfts,
     focusedChainError,
     focusedChainName,
     visibleRows,
-    totalUsd,
     visibleChainErrors,
     focusedNativeBalance,
   } = useInventoryData({
@@ -183,7 +185,8 @@ export function InventoryView() {
     walletConfig,
     walletNfts,
     inventorySort,
-    inventoryChainFocus,
+    inventorySortDirection,
+    inventoryChainFilters,
     trackedBscTokens,
     trackedTokens,
   });
@@ -242,28 +245,23 @@ export function InventoryView() {
   );
   const bnbBalance = Number.parseFloat(focusedNativeBalance ?? "0") || 0;
   const tradeReady =
-    chainFocus === "bsc" ? bnbBalance >= BSC_GAS_READY_THRESHOLD : true;
+    singleChainFocus === "bsc" ? bnbBalance >= BSC_GAS_READY_THRESHOLD : true;
   const addresses = [
     evmAddr ? { label: "EVM", address: evmAddr } : null,
     solAddr ? { label: "Solana", address: solAddr } : null,
   ].filter((item): item is { label: string; address: string } => Boolean(item));
   const chainItemMeta = useMemo(() => {
-    const totalAssetCount = countVisibleAssetsForFocus("all", tokenRows);
-    const items = [
-      {
-        key: "all",
-        label: "All Assets",
-        hasAddress: true,
-        description:
-          totalAssetCount > 0
-            ? `${totalAssetCount} assets across connected wallets`
-            : "Browse every connected chain from one place",
-      },
-    ];
+    const items: Array<{
+      key: PrimaryInventoryChainKey;
+      label: string;
+      hasAddress: boolean;
+      description: string;
+    }> = [];
 
     for (const key of PRIMARY_CHAIN_KEYS) {
+      const pk = key as PrimaryInventoryChainKey;
       const config = CHAIN_CONFIGS[key];
-      const assetCount = countVisibleAssetsForFocus(key, tokenRows);
+      const assetCount = countVisibleAssetsForFocus(key, tokenRowsAllChains);
       const chainReady =
         key === "ethereum"
           ? ethereumReady
@@ -279,7 +277,7 @@ export function InventoryView() {
       const hasAddress = key === "solana" ? Boolean(solAddr) : Boolean(evmAddr);
 
       items.push({
-        key,
+        key: pk,
         label: config.name,
         hasAddress,
         description: !hasAddress
@@ -301,61 +299,63 @@ export function InventoryView() {
     evmAddr,
     solAddr,
     solanaReady,
-    tokenRows,
+    tokenRowsAllChains,
   ]);
 
   const focusedChainLabel =
     focusedChainName ??
-    (chainFocus !== "all"
-      ? (CHAIN_CONFIGS[chainFocus as keyof typeof CHAIN_CONFIGS]?.name ??
-        chainFocus)
+    (singleChainFocus
+      ? (CHAIN_CONFIGS[singleChainFocus as keyof typeof CHAIN_CONFIGS]?.name ??
+        singleChainFocus)
       : null);
   const inlineError =
-    chainFocus !== "all" && focusedChainError
+    singleChainFocus && focusedChainError
       ? {
           message: `${focusedChainLabel ?? "Chain"}: ${focusedChainError}`,
           retryTitle: `Retry fetching ${focusedChainLabel ?? "chain"} balances`,
         }
       : null;
 
-  const legacyRpcChain = chainKeyToWalletRpcChain(chainFocus);
+  const legacyRpcChain = singleChainFocus
+    ? chainKeyToWalletRpcChain(singleChainFocus)
+    : null;
   const headerWarning =
-    chainFocus !== "all" &&
+    singleChainFocus &&
     legacyRpcChain !== null &&
     cfg?.legacyCustomChains?.includes(legacyRpcChain)
       ? {
           title: `${
             focusedChainLabel ??
-            (chainFocus === "bsc"
+            (singleChainFocus === "bsc"
               ? "BSC"
-              : chainFocus === "solana"
+              : singleChainFocus === "solana"
                 ? "Solana"
                 : "EVM")
           } is using legacy raw RPC config.`,
           body: "Re-save a supported provider in Settings to migrate fully.",
           actionLabel: t("wallet.setup.configureRpc"),
         }
-      : chainFocus === "bsc" && evmAddr && !bscReady
+      : singleChainFocus === "bsc" && evmAddr && !bscReady
         ? {
             title: t("wallet.setup.rpcNotConfigured"),
             body: t("portfolioheader.ConnectViaElizaCl"),
             actionLabel: t("wallet.setup.configureRpc"),
           }
-        : chainFocus === "solana" && solAddr && !solanaReady
+        : singleChainFocus === "solana" && solAddr && !solanaReady
           ? {
               title: "Solana RPC is not configured.",
               body: "Connect via Eliza Cloud or configure HELIUS_API_KEY / SOLANA_RPC_URL in Settings to load Solana balances.",
               actionLabel: t("wallet.setup.configureRpc"),
             }
-          : chainFocus !== "all" &&
-              chainFocus !== "bsc" &&
-              chainFocus !== "solana" &&
+          : singleChainFocus &&
+              singleChainFocus !== "bsc" &&
+              singleChainFocus !== "solana" &&
               evmAddr &&
-              !(chainFocus === "ethereum"
+              !(singleChainFocus === "ethereum"
                 ? ethereumReady
-                : chainFocus === "base"
+                : singleChainFocus === "base"
                   ? baseReady
-                  : chainFocus === "avax"
+                  : singleChainFocus === "avax"
                     ? avaxReady
                     : false)
             ? {
@@ -451,35 +451,20 @@ export function InventoryView() {
       <div className={WALLET_SHELL_CLASS}>
         <aside className={WALLET_SIDEBAR_CLASS}>
           <div className={APP_SIDEBAR_INNER_CLASSNAME}>
-            <div className={DESKTOP_RAIL_SUMMARY_CARD_CLASSNAME}>
-              <div
-                className="text-[2rem] font-semibold leading-none text-txt-strong"
-                data-testid="wallet-balance-value"
-              >
-                {totalUsd > 0
-                  ? `$${totalUsd.toLocaleString("en-US", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}`
-                  : "$0.00"}
-              </div>
-              <div className="mt-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted/60">
-                total balance
-              </div>
-            </div>
-
-            {/* ── Sort dropdown ── */}
             {inventoryView === "tokens" ? (
-              <div className="mt-4" data-testid="wallet-sidebar-sort-block">
-                <div className="mb-1 px-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted/60">
+              <div className="space-y-2" data-testid="wallet-sidebar-sort-block">
+                <div className="px-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted/60">
                   {t("wallet.sort")}
                 </div>
                 <Select
                   value={inventorySort}
                   onValueChange={(nextSort) => {
-                    if (isInventorySortKey(nextSort)) {
-                      setState("inventorySort", nextSort);
-                    }
+                    if (!isInventorySortKey(nextSort)) return;
+                    setState("inventorySort", nextSort);
+                    setState(
+                      "inventorySortDirection",
+                      nextSort === "value" ? "desc" : "asc",
+                    );
                   }}
                 >
                   <SelectTrigger
@@ -489,12 +474,76 @@ export function InventoryView() {
                   >
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent position="popper">
                     <SelectItem value="value">{t("wallet.value")}</SelectItem>
                     <SelectItem value="chain">{t("wallet.chain")}</SelectItem>
                     <SelectItem value="symbol">{t("wallet.name")}</SelectItem>
                   </SelectContent>
                 </Select>
+                <div className="flex items-center gap-2">
+                  <div className="flex flex-1 items-stretch overflow-hidden rounded-xl border border-border/60 bg-bg/24">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className={`h-10 flex-1 rounded-none ${inventorySortDirection === "asc" ? "bg-accent/14 text-txt-strong" : "text-muted"}`}
+                          aria-label={t("wallet.sortAscending")}
+                          aria-pressed={inventorySortDirection === "asc"}
+                          onClick={() => setState("inventorySortDirection", "asc")}
+                        >
+                          <ArrowUp className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="text-xs">
+                        {t("wallet.sortAscending")}
+                      </TooltipContent>
+                    </Tooltip>
+                    <div
+                      className="w-px shrink-0 self-stretch bg-border/45"
+                      aria-hidden
+                    />
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className={`h-10 flex-1 rounded-none ${inventorySortDirection === "desc" ? "bg-accent/14 text-txt-strong" : "text-muted"}`}
+                          aria-label={t("wallet.sortDescending")}
+                          aria-pressed={inventorySortDirection === "desc"}
+                          onClick={() =>
+                            setState("inventorySortDirection", "desc")
+                          }
+                        >
+                          <ArrowDown className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="text-xs">
+                        {t("wallet.sortDescending")}
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        data-testid="wallet-refresh-balances"
+                        className="h-10 w-10 shrink-0 rounded-xl border-border/60 bg-card/88 shadow-sm"
+                        aria-label={t("common.refresh")}
+                        onClick={() => void loadBalances()}
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs">
+                      {t("common.refresh")}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
               </div>
             ) : null}
 
@@ -538,57 +587,68 @@ export function InventoryView() {
 
             {/* ── Chains ── */}
             <div className="mt-4">
-              <div className={WALLET_SIDEBAR_KICKER_CLASS}>Chains</div>
               <TooltipProvider delayDuration={200} skipDelayDuration={100}>
-                <div className="mt-3 grid grid-cols-3 gap-2">
-                  {chainItemMeta
-                    .filter((item) => item.key !== "all")
-                    .map((item) => {
-                      const isActive = chainFocus === item.key;
-                      const label = item.label;
-                      const disabled = !item.hasAddress;
-                      return (
-                        <Tooltip key={item.key}>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              onClick={
-                                disabled
-                                  ? undefined
-                                  : () =>
-                                      setState("inventoryChainFocus", item.key)
-                              }
-                              aria-current={isActive ? "page" : undefined}
-                              aria-label={label}
-                              aria-disabled={disabled}
-                              className={`flex aspect-square items-center justify-center rounded-2xl border transition-colors ${
-                                disabled
-                                  ? "opacity-25 cursor-not-allowed border-border/20 bg-bg/10 text-muted"
-                                  : isActive
-                                    ? "border-accent/30 bg-accent/14 text-txt-strong"
-                                    : "border-border/40 bg-bg/20 text-muted hover:border-border/60 hover:text-txt"
-                              }`}
-                            >
-                              <ChainIcon chain={item.key} size="lg" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent
-                            side="bottom"
-                            sideOffset={6}
-                            className="px-2.5 py-1.5 text-xs font-medium"
+                <div className="mt-3 grid grid-cols-5 gap-2">
+                  {chainItemMeta.map((item) => {
+                    const isOn = inventoryChainFilters[item.key];
+                    const label = item.label;
+                    const disabled = !item.hasAddress;
+                    return (
+                      <Tooltip key={item.key}>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={
+                              disabled
+                                ? undefined
+                                : () =>
+                                    setState(
+                                      "inventoryChainFilters",
+                                      toggleInventoryChainFilter(
+                                        inventoryChainFilters,
+                                        item.key,
+                                      ),
+                                    )
+                            }
+                            aria-pressed={disabled ? undefined : isOn}
+                            aria-label={
+                              disabled
+                                ? label
+                                : isOn
+                                  ? `${label} — shown (click to hide)`
+                                  : `${label} — hidden (click to show)`
+                            }
+                            aria-disabled={disabled}
+                            className={`flex aspect-square items-center justify-center rounded-2xl border transition-colors ${
+                              disabled
+                                ? "opacity-25 cursor-not-allowed border-border/20 bg-bg/10 text-muted"
+                                : isOn
+                                  ? "border-accent/30 bg-accent/14 text-txt-strong"
+                                  : "border-border/40 bg-bg/20 text-muted opacity-45 hover:border-border/60 hover:opacity-70 hover:text-txt"
+                            }`}
                           >
-                            {disabled
-                              ? `${label} — no wallet configured`
-                              : label}
-                          </TooltipContent>
-                        </Tooltip>
-                      );
-                    })}
+                            <ChainIcon chain={item.key} size="lg" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="bottom"
+                          sideOffset={6}
+                          className="px-2.5 py-1.5 text-xs font-medium"
+                        >
+                          {disabled
+                            ? `${label} — no wallet configured`
+                            : isOn
+                              ? `${label} — visible`
+                              : `${label} — hidden`}
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  })}
                 </div>
               </TooltipProvider>
             </div>
 
-            {/* ── Copy + Refresh (stacked under chains) ── */}
+            {/* ── Copy addresses (stacked under chains) ── */}
             <div className="mt-4 space-y-2">
               {addresses.map((item) => (
                 <Button
@@ -605,17 +665,6 @@ export function InventoryView() {
                     : t("wallet.copySolanaAddress")}
                 </Button>
               ))}
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-11 w-full justify-start rounded-xl px-4 text-xs font-semibold shadow-sm"
-                onClick={() =>
-                  inventoryView === "tokens" ? loadBalances() : loadNfts()
-                }
-              >
-                <RefreshCw className="h-4 w-4" />
-                {t("common.refresh")}
-              </Button>
             </div>
           </div>
         </aside>
@@ -677,7 +726,7 @@ export function InventoryView() {
                 </div>
               )}
 
-              {chainFocus === "bsc" && evmAddr && (
+              {singleChainFocus === "bsc" && evmAddr && (
                 <TradePanel
                   tradeReady={tradeReady}
                   bnbBalance={bnbBalance}
@@ -689,15 +738,10 @@ export function InventoryView() {
                 />
               )}
             </div>
-
             <div
               data-testid="wallet-assets-header"
-              className="mt-4 mb-2 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"
-            >
-              <div className="px-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted/60">
-                assets
-              </div>
-            </div>
+              className="mt-4 mb-2 flex items-center justify-end"
+            />
             <div
               className={`min-h-[58vh] ${WALLET_PANEL_CLASS} overflow-hidden`}
             >
@@ -708,7 +752,7 @@ export function InventoryView() {
                   walletBalances={walletBalances}
                   visibleRows={visibleRows}
                   visibleChainErrors={visibleChainErrors}
-                  inventoryChainFocus={inventoryChainFocus ?? "all"}
+                  showChainColumn={singleChainFocus === null}
                   handleUntrackToken={handleUntrackToken}
                 />
               ) : (

@@ -543,22 +543,6 @@ export function HeartbeatsView() {
           className={`${selectedTriggerId || editorOpen || editingId ? "hidden md:flex" : "flex"} w-full shrink-0 flex-col overflow-y-auto md:w-[21rem] md:max-w-[352px] lg:w-[23rem] ${APP_SIDEBAR_RAIL_CLASSNAME}`}
         >
           <div className={APP_SIDEBAR_STICKY_HEADER_CLASSNAME}>
-            <div className="mb-3 flex items-end justify-between gap-3 px-1">
-              <div className="space-y-1">
-                <div className={SIDEBAR_SECTION_LABEL_CLASS}>Heartbeats</div>
-                <div className={APP_SIDEBAR_META_CLASSNAME}>
-                  {t("heartbeatsview.newHeartbeat")}
-                </div>
-              </div>
-              <StatusBadge
-                label={
-                  triggersLoading
-                    ? t("common.loading")
-                    : String(triggers.length)
-                }
-                tone={triggersLoading ? "warning" : "muted"}
-              />
-            </div>
             <Button
               variant="ghost"
               size="sm"
@@ -584,13 +568,6 @@ export function HeartbeatsView() {
                 <div className="h-4 w-4 rounded-full border-2 border-muted/30 border-t-muted/80 animate-spin" />
                 {t("common.loading")}
               </div>
-            )}
-            {!triggersLoading && triggers.length === 0 && (
-              <DesktopEmptyStatePanel
-                className="min-h-[11rem] px-4 py-6"
-                description={t("heartbeatsview.emptyStateDescription")}
-                title="No heartbeats yet"
-              />
             )}
             {triggers.map((trigger) => {
               const isActive = selectedTriggerId === trigger.id;
@@ -1392,19 +1369,6 @@ export function HeartbeatsView() {
                   description={t("heartbeatsview.emptyStateDescription")}
                   icon={<Clock3 className="h-7 w-7" />}
                   title={t("heartbeatsview.selectAHeartbeat")}
-                  action={
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-10 rounded-xl px-5 text-sm"
-                      onClick={() => {
-                        openCreateEditor();
-                        setSelectedTriggerId(null);
-                      }}
-                    >
-                      {t("heartbeatsview.newHeartbeat")}
-                    </Button>
-                  }
                 />
               </div>
             )
