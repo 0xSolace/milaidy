@@ -114,6 +114,7 @@ import {
   type Tab,
   tabFromPath,
 } from "../navigation";
+import { getResetConnectionWizardToHostingStepPatch } from "../onboarding/connection-flow";
 import {
   canRevertOnboardingTo,
   getFlaminaTopicForOnboardingStep,
@@ -5627,6 +5628,39 @@ function AppProviderInner({
     [onboardingMode, setOnboardingStep, setOnboardingActiveGuide],
   );
 
+  const applyResetConnectionWizardToHostingStep = useCallback(() => {
+    const patch = getResetConnectionWizardToHostingStepPatch();
+    if (patch.onboardingRunMode !== undefined) {
+      setOnboardingRunMode(patch.onboardingRunMode);
+    }
+    if (patch.onboardingCloudProvider !== undefined) {
+      setOnboardingCloudProvider(patch.onboardingCloudProvider);
+    }
+    if (patch.onboardingProvider !== undefined) {
+      setOnboardingProvider(patch.onboardingProvider);
+    }
+    if (patch.onboardingApiKey !== undefined) {
+      setOnboardingApiKey(patch.onboardingApiKey);
+    }
+    if (patch.onboardingPrimaryModel !== undefined) {
+      setOnboardingPrimaryModel(patch.onboardingPrimaryModel);
+    }
+    if (patch.onboardingRemoteError !== undefined) {
+      setOnboardingRemoteError(patch.onboardingRemoteError);
+    }
+    if (patch.onboardingRemoteConnecting !== undefined) {
+      setOnboardingRemoteConnecting(patch.onboardingRemoteConnecting);
+    }
+  }, [
+    setOnboardingApiKey,
+    setOnboardingCloudProvider,
+    setOnboardingPrimaryModel,
+    setOnboardingProvider,
+    setOnboardingRemoteConnecting,
+    setOnboardingRemoteError,
+    setOnboardingRunMode,
+  ]);
+
   const advanceOnboarding = useCallback(
     async (options?: OnboardingNextOptions) => {
       if (
@@ -5676,6 +5710,9 @@ function AppProviderInner({
       }
 
       if (nextStep) {
+        if (nextStep === "hosting") {
+          applyResetConnectionWizardToHostingStep();
+        }
         setOnboardingStep(nextStep);
         setOnboardingActiveGuide(
           onboardingMode === "advanced"
@@ -5686,6 +5723,7 @@ function AppProviderInner({
     },
     [
       addDeferredOnboardingTask,
+      applyResetConnectionWizardToHostingStep,
       handleOnboardingFinish,
       onboardingDetectedProviders,
       onboardingMode,
@@ -5719,6 +5757,9 @@ function AppProviderInner({
     }
 
     if (!previousStep) return;
+    if (previousStep === "hosting") {
+      applyResetConnectionWizardToHostingStep();
+    }
     setOnboardingStep(previousStep);
     setOnboardingActiveGuide(
       onboardingMode === "advanced"
@@ -5726,6 +5767,7 @@ function AppProviderInner({
         : null,
     );
   }, [
+    applyResetConnectionWizardToHostingStep,
     onboardingMode,
     onboardingStep,
     setOnboardingActiveGuide,
@@ -5738,6 +5780,9 @@ function AppProviderInner({
   const handleOnboardingJumpToStep = useCallback(
     (target: OnboardingStep) => {
       if (!canRevertOnboardingTo({ current: onboardingStep, target })) return;
+      if (target === "hosting") {
+        applyResetConnectionWizardToHostingStep();
+      }
       setOnboardingStep(target);
       setOnboardingActiveGuide(
         onboardingMode === "advanced"
@@ -5746,6 +5791,7 @@ function AppProviderInner({
       );
     },
     [
+      applyResetConnectionWizardToHostingStep,
       onboardingMode,
       onboardingStep,
       setOnboardingStep,

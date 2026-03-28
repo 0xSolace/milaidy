@@ -27,7 +27,7 @@ export const onboardingFieldLabelClassName = `text-xs font-semibold uppercase tr
 export const onboardingInlineSupportClassName =
   "rounded-md border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.05)] px-1 py-0.5 backdrop-blur-[10px]";
 export const onboardingTextSupportClassName =
-  "rounded-xl bg-[var(--onboarding-text-support-bg)] px-3 py-2 shadow-[var(--onboarding-text-support-shadow)] backdrop-blur-[14px]";
+  "rounded-xl bg-[var(--onboarding-text-support-bg)] px-3 py-2 my-2 shadow-[var(--onboarding-text-support-shadow)] backdrop-blur-[14px]";
 export const onboardingCardSurfaceClassName =
   "border border-[var(--onboarding-card-border)] bg-[var(--onboarding-card-bg)] shadow-[var(--onboarding-card-shadow)]";
 export const onboardingCardSurfaceHoverClassName =
@@ -64,9 +64,9 @@ export function getOnboardingChoiceCardClassName({
       ? `${onboardingRecommendedSurfaceClassName} ${onboardingRecommendedSurfaceHoverClassName}`
       : `${onboardingCardSurfaceClassName} ${onboardingCardSurfaceHoverClassName}`,
     selected &&
-      "border-[rgba(240,185,11,0.32)] bg-[rgba(240,185,11,0.12)] shadow-[0_0_0_1px_rgba(240,185,11,0.18)]",
+    "border-[rgba(240,185,11,0.32)] bg-[rgba(240,185,11,0.12)] shadow-[0_0_0_1px_rgba(240,185,11,0.18)]",
     detected &&
-      "border-[rgba(34,197,94,0.4)] bg-[rgba(34,197,94,0.1)] hover:border-[rgba(34,197,94,0.5)] hover:bg-[rgba(34,197,94,0.15)]",
+    "border-[rgba(34,197,94,0.4)] bg-[rgba(34,197,94,0.1)] hover:border-[rgba(34,197,94,0.5)] hover:bg-[rgba(34,197,94,0.15)]",
   );
 }
 
