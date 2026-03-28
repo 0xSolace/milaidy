@@ -33,6 +33,9 @@ const GAME_MODAL_SIDEBAR_CLASS =
   "flex h-full flex-col overflow-hidden rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(11,12,17,0.9),rgba(8,10,14,0.82))] shadow-[0_20px_60px_rgba(0,0,0,0.28)] backdrop-blur-xl";
 const DEFAULT_HEADER_PANEL_CLASS =
   "shrink-0 border-b border-border/25 bg-[linear-gradient(180deg,color-mix(in_srgb,var(--card)_34%,transparent),transparent)] px-3.5 pb-4 pt-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]";
+/** Fills sidebar height so the expand control can sit at the bottom with padding. */
+const COLLAPSED_DESKTOP_HEADER_PANEL_CLASS =
+  "flex flex-1 min-h-0 flex-col border-b border-border/25 bg-[linear-gradient(180deg,color-mix(in_srgb,var(--card)_34%,transparent),transparent)] px-3.5 pb-0 pt-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]";
 const GAME_MODAL_HEADER_PANEL_CLASS =
   "shrink-0 border-b border-white/10 bg-black/10 px-3.5 pb-3 pt-3.5";
 const DEFAULT_MOBILE_HEADER_PANEL_CLASS =
@@ -267,38 +270,44 @@ export function ConversationsSidebar({
           className={
             isGameModal
               ? GAME_MODAL_HEADER_PANEL_CLASS
-              : DEFAULT_HEADER_PANEL_CLASS
+              : isCollapsed && canCollapse
+                ? COLLAPSED_DESKTOP_HEADER_PANEL_CLASS
+                : DEFAULT_HEADER_PANEL_CLASS
           }
         >
           {isCollapsed ? (
-            <div className="flex flex-col items-center gap-3 py-1">
-              <Button
-                variant="outline"
-                size="icon"
-                data-testid="chat-sidebar-expand-toggle"
-                className={`h-11 w-11 rounded-[14px] ${DESKTOP_CONTROL_SURFACE_CLASSNAME}`}
-                aria-label="Expand chats panel"
-                onClick={() => setCollapsed(false)}
-              >
-                <PanelLeftOpen className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className={`h-11 w-11 rounded-[14px] ${DESKTOP_CONTROL_SURFACE_ACCENT_CLASSNAME}`}
-                aria-label={t("conversations.newChat")}
-                onClick={() => {
-                  handleNewConversation();
-                  onClose?.();
-                }}
-              >
-                <SquarePen className="h-4 w-4" />
-              </Button>
-              <div className="flex flex-col items-center gap-2 pt-1">
-                <div className={COUNT_BADGE_CLASS}>{conversationCount}</div>
-                {unreadCount > 0 ? (
-                  <div className={UNREAD_BADGE_CLASS}>{unreadCount}</div>
-                ) : null}
+            <div className="flex min-h-0 w-full flex-1 flex-col items-center">
+              <div className="flex flex-col items-center gap-3 py-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className={`h-11 w-11 rounded-[14px] ${DESKTOP_CONTROL_SURFACE_ACCENT_CLASSNAME}`}
+                  aria-label={t("conversations.newChat")}
+                  onClick={() => {
+                    handleNewConversation();
+                    onClose?.();
+                  }}
+                >
+                  <SquarePen className="h-4 w-4" />
+                </Button>
+                <div className="flex flex-col items-center gap-2 pt-1">
+                  <div className={COUNT_BADGE_CLASS}>{conversationCount}</div>
+                  {unreadCount > 0 ? (
+                    <div className={UNREAD_BADGE_CLASS}>{unreadCount}</div>
+                  ) : null}
+                </div>
+              </div>
+              <div className="mt-auto mb-3 flex w-full flex-col items-center pb-3 pt-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  data-testid="chat-sidebar-expand-toggle"
+                  className={`h-11 w-11 rounded-[14px] ${DESKTOP_CONTROL_SURFACE_CLASSNAME}`}
+                  aria-label="Expand chats panel"
+                  onClick={() => setCollapsed(false)}
+                >
+                  <PanelLeftOpen className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           ) : (
@@ -367,7 +376,7 @@ export function ConversationsSidebar({
               </div>
             </div>
             {canCollapse ? (
-              <div className="shrink-0 border-t border-border/25 bg-[linear-gradient(0deg,color-mix(in_srgb,var(--card)_34%,transparent),transparent)] px-3.5 pb-3.5 pt-2 shadow-[inset_0_-1px_0_rgba(255,255,255,0.03)] flex justify-end">
+              <div className="shrink-0 border-t border-border/25 mb-3 bg-[linear-gradient(0deg,color-mix(in_srgb,var(--card)_34%,transparent),transparent)] px-3.5 pb-3.5 pt-2 shadow-[inset_0_-1px_0_rgba(255,255,255,0.03)] flex justify-end">
                 <Button
                   variant="ghost"
                   size="icon"

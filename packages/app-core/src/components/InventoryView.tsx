@@ -674,32 +674,6 @@ export function InventoryView() {
               data-testid="wallet-overview-card"
               className="mt-4 flex flex-col gap-4 sm:gap-5"
             >
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <h1 className="text-xl font-semibold text-txt-strong">
-                    {overviewTitle}
-                  </h1>
-                  <p className="mt-1 text-sm text-muted">
-                    {t("wallet.overviewSubtitle")}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span
-                    data-testid="wallet-funding-route-pill"
-                    className="inline-flex rounded-full border border-border/50 bg-bg/24 px-3 py-1 text-[11px] font-medium text-muted"
-                  >
-                    {fundingRouteLabel}
-                  </span>
-                  {inventoryView === "tokens" ? (
-                    <span
-                      data-testid="wallet-summary-sort-pill"
-                      className="inline-flex rounded-full border border-border/50 bg-bg/24 px-3 py-1 text-[11px] font-medium text-muted"
-                    >
-                      {t("wallet.sort")} {currentSortLabel}
-                    </span>
-                  ) : null}
-                </div>
-              </div>
               {inventoryView === "tokens" ? (
                 <div
                   data-testid="wallet-overview-sort-block"
