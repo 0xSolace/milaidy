@@ -138,7 +138,7 @@ function resolveCloudStatusToneStyle(
       backgroundColor: "var(--accent)",
       backgroundImage:
         "linear-gradient(180deg, color-mix(in srgb, var(--accent) 86%, white 14%), color-mix(in srgb, var(--accent) 94%, black 6%))",
-      color: "var(--accent-foreground)",
+      color: "#0f0f12",
       boxShadow:
         "inset 0 1px 0 rgba(255,255,255,0.22), 0 12px 28px rgba(3,5,10,0.16)",
     };
