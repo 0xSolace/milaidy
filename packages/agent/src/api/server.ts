@@ -449,6 +449,16 @@ function hasPersistedOnboardingState(config: ElizaConfig): boolean {
   );
 }
 
+const APP_OWNER_NAME_MAX_LENGTH = 60;
+
+/** Resolve the app owner's display name from config, or fall back to "User". */
+export function resolveAppUserName(config: ElizaConfig): string {
+  const ownerName = (config.ui as Record<string, unknown> | undefined)
+    ?.ownerName as string | undefined;
+  const normalized = ownerName?.trim().slice(0, APP_OWNER_NAME_MAX_LENGTH);
+  return normalized || "User";
+}
+
 function resolveConversationGreetingText(
   runtime: AgentRuntime,
   lang: string,
@@ -8824,7 +8834,7 @@ function wireCoordinatorEventRouting(st: ServerState): boolean {
               entityId: adminId,
               roomId: st.chatRoomId,
               worldId,
-              userName: "User",
+              userName: resolveAppUserName(st.config),
               source: "client_chat",
               channelId: `${agentName}-web-chat`,
               type: ChannelType.DM,
@@ -15221,7 +15231,7 @@ async function handleRequest(
       entityId: userId,
       roomId: conv.roomId,
       worldId,
-      userName: "User",
+      userName: resolveAppUserName(state.config),
       source: "client_chat",
       channelId: `web-conv-${conv.id}`,
       type: ChannelType.DM,
@@ -15426,7 +15436,7 @@ async function handleRequest(
             entityId: target.userId,
             roomId: target.roomId,
             worldId: target.worldId,
-            userName: "User",
+            userName: resolveAppUserName(state.config),
             source: "client_chat",
             channelId: `${agentName}-web-chat`,
             type: ChannelType.DM,
@@ -15503,7 +15513,7 @@ async function handleRequest(
       entityId: userId,
       roomId,
       worldId,
-      userName: "User",
+      userName: resolveAppUserName(state.config),
       source: "client_chat",
       channelId: `${channelIdPrefix}-${roomKey}`,
       type: ChannelType.DM,
