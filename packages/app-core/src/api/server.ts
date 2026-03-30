@@ -37,6 +37,14 @@ import {
   sendJsonError as sendJsonErrorResponse,
   sendJson as sendJsonResponse,
 } from "./response";
+import {
+  DATABASE_UNAVAILABLE_MESSAGE,
+  getConfiguredCompatAgentName,
+  hasCompatPersistedOnboardingState,
+  isLoopbackRemoteAddress,
+  readCompatJsonBody,
+  type CompatRuntimeState,
+} from "./compat-route-shared";
 
 export {
   __resetCloudBaseUrlCache,
@@ -83,13 +91,16 @@ export {
   streamResponseBodyWithByteLimit,
   validateMcpServerConfig,
 };
+export {
+  DATABASE_UNAVAILABLE_MESSAGE,
+  getConfiguredCompatAgentName,
+  hasCompatPersistedOnboardingState,
+  isLoopbackRemoteAddress,
+  readCompatJsonBody,
+  type CompatRuntimeState,
+} from "./compat-route-shared";
 
-import {
-  getWalletAddresses,
-  initStewardWalletCache,
-} from "@miladyai/agent/api/wallet";
-import { fetchEvmNfts } from "@miladyai/agent/api/wallet-evm-balance";
-import { resolveWalletRpcReadiness } from "@miladyai/agent/api/wallet-rpc";
+import { initStewardWalletCache } from "@miladyai/agent/api/wallet";
 import {
   type ElizaConfig,
   loadElizaConfig,
@@ -116,30 +127,15 @@ import {
   readDevConsoleLogTail,
 } from "./dev-console-log";
 import { handleAuthPairingCompatRoutes } from "./auth-pairing-compat-routes";
+import { handleDatabaseRowsCompatRoute } from "./database-rows-compat-routes";
 import { handleDevCompatRoutes } from "./dev-compat-routes";
+import { handleOnboardingCompatRoute } from "./onboarding-compat-routes";
 import { handlePluginsCompatRoutes } from "./plugins-compat-routes";
 import { handleWalletTradeCompatRoutes } from "./wallet-trade-compat-routes";
+import { handleStewardCompatRoutes } from "./steward-compat-routes";
 import { handleWorkbenchCompatRoutes } from "./workbench-compat-routes";
+import { handleWalletCompatRoutes } from "./wallet-compat-routes";
 import { resolveDevStackFromEnv } from "./dev-stack";
-import {
-  approveStewardTransaction,
-  createStewardClient,
-  denyStewardTransaction,
-  ensureStewardAgent,
-  getRecentWebhookEvents,
-  getStewardBalance,
-  getStewardBridgeStatus,
-  getStewardHistory,
-  getStewardPendingApprovals,
-  getStewardTokenBalances,
-  getStewardWalletAddresses,
-  isStewardConfigured,
-  pushWebhookEvent,
-  resolveStewardAgentId,
-  type StewardWebhookEventType,
-  signTransactionWithOptionalSteward,
-  signViaSteward,
-} from "./steward-bridge";
 
 const require = createRequire(import.meta.url);
 
@@ -159,41 +155,15 @@ function syncElizaEnvToMilady(): void {
   if (aliases) syncElizaEnvToBrand(aliases);
 }
 
-export function isLoopbackRemoteAddress(
-  remoteAddress: string | null | undefined,
-): boolean {
-  if (!remoteAddress) return false;
-  const normalized = remoteAddress.trim().toLowerCase();
-  return (
-    normalized === "127.0.0.1" ||
-    normalized === "::1" ||
-    normalized === "0:0:0:0:0:0:0:1" ||
-    normalized === "::ffff:127.0.0.1" ||
-    normalized === "::ffff:0:127.0.0.1"
-  );
-}
-
 // Lazy-imported to avoid circular dependency with runtime/eliza.ts
 const lazyEnsureTTS = () =>
   import("../runtime/eliza.js").then((m) => m.ensureMiladyTextToSpeechHandler);
 
 import { getMiladyStartupEmbeddingAugmentation } from "../runtime/milady-startup-overlay.js";
-import { deriveAgentVaultId } from "../security/agent-vault-id";
 import { hydrateWalletKeysFromNodePlatformSecureStore } from "../security/hydrate-wallet-keys-from-platform-store";
-import {
-  createNodePlatformSecureStore,
-  isWalletOsStoreReadEnabled,
-} from "../security/platform-secure-store-node";
-import {
-  deleteWalletSecretsFromOsStore,
-  migrateWalletPrivateKeysToOsStore,
-} from "../security/wallet-os-store-actions";
+import { deleteWalletSecretsFromOsStore } from "../security/wallet-os-store-actions";
 import { clearCloudSecrets, getCloudSecret } from "./cloud-secrets";
-import {
-  clearPersistedOnboardingConfig,
-  resolveExistingOnboardingConnection,
-} from "./provider-switch-config";
-import { isOnboardingConnectionComplete } from "../contracts/onboarding";
+import { clearPersistedOnboardingConfig } from "./provider-switch-config";
 
 // ---------------------------------------------------------------------------
 // Import from extracted modules for use within this file
@@ -205,30 +175,11 @@ import {
   mirrorCompatHeaders,
 } from "./server-cloud-tts";
 import { filterConfigEnvForResponse as _filterConfigEnvForResponse } from "./server-config-filter";
-import {
-  deriveCompatOnboardingReplayBody as _deriveCompatOnboardingReplayBody,
-  extractAndPersistOnboardingApiKey as _extractAndPersistOnboardingApiKey,
-  isCloudProvisioned as _isCloudProvisioned,
-  persistCompatOnboardingDefaults as _persistCompatOnboardingDefaults,
-} from "./server-onboarding-compat";
-import {
-  canUseLocalTradeExecution as _canUseLocalTradeExecution,
-  resolveTradePermissionMode as _resolveTradePermissionMode,
-} from "./server-wallet-trade";
-
 // ---------------------------------------------------------------------------
 // Module-level constants and types that stay in server.ts
 // ---------------------------------------------------------------------------
 
 const _PACKAGE_ROOT_NAMES = new Set(["eliza", "elizaai", "elizaos"]);
-
-export interface CompatRuntimeState {
-  current: AgentRuntime | null;
-  pendingAgentName: string | null;
-}
-
-const DATABASE_UNAVAILABLE_MESSAGE =
-  "Database not available. The agent may not be running or the database adapter is not initialized.";
 
 // ---------------------------------------------------------------------------
 // Internal helpers used by the monkey-patch handler (stay in server.ts)
@@ -239,49 +190,6 @@ const DATABASE_UNAVAILABLE_MESSAGE =
 // Pairing infrastructure — now in ./auth-pairing-compat-routes
 // getProvidedApiToken, ensureCompatApiAuthorized, isDevEnvironment,
 // ensureCompatSensitiveRouteAuthorized — now imported from ./auth
-
-const MAX_BODY_BYTES = 1_048_576;
-export async function readCompatJsonBody(
-  req: http.IncomingMessage,
-  res: http.ServerResponse,
-): Promise<Record<string, unknown> | null> {
-  const chunks: Buffer[] = [];
-  let totalBytes = 0;
-
-  try {
-    for await (const chunk of req) {
-      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-      totalBytes += buf.length;
-      if (totalBytes > MAX_BODY_BYTES) {
-        req.destroy();
-        sendJsonErrorResponse(res, 413, "Request body too large");
-        return null;
-      }
-      chunks.push(buf);
-    }
-  } catch {
-    sendJsonErrorResponse(res, 400, "Invalid request body");
-    return null;
-  }
-
-  if (chunks.length === 0) {
-    return {};
-  }
-
-  try {
-    const parsed = JSON.parse(
-      Buffer.concat(chunks).toString("utf8"),
-    ) as unknown;
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      sendJsonErrorResponse(res, 400, "Invalid JSON body");
-      return null;
-    }
-    return parsed as Record<string, unknown>;
-  } catch {
-    sendJsonErrorResponse(res, 400, "Invalid JSON body");
-    return null;
-  }
-}
 
 function resolveCompatConfigPaths(): {
   elizaConfigPath?: string;
@@ -488,45 +396,7 @@ async function clearCompatPgliteDataDir(
   }
 }
 
-export function hasCompatPersistedOnboardingState(config: ElizaConfig): boolean {
-  if ((config.meta as Record<string, unknown>)?.onboardingComplete === true) {
-    return true;
-  }
-
-  const existingConnection = resolveExistingOnboardingConnection(
-    config as Record<string, unknown>,
-  );
-  if (isOnboardingConnectionComplete(existingConnection)) {
-    return true;
-  }
-
-  if (Array.isArray(config.agents?.list) && config.agents.list.length > 0) {
-    return true;
-  }
-
-  return Boolean(
-    config.agents?.defaults?.workspace?.trim() ||
-      config.agents?.defaults?.adminEntityId?.trim(),
-  );
-}
-
 // sendJsonResponse, sendJsonErrorResponse — now imported from ./response
-
-export function getConfiguredCompatAgentName(): string | null {
-  const config = loadElizaConfig();
-  const listAgent = config.agents?.list?.[0];
-  const listAgentName =
-    typeof listAgent?.name === "string" ? listAgent.name.trim() : "";
-  if (listAgentName) {
-    return listAgentName;
-  }
-
-  const assistantName =
-    typeof config.ui?.assistant?.name === "string"
-      ? config.ui.assistant.name.trim()
-      : "";
-  return assistantName || null;
-}
 
 function resolveCompatStatusAgentName(
   state: CompatRuntimeState,
@@ -688,163 +558,6 @@ async function _getTableColumnNames(
 // resolveInstalledPackageVersion, resolveLoadedPluginNames, isPluginLoaded,
 // buildPluginListResponse, validateCompatPluginConfig, persistCompatPluginMutation
 // — extracted to ./plugins-compat-routes
-
-async function handleDatabaseRowsCompatRoute(
-  req: http.IncomingMessage,
-  res: http.ServerResponse,
-  runtime: AgentRuntime | null,
-  pathname: string,
-): Promise<boolean> {
-  const match = /^\/api\/database\/tables\/([^/]+)\/rows$/.exec(pathname);
-  if ((req.method ?? "GET").toUpperCase() !== "GET" || !match) {
-    return false;
-  }
-
-  if (!ensureCompatApiAuthorized(req, res)) {
-    return true;
-  }
-
-  if (!runtime) {
-    sendJsonErrorResponse(res, 503, DATABASE_UNAVAILABLE_MESSAGE);
-    return true;
-  }
-
-  const tableName = sanitizeIdentifier(decodeURIComponent(match[1]));
-  const requestUrl = new URL(req.url ?? "/", "http://localhost");
-  const schemaName = sanitizeIdentifier(requestUrl.searchParams.get("schema"));
-
-  if (!tableName) {
-    sendJsonErrorResponse(res, 400, "Invalid table name");
-    return true;
-  }
-
-  let resolvedSchema = schemaName;
-
-  if (!resolvedSchema) {
-    const { rows } = await executeRawSql(
-      runtime,
-      `SELECT table_schema AS schema
-         FROM information_schema.tables
-        WHERE table_name = ${sqlLiteral(tableName)}
-          AND table_schema NOT IN ('pg_catalog', 'information_schema')
-          AND table_type = 'BASE TABLE'
-        ORDER BY CASE WHEN table_schema = 'public' THEN 0 ELSE 1 END,
-                 table_schema`,
-    );
-
-    const schemas = rows
-      .map((row) => row.schema)
-      .filter((value): value is string => typeof value === "string");
-
-    if (schemas.length === 0) {
-      sendJsonErrorResponse(res, 404, `Unknown table "${tableName}"`);
-      return true;
-    }
-
-    if (schemas.length > 1 && !schemas.includes("public")) {
-      sendJsonErrorResponse(
-        res,
-        409,
-        `Table "${tableName}" exists in multiple schemas; specify ?schema=<name>.`,
-      );
-      return true;
-    }
-
-    resolvedSchema = schemas.includes("public") ? "public" : schemas[0];
-  }
-
-  const columnResult = await executeRawSql(
-    runtime,
-    `SELECT column_name
-       FROM information_schema.columns
-      WHERE table_name = ${sqlLiteral(tableName)}
-        AND table_schema = ${sqlLiteral(resolvedSchema)}
-      ORDER BY ordinal_position`,
-  );
-
-  const columns = columnResult.rows
-    .map((row) => row.column_name)
-    .filter((value): value is string => typeof value === "string");
-
-  if (columns.length === 0) {
-    sendJsonErrorResponse(
-      res,
-      404,
-      `No readable columns found for ${resolvedSchema}.${tableName}`,
-    );
-    return true;
-  }
-
-  const limit = Math.max(
-    1,
-    Math.min(
-      500,
-      Number.parseInt(requestUrl.searchParams.get("limit") ?? "", 10) || 50,
-    ),
-  );
-  const offset = Math.max(
-    0,
-    Number.parseInt(requestUrl.searchParams.get("offset") ?? "", 10) || 0,
-  );
-  const sortColumn = sanitizeIdentifier(requestUrl.searchParams.get("sort"));
-  const order =
-    requestUrl.searchParams.get("order") === "desc" ? "DESC" : "ASC";
-  const search = requestUrl.searchParams.get("search")?.trim();
-
-  const filters: string[] = [];
-  if (search) {
-    const likeEscaped = search
-      .replace(/\\/g, "\\\\")
-      .replace(/%/g, "\\%")
-      .replace(/_/g, "\\_");
-    const searchLiteral = sqlLiteral(`%${likeEscaped}%`);
-    filters.push(
-      `(${columns
-        .map(
-          (columnName) =>
-            `CAST(${quoteIdent(columnName)} AS TEXT) ILIKE ${searchLiteral}`,
-        )
-        .join(" OR ")})`,
-    );
-  }
-  const whereClause =
-    filters.length > 0 ? `WHERE ${filters.join(" AND ")}` : "";
-
-  const orderBy =
-    sortColumn && columns.includes(sortColumn)
-      ? `ORDER BY ${quoteIdent(sortColumn)} ${order}`
-      : "";
-  const qualifiedTable = `${quoteIdent(resolvedSchema)}.${quoteIdent(tableName)}`;
-
-  const countResult = await executeRawSql(
-    runtime,
-    `SELECT count(*)::int AS total FROM ${qualifiedTable} ${whereClause}`,
-  );
-  const total =
-    typeof countResult.rows[0]?.total === "number"
-      ? countResult.rows[0].total
-      : Number(countResult.rows[0]?.total ?? 0);
-
-  const rowsResult = await executeRawSql(
-    runtime,
-    `SELECT * FROM ${qualifiedTable}
-      ${whereClause}
-      ${orderBy}
-      LIMIT ${limit}
-     OFFSET ${offset}`,
-  );
-
-  sendJsonResponse(res, 200, {
-    table: tableName,
-    schema: resolvedSchema,
-    rows: rowsResult.rows,
-    columns,
-    total,
-    offset,
-    limit,
-  });
-  return true;
-}
 
 /**
  * Build the set of localhost ports allowed for CORS.
@@ -1117,621 +830,11 @@ async function handleMiladyCompatRoute(
     return true;
   }
 
-  // ── GET/POST /api/wallet/os-store (Keychain / Secret Service) ───────
-  if (method === "GET" && url.pathname === "/api/wallet/os-store") {
-    if (!ensureCompatApiAuthorized(req, res)) {
-      return true;
-    }
-
-    try {
-      const store = createNodePlatformSecureStore();
-      const available = await store.isAvailable();
-      sendJsonResponse(res, 200, {
-        backend: store.backend,
-        available,
-        readEnabled: isWalletOsStoreReadEnabled(),
-        vaultId: deriveAgentVaultId(),
-      });
-    } catch (err) {
-      logger.warn(
-        `[wallet][os-store] GET status failed: ${err instanceof Error ? err.message : String(err)}`,
-      );
-      sendJsonResponse(res, 500, { error: "os-store status failed" });
-    }
-    return true;
-  }
-
-  if (method === "POST" && url.pathname === "/api/wallet/os-store") {
-    if (!ensureCompatSensitiveRouteAuthorized(req, res)) {
-      return true;
-    }
-
-    const body = await readCompatJsonBody(req, res);
-    if (!body) {
-      return true;
-    }
-
-    const action = typeof body.action === "string" ? body.action.trim() : "";
-
-    try {
-      if (action === "migrate") {
-        const result = await migrateWalletPrivateKeysToOsStore();
-        if (result.unavailable) {
-          sendJsonResponse(res, 503, {
-            ok: false,
-            error: "OS secret store unavailable on this host",
-          });
-          return true;
-        }
-        sendJsonResponse(res, 200, {
-          ok: true,
-          migrated: result.migrated,
-          failed: result.failed,
-        });
-        return true;
-      }
-      if (action === "delete") {
-        await deleteWalletSecretsFromOsStore();
-        sendJsonResponse(res, 200, { ok: true });
-        return true;
-      }
-    } catch (err) {
-      logger.warn(
-        `[wallet][os-store] POST failed: ${err instanceof Error ? err.message : String(err)}`,
-      );
-      sendJsonResponse(res, 500, {
-        error: err instanceof Error ? err.message : "os-store action failed",
-      });
-      return true;
-    }
-
-    sendJsonResponse(res, 400, { error: "Unknown action" });
-    return true;
-  }
-
-  // ── GET /api/wallet/keys (onboarding only) ──────────────────────────
-  // Security note: this compat route exists only for the embedded desktop
-  // onboarding flow, where the renderer needs to display the keys already
-  // generated inside the local runtime. Electrobun injects a loopback
-  // `http://127.0.0.1:<port>` API base plus a generated API token before the
-  // renderer mounts, and ensureCompatSensitiveRouteAuthorized fails closed if
-  // that token is missing. The route is also permanently disabled once
-  // onboardingComplete flips true so the backup screen cannot be reopened as a
-  // general-purpose key export endpoint.
-
-  if (method === "GET" && url.pathname === "/api/wallet/keys") {
-    if (!isLoopbackRemoteAddress(req.socket.remoteAddress)) {
-      sendJsonErrorResponse(res, 403, "loopback only");
-      return true;
-    }
-
-    if (!ensureCompatSensitiveRouteAuthorized(req, res)) {
-      return true;
-    }
-
-    const config = loadElizaConfig();
-    if (config.meta?.onboardingComplete === true) {
-      sendJsonResponse(res, 403, {
-        error: "Wallet keys are only available during onboarding",
-      });
-      return true;
-    }
-
-    // When Steward is configured, return masked keys with Steward status
-    if (isStewardConfigured()) {
-      try {
-        const addresses = getWalletAddresses();
-        const stewardStatus = await getStewardBridgeStatus({
-          evmAddress: addresses.evmAddress,
-        });
-        sendJsonResponse(res, 200, {
-          evmPrivateKey: "[managed-by-steward]",
-          evmAddress: addresses.evmAddress ?? stewardStatus.evmAddress ?? "",
-          solanaPrivateKey: "[managed-by-steward]",
-          solanaAddress: addresses.solanaAddress ?? "",
-          steward: {
-            configured: true,
-            connected: stewardStatus.connected,
-            agentId: stewardStatus.agentId,
-          },
-        });
-        return true;
-      } catch {
-        // fall through to legacy path
-      }
-    }
-
-    const evmKey = process.env.EVM_PRIVATE_KEY ?? "";
-    const solKey = process.env.SOLANA_PRIVATE_KEY ?? "";
-
-    try {
-      const addresses = getWalletAddresses();
-      sendJsonResponse(res, 200, {
-        evmPrivateKey: evmKey,
-        evmAddress: addresses.evmAddress ?? "",
-        solanaPrivateKey: solKey,
-        solanaAddress: addresses.solanaAddress ?? "",
-      });
-    } catch {
-      sendJsonResponse(res, 200, {
-        evmPrivateKey: evmKey,
-        evmAddress: "",
-        solanaPrivateKey: solKey,
-        solanaAddress: "",
-      });
-    }
-    return true;
-  }
-
-  if (method === "GET" && url.pathname === "/api/wallet/nfts") {
-    if (!ensureCompatApiAuthorized(req, res)) {
-      return true;
-    }
-
-    const config = loadElizaConfig();
-    const addresses = getWalletAddresses();
-    const rpcReadiness = resolveWalletRpcReadiness(config);
-    const alchemyKey = process.env.ALCHEMY_API_KEY?.trim() || null;
-    const ankrKey = process.env.ANKR_API_KEY?.trim() || null;
-    const result: {
-      evm: Array<{ chain: string; nfts: unknown[] }>;
-      solana: { nfts: unknown[] } | null;
-    } = {
-      evm: [],
-      solana: null,
-    };
-
-    if (addresses.evmAddress && rpcReadiness.evmBalanceReady) {
-      try {
-        result.evm = await fetchEvmNfts(addresses.evmAddress, {
-          alchemyKey,
-          ankrKey,
-          cloudManagedAccess: rpcReadiness.cloudManagedAccess,
-          bscRpcUrls: rpcReadiness.bscRpcUrls,
-          ethereumRpcUrls: rpcReadiness.ethereumRpcUrls,
-          baseRpcUrls: rpcReadiness.baseRpcUrls,
-          avaxRpcUrls: rpcReadiness.avalancheRpcUrls,
-          nodeRealBscRpcUrl: process.env.NODEREAL_BSC_RPC_URL,
-          quickNodeBscRpcUrl: process.env.QUICKNODE_BSC_RPC_URL,
-          bscRpcUrl: process.env.BSC_RPC_URL,
-          ethereumRpcUrl: process.env.ETHEREUM_RPC_URL,
-          baseRpcUrl: process.env.BASE_RPC_URL,
-          avaxRpcUrl: process.env.AVALANCHE_RPC_URL,
-        });
-      } catch (err) {
-        logger.warn(`[wallet] EVM NFT fetch failed: ${err}`);
-      }
-    }
-
-    sendJsonResponse(res, 200, result);
-    return true;
-  }
-
-  if (method === "GET" && url.pathname === "/api/wallet/steward-status") {
-    if (!ensureCompatApiAuthorized(req, res)) {
-      return true;
-    }
-
-    const addresses = getWalletAddresses();
-
-    // Lazy initialization: on first request, ensure the steward agent exists
-    if (isStewardConfigured()) {
-      const agentId = resolveStewardAgentId(process.env, addresses.evmAddress);
-      const characterName = getConfiguredCompatAgentName();
-      void ensureStewardAgent({
-        agentId: agentId ?? undefined,
-        agentName: characterName ?? undefined,
-      }).catch(() => {
-        /* non-fatal — logged internally */
-      });
-    }
-
-    const status = await getStewardBridgeStatus({
-      evmAddress: addresses.evmAddress,
-    });
-    sendJsonResponse(res, 200, status);
-    return true;
-  }
-
-  /* ── Steward Policy CRUD ──────────────────────────────────────────── */
-
-  if (method === "GET" && url.pathname === "/api/wallet/steward-policies") {
-    if (!ensureCompatApiAuthorized(req, res)) {
-      return true;
-    }
-
-    const addresses = getWalletAddresses();
-    const agentId = resolveStewardAgentId(process.env, addresses.evmAddress);
-    const stewardClient = createStewardClient();
-
-    if (!stewardClient || !agentId) {
-      sendJsonResponse(res, 503, {
-        error: "Steward not configured",
-      });
-      return true;
-    }
-
-    try {
-      const policies = await stewardClient.getPolicies(agentId);
-      sendJsonResponse(res, 200, policies);
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to fetch policies";
-      sendJsonResponse(res, 500, { error: message });
-    }
-    return true;
-  }
-
-  if (method === "PUT" && url.pathname === "/api/wallet/steward-policies") {
-    if (!ensureCompatApiAuthorized(req, res)) {
-      return true;
-    }
-
-    const body = await readCompatJsonBody(req, res);
-    if (!body) return true;
-
-    const { policies } = body as {
-      policies: Array<{
-        id: string;
-        type: string;
-        enabled: boolean;
-        config: Record<string, unknown>;
-      }>;
-    };
-
-    if (!Array.isArray(policies)) {
-      sendJsonResponse(res, 400, {
-        error: "policies must be an array",
-      });
-      return true;
-    }
-
-    const addresses = getWalletAddresses();
-    const agentId = resolveStewardAgentId(process.env, addresses.evmAddress);
-    const stewardClient = createStewardClient();
-
-    if (!stewardClient || !agentId) {
-      sendJsonResponse(res, 503, {
-        error: "Steward not configured",
-      });
-      return true;
-    }
-
-    try {
-      await stewardClient.setPolicies(
-        agentId,
-        policies as unknown as import("@stwd/sdk").PolicyRule[],
-      );
-      sendJsonResponse(res, 200, { ok: true });
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to save policies";
-      sendJsonResponse(res, 500, { error: message });
-    }
-    return true;
-  }
-
-  /* ── Steward Transaction Records ──────────────────────────────────── */
-
-  if (method === "GET" && url.pathname === "/api/wallet/steward-tx-records") {
-    if (!ensureCompatApiAuthorized(req, res)) {
-      return true;
-    }
-
-    const addresses = getWalletAddresses();
-    const agentId = resolveStewardAgentId(process.env, addresses.evmAddress);
-
-    if (!agentId || !createStewardClient()) {
-      sendJsonResponse(res, 503, {
-        error: "Steward not configured",
-      });
-      return true;
-    }
-
-    try {
-      const status = url.searchParams.get("status") || undefined;
-      const limit = parseInt(url.searchParams.get("limit") || "50", 10);
-      const offset = parseInt(url.searchParams.get("offset") || "0", 10);
-      const history = await getStewardHistory(agentId, {
-        limit,
-        offset,
-      });
-      const filtered = status
-        ? history.filter((h: { status: string }) => h.status === status)
-        : history;
-      sendJsonResponse(res, 200, {
-        records: filtered,
-        total: filtered.length,
-        offset,
-        limit,
-      });
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to fetch tx records";
-      sendJsonResponse(res, 500, { error: message });
-    }
-    return true;
-  }
-
-  /* ── Steward Pending Approvals ────────────────────────────────────── */
-
-  if (
-    method === "GET" &&
-    url.pathname === "/api/wallet/steward-pending-approvals"
-  ) {
-    if (!ensureCompatApiAuthorized(req, res)) {
-      return true;
-    }
-
-    const addresses = getWalletAddresses();
-    const agentId = resolveStewardAgentId(process.env, addresses.evmAddress);
-
-    if (!agentId || !createStewardClient()) {
-      sendJsonResponse(res, 503, {
-        error: "Steward not configured",
-      });
-      return true;
-    }
-
-    try {
-      const pending = await getStewardPendingApprovals(agentId);
-      sendJsonResponse(res, 200, pending);
-    } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Failed to fetch pending approvals";
-      sendJsonResponse(res, 500, { error: message });
-    }
-    return true;
-  }
-
-  /* ── Steward Approve/Deny Transaction ─────────────────────────────── */
-
-  if (
-    method === "POST" &&
-    (url.pathname === "/api/wallet/steward-approve-tx" ||
-      url.pathname === "/api/wallet/steward-deny-tx")
-  ) {
-    if (!ensureCompatApiAuthorized(req, res)) {
-      return true;
-    }
-
-    const body = await readCompatJsonBody(req, res);
-    if (!body) return true;
-
-    const txId = typeof body.txId === "string" ? body.txId : "";
-    if (!txId) {
-      sendJsonResponse(res, 400, { error: "txId is required" });
-      return true;
-    }
-
-    const addresses = getWalletAddresses();
-    const agentId = resolveStewardAgentId(process.env, addresses.evmAddress);
-
-    if (!agentId || !createStewardClient()) {
-      sendJsonResponse(res, 503, {
-        error: "Steward not configured",
-      });
-      return true;
-    }
-
-    const isApprove = url.pathname.includes("approve");
-    const reason = typeof body.reason === "string" ? body.reason : undefined;
-
-    try {
-      const result = isApprove
-        ? await approveStewardTransaction(agentId, txId)
-        : await denyStewardTransaction(agentId, txId, reason);
-      sendJsonResponse(res, 200, { ok: true, ...result });
-    } catch (err) {
-      const action = isApprove ? "approve" : "deny";
-      const message =
-        err instanceof Error ? err.message : `Failed to ${action} transaction`;
-      sendJsonResponse(res, 500, { error: message });
-    }
-    return true;
-  }
-
-  /* ── Steward Webhook Receiver ───────────────────────────────────────── */
-
-  if (method === "POST" && url.pathname === "/api/wallet/steward-webhook") {
-    // Webhook endpoint — steward pushes tx lifecycle events here.
-    // Only accept from loopback (steward runs on localhost).
-    if (!isLoopbackRemoteAddress(req.socket?.remoteAddress)) {
-      logger.warn(
-        `[steward-webhook] Rejected non-loopback request from ${req.socket?.remoteAddress}`,
-      );
-      sendJsonErrorResponse(res, 403, "Webhook only accepted from localhost");
-      return true;
-    }
-
-    const body = await readCompatJsonBody(req, res);
-    if (!body) return true;
-
-    const event = typeof body.event === "string" ? body.event : "";
-    const VALID_EVENTS: StewardWebhookEventType[] = [
-      "tx.pending",
-      "tx.approved",
-      "tx.denied",
-      "tx.confirmed",
-    ];
-
-    if (!VALID_EVENTS.includes(event as StewardWebhookEventType)) {
-      sendJsonResponse(res, 400, { error: `Unknown event type: ${event}` });
-      return true;
-    }
-
-    const data =
-      body.data && typeof body.data === "object" && !Array.isArray(body.data)
-        ? (body.data as Record<string, unknown>)
-        : {};
-
-    pushWebhookEvent({
-      event: event as StewardWebhookEventType,
-      data,
-      timestamp: new Date().toISOString(),
-    });
-
-    logger.info(`[steward-webhook] Received ${event}`);
-    sendJsonResponse(res, 200, { ok: true });
-    return true;
-  }
-
-  /* ── Steward Webhook Events (poll) ────────────────────────────────── */
-
-  if (
-    method === "GET" &&
-    url.pathname === "/api/wallet/steward-webhook-events"
-  ) {
-    if (!ensureCompatApiAuthorized(req, res)) {
-      return true;
-    }
-
-    const eventType = url.searchParams.get(
-      "event",
-    ) as StewardWebhookEventType | null;
-    const sinceIndex = Number.parseInt(
-      url.searchParams.get("since") || "0",
-      10,
-    );
-
-    const result = getRecentWebhookEvents(
-      eventType || undefined,
-      Number.isNaN(sinceIndex) ? 0 : sinceIndex,
-    );
-    sendJsonResponse(res, 200, result);
-    return true;
-  }
-
-  /* ── Steward Vault Sign ────────────────────────────────────────────── */
-
-  if (method === "POST" && url.pathname === "/api/wallet/steward-sign") {
-    if (!ensureCompatApiAuthorized(req, res)) {
-      return true;
-    }
-
-    const body = await readCompatJsonBody(req, res);
-    if (!body) return true;
-
-    const to = typeof body.to === "string" ? body.to.trim() : "";
-    const value = typeof body.value === "string" ? body.value.trim() : "";
-    const chainId =
-      typeof body.chainId === "number" ? body.chainId : Number(body.chainId);
-    const data = typeof body.data === "string" ? body.data : undefined;
-    const description =
-      typeof body.description === "string" ? body.description : undefined;
-
-    if (!to || !value || !Number.isFinite(chainId) || chainId <= 0) {
-      sendJsonResponse(res, 400, {
-        error: "to, value, and a valid chainId are required",
-      });
-      return true;
-    }
-
-    try {
-      const result = await signViaSteward({
-        to,
-        value,
-        chainId,
-        data,
-        broadcast: true,
-        description,
-      });
-
-      if (result.approved) {
-        sendJsonResponse(res, 200, result);
-      } else if (result.pending) {
-        sendJsonResponse(res, 202, result);
-      } else if (result.denied) {
-        sendJsonResponse(res, 403, result);
-      } else {
-        sendJsonResponse(res, 200, result);
-      }
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Steward sign failed";
-      sendJsonResponse(res, 500, { error: message });
-    }
-    return true;
-  }
-
-  /* ── Steward Wallet Addresses / Balances / Tokens ─────────────────── */
-
-  if (method === "GET" && url.pathname === "/api/wallet/steward-addresses") {
-    if (!ensureCompatApiAuthorized(req, res)) {
-      return true;
-    }
-
-    try {
-      const addresses = getWalletAddresses();
-      const stewardAddresses = await getStewardWalletAddresses({
-        evmAddress: addresses.evmAddress,
-      });
-      sendJsonResponse(res, 200, stewardAddresses);
-    } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Failed to fetch steward addresses";
-      sendJsonResponse(res, 500, { error: message });
-    }
-    return true;
-  }
-
-  if (method === "GET" && url.pathname === "/api/wallet/steward-balances") {
-    if (!ensureCompatApiAuthorized(req, res)) {
-      return true;
-    }
-
-    const addresses = getWalletAddresses();
-    const agentId = resolveStewardAgentId(process.env, addresses.evmAddress);
-
-    if (!agentId || !createStewardClient()) {
-      sendJsonResponse(res, 503, { error: "Steward not configured" });
-      return true;
-    }
-
-    const chainId = url.searchParams.get("chainId");
-    const parsedChainId = chainId ? Number.parseInt(chainId, 10) : undefined;
-
-    try {
-      const balance = await getStewardBalance(agentId, parsedChainId);
-      sendJsonResponse(res, 200, balance);
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to fetch steward balance";
-      sendJsonResponse(res, 500, { error: message });
-    }
-    return true;
-  }
-
-  if (method === "GET" && url.pathname === "/api/wallet/steward-tokens") {
-    if (!ensureCompatApiAuthorized(req, res)) {
-      return true;
-    }
-
-    const addresses = getWalletAddresses();
-    const agentId = resolveStewardAgentId(process.env, addresses.evmAddress);
-
-    if (!agentId || !createStewardClient()) {
-      sendJsonResponse(res, 503, { error: "Steward not configured" });
-      return true;
-    }
-
-    const chainId = url.searchParams.get("chainId");
-    const parsedChainId = chainId ? Number.parseInt(chainId, 10) : undefined;
-
-    try {
-      const tokens = await getStewardTokenBalances(agentId, parsedChainId);
-      sendJsonResponse(res, 200, tokens);
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to fetch steward tokens";
-      sendJsonResponse(res, 500, { error: message });
-    }
-    return true;
-  }
+  // Wallet OS-store, keys, NFTs — extracted to wallet-compat-routes.ts
+  if (await handleWalletCompatRoutes(req, res, state)) return true;
+
+  // Steward wallet routes — extracted to steward-compat-routes.ts
+  if (await handleStewardCompatRoutes(req, res, state)) return true;
 
   // Wallet trade / transfer routes — extracted to wallet-trade-compat-routes.ts
   if (await handleWalletTradeCompatRoutes(req, res, state)) return true;
@@ -1739,170 +842,7 @@ async function handleMiladyCompatRoute(
   // Plugin routes — extracted to plugins-compat-routes.ts
   if (await handlePluginsCompatRoutes(req, res, state)) return true;
 
-  if (method === "POST" && url.pathname === "/api/onboarding") {
-    if (!ensureCompatApiAuthorized(req, res)) {
-      return true;
-    }
-
-    const chunks: Buffer[] = [];
-    try {
-      for await (const chunk of req) {
-        chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
-      }
-    } catch {
-      req.push(null);
-      return false;
-    }
-    const rawBody = Buffer.concat(chunks);
-
-    let replayBody = rawBody;
-    let capturedCloudApiKey: string | undefined;
-
-    try {
-      const body = JSON.parse(rawBody.toString("utf8")) as Record<
-        string,
-        unknown
-      >;
-      await _extractAndPersistOnboardingApiKey(body);
-      _persistCompatOnboardingDefaults(body);
-      if (typeof body.name === "string" && body.name.trim()) {
-        state.pendingAgentName = body.name.trim();
-      }
-
-      const { isCloudMode, replayBody: replayBodyRecord } =
-        _deriveCompatOnboardingReplayBody(body);
-
-      // Resolve the cloud API key so the upstream handler can write it
-      // into state.config before saving. Without this, the upstream uses
-      // its stale in-memory config (loaded at startup, before OAuth) and
-      // clobbers the apiKey that persistCloudLoginStatus wrote to disk.
-      let resolvedCloudApiKey: string | undefined;
-
-      try {
-        const config = loadElizaConfig();
-        if (!config.meta) {
-          (config as Record<string, unknown>).meta = {};
-        }
-        (config.meta as Record<string, unknown>).onboardingComplete = true;
-
-        if (isCloudMode) {
-          if (!config.cloud) {
-            (config as Record<string, unknown>).cloud = {};
-          }
-          (config.cloud as Record<string, unknown>).enabled = true;
-
-          resolvedCloudApiKey = (config.cloud as Record<string, unknown>)
-            .apiKey as string | undefined;
-
-          if (!resolvedCloudApiKey) {
-            const { getCloudSecret: getSecret } = await import(
-              "./cloud-secrets"
-            );
-            resolvedCloudApiKey =
-              getSecret("ELIZAOS_CLOUD_API_KEY") ?? undefined;
-            if (resolvedCloudApiKey) {
-              (config.cloud as Record<string, unknown>).apiKey =
-                resolvedCloudApiKey;
-            }
-          }
-
-          // Last resort: check process.env directly (key may not have been
-          // scrubbed yet if persistCloudLoginStatus is still running).
-          if (!resolvedCloudApiKey) {
-            resolvedCloudApiKey = process.env.ELIZAOS_CLOUD_API_KEY;
-            if (resolvedCloudApiKey) {
-              (config.cloud as Record<string, unknown>).apiKey =
-                resolvedCloudApiKey;
-            }
-          }
-
-          if (!resolvedCloudApiKey) {
-            logger.warn(
-              "[milady-api] Cloud onboarding but no API key found on disk, in sealed secrets, or in env. " +
-                "The upstream handler will save config WITHOUT cloud.apiKey.",
-            );
-          } else {
-            logger.info(
-              "[milady-api] Cloud onboarding: resolved API key, injecting into replay body",
-            );
-          }
-
-          // Capture for deferred re-save after upstream clobbers config
-          capturedCloudApiKey = resolvedCloudApiKey;
-
-          if (body.smallModel) {
-            if (!config.models) {
-              (config as Record<string, unknown>).models = {};
-            }
-            (config.models as Record<string, string>).small =
-              body.smallModel as string;
-            (config.models as Record<string, string>).large =
-              (body.largeModel as string) || "";
-          }
-        }
-        saveElizaConfig(config);
-      } catch (err) {
-        logger.warn(
-          `[milady-api] Failed to persist onboarding state: ${err instanceof Error ? err.message : String(err)}`,
-        );
-      }
-
-      // Inject the cloud API key into the replay body so the upstream
-      // handler writes it into state.config. The upstream uses
-      // state.config (stale), not loadElizaConfig(), so without this
-      // the key is lost when it calls saveElizaConfig(state.config).
-      if (isCloudMode) {
-        const enriched = {
-          ...replayBodyRecord,
-          runMode: "cloud" as const,
-          ...(resolvedCloudApiKey
-            ? { providerApiKey: resolvedCloudApiKey }
-            : {}),
-        };
-        replayBody = Buffer.from(JSON.stringify(enriched), "utf8");
-      } else if (body.runMode !== "cloud") {
-        // Non-cloud: only rewrite if deriveCompat changed something
-        if (replayBodyRecord !== body) {
-          replayBody = Buffer.from(JSON.stringify(replayBodyRecord), "utf8");
-        }
-      }
-    } catch {
-      // JSON parse failed — let upstream handle the error
-    }
-
-    sendJsonResponse(res, 200, { ok: true });
-
-    // Schedule a deferred re-save AFTER the upstream handler has had a chance
-    // to clobber the config. The upstream uses state.config (stale, loaded at
-    // startup before OAuth) and calls saveElizaConfig which overwrites our
-    // apiKey on disk. We wait, then re-read and re-inject.
-    if (capturedCloudApiKey) {
-      const keyToRestore = capturedCloudApiKey;
-      setTimeout(() => {
-        try {
-          const freshConfig = loadElizaConfig();
-          if (!freshConfig.cloud?.apiKey) {
-            if (!freshConfig.cloud) {
-              (freshConfig as Record<string, unknown>).cloud = {};
-            }
-            (freshConfig.cloud as Record<string, unknown>).apiKey =
-              keyToRestore;
-            (freshConfig.cloud as Record<string, unknown>).enabled = true;
-            saveElizaConfig(freshConfig);
-            logger.info(
-              "[milady-api] Re-saved cloud.apiKey after upstream handler clobbered it",
-            );
-          }
-        } catch {
-          // Non-fatal
-        }
-      }, 3000);
-    }
-
-    req.push(replayBody);
-    req.push(null);
-    return false;
-  }
+  if (await handleOnboardingCompatRoute(req, res, state)) return true;
 
   if (method === "GET" && url.pathname === "/api/config") {
     if (!ensureCompatApiAuthorized(req, res)) {
@@ -1918,7 +858,7 @@ async function handleMiladyCompatRoute(
   }
 
   if (!ensureCompatApiAuthorized(req, res)) return true;
-  return handleDatabaseRowsCompatRoute(req, res, state.current, url.pathname);
+  return handleDatabaseRowsCompatRoute(req, res, state.current);
 }
 
 export function patchHttpCreateServerForMiladyCompat(

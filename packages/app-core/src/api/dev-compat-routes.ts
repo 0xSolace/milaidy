@@ -6,7 +6,10 @@ import {
   sendJsonError as sendJsonErrorResponse,
   sendJson as sendJsonResponse,
 } from "./response";
-import { isLoopbackRemoteAddress, type CompatRuntimeState } from "./server";
+import {
+  isLoopbackRemoteAddress,
+  type CompatRuntimeState,
+} from "./compat-route-shared";
 
 /**
  * Dev observability routes (loopback where noted).

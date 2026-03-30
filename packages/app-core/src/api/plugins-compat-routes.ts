@@ -16,7 +16,10 @@ import {
   sendJsonError as sendJsonErrorResponse,
   sendJson as sendJsonResponse,
 } from "./response";
-import { readCompatJsonBody, type CompatRuntimeState } from "./server";
+import {
+  readCompatJsonBody,
+  type CompatRuntimeState,
+} from "./compat-route-shared";
 
 const require = createRequire(import.meta.url);
 

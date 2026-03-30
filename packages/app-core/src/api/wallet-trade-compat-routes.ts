@@ -34,9 +34,9 @@ import {
   sendJsonError as sendJsonErrorResponse,
 } from "./response";
 import {
-  type CompatRuntimeState,
   readCompatJsonBody,
-} from "./server";
+  type CompatRuntimeState,
+} from "./compat-route-shared";
 import { loadElizaConfig } from "@miladyai/agent/config/config";
 
 // ---------------------------------------------------------------------------

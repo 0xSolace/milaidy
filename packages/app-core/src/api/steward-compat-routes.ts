@@ -7,11 +7,11 @@ import {
   sendJson as sendJsonResponse,
 } from "./response";
 import {
-  type CompatRuntimeState,
   getConfiguredCompatAgentName,
   isLoopbackRemoteAddress,
   readCompatJsonBody,
-} from "./server";
+  type CompatRuntimeState,
+} from "./compat-route-shared";
 import {
   approveStewardTransaction,
   createStewardClient,

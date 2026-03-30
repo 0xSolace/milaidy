@@ -7,10 +7,10 @@ import {
   sendJson as sendJsonResponse,
 } from "./response";
 import {
-  type CompatRuntimeState,
   hasCompatPersistedOnboardingState,
   readCompatJsonBody,
-} from "./server";
+  type CompatRuntimeState,
+} from "./compat-route-shared";
 import { isCloudProvisioned as _isCloudProvisioned } from "./server-onboarding-compat";
 
 // ---------------------------------------------------------------------------

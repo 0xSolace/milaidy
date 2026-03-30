@@ -10,7 +10,10 @@ import {
   sendJson as sendJsonResponse,
   sendJsonError as sendJsonErrorResponse,
 } from "./response";
-import { type CompatRuntimeState, readCompatJsonBody } from "./server";
+import {
+  type CompatRuntimeState,
+  readCompatJsonBody,
+} from "./compat-route-shared";
 
 // ---------------------------------------------------------------------------
 // Constants & types
