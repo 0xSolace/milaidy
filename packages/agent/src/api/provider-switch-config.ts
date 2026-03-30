@@ -228,7 +228,6 @@ function clearElizaCloudCliProxyEnv(): void {
     }
   }
 }
-
 function applyLocalProviderCapabilities(
   config: MutableElizaConfig,
   connection: Extract<OnboardingConnection, { kind: "local-provider" }>,
