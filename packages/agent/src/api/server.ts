@@ -6855,10 +6855,10 @@ function buildPluginEvmDiagnosticEntry(
 // "send" alone is too broad — "send a slack message" shouldn't trigger wallet
 // mode.  Require "send" to appear near a crypto/wallet keyword within 40 chars.
 const WALLET_CHAT_INTENT_RE =
-  /\b(wallet|privy|onchain|on-chain|address|balance|swap|trade|transfer|token|bnb|eth|sol)\b|(?:\bsend\b(?=[\s\S]{0,40}\b(?:token|eth|sol|bnb|wallet|crypto|coin)\b))/i;
+  /\b(wallet|privy|onchain|on-chain|address|balance|swap|trade|transfer|token|bnb|t?bnb|eth|sol)\b|(?:\bsend\b(?=[\s\S]{0,40}\b(?:token|eth|sol|t?bnb|wallet|crypto|coin)\b))/i;
 
 const WALLET_EXECUTION_INTENT_RE =
-  /\b(swap|trade|transfer|buy|sell|execute|approve)\b|(?:\bsend\b(?=[\s\S]{0,40}\b(?:token|eth|sol|bnb|wallet|crypto|coin)\b))/i;
+  /\b(swap|trade|transfer|buy|sell|execute|approve)\b|(?:\bsend\b(?=[\s\S]{0,40}\b(?:token|eth|sol|t?bnb|wallet|crypto|coin)\b))/i;
 
 const WALLET_IDENTITY_INTENT_RE = /\b(wallet\s*address|address)\b/i;
 

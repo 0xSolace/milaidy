@@ -146,7 +146,7 @@ async function runTask(
     //   2. onStreamChunk — streamed LLM tokens
     //   3. result.responseContent — final composed response
     // We capture all three and deduplicate.
-    const result = await Promise.race([
+    const result = (await Promise.race([
       (async () => {
         const handleResult =
           await runtime.messageService!.handleMessage(
@@ -178,7 +178,7 @@ async function runTask(
       new Promise<"timeout">((resolve) =>
         setTimeout(() => resolve("timeout"), timeoutMs),
       ),
-    ]);
+    ])) as unknown;
 
     if (result === "timeout") {
       const responseText = streamText || callbackText;
@@ -194,12 +194,18 @@ async function runTask(
 
     // Extract text from all channels, preferring the richest source.
     // result.responseContent has the final composed text from the LLM.
-    const resultRecord = result as Record<string, unknown> | null;
-    const responseContent = resultRecord?.responseContent as
-      | Record<string, unknown>
-      | null
-      | undefined;
-    const resultText = (responseContent?.text as string) ?? "";
+    const resultRecord =
+      typeof result === "object" && result !== null
+        ? (result as Record<string, unknown>)
+        : null;
+    const responseContent =
+      resultRecord?.responseContent && typeof resultRecord.responseContent === "object"
+        ? (resultRecord.responseContent as Record<string, unknown>)
+        : null;
+    const resultText =
+      responseContent && typeof responseContent.text === "string"
+        ? responseContent.text
+        : "";
 
     // Also check responseMessages for additional text
     const responseMessages = Array.isArray(resultRecord?.responseMessages)

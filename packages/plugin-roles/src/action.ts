@@ -9,6 +9,7 @@
 
 import {
   type Action,
+  type ActionExample,
   type HandlerCallback,
   type IAgentRuntime,
   logger,
@@ -107,27 +108,31 @@ async function findEntityByName(
   const lower = targetName.toLowerCase();
   try {
     const entities = await runtime.getEntitiesForRoom(roomId);
-    for (const entityId of entities) {
-      const entity = await runtime.getEntityById(entityId);
-      if (!entity) continue;
+    for (const entity of entities) {
+      if (!entity?.id) continue;
+      const entityId = entity.id as UUID;
 
       // Check names array
-      if (entity.names?.some((n: string) => n.toLowerCase() === lower)) {
+      if (entity.names?.some((n) => n.toLowerCase() === lower)) {
         return entityId;
       }
 
       // Check metadata username/name fields
-      const meta = entity.metadata as
-        | Record<string, Record<string, string>>
-        | undefined;
+      const meta = entity.metadata as Record<
+        string,
+        Record<string, unknown> | undefined
+      >;
       if (meta) {
         for (const source of Object.values(meta)) {
           if (
             typeof source === "object" &&
             source !== null &&
-            (source.username?.toLowerCase() === lower ||
-              source.userName?.toLowerCase() === lower ||
-              source.name?.toLowerCase() === lower)
+            ((typeof source.username === "string" &&
+              source.username.toLowerCase() === lower) ||
+              (typeof source.userName === "string" &&
+                source.userName.toLowerCase() === lower) ||
+              (typeof source.name === "string" &&
+                source.name.toLowerCase() === lower))
           ) {
             return entityId;
           }
@@ -313,5 +318,5 @@ export const updateRoleAction: Action = {
         content: { text: "Updated charlie's role to **NONE**." },
       },
     ],
-  ] as unknown[],
+  ] as ActionExample[][],
 };

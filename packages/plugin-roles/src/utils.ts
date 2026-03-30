@@ -42,7 +42,6 @@ export function canModifyRole(
   if (targetCurrentRole === newRole) return false;
   const actorRank = ROLE_RANK[actorRole];
   const targetRank = ROLE_RANK[targetCurrentRole];
-  const newRank = ROLE_RANK[newRole];
   if (actorRole === "OWNER") return true;
   // ADMIN can modify users ranked below them and assign up to their own level.
   if (actorRole === "ADMIN") {

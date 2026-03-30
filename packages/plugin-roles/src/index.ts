@@ -21,7 +21,7 @@ import {
 } from "@elizaos/core";
 import { rolesProvider } from "./provider";
 import { updateRoleAction } from "./action";
-import type { RoleName, RolesPluginConfig, RolesWorldMetadata } from "./types";
+import type { RolesPluginConfig, RolesWorldMetadata } from "./types";
 import { normalizeRole } from "./utils";
 
 export { rolesProvider } from "./provider";
@@ -43,40 +43,47 @@ export type {
 } from "./types";
 export { ROLE_RANK } from "./types";
 
+async function updateWorldMetadata(
+  runtime: IAgentRuntime,
+  worldId: string,
+  update: (metadata: RolesWorldMetadata) => boolean | Promise<boolean>,
+): Promise<void> {
+  const world = await runtime.getWorld(worldId);
+  if (!world) return;
+
+  const metadata = (world.metadata ?? {}) as RolesWorldMetadata;
+  const changed = await update(metadata);
+  if (!changed) return;
+
+  (world as { metadata: RolesWorldMetadata }).metadata = metadata;
+  await runtime.updateWorld(world as Parameters<IAgentRuntime["updateWorld"]>[0]);
+}
+
 /**
  * Ensure the world owner has OWNER role in metadata.
  * Called on plugin init — guarantees the app-local user is always OWNER.
  */
 async function ensureOwnerRole(runtime: IAgentRuntime): Promise<void> {
   try {
-    // Find all worlds and ensure ownership roles
-    const rooms = await runtime.getRooms();
-    const processedWorlds = new Set<string>();
+    const worlds = await runtime.getAllWorlds();
 
-    for (const room of rooms) {
-      if (!room.worldId || processedWorlds.has(room.worldId)) continue;
-      processedWorlds.add(room.worldId);
+    for (const world of worlds) {
+      if (!world.id) continue;
 
-      const world = await runtime.getWorld(room.worldId);
-      if (!world) continue;
+      await updateWorldMetadata(runtime, world.id, (metadata) => {
+        const ownerId = metadata.ownership?.ownerId;
+        if (!ownerId) return false;
 
-      const metadata = (world.metadata ?? {}) as RolesWorldMetadata;
-      const ownerId = metadata.ownership?.ownerId;
-      if (!ownerId) continue;
+        const currentRole = normalizeRole(metadata.roles?.[ownerId]);
+        if (currentRole === "OWNER") return false;
 
-      const currentRole = normalizeRole(metadata.roles?.[ownerId]);
-      if (currentRole === "OWNER") continue;
-
-      // Owner exists but doesn't have OWNER role yet — fix it.
-      if (!metadata.roles) metadata.roles = {};
-      metadata.roles[ownerId] = "OWNER";
-      (world as { metadata: RolesWorldMetadata }).metadata = metadata;
-      await runtime.updateWorld(
-        world as Parameters<IAgentRuntime["updateWorld"]>[0],
-      );
-      logger.info(
-        `[roles] Auto-assigned OWNER role to world owner ${ownerId} in world ${room.worldId}`,
-      );
+        if (!metadata.roles) metadata.roles = {};
+        metadata.roles[ownerId] = "OWNER";
+        logger.info(
+          `[roles] Auto-assigned OWNER role to world owner ${ownerId} in world ${world.id}`,
+        );
+        return true;
+      });
     }
   } catch (err) {
     logger.warn(`[roles] Failed to bootstrap owner roles: ${err}`);
@@ -91,80 +98,70 @@ async function applyConnectorAdminWhitelists(
   runtime: IAgentRuntime,
   whitelist: Record<string, string[]>,
 ): Promise<void> {
-  // Flatten all whitelisted IDs across connectors for fast lookup
-  const whitelistedIds = new Set<string>();
-  for (const ids of Object.values(whitelist)) {
-    for (const id of ids) {
-      whitelistedIds.add(id);
-    }
-  }
-
-  if (whitelistedIds.size === 0) return;
+  const hasWhitelist = Object.values(whitelist).some((ids) => ids.length > 0);
+  if (!hasWhitelist) return;
 
   try {
-    const rooms = await runtime.getRooms();
-    const processedWorlds = new Set<string>();
+    const worlds = await runtime.getAllWorlds();
 
-    for (const room of rooms) {
-      if (!room.worldId || processedWorlds.has(room.worldId)) continue;
-      processedWorlds.add(room.worldId);
+    for (const world of worlds) {
+      if (!world.id) continue;
 
-      const world = await runtime.getWorld(room.worldId);
-      if (!world) continue;
+      const rooms = await runtime.getRooms(world.id);
+      if (rooms.length === 0) continue;
 
-      const metadata = (world.metadata ?? {}) as RolesWorldMetadata;
-      if (!metadata.roles) metadata.roles = {};
-      let updated = false;
+      await updateWorldMetadata(runtime, world.id, async (metadata) => {
+        if (!metadata.roles) metadata.roles = {};
+        let updated = false;
 
-      // Check entities in this world's rooms
-      const entities = await runtime.getEntitiesForRoom(room.id);
-      for (const entityId of entities) {
-        // Skip if already has a role
-        if (metadata.roles[entityId]) continue;
+        for (const room of rooms) {
+          const entities = await runtime.getEntitiesForRoom(room.id);
+          for (const entity of entities) {
+            if (!entity?.id) continue;
+            const entityId = entity.id;
 
-        const entity = await runtime.getEntityById(entityId);
-        if (!entity?.metadata) continue;
+            if (metadata.roles[entityId]) continue;
 
-        // Check if any of the entity's platform identifiers match the whitelist
-        const meta = entity.metadata as Record<
-          string,
-          Record<string, string> | undefined
-        >;
-        let matched = false;
+            if (!entity.metadata) continue;
 
-        for (const [connector, platformIds] of Object.entries(whitelist)) {
-          const connectorMeta = meta[connector];
-          if (!connectorMeta || typeof connectorMeta !== "object") continue;
+            const platformMetadata = entity.metadata as Record<
+              string,
+              Record<string, unknown> | undefined
+            >;
+            let matched = false;
 
-          // Check userId, id, username fields
-          for (const field of ["userId", "id", "username", "userName"]) {
-            const val = connectorMeta[field];
-            if (val && platformIds.includes(val)) {
-              matched = true;
-              break;
+            for (const [connector, platformIds] of Object.entries(whitelist)) {
+              const connectorMeta = platformMetadata[connector];
+              if (!connectorMeta || typeof connectorMeta !== "object") continue;
+
+              for (const field of ["userId", "id", "username", "userName"]) {
+                const value = connectorMeta[field];
+                if (typeof value === "string" && platformIds.includes(value)) {
+                  matched = true;
+                  break;
+                }
+              }
+
+              if (matched) break;
+            }
+
+            if (matched) {
+              metadata.roles[entityId] = "ADMIN";
+              updated = true;
+              logger.info(
+                `[roles] Auto-promoted whitelisted entity ${entityId} to ADMIN`,
+              );
             }
           }
-          if (matched) break;
         }
 
-        if (matched) {
-          metadata.roles[entityId] = "ADMIN";
-          updated = true;
-          logger.info(
-            `[roles] Auto-promoted whitelisted entity ${entityId} to ADMIN`,
-          );
-        }
-      }
-
-      if (updated) {
-        (world as { metadata: RolesWorldMetadata }).metadata = metadata;
-        await runtime.updateWorld(
-          world as Parameters<IAgentRuntime["updateWorld"]>[0],
-        );
-      }
+        return updated;
+      });
     }
   } catch (err) {
-    logger.warn(`[roles] Failed to apply connector admin whitelists: ${err}`);
+    logger.warn(
+      `[roles] Failed to apply connector admin whitelists: ${String(err)}`,
+    );
   }
 }
 

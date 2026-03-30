@@ -1200,10 +1200,8 @@ function patchTestCafeBunCompat() {
       "function getCallsiteStackFrameString(callsite) {\n    return callsite.stackFrames[callsite.callsiteFrameIdx].toString();\n}";
     const newStackFrame =
       "function getCallsiteStackFrameString(callsite) {\n    if (!callsite || !callsite.stackFrames) return '<unknown>';\n    return callsite.stackFrames[callsite.callsiteFrameIdx].toString();\n}";
-    const oldGetId =
-      "function getCallsiteId(callsite) {\n    return `${callsite.filename}:${callsite.lineNum}`;\n}";
-    const newGetId =
-      "function getCallsiteId(callsite) {\n    if (!callsite) return '<unknown>:0';\n    return `${callsite.filename}:${callsite.lineNum}`;\n}";
+    const oldGetId = `function getCallsiteId(callsite) {\n    return \`\${callsite.filename}:\${callsite.lineNum}\`;\n}`;
+    const newGetId = `function getCallsiteId(callsite) {\n    if (!callsite) return '<unknown>:0';\n    return \`\${callsite.filename}:\${callsite.lineNum}\`;\n}`;
 
     if (!existsSync(callsitePath)) {
       console.warn(

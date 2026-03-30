@@ -351,12 +351,13 @@ function CompanionSceneSurface({
   const handleRootWheelCapture = useCallback(
     (event: CompanionWheelEvent) => {
       if (!active || !interactive) return;
+      if (hasFocusedTextEntry()) {
+        event.preventDefault();
+        return;
+      }
       if (shouldIgnoreCameraZoom(event.target)) {
         return;
       }
-      // Allow zoom even when a text entry is focused — the companion
-      // chat input doesn't use scroll, so wheel events should always
-      // control the camera zoom (trackpad pinch, mouse wheel, etc.).
       handleWheelCapture(event);
     },
     [active, interactive, handleWheelCapture],
