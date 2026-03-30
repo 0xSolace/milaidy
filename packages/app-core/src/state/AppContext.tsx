@@ -40,7 +40,6 @@ import {
   type CreateTriggerRequest,
   type CustomActionDef,
   client,
-  type DropStatus,
   type ExtensionStatus,
   type ImageAttachment,
   type LogEntry,
@@ -49,11 +48,9 @@ import {
   type McpServerConfig,
   type McpServerStatus,
   MiladyClient,
-  type MintResult,
   type OnboardingOptions,
   type PluginInfo,
   type RegistryPlugin,
-  type RegistryStatus,
   type ReleaseChannel,
   type SkillInfo,
   type SkillMarketplaceResult,
@@ -65,16 +62,9 @@ import {
   type TriggerSummary,
   type UpdateStatus,
   type UpdateTriggerRequest,
-  type WalletAddresses,
-  type WalletBalancesResponse,
-  type WalletConfigStatus,
-  type WalletConfigUpdateRequest,
-  type WalletExportResult,
-  type WalletNftsResponse,
   type WalletTradingProfileResponse,
   type WalletTradingProfileSourceFilter,
   type WalletTradingProfileWindow,
-  type WhitelistStatus,
   type WorkbenchOverview,
 } from "../api";
 import {
@@ -221,6 +211,7 @@ import { usePairingState } from "./usePairingState";
 import { useDisplayPreferences } from "./useDisplayPreferences";
 import { useOnboardingState } from "./useOnboardingState";
 import { useCharacterState } from "./useCharacterState";
+import { useWalletState } from "./useWalletState";
 
 const AGENT_STATUS_POLL_INTERVAL_MS = 500;
 const ONBOARDING_GREETING_READY_TIMEOUT_MS = 15_000;
@@ -953,60 +944,6 @@ function AppProviderInner({
   const [logLevelFilter, setLogLevelFilter] = useState("");
   const [logSourceFilter, setLogSourceFilter] = useState("");
 
-  // --- Wallet / Inventory ---
-  const [walletAddresses, setWalletAddresses] =
-    useState<WalletAddresses | null>(null);
-  const [walletConfig, setWalletConfig] = useState<WalletConfigStatus | null>(
-    null,
-  );
-  const [walletBalances, setWalletBalances] =
-    useState<WalletBalancesResponse | null>(null);
-  const [walletNfts, setWalletNfts] = useState<WalletNftsResponse | null>(null);
-  const [walletLoading, setWalletLoading] = useState(false);
-  const [walletNftsLoading, setWalletNftsLoading] = useState(false);
-  const [inventoryView, setInventoryView] = useState<"tokens" | "nfts">(
-    "tokens",
-  );
-  const [walletExportData, setWalletExportData] =
-    useState<WalletExportResult | null>(null);
-  const [walletExportVisible, setWalletExportVisible] = useState(false);
-  const [walletApiKeySaving, setWalletApiKeySaving] = useState(false);
-  const [inventorySort, setInventorySort] = useState<
-    "chain" | "symbol" | "value"
-  >("value");
-  const [inventorySortDirection, setInventorySortDirection] = useState<
-    "asc" | "desc"
-  >("desc");
-  const [inventoryChainFilters, setInventoryChainFilters] =
-    useState<InventoryChainFilters>({
-      ethereum: true,
-      base: true,
-      bsc: true,
-      avax: true,
-      solana: true,
-    });
-  const [walletError, setWalletError] = useState<string | null>(null);
-
-  // --- ERC-8004 Registry ---
-  const [registryStatus, setRegistryStatus] = useState<RegistryStatus | null>(
-    null,
-  );
-  const [registryLoading, setRegistryLoading] = useState(false);
-  const [registryRegistering, setRegistryRegistering] = useState(false);
-  const [registryError, setRegistryError] = useState<string | null>(null);
-
-  // --- Drop / Mint ---
-  const [dropStatus, setDropStatus] = useState<DropStatus | null>(null);
-  const [dropLoading, setDropLoading] = useState(false);
-  const [mintInProgress, setMintInProgress] = useState(false);
-  const [mintResult, setMintResult] = useState<MintResult | null>(null);
-  const [mintError, setMintError] = useState<string | null>(null);
-  const [mintShiny, setMintShiny] = useState(false);
-
-  // --- Whitelist ---
-  const [whitelistStatus, setWhitelistStatus] =
-    useState<WhitelistStatus | null>(null);
-  const [whitelistLoading, setWhitelistLoading] = useState(false);
   // Dead state — setters were never destructured. These never change.
   const twitterVerifyMessage: string | null = null;
   const twitterVerifyUrl = "";
@@ -1465,8 +1402,7 @@ function AppProviderInner({
   const exportBusyRef = useRef(false);
   /** Synchronous lock for import action to prevent duplicate clicks in the same tick. */
   const importBusyRef = useRef(false);
-  /** Synchronous lock for wallet API key save to prevent duplicate clicks in the same tick. */
-  const walletApiKeySavingRef = useRef(false);
+  // walletApiKeySavingRef is now managed inside useWalletState (walletHook)
   /** Synchronous lock for cloud login action to prevent duplicate clicks in the same tick. */
   const elizaCloudLoginBusyRef = useRef(false);
   const elizaCloudAuthNoticeSentRef = useRef(false);
@@ -1478,6 +1414,65 @@ function AppProviderInner({
   // --- Confirm Modal ---
   const { modalProps } = useConfirm();
   const { prompt: promptModal, modalProps: promptModalProps } = usePrompt();
+
+  // --- Wallet / Inventory / Registry / Drop / Whitelist (extracted to useWalletState) ---
+  // Placed after characterHook (characterDraft) and promptModal — both are required params.
+  const walletHook = useWalletState({
+    setActionNotice,
+    promptModal,
+    agentName: agentStatus?.agentName,
+    characterName: characterDraft?.name,
+  });
+  const {
+    state: {
+      walletAddresses,
+      walletConfig,
+      walletBalances,
+      walletNfts,
+      walletLoading,
+      walletNftsLoading,
+      inventoryView,
+      walletExportData,
+      walletExportVisible,
+      walletApiKeySaving,
+      inventorySort,
+      inventorySortDirection,
+      inventoryChainFilters,
+      walletError,
+      registryStatus,
+      registryLoading,
+      registryRegistering,
+      registryError,
+      dropStatus,
+      dropLoading,
+      mintInProgress,
+      mintResult,
+      mintError,
+      mintShiny,
+      whitelistStatus,
+      whitelistLoading,
+    },
+    setWalletAddresses,
+    setInventoryView,
+    setInventorySort,
+    setInventorySortDirection,
+    setInventoryChainFilters,
+    setWalletError,
+    setRegistryError,
+    setMintResult,
+    setMintError,
+    loadWalletConfig,
+    loadBalances,
+    loadNfts,
+    handleWalletApiKeySave,
+    handleExportKeys,
+    loadRegistryStatus,
+    registerOnChain,
+    syncRegistryProfile,
+    loadDropStatus,
+    mintFromDrop,
+    loadWhitelistStatus,
+  } = walletHook;
 
   // setActionNotice is now provided by useLifecycleState
 
@@ -1839,49 +1834,7 @@ function AppProviderInner({
     ],
   );
 
-  const loadWalletConfig = useCallback(async () => {
-    try {
-      const cfg = await client.getWalletConfig();
-      setWalletConfig(cfg);
-      setWalletAddresses({
-        evmAddress: cfg.evmAddress,
-        solanaAddress: cfg.solanaAddress,
-      });
-      setWalletError(null);
-    } catch (err) {
-      setWalletError(
-        `Failed to load wallet config: ${err instanceof Error ? err.message : "network error"}`,
-      );
-    }
-  }, []);
-
-  const loadBalances = useCallback(async () => {
-    setWalletLoading(true);
-    setWalletError(null);
-    try {
-      const b = await client.getWalletBalances();
-      setWalletBalances(b);
-    } catch (err) {
-      setWalletError(
-        `Failed to fetch balances: ${err instanceof Error ? err.message : "network error"}`,
-      );
-    }
-    setWalletLoading(false);
-  }, []);
-
-  const loadNfts = useCallback(async () => {
-    setWalletNftsLoading(true);
-    setWalletError(null);
-    try {
-      const n = await client.getWalletNfts();
-      setWalletNfts(n);
-    } catch (err) {
-      setWalletError(
-        `Failed to fetch NFTs: ${err instanceof Error ? err.message : "network error"}`,
-      );
-    }
-    setWalletNftsLoading(false);
-  }, []);
+  // loadWalletConfig, loadBalances, loadNfts are provided by useWalletState (walletHook)
 
   const getBscTradePreflight = useCallback(
     async (tokenAddress?: string): Promise<BscTradePreflightResponse> =>
@@ -4859,185 +4812,7 @@ function AppProviderInner({
     [refreshSkills, setActionNotice],
   );
 
-  // ── Inventory actions ──────────────────────────────────────────────
-
-  const handleWalletApiKeySave = useCallback(
-    async (config: WalletConfigUpdateRequest) => {
-      if (
-        Object.keys(config.credentials ?? {}).length === 0 &&
-        Object.keys(config.selections ?? {}).length === 0
-      ) {
-        return;
-      }
-      if (walletApiKeySavingRef.current || walletApiKeySaving) return;
-      walletApiKeySavingRef.current = true;
-      setWalletApiKeySaving(true);
-      setWalletError(null);
-      try {
-        await client.updateWalletConfig(config);
-        await loadWalletConfig();
-        await loadBalances();
-        setActionNotice(
-          "Wallet RPC settings saved. Restart required to apply.",
-          "success",
-        );
-      } catch (err) {
-        setWalletError(
-          `Failed to save API keys: ${err instanceof Error ? err.message : "network error"}`,
-        );
-      } finally {
-        walletApiKeySavingRef.current = false;
-        setWalletApiKeySaving(false);
-      }
-    },
-    [walletApiKeySaving, loadWalletConfig, loadBalances, setActionNotice],
-  );
-
-  const handleExportKeys = useCallback(async () => {
-    if (walletExportVisible) {
-      setWalletExportVisible(false);
-      setWalletExportData(null);
-      return;
-    }
-    const confirmed = await confirmDesktopAction({
-      title: "Reveal Private Keys",
-      message: "This will reveal your private keys.",
-      detail:
-        "NEVER share your private keys with anyone. Anyone with your private keys can steal all funds in your wallets.",
-      confirmLabel: "Continue",
-      cancelLabel: "Cancel",
-      type: "warning",
-    });
-    if (!confirmed) return;
-    const exportToken = await promptModal({
-      title: "Wallet Export Token",
-      message: "Enter your wallet export token (MILADY_WALLET_EXPORT_TOKEN):",
-      placeholder: "MILADY_WALLET_EXPORT_TOKEN",
-      confirmLabel: "Export",
-      cancelLabel: "Cancel",
-    });
-    if (exportToken === null) return;
-    if (!exportToken.trim()) {
-      setWalletError("Wallet export token is required.");
-      return;
-    }
-    try {
-      const data = await client.exportWalletKeys(exportToken.trim());
-      setWalletExportData(data);
-      setWalletExportVisible(true);
-      setTimeout(() => {
-        setWalletExportVisible(false);
-        setWalletExportData(null);
-      }, 60_000);
-    } catch (err) {
-      setWalletError(
-        `Failed to export keys: ${err instanceof Error ? err.message : "network error"}`,
-      );
-    }
-  }, [promptModal, walletExportVisible]);
-
-  // ── Registry / Drop / Whitelist actions ─────────────────────────────
-
-  const loadRegistryStatus = useCallback(async () => {
-    setRegistryLoading(true);
-    setRegistryError(null);
-    try {
-      const status = await client.getRegistryStatus();
-      setRegistryStatus(status);
-    } catch (err) {
-      setRegistryError(
-        err instanceof Error ? err.message : "Failed to load registry status",
-      );
-    } finally {
-      setRegistryLoading(false);
-    }
-  }, []);
-
-  const registerOnChain = useCallback(async () => {
-    setRegistryRegistering(true);
-    setRegistryError(null);
-    try {
-      await client.registerAgent({
-        name: characterDraft?.name || agentStatus?.agentName,
-      });
-      await loadRegistryStatus();
-    } catch (err) {
-      setRegistryError(
-        err instanceof Error ? err.message : "Registration failed",
-      );
-    } finally {
-      setRegistryRegistering(false);
-    }
-  }, [characterDraft?.name, agentStatus?.agentName, loadRegistryStatus]);
-
-  const syncRegistryProfile = useCallback(async () => {
-    setRegistryRegistering(true);
-    setRegistryError(null);
-    try {
-      await client.syncRegistryProfile({
-        name: characterDraft?.name || agentStatus?.agentName,
-      });
-      await loadRegistryStatus();
-    } catch (err) {
-      setRegistryError(err instanceof Error ? err.message : "Sync failed");
-    } finally {
-      setRegistryRegistering(false);
-    }
-  }, [characterDraft?.name, agentStatus?.agentName, loadRegistryStatus]);
-
-  const loadDropStatus = useCallback(async () => {
-    setDropLoading(true);
-    try {
-      const status = await client.getDropStatus();
-      setDropStatus(status);
-    } catch {
-      // Non-critical -- drop may not be configured
-    } finally {
-      setDropLoading(false);
-    }
-  }, []);
-
-  const mintFromDrop = useCallback(
-    async (shiny: boolean) => {
-      setMintInProgress(true);
-      setMintShiny(shiny);
-      setMintError(null);
-      setMintResult(null);
-      try {
-        const result = await client.mintAgent({
-          name: characterDraft?.name || agentStatus?.agentName,
-          shiny,
-        });
-        setMintResult(result);
-        await loadRegistryStatus();
-        await loadDropStatus();
-      } catch (err) {
-        setMintError(err instanceof Error ? err.message : "Mint failed");
-      } finally {
-        setMintInProgress(false);
-        setMintShiny(false);
-      }
-    },
-    [
-      characterDraft?.name,
-      agentStatus?.agentName,
-      loadRegistryStatus,
-      loadDropStatus,
-    ],
-  );
-
-  const loadWhitelistStatus = useCallback(async () => {
-    setWhitelistLoading(true);
-    try {
-      const status = await client.getWhitelistStatus();
-      setWhitelistStatus(status);
-    } catch {
-      // Non-critical
-    } finally {
-      setWhitelistLoading(false);
-    }
-  }, []);
-
+  // ── Inventory / Registry / Drop / Whitelist actions are provided by useWalletState (walletHook) ──
   // ── Character actions are provided by useCharacterState (characterHook) ──
 
   // ── Onboarding ─────────────────────────────────────────────────────
