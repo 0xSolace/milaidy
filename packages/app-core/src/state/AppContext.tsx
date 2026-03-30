@@ -862,6 +862,7 @@ function AppProviderInner({
 
   // --- Triggers ---
   const [triggers, setTriggers] = useState<TriggerSummary[]>([]);
+  const [triggersLoaded, setTriggersLoaded] = useState(false);
   const [triggersLoading, setTriggersLoading] = useState(false);
   const [triggersSaving, setTriggersSaving] = useState(false);
   const [triggerRunsById, setTriggerRunsById] = useState<
@@ -873,6 +874,7 @@ function AppProviderInner({
 
   // --- Plugins ---
   const [plugins, setPlugins] = useState<PluginInfo[]>([]);
+  const [pluginsLoaded, setPluginsLoaded] = useState(false);
   const [pluginFilter, setPluginFilter] = useState<
     "all" | "ai-provider" | "connector" | "feature" | "streaming"
   >("all");
@@ -1642,14 +1644,23 @@ function AppProviderInner({
 
   // ── Data loading ───────────────────────────────────────────────────
 
-  const loadPlugins = useCallback(async () => {
+  const loadPlugins = useCallback(async (_options?: { silent?: boolean }) => {
     try {
       const { plugins: p } = await client.getPlugins();
       setPlugins(p);
+      setPluginsLoaded(true);
     } catch {
       /* ignore */
     }
   }, []);
+
+  const ensurePluginsLoaded = useCallback(
+    async (options?: { refresh?: boolean }) => {
+      if (pluginsLoaded && !options?.refresh) return;
+      await loadPlugins(pluginsLoaded ? { silent: true } : undefined);
+    },
+    [loadPlugins, pluginsLoaded],
+  );
 
   const loadSkills = useCallback(async () => {
     try {
@@ -1700,8 +1711,11 @@ function AppProviderInner({
     }
   }, []);
 
-  const loadTriggers = useCallback(async () => {
-    setTriggersLoading(true);
+  const loadTriggers = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent === true;
+    if (!silent) {
+      setTriggersLoading(true);
+    }
     try {
       const data = await client.getTriggers();
       setTriggers(sortTriggersByNextRun(data.triggers));
@@ -1710,11 +1724,20 @@ function AppProviderInner({
       const message =
         err instanceof Error ? err.message : "Failed to load triggers";
       setTriggerError(message);
-      setTriggers([]);
+      if (!silent) {
+        setTriggers([]);
+      }
     } finally {
-      setTriggersLoading(false);
+      setTriggersLoaded(true);
+      if (!silent) {
+        setTriggersLoading(false);
+      }
     }
   }, [sortTriggersByNextRun]);
+
+  const ensureTriggersLoaded = useCallback(async () => {
+    await loadTriggers(triggersLoaded ? { silent: true } : undefined);
+  }, [loadTriggers, triggersLoaded]);
 
   const loadTriggerRuns = useCallback(async (id: string) => {
     try {
@@ -7942,6 +7965,7 @@ function AppProviderInner({
     ptySessions,
     unreadConversations,
     triggers,
+    triggersLoaded,
     triggersLoading,
     triggersSaving,
     triggerRunsById,
@@ -8185,6 +8209,7 @@ function AppProviderInner({
     suggestConversationTitle,
     sendActionMessage,
     loadTriggers,
+    ensureTriggersLoaded,
     createTrigger,
     updateTrigger,
     deleteTrigger,
@@ -8193,6 +8218,7 @@ function AppProviderInner({
     loadTriggerHealth,
     handlePairingSubmit,
     loadPlugins,
+    ensurePluginsLoaded,
     handlePluginToggle,
     handlePluginConfigSave,
     loadSkills,
