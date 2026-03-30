@@ -6,17 +6,22 @@ import type {
   StewardTxRecord,
   StewardTxStatus,
 } from "@miladyai/shared/contracts/wallet";
-import { Button, Spinner } from "@miladyai/ui";
-import { ArrowUpRight, Copy, ExternalLink, RefreshCw } from "lucide-react";
+import {
+  Button,
+  PagePanel,
+  Spinner,
+  StatusBadge,
+  statusLabelForState,
+  statusToneForState,
+} from "@miladyai/ui";
+import { Copy, ExternalLink, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { DESKTOP_SURFACE_PANEL_CLASSNAME } from "../desktop-surface-primitives";
 import {
   formatWeiValue,
   getChainName,
   getExplorerTxUrl,
   truncateAddress,
 } from "./chain-utils";
-import { TxStatusBadge } from "./StatusBadge";
 
 interface TransactionHistoryProps {
   getStewardHistory: (opts?: {
@@ -35,6 +40,7 @@ interface TransactionHistoryProps {
     tone?: "info" | "success" | "error",
     ttlMs?: number,
   ) => void;
+  embedded?: boolean;
 }
 
 const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
@@ -61,6 +67,7 @@ export function TransactionHistory({
   getStewardHistory,
   copyToClipboard,
   setActionNotice,
+  embedded = false,
 }: TransactionHistoryProps) {
   const [records, setRecords] = useState<StewardTxRecord[]>([]);
   const [_total, setTotal] = useState(0);
@@ -137,90 +144,80 @@ export function TransactionHistory({
   };
 
   return (
-    <div className="space-y-4">
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <select
-          value={statusFilter}
-          onChange={(e) => {
-            setStatusFilter(e.target.value);
-            setPage(0);
-          }}
-          className="h-9 rounded-xl border border-border/50 bg-card/80 px-3 text-sm text-txt shadow-sm focus:border-accent/40 focus:outline-none"
-        >
-          {STATUS_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+    <div className={embedded ? "flex min-h-0 flex-1 flex-col" : "space-y-4"}>
+      {error ? (
+        <PagePanel.Notice tone="danger">{error}</PagePanel.Notice>
+      ) : null}
 
-        <select
-          value={chainFilter}
-          onChange={(e) => {
-            setChainFilter(e.target.value === "" ? "" : Number(e.target.value));
-            setPage(0);
-          }}
-          className="h-9 rounded-xl border border-border/50 bg-card/80 px-3 text-sm text-txt shadow-sm focus:border-accent/40 focus:outline-none"
-        >
-          {CHAIN_OPTIONS.map((opt) => (
-            <option key={String(opt.value)} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-9 rounded-xl px-3 text-xs font-semibold"
-          onClick={() => void loadData()}
-          disabled={loading}
-        >
-          <RefreshCw
-            className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
-          />
-          Refresh
-        </Button>
-
-        <span className="ml-auto text-xs text-muted">
-          {filtered.length} transaction{filtered.length !== 1 ? "s" : ""}
-        </span>
-      </div>
-
-      {/* Error */}
-      {error && (
-        <div className="rounded-2xl border border-danger/25 bg-danger/8 px-4 py-3 text-sm text-danger">
-          {error}
-        </div>
-      )}
-
-      {/* Loading */}
-      {loading && records.length === 0 && (
-        <div
-          className={`${DESKTOP_SURFACE_PANEL_CLASSNAME} flex items-center justify-center px-6 py-16`}
-        >
+      {loading && records.length === 0 ? (
+        <div className="flex min-h-0 flex-1 items-center justify-center px-6 py-16">
           <Spinner className="h-5 w-5 text-muted" />
           <span className="ml-3 text-sm text-muted">Loading transactions…</span>
         </div>
-      )}
+      ) : null}
 
-      {/* Empty */}
-      {!loading && filtered.length === 0 && (
-        <div
-          className={`${DESKTOP_SURFACE_PANEL_CLASSNAME} px-6 py-16 text-center`}
-        >
-          <ArrowUpRight className="mx-auto h-8 w-8 text-muted/30" />
-          <p className="mt-3 text-sm text-muted">No transactions yet</p>
-          <p className="mt-1 text-xs text-muted/60">
-            History appears once your agent starts signing.
-          </p>
-        </div>
-      )}
+      {!loading && filtered.length === 0 ? (
+        <PagePanel.Empty
+          variant={embedded ? "workspace" : "panel"}
+          title="No transactions yet"
+        />
+      ) : null}
 
       {/* Table */}
       {paginated.length > 0 && (
-        <div className={`${DESKTOP_SURFACE_PANEL_CLASSNAME} overflow-hidden`}>
+        <>
+          <PagePanel.Toolbar>
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(0);
+              }}
+              className="h-9 rounded-xl border border-border/50 bg-card/80 px-3 text-sm text-txt shadow-sm focus:border-accent/40 focus:outline-none"
+            >
+              {STATUS_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={chainFilter}
+              onChange={(e) => {
+                setChainFilter(e.target.value === "" ? "" : Number(e.target.value));
+                setPage(0);
+              }}
+              className="h-9 rounded-xl border border-border/50 bg-card/80 px-3 text-sm text-txt shadow-sm focus:border-accent/40 focus:outline-none"
+            >
+              {CHAIN_OPTIONS.map((opt) => (
+                <option key={String(opt.value)} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 rounded-xl px-3 text-xs font-semibold"
+              onClick={() => void loadData()}
+              disabled={loading}
+            >
+              <RefreshCw
+                className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
+              />
+              Refresh
+            </Button>
+
+            <span className="ml-auto text-xs text-muted">
+              {filtered.length} transaction{filtered.length !== 1 ? "s" : ""}
+            </span>
+          </PagePanel.Toolbar>
+
+        <div
+          className={embedded ? "overflow-hidden" : undefined}
+        >
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -243,7 +240,10 @@ export function TransactionHistory({
                       {formatTime(tx.createdAt)}
                     </td>
                     <td className="px-4 py-3">
-                      <TxStatusBadge status={tx.status as StewardTxStatus} />
+                      <StatusBadge
+                        label={statusLabelForState(tx.status as StewardTxStatus)}
+                        tone={statusToneForState(tx.status as StewardTxStatus)}
+                      />
                     </td>
                     <td className="px-4 py-3">
                       <button
@@ -321,6 +321,7 @@ export function TransactionHistory({
             </div>
           )}
         </div>
+        </>
       )}
     </div>
   );
