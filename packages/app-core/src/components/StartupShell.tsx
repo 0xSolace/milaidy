@@ -90,37 +90,33 @@ export function StartupShell() {
   const showSlow = elapsedSec >= 10;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-bg font-body text-txt">
-      {/* Subtle radial gradient backdrop */}
-      <div
+    <div className="fixed inset-0 z-[200] flex items-end justify-start bg-[#ffe600] font-body text-black overflow-hidden">
+      {/* Full-bleed splash background */}
+      <img
+        src="/splash-bg.png"
+        alt=""
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(139,92,246,0.08),transparent_60%)]"
+        className="pointer-events-none absolute inset-0 h-full w-full object-cover object-right"
       />
 
-      <div className="relative z-10 flex flex-col items-center gap-6 px-6 text-center">
-        {/* App name / branding */}
-        <h1 className="text-2xl font-bold tracking-tight text-txt">
-          {branding.appName}
-        </h1>
-
-        {/* Pulse spinner */}
-        <div className="relative flex items-center justify-center">
-          <div className="h-10 w-10 rounded-full border-2 border-accent/30 border-t-accent animate-spin" />
+      {/* Status overlay — bottom-left, over the MILADY text area */}
+      <div className="relative z-10 flex flex-col gap-3 p-8 pb-12 max-w-sm">
+        {/* Spinner + status */}
+        <div className="flex items-center gap-3">
+          <div className="h-5 w-5 rounded-full border-2 border-black/30 border-t-black animate-spin shrink-0" />
+          <p className="text-sm font-medium text-black/80">{statusText}</p>
         </div>
-
-        {/* Status text */}
-        <p className="text-sm text-muted">{statusText}</p>
 
         {/* Elapsed time */}
         {elapsedSec > 0 && (
-          <p className="text-xs text-muted/60 tabular-nums">
+          <p className="text-xs text-black/50 tabular-nums pl-8">
             {Math.floor(elapsedSec / 60)}:{(elapsedSec % 60).toString().padStart(2, "0")} elapsed
           </p>
         )}
 
         {/* Slow startup warning */}
         {showSlow && (
-          <p className="mt-2 max-w-xs text-xs text-warning/80">
+          <p className="text-xs text-black/60 pl-8">
             Taking longer than expected&hellip;
           </p>
         )}
