@@ -4,6 +4,14 @@ import React from "react";
 import TestRenderer, { act } from "react-test-renderer";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("react-dom", async () => {
+  const actual = await vi.importActual<typeof import("react-dom")>("react-dom");
+  return {
+    ...actual,
+    createPortal: (children: React.ReactNode) => children,
+  };
+});
+
 const {
   mockUseApp,
   mockListKnowledgeDocuments,
@@ -23,6 +31,12 @@ const {
   mockGetKnowledgeDocument: vi.fn(),
   mockGetKnowledgeFragments: vi.fn(),
 }));
+
+type SidebarHeaderSearchProps = React.InputHTMLAttributes<HTMLInputElement> & {
+  clearLabel?: string;
+  loading?: boolean;
+  onClear?: () => void;
+};
 
 vi.mock("@miladyai/ui", async (importOriginal) => {
   const React = await import("react");
@@ -91,6 +105,131 @@ vi.mock("@miladyai/ui", async (importOriginal) => {
       React.createElement("div", null, children),
     Input: (props: React.InputHTMLAttributes<HTMLInputElement>) =>
       React.createElement("input", props),
+    PageLayout: ({
+      children,
+      className,
+      sidebar,
+      ...props
+    }: React.PropsWithChildren<{
+      className?: string;
+      sidebar?: React.ReactNode;
+    }>) =>
+      React.createElement(
+        "div",
+        { className, ...props },
+        sidebar,
+        React.createElement("main", null, children),
+      ),
+    Sidebar: ({
+      children,
+      className,
+      header,
+      footer,
+      ...props
+    }: React.PropsWithChildren<{
+      className?: string;
+      header?: React.ReactNode;
+      footer?: React.ReactNode;
+    }>) =>
+      React.createElement(
+        "aside",
+        {
+          className: ["border-b border-border/34 backdrop-blur-md", className]
+            .filter(Boolean)
+            .join(" "),
+          ...props,
+        },
+        header,
+        children,
+        footer,
+      ),
+    SidebarPanel: ({
+      children,
+      className,
+      ...props
+    }: React.PropsWithChildren<{ className?: string }>) =>
+      React.createElement("div", { className, ...props }, children),
+    SidebarFilterBar: ({
+      children,
+      className,
+      ...props
+    }: React.PropsWithChildren<{ className?: string }>) =>
+      React.createElement("div", { className, ...props }, children),
+    SidebarHeader: ({
+      children,
+      className,
+      search,
+      ...props
+    }: React.PropsWithChildren<{
+      className?: string;
+      search?: SidebarHeaderSearchProps;
+    }>) => {
+      const { clearLabel, loading, onClear, ...inputProps } = search ?? {};
+      void clearLabel;
+      void loading;
+      void onClear;
+
+      return React.createElement(
+        "div",
+        { className, ...props },
+        search ? React.createElement("input", inputProps) : null,
+        children,
+      );
+    },
+    SidebarHeaderStack: ({
+      children,
+      className,
+      ...props
+    }: React.PropsWithChildren<{ className?: string }>) =>
+      React.createElement("div", { className, ...props }, children),
+    SidebarSearchBar: ({
+      className,
+      value,
+      onChange,
+      ...props
+    }: React.InputHTMLAttributes<HTMLInputElement>) =>
+      React.createElement("input", {
+        className,
+        value,
+        onChange,
+        ...props,
+      }),
+    SidebarScrollRegion: ({
+      children,
+      className,
+      ...props
+    }: React.PropsWithChildren<{ className?: string }>) =>
+      React.createElement("div", { className, ...props }, children),
+    SegmentedControl: ({
+      className,
+      items = [],
+      onValueChange,
+      value,
+      ...props
+    }: {
+      className?: string;
+      items?: Array<{ label: React.ReactNode; value: string }>;
+      onValueChange?: (value: string) => void;
+      value?: string;
+    }) =>
+      React.createElement(
+        "div",
+        { className, ...props },
+        items.map((item) =>
+          React.createElement(
+            "button",
+            {
+              key: item.value,
+              type: "button",
+              "aria-pressed": value === item.value,
+              onClick: () => onValueChange?.(item.value),
+            },
+            item.label,
+          ),
+        ),
+      ),
+    TooltipHint: ({ children }: { children: React.ReactNode }) =>
+      React.createElement(React.Fragment, null, children),
   };
 });
 
@@ -189,9 +328,23 @@ vi.mock("../../src/components/inventory/useInventoryData", () => ({
 import { InventoryView } from "../../src/components/InventoryView";
 import { KnowledgeView } from "../../src/components/KnowledgeView";
 
+const testRendererOptions = {
+  createNodeMock: () => ({}),
+};
+
 describe("Knowledge and inventory polish", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query.includes("min-width: 768px"),
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
     mockListKnowledgeDocuments.mockResolvedValue({
       documents: [
         {
@@ -229,7 +382,10 @@ describe("Knowledge and inventory polish", () => {
 
     let tree!: TestRenderer.ReactTestRenderer;
     await act(async () => {
-      tree = TestRenderer.create(React.createElement(KnowledgeView));
+      tree = TestRenderer.create(
+        React.createElement(KnowledgeView),
+        testRendererOptions,
+      );
       await Promise.resolve();
     });
 
@@ -296,7 +452,10 @@ describe("Knowledge and inventory polish", () => {
 
     let tree!: TestRenderer.ReactTestRenderer;
     await act(async () => {
-      tree = TestRenderer.create(React.createElement(InventoryView));
+      tree = TestRenderer.create(
+        React.createElement(InventoryView),
+        testRendererOptions,
+      );
       await Promise.resolve();
     });
 
@@ -307,7 +466,9 @@ describe("Knowledge and inventory polish", () => {
 
     expect(stewardBadge.props.className).toContain("bg-accent/10");
     expect(stewardBadge.props.className).toContain("text-accent-fg");
-    expect(String(sidebar.props.className)).toContain("border-b border-border/34");
+    expect(String(sidebar.props.className)).toContain(
+      "border-b border-border/34",
+    );
     expect(String(sidebar.props.className)).toContain("backdrop-blur-md");
   });
 });

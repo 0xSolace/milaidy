@@ -23,33 +23,24 @@ import {
 } from "@miladyai/app-core/components";
 import { useApp } from "@miladyai/app-core/state";
 import { confirmDesktopAction } from "@miladyai/app-core/utils";
-import { Button, Checkbox, Input } from "@miladyai/ui";
-import { RefreshCw } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  DESKTOP_INSET_EMPTY_PANEL_CLASSNAME,
-  DESKTOP_INSET_PANEL_CLASSNAME,
-  DESKTOP_PAGE_CONTENT_CLASSNAME,
-  DESKTOP_SURFACE_PANEL_CLASSNAME,
-  DesktopEmptyStatePanel,
-  DesktopInsetEmptyStatePanel,
-  DesktopPageFrame,
-} from "./desktop-surface-primitives";
+  Button,
+  Checkbox,
+  Input,
+  PageLayout,
+  PagePanel,
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarPanel,
+  SidebarScrollRegion,
+} from "@miladyai/ui";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   isKnowledgeImageFile,
   MAX_KNOWLEDGE_IMAGE_PROCESSING_BYTES,
   maybeCompressKnowledgeUploadImage,
 } from "./knowledge-upload-image";
-import {
-  APP_PANEL_SHELL_CLASSNAME,
-  APP_SIDEBAR_CARD_ACTIVE_CLASSNAME,
-  APP_SIDEBAR_CARD_BASE_CLASSNAME,
-  APP_SIDEBAR_CARD_INACTIVE_CLASSNAME,
-  APP_SIDEBAR_INNER_CLASSNAME,
-  APP_SIDEBAR_KICKER_CLASSNAME,
-  APP_SIDEBAR_PILL_CLASSNAME,
-  APP_SIDEBAR_RAIL_CLASSNAME,
-} from "./sidebar-shell-styles";
 
 const MAX_UPLOAD_REQUEST_BYTES = 32 * 1_048_576; // Must match server knowledge route limit
 const BULK_UPLOAD_TARGET_BYTES = 24 * 1_048_576;
@@ -71,19 +62,6 @@ const SUPPORTED_UPLOAD_EXTENSIONS = new Set([
   ".webp",
   ".gif",
 ]);
-
-const KNOWLEDGE_SHELL_CLASS = APP_PANEL_SHELL_CLASSNAME;
-const KNOWLEDGE_SIDEBAR_CLASS = `lg:w-[22rem] lg:max-w-[360px] ${APP_SIDEBAR_RAIL_CLASSNAME}`;
-const KNOWLEDGE_KICKER_CLASS = APP_SIDEBAR_KICKER_CLASSNAME;
-const KNOWLEDGE_SECTION_LABEL_CLASS =
-  "px-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted/60";
-const KNOWLEDGE_PANEL_CLASS = DESKTOP_SURFACE_PANEL_CLASSNAME;
-const KNOWLEDGE_INSET_PANEL_CLASS = DESKTOP_INSET_PANEL_CLASSNAME;
-const KNOWLEDGE_SIDEBAR_ITEM_BASE_CLASS = APP_SIDEBAR_CARD_BASE_CLASSNAME;
-const KNOWLEDGE_SIDEBAR_ITEM_ACTIVE_CLASS = APP_SIDEBAR_CARD_ACTIVE_CLASSNAME;
-const KNOWLEDGE_SIDEBAR_ITEM_INACTIVE_CLASS =
-  APP_SIDEBAR_CARD_INACTIVE_CLASSNAME;
-const KNOWLEDGE_META_PILL_CLASS = `${APP_SIDEBAR_PILL_CLASSNAME} text-[10px] font-semibold uppercase tracking-[0.14em] text-txt-strong`;
 
 export type KnowledgeUploadFile = File & {
   webkitRelativePath?: string;
@@ -155,6 +133,15 @@ function getKnowledgeDocumentSummary(
           count: doc.fragmentCount,
         });
   return `${getKnowledgeSourceLabel(doc.source, t)} • ${fragmentLabel} • ${formatByteSize(doc.fileSize)}`;
+}
+
+function getRailMonogram(label: string): string {
+  const words = label.trim().split(/\s+/).filter(Boolean);
+  const initials = words
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase() ?? "")
+    .join("");
+  return (initials || label.slice(0, 1).toUpperCase() || "?").slice(0, 2);
 }
 
 /* ── Upload Zone ────────────────────────────────────────────────────── */
@@ -235,12 +222,12 @@ function UploadZone({
         onChange={handleFileSelect}
       />
       <div className="flex items-start justify-between gap-3 px-1">
-        <div className={KNOWLEDGE_META_PILL_CLASS}>
+        <PagePanel.Meta compact tone="strong">
           {t("knowledgeview.FormatsCount", {
             defaultValue: "{{count}} formats",
             count: SUPPORTED_UPLOAD_EXTENSIONS.size,
           })}
-        </div>
+        </PagePanel.Meta>
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
@@ -361,42 +348,32 @@ function SearchResultListItem({
   const { t } = useApp();
 
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      type="button"
+    <SidebarContent.ItemButton
       onClick={() => onSelect(result.documentId || result.id)}
+      type="button"
       aria-current={active ? "page" : undefined}
-      className={`${KNOWLEDGE_SIDEBAR_ITEM_BASE_CLASS} h-auto w-full ${
-        active
-          ? KNOWLEDGE_SIDEBAR_ITEM_ACTIVE_CLASS
-          : KNOWLEDGE_SIDEBAR_ITEM_INACTIVE_CLASS
-      }`}
     >
-      <span
-        className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border text-[10px] font-semibold ${
-          active
-            ? "border-accent/30 bg-accent/18 text-txt-strong"
-            : "border-border/50 bg-bg-accent/80 text-muted"
-        }`}
+      <SidebarContent.ItemIcon
+        active={active}
+        className="text-[10px] font-semibold"
       >
         {(result.similarity * 100).toFixed(0)}%
-      </span>
-      <span className="min-w-0 flex-1 text-left">
-        <span className="block truncate text-sm font-semibold text-txt">
+      </SidebarContent.ItemIcon>
+      <SidebarContent.ItemBody>
+        <SidebarContent.ItemTitle className="truncate">
           {result.documentTitle ||
             t("knowledgeview.UnknownDocument", {
               defaultValue: "Unknown Document",
             })}
-        </span>
-        <span className="mt-1 block line-clamp-2 text-[11px] leading-relaxed text-muted/85">
+        </SidebarContent.ItemTitle>
+        <SidebarContent.ItemDescription className="line-clamp-2">
           {result.text}
-        </span>
+        </SidebarContent.ItemDescription>
         <span className="mt-2 block text-[10px] font-semibold uppercase tracking-[0.12em] text-accent-fg/85">
           {(result.similarity * 100).toFixed(0)}% {t("knowledgeview.Match")}
         </span>
-      </span>
-    </Button>
+      </SidebarContent.ItemBody>
+    </SidebarContent.ItemButton>
   );
 }
 
@@ -417,12 +394,10 @@ function DocumentListItem({
 }) {
   const { t } = useApp();
   return (
-    <div
-      className={`${KNOWLEDGE_SIDEBAR_ITEM_BASE_CLASS} relative cursor-pointer ${
-        active
-          ? KNOWLEDGE_SIDEBAR_ITEM_ACTIVE_CLASS
-          : KNOWLEDGE_SIDEBAR_ITEM_INACTIVE_CLASS
-      }`}
+    <SidebarContent.Item
+      as="div"
+      active={active}
+      className="relative"
       onClick={() => onSelect(doc.id)}
       role="button"
       tabIndex={0}
@@ -438,7 +413,7 @@ function DocumentListItem({
       })}
       aria-current={active ? "page" : undefined}
     >
-      <div className="min-w-0 flex-1">
+      <SidebarContent.ItemBody>
         <div className="truncate text-sm font-semibold leading-snug text-txt">
           {doc.filename}
         </div>
@@ -459,7 +434,7 @@ function DocumentListItem({
             {formatShortDate(doc.createdAt, { fallback: "—" })}
           </span>
         </div>
-      </div>
+      </SidebarContent.ItemBody>
       <div
         className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
         onClick={(e) => e.stopPropagation()}
@@ -473,7 +448,7 @@ function DocumentListItem({
           onConfirm={() => onDelete(doc.id)}
         />
       </div>
-    </div>
+    </SidebarContent.Item>
   );
 }
 
@@ -535,9 +510,7 @@ function DocumentViewer({ documentId }: { documentId: string | null }) {
   const previewText = doc?.content?.text?.trim();
 
   return (
-    <section
-      className={`${KNOWLEDGE_PANEL_CLASS} min-h-[62vh] overflow-hidden`}
-    >
+    <PagePanel className="min-h-[62vh] overflow-hidden">
       {doc && (
         <div className="flex flex-wrap items-center gap-2 px-5 pt-5 sm:px-6 lg:justify-end">
           <span className="rounded-full border border-border/45 bg-bg/25 px-3 py-1.5 text-[11px] font-semibold text-muted">
@@ -563,7 +536,8 @@ function DocumentViewer({ documentId }: { documentId: string | null }) {
         )}
 
         {!loading && !error && !doc && (
-          <DesktopInsetEmptyStatePanel
+          <PagePanel.Empty
+            variant="inset"
             className="px-6 py-16"
             description={t("knowledgeview.NoDocumentSelectedDesc", {
               defaultValue:
@@ -578,7 +552,7 @@ function DocumentViewer({ documentId }: { documentId: string | null }) {
         {!loading && !error && doc && (
           <>
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.9fr)]">
-              <div className={`${KNOWLEDGE_INSET_PANEL_CLASS} p-5`}>
+              <PagePanel variant="inset" className="p-5">
                 <div className="mb-3 flex items-center justify-between gap-3 border-b border-border/25 pb-3">
                   <div className="text-sm font-semibold text-txt">
                     {t("knowledgeview.Preview", { defaultValue: "Preview" })}
@@ -592,7 +566,8 @@ function DocumentViewer({ documentId }: { documentId: string | null }) {
                     {previewText.slice(0, 1200)}
                   </pre>
                 ) : (
-                  <DesktopInsetEmptyStatePanel
+                  <PagePanel.Empty
+                    variant="inset"
                     className="min-h-[10rem] px-4 py-10 text-sm"
                     description={t("knowledgeview.NoPreviewDesc", {
                       defaultValue:
@@ -603,9 +578,9 @@ function DocumentViewer({ documentId }: { documentId: string | null }) {
                     })}
                   />
                 )}
-              </div>
+              </PagePanel>
 
-              <div className={`${KNOWLEDGE_INSET_PANEL_CLASS} p-5`}>
+              <PagePanel variant="inset" className="p-5">
                 <div className="text-sm font-semibold text-txt">
                   {t("knowledgeview.Details", { defaultValue: "Details" })}
                 </div>
@@ -662,10 +637,10 @@ function DocumentViewer({ documentId }: { documentId: string | null }) {
                     </div>
                   )}
                 </div>
-              </div>
+              </PagePanel>
             </div>
 
-            <div className={`${KNOWLEDGE_INSET_PANEL_CLASS} p-5`}>
+            <PagePanel variant="inset" className="p-5">
               <div className="mb-4 flex items-center justify-between border-b border-border/30 pb-3">
                 <h3 className="text-sm font-bold tracking-wide text-txt">
                   {t("knowledgeview.Fragments1")}
@@ -696,17 +671,18 @@ function DocumentViewer({ documentId }: { documentId: string | null }) {
                   </div>
                 ))}
                 {fragments.length === 0 && (
-                  <DesktopInsetEmptyStatePanel
+                  <PagePanel.Empty
+                    variant="inset"
                     className="min-h-[10rem] py-12"
                     title={t("knowledgeview.NoFragmentsFound")}
                   />
                 )}
               </div>
-            </div>
+            </PagePanel>
           </>
         )}
       </div>
-    </section>
+    </PagePanel>
   );
 }
 
@@ -1254,16 +1230,6 @@ export function KnowledgeView({ inModal }: { inModal?: boolean } = {}) {
     [loadData, setActionNotice],
   );
 
-  const handleSearchSubmit = useCallback(
-    (e?: React.FormEvent<HTMLFormElement>) => {
-      e?.preventDefault();
-      const query = searchQuery.trim();
-      if (!query) return;
-      void handleSearch(query);
-    },
-    [handleSearch, searchQuery],
-  );
-
   const totalFragments = useMemo(
     () => documents.reduce((sum, d) => sum + (d.fragmentCount || 0), 0),
     [documents],
@@ -1288,138 +1254,182 @@ export function KnowledgeView({ inModal }: { inModal?: boolean } = {}) {
     }
   }, [documents, selectedDocId]);
 
+  useEffect(() => {
+    const query = searchQuery.trim();
+    if (!query) {
+      if (searchResults !== null) {
+        setSearchResults(null);
+      }
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      void handleSearch(query);
+    }, 200);
+
+    return () => window.clearTimeout(timer);
+  }, [handleSearch, searchQuery, searchResults]);
+
   return (
-    <DesktopPageFrame className={inModal ? "p-0 lg:p-0" : undefined}>
-      <div className={KNOWLEDGE_SHELL_CLASS}>
-        <aside className={KNOWLEDGE_SIDEBAR_CLASS}>
-          <div className={APP_SIDEBAR_INNER_CLASSNAME}>
-            <div className="mt-4 border-b border-border/25 pb-4">
-              <form
-                className="mt-3 w-full max-w-[500px] flex-[1_1_500px]"
-                onSubmit={handleSearchSubmit}
-              >
-                <div className="flex items-stretch gap-2">
-                  <Input
-                    type="text"
-                    placeholder={t("knowledge.ui.searchPlaceholder")}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    disabled={searching}
-                    className="h-10 border-border/55 bg-bg/82 text-sm shadow-sm focus-visible:ring-1 focus-visible:ring-accent"
-                  />
-                  <Button
-                    type="submit"
-                    variant="default"
-                    size="sm"
-                    className="h-10 px-4 text-txt shadow-sm"
-                    disabled={!searchQuery.trim() || searching}
-                  >
-                    {searching
-                      ? t("knowledge.ui.searching")
-                      : t("knowledge.ui.search")}
-                  </Button>
-                </div>
-              </form>
-              <div className="mt-3 flex flex-wrap items-center gap-2 px-1">
-                {isShowingSearchResults && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 rounded-lg border border-border/35 px-3 text-[11px] font-semibold text-muted hover:border-border/60 hover:bg-bg/35 hover:text-txt"
-                    onClick={() => setSearchResults(null)}
-                  >
-                    {t("common.clear", { defaultValue: "Clear" })}
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-3 min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-3">
-              {loading && !isShowingSearchResults && documents.length === 0 && (
-                <div
-                  className={`${DESKTOP_INSET_EMPTY_PANEL_CLASSNAME} px-4 py-10 text-center text-sm font-medium text-muted`}
-                >
-                  {t("knowledgeview.LoadingDocuments")}
-                </div>
-              )}
-
-              {!loading &&
-                !isShowingSearchResults &&
-                documents.length === 0 && (
-                  <DesktopEmptyStatePanel
-                    className="min-h-[12rem] px-4 py-8"
-                    description={t("knowledgeview.UploadFilesOrImpo")}
-                    title={t("knowledgeview.NoDocumentsYet")}
-                  />
-                )}
-
-              {isShowingSearchResults && visibleSearchResults.length === 0 && (
-                <DesktopEmptyStatePanel
-                  className="min-h-[12rem] px-4 py-8"
-                  description={t("knowledgeview.SearchTips", {
-                    defaultValue:
-                      "Try a filename, topic, or phrase from the document body.",
-                  })}
-                  title={t("knowledgeview.NoResultsFound")}
-                />
-              )}
-
-              {isShowingSearchResults
-                ? visibleSearchResults.map((result) => (
-                    <SearchResultListItem
+    <PageLayout
+      className={inModal ? "min-h-0" : undefined}
+      sidebar={
+        <Sidebar
+          testId="knowledge-sidebar"
+          contentIdentity="knowledge"
+          header={
+            <SidebarHeader
+              search={{
+                placeholder: t("knowledge.ui.searchPlaceholder"),
+                value: searchQuery,
+                onChange: (e) => setSearchQuery(e.target.value),
+                onClear: () => {
+                  setSearchQuery("");
+                  setSearchResults(null);
+                },
+                loading: searching,
+                clearLabel: t("common.clear", { defaultValue: "Clear" }),
+                autoComplete: "off",
+                spellCheck: false,
+              }}
+            />
+          }
+          collapsedRailItems={
+            isShowingSearchResults
+              ? visibleSearchResults.map((result) => {
+                  const resultLabel =
+                    result.documentTitle ||
+                    t("knowledgeview.UnknownDocument", {
+                      defaultValue: "Unknown Document",
+                    });
+                  return (
+                    <SidebarContent.RailItem
                       key={result.id}
-                      result={result}
+                      aria-label={resultLabel}
+                      title={resultLabel}
                       active={
                         selectedDocId === (result.documentId || result.id)
                       }
-                      onSelect={setSelectedDocId}
+                      onClick={() =>
+                        setSelectedDocId(result.documentId || result.id)
+                      }
+                    >
+                      {getRailMonogram(resultLabel)}
+                    </SidebarContent.RailItem>
+                  );
+                })
+              : documents.map((doc) => (
+                  <SidebarContent.RailItem
+                    key={doc.id}
+                    aria-label={doc.filename}
+                    title={doc.filename}
+                    active={selectedDocId === doc.id}
+                    onClick={() => setSelectedDocId(doc.id)}
+                  >
+                    {getRailMonogram(doc.filename)}
+                  </SidebarContent.RailItem>
+                ))
+          }
+        >
+          <SidebarScrollRegion>
+            <SidebarPanel>
+              <div className="space-y-1.5">
+                {loading &&
+                  !isShowingSearchResults &&
+                  documents.length === 0 && (
+                    <PagePanel.Empty
+                      variant="inset"
+                      className="px-4 py-10 text-center text-sm font-medium"
+                      title={t("knowledgeview.LoadingDocuments")}
+                    >
+                      {t("knowledgeview.LoadingDocuments")}
+                    </PagePanel.Empty>
+                  )}
+
+                {!loading &&
+                  !isShowingSearchResults &&
+                  documents.length === 0 && (
+                    <PagePanel.Empty
+                      variant="inset"
+                      className="min-h-[12rem] px-4 py-8"
+                      description={t("knowledgeview.UploadFilesOrImpo")}
+                      title={t("knowledgeview.NoDocumentsYet")}
                     />
-                  ))
-                : documents.map((doc) => (
-                    <DocumentListItem
-                      key={doc.id}
-                      doc={doc}
-                      active={selectedDocId === doc.id}
-                      onSelect={setSelectedDocId}
-                      onDelete={handleDelete}
-                      deleting={deleting === doc.id}
+                  )}
+
+                {isShowingSearchResults &&
+                  visibleSearchResults.length === 0 && (
+                    <PagePanel.Empty
+                      variant="inset"
+                      className="min-h-[12rem] px-4 py-8"
+                      description={t("knowledgeview.SearchTips", {
+                        defaultValue:
+                          "Try a filename, topic, or phrase from the document body.",
+                      })}
+                      title={t("knowledgeview.NoResultsFound")}
                     />
-                  ))}
-            </div>
-          </div>
-        </aside>
+                  )}
 
-        <div className={DESKTOP_PAGE_CONTENT_CLASSNAME}>
-          <div className="mx-auto max-w-[78rem] px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
-            {isServiceLoading && (
-              <div
-                className={`${KNOWLEDGE_INSET_PANEL_CLASS} mb-4 flex items-center gap-2 px-4 py-3 text-sm text-muted-strong`}
-              >
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent" />
-                {t("knowledgeview.KnowledgeServiceIs")}
+                {isShowingSearchResults
+                  ? visibleSearchResults.map((result) => (
+                      <SearchResultListItem
+                        key={result.id}
+                        result={result}
+                        active={
+                          selectedDocId === (result.documentId || result.id)
+                        }
+                        onSelect={setSelectedDocId}
+                      />
+                    ))
+                  : documents.map((doc) => (
+                      <DocumentListItem
+                        key={doc.id}
+                        doc={doc}
+                        active={selectedDocId === doc.id}
+                        onSelect={setSelectedDocId}
+                        onDelete={handleDelete}
+                        deleting={deleting === doc.id}
+                      />
+                    ))}
               </div>
-            )}
+            </SidebarPanel>
+          </SidebarScrollRegion>
+        </Sidebar>
+      }
+      contentInnerClassName="mx-auto w-full max-w-[78rem]"
+    >
+      {isServiceLoading && (
+        <PagePanel
+          variant="inset"
+          className="mb-4 flex items-center gap-2 px-4 py-3 text-sm text-muted-strong"
+        >
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent" />
+          {t("knowledgeview.KnowledgeServiceIs")}
+        </PagePanel>
+      )}
 
-            {loadError && !isServiceLoading && (
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-danger/25 bg-danger/10 px-4 py-3 text-sm text-danger shadow-sm">
-                <span>{loadError}</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-danger/30 px-3 text-xs text-danger hover:bg-danger/16"
-                  onClick={() => loadData()}
-                >
-                  {t("common.retry")}
-                </Button>
-              </div>
-            )}
+      {loadError && !isServiceLoading && (
+        <PagePanel.Notice
+          tone="danger"
+          className="mb-4"
+          actions={
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-danger/30 px-3 text-xs text-danger hover:bg-danger/16"
+              onClick={() => loadData()}
+            >
+              {t("common.retry")}
+            </Button>
+          }
+        >
+          {loadError}
+        </PagePanel.Notice>
+      )}
 
-            <div className="mt-4">
-              <DocumentViewer documentId={selectedDocId} />
-            </div>
-          </div>
-        </div>
+      <div className="mt-4">
+        <DocumentViewer documentId={selectedDocId} />
       </div>
-    </DesktopPageFrame>
+    </PageLayout>
   );
 }
