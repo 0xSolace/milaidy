@@ -9536,7 +9536,6 @@ async function handleRequest(
 
     delete process.env.ANTHROPIC_BASE_URL;
     delete process.env.OPENAI_BASE_URL;
-
     // Only clear proxied cloud credentials. Preserve direct provider keys so
     // switching local providers does not discard previously configured BYOK state.
     if (configuredCloudApiKey) {
