@@ -212,6 +212,7 @@ import { useDisplayPreferences } from "./useDisplayPreferences";
 import { useOnboardingState } from "./useOnboardingState";
 import { useCharacterState } from "./useCharacterState";
 import { useWalletState } from "./useWalletState";
+import { usePluginsSkillsState } from "./usePluginsSkillsState";
 
 const AGENT_STATUS_POLL_INTERVAL_MS = 500;
 const ONBOARDING_GREETING_READY_TIMEOUT_MS = 15_000;
@@ -891,50 +892,113 @@ function AppProviderInner({
     runTriggerNow,
   } = triggersHook;
 
-  // --- Plugins ---
-  const [plugins, setPlugins] = useState<PluginInfo[]>([]);
-  const [pluginFilter, setPluginFilter] = useState<
-    "all" | "ai-provider" | "connector" | "feature" | "streaming"
-  >("all");
-  const [pluginStatusFilter, setPluginStatusFilter] = useState<
-    "all" | "enabled" | "disabled"
-  >("all");
-  const [pluginSearch, setPluginSearch] = useState("");
-  const [pluginSettingsOpen, setPluginSettingsOpen] = useState<Set<string>>(
-    new Set(),
-  );
-  const [pluginAdvancedOpen, setPluginAdvancedOpen] = useState<Set<string>>(
-    new Set(),
-  );
-  const [pluginSaving, setPluginSaving] = useState<Set<string>>(new Set());
-  const [pluginSaveSuccess, setPluginSaveSuccess] = useState<Set<string>>(
-    new Set(),
-  );
-
-  // --- Skills ---
-  const [skills, setSkills] = useState<SkillInfo[]>([]);
-  const [skillsSubTab, setSkillsSubTab] = useState<"my" | "browse">("my");
-  const [skillCreateFormOpen, setSkillCreateFormOpen] = useState(false);
-  const [skillCreateName, setSkillCreateName] = useState("");
-  const [skillCreateDescription, setSkillCreateDescription] = useState("");
-  const [skillCreating, setSkillCreating] = useState(false);
-  const [skillReviewReport, setSkillReviewReport] =
-    useState<SkillScanReportSummary | null>(null);
-  const [skillReviewId, setSkillReviewId] = useState("");
-  const [skillReviewLoading, setSkillReviewLoading] = useState(false);
-  const [skillToggleAction, setSkillToggleAction] = useState("");
-  const [skillsMarketplaceQuery, setSkillsMarketplaceQuery] = useState("");
-  const [skillsMarketplaceResults, setSkillsMarketplaceResults] = useState<
-    SkillMarketplaceResult[]
-  >([]);
-  const [skillsMarketplaceError, setSkillsMarketplaceError] = useState("");
-  const [skillsMarketplaceLoading, setSkillsMarketplaceLoading] =
-    useState(false);
-  const [skillsMarketplaceAction, setSkillsMarketplaceAction] = useState("");
-  const [
+  // --- Plugins / Skills / Store / Catalog (extracted to usePluginsSkillsState) ---
+  const pluginsSkillsHook = usePluginsSkillsState({ setActionNotice });
+  const {
+    plugins,
+    setPlugins,
+    pluginFilter,
+    setPluginFilter,
+    pluginStatusFilter,
+    setPluginStatusFilter,
+    pluginSearch,
+    setPluginSearch,
+    pluginSettingsOpen,
+    setPluginSettingsOpen,
+    pluginAdvancedOpen,
+    setPluginAdvancedOpen,
+    pluginSaving,
+    setPluginSaving,
+    pluginSaveSuccess,
+    setPluginSaveSuccess,
+    loadPlugins,
+    handlePluginToggle,
+    handlePluginConfigSave,
+    skills,
+    setSkills,
+    skillsSubTab,
+    setSkillsSubTab,
+    skillCreateFormOpen,
+    setSkillCreateFormOpen,
+    skillCreateName,
+    setSkillCreateName,
+    skillCreateDescription,
+    setSkillCreateDescription,
+    skillCreating,
+    setSkillCreating,
+    skillReviewReport,
+    setSkillReviewReport,
+    skillReviewId,
+    setSkillReviewId,
+    skillReviewLoading,
+    setSkillReviewLoading,
+    skillToggleAction,
+    setSkillToggleAction,
+    skillsMarketplaceQuery,
+    setSkillsMarketplaceQuery,
+    skillsMarketplaceResults,
+    setSkillsMarketplaceResults,
+    skillsMarketplaceError,
+    setSkillsMarketplaceError,
+    skillsMarketplaceLoading,
+    setSkillsMarketplaceLoading,
+    skillsMarketplaceAction,
+    setSkillsMarketplaceAction,
     skillsMarketplaceManualGithubUrl,
     setSkillsMarketplaceManualGithubUrl,
-  ] = useState("");
+    loadSkills,
+    refreshSkills,
+    handleSkillToggle,
+    handleCreateSkill,
+    handleOpenSkill,
+    handleDeleteSkill,
+    handleReviewSkill,
+    handleAcknowledgeSkill,
+    searchSkillsMarketplace,
+    installSkillFromMarketplace,
+    installSkillFromGithubUrl,
+    uninstallMarketplaceSkill,
+    storePlugins,
+    setStorePlugins,
+    storeSearch,
+    setStoreSearch,
+    storeFilter,
+    setStoreFilter,
+    storeLoading,
+    setStoreLoading,
+    storeInstalling,
+    setStoreInstalling,
+    storeUninstalling,
+    setStoreUninstalling,
+    storeError,
+    setStoreError,
+    storeDetailPlugin,
+    setStoreDetailPlugin,
+    storeSubTab,
+    setStoreSubTab,
+    catalogSkills,
+    setCatalogSkills,
+    catalogTotal,
+    setCatalogTotal,
+    catalogPage,
+    setCatalogPage,
+    catalogTotalPages,
+    setCatalogTotalPages,
+    catalogSort,
+    setCatalogSort,
+    catalogSearch,
+    setCatalogSearch,
+    catalogLoading,
+    setCatalogLoading,
+    catalogError,
+    setCatalogError,
+    catalogDetailSkill,
+    setCatalogDetailSkill,
+    catalogInstalling,
+    setCatalogInstalling,
+    catalogUninstalling,
+    setCatalogUninstalling,
+  } = pluginsSkillsHook;
 
   // --- Logs ---
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -1021,46 +1085,6 @@ function AppProviderInner({
   const [extensionStatus, setExtensionStatus] =
     useState<ExtensionStatus | null>(null);
   const [extensionChecking, setExtensionChecking] = useState(false);
-
-  // --- Store ---
-  const [storePlugins, setStorePlugins] = useState<RegistryPlugin[]>([]);
-  const [storeSearch, setStoreSearch] = useState("");
-  const [storeFilter, setStoreFilter] = useState<
-    "all" | "installed" | "ai-provider" | "connector" | "feature"
-  >("all");
-  const [storeLoading, setStoreLoading] = useState(false);
-  const [storeInstalling, setStoreInstalling] = useState<Set<string>>(
-    new Set(),
-  );
-  const [storeUninstalling, setStoreUninstalling] = useState<Set<string>>(
-    new Set(),
-  );
-  const [storeError, setStoreError] = useState<string | null>(null);
-  const [storeDetailPlugin, setStoreDetailPlugin] =
-    useState<RegistryPlugin | null>(null);
-  const [storeSubTab, setStoreSubTab] = useState<"plugins" | "skills">(
-    "plugins",
-  );
-
-  // --- Catalog ---
-  const [catalogSkills, setCatalogSkills] = useState<CatalogSkill[]>([]);
-  const [catalogTotal, setCatalogTotal] = useState(0);
-  const [catalogPage, setCatalogPage] = useState(1);
-  const [catalogTotalPages, setCatalogTotalPages] = useState(1);
-  const [catalogSort, setCatalogSort] = useState<
-    "downloads" | "stars" | "updated" | "name"
-  >("downloads");
-  const [catalogSearch, setCatalogSearch] = useState("");
-  const [catalogLoading, setCatalogLoading] = useState(false);
-  const [catalogError, setCatalogError] = useState<string | null>(null);
-  const [catalogDetailSkill, setCatalogDetailSkill] =
-    useState<CatalogSkill | null>(null);
-  const [catalogInstalling, setCatalogInstalling] = useState<Set<string>>(
-    new Set(),
-  );
-  const [catalogUninstalling, setCatalogUninstalling] = useState<Set<string>>(
-    new Set(),
-  );
 
   // --- Workbench ---
   const [workbenchLoading, setWorkbenchLoading] = useState(false);
@@ -1624,38 +1648,6 @@ function AppProviderInner({
   }, [tab, uiShellMode]);
 
   // ── Data loading ───────────────────────────────────────────────────
-
-  const loadPlugins = useCallback(async () => {
-    try {
-      const { plugins: p } = await client.getPlugins();
-      setPlugins(p);
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  const loadSkills = useCallback(async () => {
-    try {
-      const { skills: s } = await client.getSkills();
-      setSkills(s);
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  const refreshSkills = useCallback(async () => {
-    try {
-      const { skills: s } = await client.refreshSkills();
-      setSkills(s);
-    } catch {
-      try {
-        const { skills: s } = await client.getSkills();
-        setSkills(s);
-      } catch {
-        /* ignore */
-      }
-    }
-  }, []);
 
   const loadLogs = useCallback(async () => {
     try {
@@ -4470,348 +4462,7 @@ function AppProviderInner({
 
   // ── Pairing ────────────────────────────────────────────────────────
 
-  // ── Plugin actions ─────────────────────────────────────────────────
-
-  const handlePluginToggle = useCallback(
-    async (pluginId: string, enabled: boolean) => {
-      const plugin = plugins.find((p: PluginInfo) => p.id === pluginId);
-      const pluginName = plugin?.name ?? pluginId;
-      if (
-        enabled &&
-        plugin?.validationErrors &&
-        plugin.validationErrors.length > 0
-      ) {
-        setPluginSettingsOpen((prev) => new Set([...prev, pluginId]));
-        setActionNotice(
-          `${pluginName} has required settings. Configure them after enabling.`,
-          "info",
-          3400,
-        );
-      }
-      try {
-        setActionNotice(
-          `${enabled ? "Enabling" : "Disabling"} ${pluginName}...`,
-          "info",
-          4200,
-        );
-        await client.updatePlugin(pluginId, { enabled });
-        await loadPlugins();
-        setActionNotice(
-          `${pluginName} ${enabled ? "enabled" : "disabled"}. Restart required to apply.`,
-          "success",
-          2800,
-        );
-      } catch (err) {
-        await loadPlugins().catch(() => {
-          /* ignore */
-        });
-        setActionNotice(
-          `Failed to ${enabled ? "enable" : "disable"} ${pluginName}: ${
-            err instanceof Error ? err.message : "unknown error"
-          }`,
-          "error",
-          4200,
-        );
-      }
-    },
-    [plugins, loadPlugins, setActionNotice],
-  );
-
-  const handlePluginConfigSave = useCallback(
-    async (pluginId: string, config: Record<string, string>) => {
-      if (Object.keys(config).length === 0) return;
-      setPluginSaving((prev) => new Set([...prev, pluginId]));
-      try {
-        await client.updatePlugin(pluginId, { config });
-
-        // Check if this is an AI provider plugin
-        const plugin = plugins.find((p) => p.id === pluginId);
-        const isAiProvider = plugin?.category === "ai-provider";
-
-        await loadPlugins();
-        setActionNotice(
-          isAiProvider
-            ? "Provider settings saved. Restart required to apply."
-            : "Plugin settings saved.",
-          "success",
-        );
-        setPluginSaveSuccess((prev) => new Set([...prev, pluginId]));
-        setTimeout(() => {
-          setPluginSaveSuccess((prev) => {
-            const next = new Set(prev);
-            next.delete(pluginId);
-            return next;
-          });
-        }, 2000);
-      } catch (err) {
-        setActionNotice(
-          `Save failed: ${err instanceof Error ? err.message : "unknown error"}`,
-          "error",
-          3800,
-        );
-      } finally {
-        setPluginSaving((prev) => {
-          const next = new Set(prev);
-          next.delete(pluginId);
-          return next;
-        });
-      }
-    },
-    [loadPlugins, setActionNotice, plugins],
-  );
-
-  // ── Skill actions ──────────────────────────────────────────────────
-
-  const handleSkillToggle = useCallback(
-    async (skillId: string, enabled: boolean) => {
-      setSkillToggleAction(skillId);
-      try {
-        const { skill } = await client.updateSkill(skillId, enabled);
-        setSkills((prev) =>
-          prev.map((s) =>
-            s.id === skillId ? { ...s, enabled: skill.enabled } : s,
-          ),
-        );
-        setActionNotice(
-          `${skill.name} ${skill.enabled ? "enabled" : "disabled"}.`,
-          "success",
-        );
-      } catch (err) {
-        setActionNotice(
-          `Failed to update skill: ${err instanceof Error ? err.message : "unknown error"}`,
-          "error",
-          4200,
-        );
-      } finally {
-        setSkillToggleAction("");
-      }
-    },
-    [setActionNotice],
-  );
-
-  const handleCreateSkill = useCallback(async () => {
-    const name = skillCreateName.trim();
-    if (!name) return;
-    setSkillCreating(true);
-    try {
-      const result = await client.createSkill(
-        name,
-        skillCreateDescription.trim() || "",
-      );
-      setSkillCreateName("");
-      setSkillCreateDescription("");
-      setSkillCreateFormOpen(false);
-      setActionNotice(`Skill "${name}" created.`, "success");
-      await refreshSkills();
-      if (result.path)
-        await client.openSkill(result.skill?.id ?? name).catch(() => undefined);
-    } catch (err) {
-      setActionNotice(
-        `Failed to create skill: ${err instanceof Error ? err.message : "error"}`,
-        "error",
-        4200,
-      );
-    } finally {
-      setSkillCreating(false);
-    }
-  }, [skillCreateName, skillCreateDescription, refreshSkills, setActionNotice]);
-
-  const handleOpenSkill = useCallback(
-    async (skillId: string) => {
-      try {
-        await client.openSkill(skillId);
-        setActionNotice("Opening skill folder...", "success", 2000);
-      } catch (err) {
-        setActionNotice(
-          `Failed to open: ${err instanceof Error ? err.message : "error"}`,
-          "error",
-          4200,
-        );
-      }
-    },
-    [setActionNotice],
-  );
-
-  const handleDeleteSkill = useCallback(
-    async (skillId: string, skillName: string) => {
-      const confirmed = await confirmDesktopAction({
-        title: "Delete Skill",
-        message: `Delete skill "${skillName}"?`,
-        detail: "This cannot be undone.",
-        confirmLabel: "Delete",
-        cancelLabel: "Cancel",
-        type: "warning",
-      });
-      if (!confirmed) return;
-      try {
-        await client.deleteSkill(skillId);
-        setActionNotice(`Skill "${skillName}" deleted.`, "success");
-        await refreshSkills();
-      } catch (err) {
-        setActionNotice(
-          `Failed to delete: ${err instanceof Error ? err.message : "error"}`,
-          "error",
-          4200,
-        );
-      }
-    },
-    [refreshSkills, setActionNotice],
-  );
-
-  const handleReviewSkill = useCallback(async (skillId: string) => {
-    setSkillReviewId(skillId);
-    setSkillReviewLoading(true);
-    setSkillReviewReport(null);
-    try {
-      const { report } = await client.getSkillScanReport(skillId);
-      setSkillReviewReport(report);
-    } catch {
-      setSkillReviewReport(null);
-    } finally {
-      setSkillReviewLoading(false);
-    }
-  }, []);
-
-  const handleAcknowledgeSkill = useCallback(
-    async (skillId: string) => {
-      try {
-        await client.acknowledgeSkill(skillId, true);
-        setActionNotice(
-          `Skill "${skillId}" acknowledged and enabled.`,
-          "success",
-        );
-        setSkillReviewReport(null);
-        setSkillReviewId("");
-        await refreshSkills();
-      } catch (err) {
-        setActionNotice(
-          `Failed: ${err instanceof Error ? err.message : "error"}`,
-          "error",
-          4200,
-        );
-      }
-    },
-    [refreshSkills, setActionNotice],
-  );
-
-  const searchSkillsMarketplace = useCallback(async () => {
-    const query = skillsMarketplaceQuery.trim();
-    if (!query) {
-      setSkillsMarketplaceResults([]);
-      setSkillsMarketplaceError("");
-      return;
-    }
-    setSkillsMarketplaceLoading(true);
-    setSkillsMarketplaceError("");
-    try {
-      const { results } = await client.searchSkillsMarketplace(
-        query,
-        false,
-        20,
-      );
-      setSkillsMarketplaceResults(results);
-    } catch (err) {
-      setSkillsMarketplaceResults([]);
-      setSkillsMarketplaceError(
-        err instanceof Error ? err.message : "unknown error",
-      );
-    } finally {
-      setSkillsMarketplaceLoading(false);
-    }
-  }, [skillsMarketplaceQuery]);
-
-  const installSkillFromMarketplace = useCallback(
-    async (item: SkillMarketplaceResult) => {
-      setSkillsMarketplaceAction(`install:${item.id}`);
-      try {
-        await client.installMarketplaceSkill({
-          slug: item.slug ?? item.id,
-          githubUrl: item.githubUrl,
-          repository: item.repository,
-          path: item.path ?? undefined,
-          name: item.name,
-          description: item.description,
-          source: item.source ?? "clawhub",
-          autoRefresh: true,
-        });
-        await refreshSkills();
-        setActionNotice(`Installed skill: ${item.name}`, "success");
-      } catch (err) {
-        setActionNotice(
-          `Skill install failed: ${err instanceof Error ? err.message : "unknown error"}`,
-          "error",
-          4200,
-        );
-      } finally {
-        setSkillsMarketplaceAction("");
-      }
-    },
-    [refreshSkills, setActionNotice],
-  );
-
-  const installSkillFromGithubUrl = useCallback(async () => {
-    const githubUrl = skillsMarketplaceManualGithubUrl.trim();
-    if (!githubUrl) return;
-    setSkillsMarketplaceAction("install:manual");
-    try {
-      let repository: string | undefined;
-      let skillPath: string | undefined;
-      let inferredName: string | undefined;
-      try {
-        const parsed = new URL(githubUrl);
-        if (parsed.hostname === "github.com") {
-          const parts = parsed.pathname.split("/").filter(Boolean);
-          if (parts.length >= 2) repository = `${parts[0]}/${parts[1]}`;
-          if (parts[2] === "tree" && parts.length >= 5) {
-            skillPath = parts.slice(4).join("/");
-            inferredName = parts[parts.length - 1];
-          }
-        }
-      } catch {
-        /* keep raw URL */
-      }
-      await client.installMarketplaceSkill({
-        githubUrl,
-        repository,
-        path: skillPath,
-        name: inferredName,
-        source: "manual",
-        autoRefresh: true,
-      });
-      setSkillsMarketplaceManualGithubUrl("");
-      await refreshSkills();
-      setActionNotice("Skill installed from GitHub URL.", "success");
-    } catch (err) {
-      setActionNotice(
-        `GitHub install failed: ${err instanceof Error ? err.message : "unknown error"}`,
-        "error",
-        4200,
-      );
-    } finally {
-      setSkillsMarketplaceAction("");
-    }
-  }, [skillsMarketplaceManualGithubUrl, refreshSkills, setActionNotice]);
-
-  const uninstallMarketplaceSkill = useCallback(
-    async (skillId: string, name: string) => {
-      setSkillsMarketplaceAction(`uninstall:${skillId}`);
-      try {
-        await client.deleteSkill(skillId);
-        await refreshSkills();
-        setActionNotice(`Uninstalled skill: ${name}`, "success");
-      } catch (err) {
-        setActionNotice(
-          `Skill uninstall failed: ${err instanceof Error ? err.message : "unknown error"}`,
-          "error",
-          4200,
-        );
-      } finally {
-        setSkillsMarketplaceAction("");
-      }
-    },
-    [refreshSkills, setActionNotice],
-  );
-
+  // ── Plugin / Skill / Store / Catalog actions are provided by usePluginsSkillsState (pluginsSkillsHook) ──
   // ── Inventory / Registry / Drop / Whitelist actions are provided by useWalletState (walletHook) ──
   // ── Character actions are provided by useCharacterState (characterHook) ──
 
