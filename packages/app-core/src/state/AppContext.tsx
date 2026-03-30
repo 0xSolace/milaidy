@@ -205,6 +205,7 @@ import { TranslationProvider, useTranslation } from "./TranslationContext";
 import type { InventoryChainFilters } from "./types";
 import { useChatState } from "./useChatState";
 import { useLifecycleState } from "./useLifecycleState";
+import { useStartupCoordinator } from "./useStartupCoordinator";
 import { useTriggersState } from "./useTriggersState";
 import { usePairingState } from "./usePairingState";
 import { useExportImportState } from "./useExportImportState";
@@ -668,6 +669,12 @@ function AppProviderInner({
 
   // ── Lifecycle state (consolidated from 20+ useState hooks) ──
   const lifecycle = useLifecycleState();
+
+  // StartupCoordinator — runs alongside the legacy startup effect for now.
+  // Exposes coordinator state for debugging and incremental migration.
+  // Once validated, the legacy startup effect will be replaced.
+  const startupCoordinator = useStartupCoordinator();
+
   const {
     state: {
       connected,
@@ -6531,6 +6538,9 @@ function AppProviderInner({
     startupPhase,
     startupStatus,
     startupError,
+    // StartupCoordinator — exposed for debugging/incremental migration
+    startupCoordinator: startupCoordinator.state,
+    startupCoordinatorLegacyPhase: startupCoordinator.legacyPhase,
     authRequired,
     actionNotice,
     lifecycleBusy,
