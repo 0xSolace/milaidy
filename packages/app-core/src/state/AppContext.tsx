@@ -6809,6 +6809,8 @@ function AppProviderInner({
     let unbindWsReconnect: (() => void) | null = null;
     let unbindSystemWarnings: (() => void) | null = null;
     let unbindRestartRequired: (() => void) | null = null;
+    let unbindConversationUpdated: (() => void) | null = null;
+    let unbindPtySessionEvent: (() => void) | null = null;
     let ptyPollInterval: ReturnType<typeof setInterval> | null = null;
     let cancelled = false;
     const describeBackendFailure = (
@@ -7530,7 +7532,7 @@ function AppProviderInner({
       );
 
       // Handle conversation updates (e.g. title changes)
-      client.onWsEvent(
+      unbindConversationUpdated = client.onWsEvent(
         "conversation-updated",
         (data: Record<string, unknown>) => {
           const conv = data.conversation as Conversation;
@@ -7548,7 +7550,7 @@ function AppProviderInner({
       );
 
       // Handle PTY session events from SwarmCoordinator
-      client.onWsEvent("pty-session-event", (data: Record<string, unknown>) => {
+      unbindPtySessionEvent = client.onWsEvent("pty-session-event", (data: Record<string, unknown>) => {
         const eventType = (data.eventType ?? data.type) as string;
         const sessionId = data.sessionId as string;
         if (!sessionId) return;
@@ -7830,6 +7832,8 @@ function AppProviderInner({
       unbindWsReconnect?.();
       unbindSystemWarnings?.();
       unbindRestartRequired?.();
+      unbindConversationUpdated?.();
+      unbindPtySessionEvent?.();
       if (ptyPollInterval) {
         clearInterval(ptyPollInterval);
         ptyPollInterval = null;
