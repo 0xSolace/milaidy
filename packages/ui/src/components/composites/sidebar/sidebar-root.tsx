@@ -435,12 +435,20 @@ export const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
 
     const clearTransitionTimers = React.useCallback(() => {
       if (typeof window === "undefined") return;
+      const clearTimer =
+        typeof window.clearTimeout === "function"
+          ? window.clearTimeout.bind(window)
+          : globalThis.clearTimeout.bind(globalThis);
       if (transitionFrameRef.current !== null) {
-        window.cancelAnimationFrame(transitionFrameRef.current);
+        if (typeof window.cancelAnimationFrame === "function") {
+          window.cancelAnimationFrame(transitionFrameRef.current);
+        } else {
+          clearTimer(transitionFrameRef.current);
+        }
         transitionFrameRef.current = null;
       }
       if (transitionTimeoutRef.current !== null) {
-        window.clearTimeout(transitionTimeoutRef.current);
+        clearTimer(transitionTimeoutRef.current);
         transitionTimeoutRef.current = null;
       }
     }, []);
@@ -456,11 +464,20 @@ export const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
         clearTransitionTimers();
         setContentTransition({ direction, phase: "prepare" });
         setIsCollapsed(nextCollapsed);
-        transitionFrameRef.current = window.requestAnimationFrame(() => {
+        const scheduleTimeout =
+          typeof window.setTimeout === "function"
+            ? window.setTimeout.bind(window)
+            : globalThis.setTimeout.bind(globalThis);
+        const scheduleFrame =
+          typeof window.requestAnimationFrame === "function"
+            ? window.requestAnimationFrame.bind(window)
+            : (callback: FrameRequestCallback) =>
+                scheduleTimeout(() => callback(Date.now()), 16);
+        transitionFrameRef.current = scheduleFrame(() => {
           setContentTransition({ direction, phase: "animate" });
           transitionFrameRef.current = null;
         });
-        transitionTimeoutRef.current = window.setTimeout(() => {
+        transitionTimeoutRef.current = scheduleTimeout(() => {
           setContentTransition(null);
           transitionTimeoutRef.current = null;
         }, 320);

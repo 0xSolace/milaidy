@@ -97,6 +97,8 @@ vi.mock("@miladyai/app-core/components", async () => {
     ErrorBoundary: ({ children }: { children: React.ReactNode }) =>
       React.createElement(React.Fragment, null, children),
     Header: () => React.createElement("header", null, "Header"),
+    HeartbeatsDesktopShell: () =>
+      React.createElement("section", null, "HeartbeatsDesktopShell Ready"),
     HeartbeatsView: () =>
       React.createElement("section", null, "HeartbeatsView Ready"),
     InventoryView: () =>
@@ -147,10 +149,12 @@ vi.mock("@miladyai/app-core/components", async () => {
 vi.mock("@miladyai/app-core/src/app-shell-components", () => ({
   AdvancedPageView: () =>
     React.createElement("section", null, "AdvancedPageView Ready"),
-  AppsPageView: () => React.createElement("section", null, "AppsPageView Ready"),
+  AppsPageView: () =>
+    React.createElement("section", null, "AppsPageView Ready"),
   AvatarLoader: () => React.createElement("div", null, "AvatarLoader"),
   BugReportModal: () => React.createElement("div", null, "BugReportModal"),
-  CharacterEditor: () => React.createElement("section", null, "CharacterView Ready"),
+  CharacterEditor: () =>
+    React.createElement("section", null, "CharacterView Ready"),
   ChatView: () => React.createElement("section", null, "ChatView Ready"),
   CompanionShell: ({ tab }: { tab: string }) =>
     React.createElement("main", null, `CompanionShell Ready: ${tab}`),
@@ -168,6 +172,8 @@ vi.mock("@miladyai/app-core/src/app-shell-components", () => ({
     React.createElement("aside", null, "CustomActionsPanel"),
   GameViewOverlay: () => React.createElement("div", null, "GameViewOverlay"),
   Header: () => React.createElement("header", null, "Header"),
+  HeartbeatsDesktopShell: () =>
+    React.createElement("section", null, "HeartbeatsDesktopShell Ready"),
   HeartbeatsView: () =>
     React.createElement("section", null, "HeartbeatsView Ready"),
   InventoryView: () =>
@@ -177,7 +183,8 @@ vi.mock("@miladyai/app-core/src/app-shell-components", () => ({
   OnboardingWizard: () => React.createElement("div", null, "OnboardingWizard"),
   PairingView: () => React.createElement("div", null, "PairingView"),
   SaveCommandModal: () => React.createElement("div", null, "SaveCommandModal"),
-  SettingsView: () => React.createElement("section", null, "SettingsView Ready"),
+  SettingsView: () =>
+    React.createElement("section", null, "SettingsView Ready"),
   SharedCompanionScene: ({
     active,
     interactive,
@@ -511,7 +518,7 @@ function expectShellForTab(text: string, tab: Tab): void {
       case "connectors":
         return "ConnectorsPageView Ready";
       case "triggers":
-        return "HeartbeatsView Ready";
+        return "HeartbeatsDesktopShell Ready";
       case "apps":
         return "AppsPageView Ready";
       case "settings":

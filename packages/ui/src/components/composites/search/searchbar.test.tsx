@@ -1,7 +1,8 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { SearchBar } from "../composites/search";
+
+import { SearchBar } from "./searchbar";
 
 describe("SearchBar", () => {
   it("renders input and button", () => {
@@ -18,18 +19,21 @@ describe("SearchBar", () => {
   it("calls onSearch on submit", async () => {
     const user = userEvent.setup();
     const onSearch = vi.fn();
+
     render(<SearchBar onSearch={onSearch} />);
     await user.type(screen.getByPlaceholderText("Search..."), "hello");
     await user.click(screen.getByRole("button", { name: "Search" }));
+
     expect(onSearch).toHaveBeenCalledWith("hello");
   });
 
   it("calls onSearch on Enter key", async () => {
     const user = userEvent.setup();
     const onSearch = vi.fn();
+
     render(<SearchBar onSearch={onSearch} />);
-    const input = screen.getByPlaceholderText("Search...");
-    await user.type(input, "world{Enter}");
+    await user.type(screen.getByPlaceholderText("Search..."), "world{Enter}");
+
     expect(onSearch).toHaveBeenCalledWith("world");
   });
 

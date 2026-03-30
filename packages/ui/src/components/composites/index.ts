@@ -15,8 +15,6 @@ export * from "../ui/section-card";
 export * from "../ui/segmented-control";
 export * from "../ui/settings-controls";
 export * from "../ui/status-badge";
-export * from "../ui/tag-editor";
-export * from "../ui/tag-input";
 export * from "../ui/themed-select";
 export * from "../ui/tooltip-extended";
 export * from "./chat";

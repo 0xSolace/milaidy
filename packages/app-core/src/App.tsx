@@ -11,6 +11,7 @@ import {
   DrawerSheetHeader,
   DrawerSheetTitle,
   ErrorBoundary,
+  Z_MODAL,
 } from "@miladyai/ui";
 import {
   type ReactNode,
@@ -52,12 +53,14 @@ import {
 } from "./app-shell-components";
 import { CompanionHeader } from "./components/companion/CompanionHeader";
 import { DeferredSetupChecklist } from "./components/FlaminaGuide";
+import { TasksEventsPanel } from "./components/TasksEventsPanel";
 import {
   BugReportProvider,
   useBugReportState,
   useContextMenu,
   useStreamPopoutNavigation,
 } from "./hooks";
+import { useActivityEvents } from "./hooks/useActivityEvents";
 import type { Tab } from "./navigation";
 import { APPS_ENABLED, COMPANION_ENABLED } from "./navigation";
 import { useApp } from "./state";
@@ -265,7 +268,6 @@ function ViewRouter({
       case "advanced":
       case "plugins":
       case "skills":
-      case "actions":
       case "fine-tuning":
       case "trajectories":
       case "runtime":
@@ -347,6 +349,9 @@ export function App() {
 
   const [customActionsPanelOpen, setCustomActionsPanelOpen] = useState(false);
   const [customActionsEditorOpen, setCustomActionsEditorOpen] = useState(false);
+  const [tasksEventsPanelOpen, setTasksEventsPanelOpen] = useState(false);
+  const { events: activityEvents, clearEvents: clearActivityEvents } =
+    useActivityEvents();
   const [editingAction, setEditingAction] = useState<
     import("./api").CustomActionDef | null
   >(null);
@@ -367,7 +372,6 @@ export function App() {
     tab === "advanced" ||
     tab === "plugins" ||
     tab === "skills" ||
-    tab === "actions" ||
     tab === "fine-tuning" ||
     tab === "trajectories" ||
     tab === "runtime" ||
@@ -509,8 +513,12 @@ export function App() {
   }, [showFullScreenLoader]);
 
   useEffect(() => {
+    // During "initializing-agent" phase the agent-wait loop has its own
+    // sliding deadline (up to 900s for first-run embedding downloads).
+    // Only arm the watchdog during "starting-backend" to avoid killing a
+    // valid agent download mid-flight.
     const STARTUP_TIMEOUT_MS = 300_000;
-    if ((startupPhase as string) !== "ready" && !startupError) {
+    if (startupPhase === "starting-backend" && !startupError) {
       const timer = setTimeout(() => {
         retryStartup();
       }, STARTUP_TIMEOUT_MS);
@@ -621,7 +629,11 @@ export function App() {
       key="chat-shell"
       className="flex flex-col flex-1 min-h-0 w-full font-body text-txt bg-bg"
     >
-      <Header mobileLeft={mobileChatControls} />
+      <Header
+        mobileLeft={mobileChatControls}
+        tasksEventsPanelOpen={tasksEventsPanelOpen}
+        onToggleTasksPanel={() => setTasksEventsPanelOpen((o) => !o)}
+      />
       <div className="flex flex-1 min-h-0 relative">
         {!isChatMobileLayout ? (
           <div
@@ -662,6 +674,34 @@ export function App() {
                 </DrawerSheetContent>
               </DrawerSheet>
             )}
+
+            {tasksEventsPanelOpen && (
+              <DrawerSheet
+                open={tasksEventsPanelOpen}
+                onOpenChange={setTasksEventsPanelOpen}
+              >
+                <DrawerSheetContent
+                  aria-describedby={undefined}
+                  className="h-[min(calc(100dvh-1rem-var(--safe-area-top,0px)-var(--safe-area-bottom,0px)),46rem)] p-0"
+                  showCloseButton={false}
+                >
+                  <DrawerSheetHeader className="sr-only">
+                    <DrawerSheetTitle>
+                      {t("taskseventspanel.Title", {
+                        defaultValue: "Tasks & Events",
+                      })}
+                    </DrawerSheetTitle>
+                  </DrawerSheetHeader>
+                  <TasksEventsPanel
+                    open
+                    onClose={() => setTasksEventsPanelOpen(false)}
+                    events={activityEvents}
+                    clearEvents={clearActivityEvents}
+                    mobile
+                  />
+                </DrawerSheetContent>
+              </DrawerSheet>
+            )}
           </>
         ) : (
           <>
@@ -673,6 +713,12 @@ export function App() {
               />
               <ChatView key="chat-view-desktop" />
             </main>
+            <TasksEventsPanel
+              open={tasksEventsPanelOpen}
+              onClose={() => setTasksEventsPanelOpen(false)}
+              events={activityEvents}
+              clearEvents={clearActivityEvents}
+            />
           </>
         )}
         <CustomActionsPanel
@@ -783,17 +829,16 @@ export function App() {
     </div>
   );
 
-  const appShell =
-    COMPANION_ENABLED && (companionShellVisible || characterSceneVisible) ? (
-      <SharedCompanionScene
-        active={companionSceneActive}
-        interactive={companionShellVisible || characterSceneVisible}
-      >
-        {shellContent}
-      </SharedCompanionScene>
-    ) : (
-      shellContent
-    );
+  const appShell = COMPANION_ENABLED ? (
+    <SharedCompanionScene
+      active={companionSceneActive}
+      interactive={companionShellVisible || characterSceneVisible}
+    >
+      {shellContent}
+    </SharedCompanionScene>
+  ) : (
+    shellContent
+  );
 
   const onboardingHandoffCopy = resolveOnboardingHandoffCopy(
     onboardingHandoffPhase,
@@ -802,14 +847,14 @@ export function App() {
 
   return (
     <BugReportProvider value={bugReport}>
-      {/* 
+      {/*
         If we are in the crossfade phase, mount the shell but cover it with the fading onboarding layer.
       */}
       {appShell}
 
       {showOnboarding && (
         <div
-          className="fixed inset-0 z-[100] transition-opacity duration-700"
+          className={`fixed inset-0 z-[${Z_MODAL}] transition-opacity duration-700`}
           style={{ opacity: fadingOutOnboarding ? 0 : 1 }}
         >
           <OnboardingWizard />

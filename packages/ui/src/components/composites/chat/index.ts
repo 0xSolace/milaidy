@@ -4,6 +4,7 @@ export * from "./chat-composer";
 export * from "./chat-composer-shell";
 export * from "./chat-conversation-item";
 export * from "./chat-conversation-rename-dialog";
+export * from "./create-task-popover";
 export * from "./chat-empty-state";
 export * from "./chat-message";
 export * from "./chat-message-actions";

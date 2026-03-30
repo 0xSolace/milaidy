@@ -3,6 +3,55 @@ title: Changelog
 description: What's new in Milady — features, improvements, and fixes.
 ---
 
+<Update label="2026-03-30" description="Week of March 29–30; cloud dashboard polish, live metrics, billing" tags={["Update"]}>
+## Cloud dashboard overhaul
+
+The cloud [dashboard](/apps/dashboard) has been significantly cleaned up. Agent cards now show VRM character previews instead of initials, pulled from each agent's stream settings. The metrics panel displays live per-agent stats with auto-refresh, and the logs panel streams real agent logs with manual and automatic refresh — both were previously empty placeholders.
+
+## Real billing and credits
+
+The credits and billing section on the cloud dashboard now connects to real payment infrastructure. You can add funds via Stripe checkout or crypto, and your balance is always visible. Placeholder credit packs have been removed.
+
+## Updates
+
+- **Dashboard design pass** — Sharp corners, accent bars, reduced visual noise, and consistent spacing across the cloud dashboard and homepage. Filler copy has been removed from onboarding, settings, and the cloud config views.
+- **Compact wallet indicators** — Wallet status on cloud agent cards now uses compact indicators, making it easier to scan multiple agents at a glance.
+
+</Update>
+
+<Update label="2026-03-29" description="Week of March 28–29; Steward wallet, owner name prompt, security hardening" tags={["Feature", "Update", "Fix"]}>
+## Personalized agent greeting
+
+The first time you open the desktop app, your agent now asks "What should I call you?" and remembers your name across all conversations. Your name appears in chat and the character editor, so the agent addresses you personally instead of as a generic user.
+
+## Steward wallet integration
+
+Wallet transactions can now route through [Steward](https://steward.fi) for policy-enforced signing. When connected, all trades and transfers pass through a vault that evaluates USD-based spending limits, rate limits, and address allowlists before signing — so you stay in control of what your agent can spend. The [wallet tab](/guides/wallet) shows balances, transaction history, and a pending approvals queue in one place. Configure spending policies in [settings](/apps/dashboard/settings) with per-transaction, daily, and weekly caps denominated in USD.
+
+## Knowledge view redesign
+
+The [knowledge](/guides/knowledge) sidebar now shows filenames prominently with inline type and source tags. A live search box filters documents by filename as you type, with semantic vector search still available on Enter. Hover any document to reveal the upload date and a quick-delete button.
+
+## Updates
+
+- **Security hardening** — Authentication now uses timing-safe token comparison with rate limiting on failed attempts (20/min per IP). CORS rules are tightened to a port-specific allowlist instead of a broad localhost wildcard. Telegram chat history is capped to prevent unbounded memory growth, and the pairing rate limiter cleans up expired entries automatically.
+- **Plugin validation layout** — Plugin configuration errors now appear below the form fields instead of a large red banner at the top, making it less alarming to configure plugins.
+- **Cleaned up unused features** — Several features that were never surfaced to users have been removed from the codebase, including an experimental browser surface, a prototype stream overlay widget system, and the deprecated Retake connector. The core streaming pipeline is unaffected.
+
+## Bug fixes
+
+- Fixed the settings model picker dropdown being clipped behind panels — dropdowns now float above all shell surfaces reliably
+- Fixed the wallet empty-state button being nearly invisible on dark backgrounds — it now has a visible gold outline
+- Fixed the cloud credits badge amount being hard to read due to low text contrast
+- Fixed returning users being sent back to onboarding after a temporary backend connection loss — previously onboarded users now see a retryable error instead
+- Fixed the heartbeats page showing "select a heartbeat" copy on first run when no heartbeats exist yet
+- Fixed the onboarding language selector using a different size and style from the in-app header dropdown
+- Fixed duplicate token sort controls appearing in the wallet view
+- Fixed an unnecessary "log in with Privy" prompt appearing when a Steward wallet is already connected
+- Fixed the `/api/health` endpoint returning 401 behind the cloud auth gate, which could cause cloud container provisioning to time out
+
+</Update>
+
 <Update label="2026-03-28" description="Week of March 22–28; desktop VRM/Three/Spark and cloud login" tags={["Feature", "Update", "Fix", "Docs", "Test"]}>
 ## Binance skills
 

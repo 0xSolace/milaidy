@@ -69,6 +69,7 @@ vi.mock("./app-shell-components", () => {
     InventoryView: stub("InventoryView"),
     KnowledgeView: stub("KnowledgeView"),
     OnboardingWizard: stub("OnboardingWizard"),
+
     PairingView: stub("PairingView"),
     SaveCommandModal: stub("SaveCommandModal"),
     SettingsView: stub("SettingsView"),

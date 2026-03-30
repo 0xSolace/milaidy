@@ -69,6 +69,18 @@ vi.mock("@miladyai/ui", () => {
     ...props
   }: React.PropsWithChildren<Record<string, unknown>>) =>
     React.createElement("div", props, children);
+  const settingsControls = {
+    Field: passthrough,
+    FieldDescription: passthrough,
+    FieldLabel: passthrough,
+    Input: (props: React.InputHTMLAttributes<HTMLInputElement>) =>
+      React.createElement("input", props),
+    MutedText: passthrough,
+    SegmentedGroup: passthrough,
+    SelectTrigger: passthrough,
+    Textarea: (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) =>
+      React.createElement("textarea", props),
+  };
   return {
     Button: ({
       children,
@@ -89,6 +101,7 @@ vi.mock("@miladyai/ui", () => {
     SelectTrigger: passthrough,
     SelectValue: passthrough,
     ConfirmDelete: passthrough,
+    SettingsControls: settingsControls,
     Dialog: ({
       children,
       open,
@@ -99,6 +112,23 @@ vi.mock("@miladyai/ui", () => {
     DialogTitle: passthrough,
     DialogDescription: passthrough,
     DialogFooter: passthrough,
+    Z_BASE: 0,
+    Z_DROPDOWN: 10,
+    Z_STICKY: 20,
+    Z_MODAL_BACKDROP: 50,
+    Z_MODAL: 100,
+    Z_DIALOG_OVERLAY: 160,
+    Z_DIALOG: 170,
+    Z_OVERLAY: 200,
+    Z_TOOLTIP: 300,
+    Z_SYSTEM_BANNER: 9998,
+    Z_SYSTEM_CRITICAL: 9999,
+    Z_SHELL_OVERLAY: 10000,
+    Z_GLOBAL_EMOTE: 11000,
+    Z_SELECT_FLOAT: 12000,
+    SELECT_FLOATING_LAYER_NAME: "config-select",
+    SELECT_FLOATING_LAYER_Z_INDEX: 12000,
+    SELECT_FLOATING_LAYER_CLASSNAME: "z-[12000]",
   };
 });
 

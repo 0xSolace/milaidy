@@ -186,9 +186,7 @@ export function ConversationsSidebar({
         variant={variant}
         labels={{
           chats: t("conversations.chats"),
-          clearSearch: t("common.clearSearch", {
-            defaultValue: "Clear search",
-          }),
+          clearSearch: t("common.clear", { defaultValue: "Clear" }),
           closePanel: t("conversations.closePanel"),
           delete: t("conversations.delete"),
           deleteConfirm: t("conversations.deleteConfirm"),

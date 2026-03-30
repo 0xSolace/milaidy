@@ -11,6 +11,7 @@ import {
 import { Button } from "../../ui/button";
 import { Textarea } from "../../ui/textarea";
 import type { ChatVariant } from "./chat-types";
+import { CreateTaskPopover } from "./create-task-popover";
 
 export interface ChatComposerVoiceState {
   assistantTtsQuality?: "enhanced" | "standard";
@@ -39,10 +40,12 @@ export interface ChatComposerProps {
   onStopSpeaking: () => void;
   onToggleAgentVoice: () => void;
   showAgentVoiceToggle?: boolean;
-  t: (key: string) => string;
+  t: (key: string, options?: Record<string, unknown>) => string;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   variant: ChatVariant;
   voice: ChatComposerVoiceState;
+  codingAgentsAvailable?: boolean;
+  onCreateTask?: (description: string, agentType: string) => void;
 }
 
 const COMPOSER_CONTROL_HEIGHT_CLASSNAME = "h-[46px]";
@@ -73,6 +76,8 @@ export function ChatComposer({
   onStop,
   onStopSpeaking,
   onToggleAgentVoice,
+  codingAgentsAvailable = false,
+  onCreateTask,
 }: ChatComposerProps) {
   const [isNarrow, setIsNarrow] = useState(
     () => typeof window !== "undefined" && window.innerWidth < 310,
@@ -215,6 +220,15 @@ export function ChatComposer({
           <Paperclip className="h-4 w-4" />
         </Button>
       ) : null}
+
+      {!isGameModal && codingAgentsAvailable && onCreateTask && (
+        <CreateTaskPopover
+          chatInput={chatInput}
+          disabled={isComposerLocked}
+          onCreateTask={onCreateTask}
+          t={t}
+        />
+      )}
 
       {showVoiceButton ? (
         <Button

@@ -122,9 +122,8 @@ vi.mock("@miladyai/app-core/state", async () => {
 });
 
 vi.mock("../../src/state", async () => {
-  const actual = await vi.importActual<typeof import("../../src/state")>(
-    "../../src/state",
-  );
+  const actual =
+    await vi.importActual<typeof import("../../src/state")>("../../src/state");
   return {
     ...actual,
     useApp: () => mockUseApp(),
@@ -271,8 +270,7 @@ vi.mock("@miladyai/app-core/components", async () => {
 });
 
 vi.mock("@miladyai/app-core/src/app-shell-components", () => ({
-  AdvancedPageView: () =>
-    React.createElement("div", null, "AdvancedPageView"),
+  AdvancedPageView: () => React.createElement("div", null, "AdvancedPageView"),
   AppsPageView: () => React.createElement("div", null, "AppsPageView"),
   AvatarLoader: () => React.createElement("div", null, "AvatarLoader"),
   BugReportModal: () => React.createElement("div", null, "BugReportModal"),
@@ -396,8 +394,9 @@ vi.mock("@miladyai/app-core/src/app-shell-components", () => ({
     React.createElement("div", null, "SystemWarningBanner"),
 }));
 
-vi.mock("../../src/app-shell-components", () =>
-  import("@miladyai/app-core/src/app-shell-components"),
+vi.mock(
+  "../../src/app-shell-components",
+  () => import("@miladyai/app-core/src/app-shell-components"),
 );
 
 vi.mock("@miladyai/app-core/src/components/Header", () => ({
@@ -1095,7 +1094,11 @@ describe("agent reset and re-onboarding (e2e)", () => {
 
     for (let cycle = 0; cycle < 3; cycle += 1) {
       // Complete onboarding
-      await driveOnboardingToCompletion(tree, state, mocks.handleOnboardingNext);
+      await driveOnboardingToCompletion(
+        tree,
+        state,
+        mocks.handleOnboardingNext,
+      );
       expect(state.onboardingComplete).toBe(true);
 
       // Reset

@@ -12,24 +12,26 @@ import {
 export interface SidebarAutoRailItem {
   key: string;
   label: string;
-  active?: boolean;
-  disabled?: boolean;
+  active: boolean;
+  disabled: boolean;
   contentKind: "icon" | "monogram";
   indicatorTone?: SidebarRailItemProps["indicatorTone"];
   onClick?: React.MouseEventHandler<HTMLButtonElement>;
   content: React.ReactNode;
 }
 
-type SidebarElement = React.ReactElement<Record<string, unknown>>;
+type SidebarElementProps = {
+  children?: React.ReactNode;
+  [key: string]: unknown;
+};
+
+type SidebarElement = React.ReactElement<SidebarElementProps>;
 
 const SIDEBAR_AUTO_RAIL_DOM_SELECTOR =
   "[data-segmented-control-button], [data-sidebar-item], [data-sidebar-item-button], button[aria-pressed]";
 
-function isElementOfType<P>(
-  node: React.ReactNode,
-  component: React.ComponentType<P> | React.ForwardRefExoticComponent<P>,
-): node is React.ReactElement<P> {
-  return React.isValidElement(node) && node.type === component;
+function isSidebarElement(node: React.ReactNode): node is SidebarElement {
+  return React.isValidElement<SidebarElementProps>(node);
 }
 
 function extractTextContent(node: React.ReactNode): string {
@@ -43,7 +45,7 @@ function extractTextContent(node: React.ReactNode): string {
       .join(" ")
       .trim();
   }
-  if (!React.isValidElement(node)) {
+  if (!isSidebarElement(node)) {
     return "";
   }
   return extractTextContent(node.props.children);
@@ -60,7 +62,7 @@ function extractFirstTextContent(node: React.ReactNode): string {
     }
     return "";
   }
-  if (!React.isValidElement(node)) {
+  if (!isSidebarElement(node)) {
     return "";
   }
   return extractFirstTextContent(node.props.children);
@@ -164,29 +166,35 @@ function findSidebarItemParts(node: React.ReactNode) {
       return;
     }
 
-    if (!React.isValidElement(child)) return;
+    if (!isSidebarElement(child)) return;
 
-    if (isElementOfType(child, SidebarItemButton)) {
-      if (typeof child.props.onClick === "function" && !state.onClick) {
-        state.onClick = child.props.onClick;
+    if (child.type === SidebarItemButton) {
+      const buttonChild =
+        child as React.ReactElement<React.ComponentProps<typeof SidebarItemButton>>;
+      if (typeof buttonChild.props.onClick === "function" && !state.onClick) {
+        state.onClick = buttonChild.props.onClick;
       }
-      if (child.props["aria-current"]) {
+      if (buttonChild.props["aria-current"]) {
         state.active = true;
       }
-      visit(child.props.children);
+      visit(buttonChild.props.children);
       return;
     }
 
-    if (isElementOfType(child, SidebarItemIcon)) {
-      state.icon = child.props.children;
-      if (child.props.active) {
+    if (child.type === SidebarItemIcon) {
+      const iconChild =
+        child as React.ReactElement<React.ComponentProps<typeof SidebarItemIcon>>;
+      state.icon = iconChild.props.children;
+      if (iconChild.props.active) {
         state.active = true;
       }
       return;
     }
 
-    if (isElementOfType(child, SidebarItemTitle)) {
-      const title = cleanRailLabel(extractTextContent(child.props.children));
+    if (child.type === SidebarItemTitle) {
+      const titleChild =
+        child as React.ReactElement<React.ComponentProps<typeof SidebarItemTitle>>;
+      const title = cleanRailLabel(extractTextContent(titleChild.props.children));
       if (title) {
         state.title = title;
       }
@@ -208,7 +216,7 @@ function findSidebarItemParts(node: React.ReactNode) {
 }
 
 function parseSidebarItemElement(
-  node: React.ReactElement<Record<string, unknown>>,
+  node: SidebarElement,
 ) {
   const parts = findSidebarItemParts(node.props.children);
   const label =
@@ -243,7 +251,7 @@ function findFirstNonTextChild(node: React.ReactNode): React.ReactNode | null {
     }
     return null;
   }
-  if (!React.isValidElement(node)) return null;
+  if (!isSidebarElement(node)) return null;
   return node;
 }
 
@@ -282,7 +290,7 @@ function parseSegmentedControl(
       key: `${String(node.key ?? "segmented")}:${item.value}`,
       label,
       active: item.value === node.props.value,
-      disabled: item.disabled,
+      disabled: Boolean(item.disabled),
       contentKind: resolveRailContentKind(icon),
       onClick: () => {
         if (!item.disabled) {
@@ -299,34 +307,37 @@ export function buildSidebarAutoRailItems(children: React.ReactNode) {
 
   const visit = (node: React.ReactNode) => {
     React.Children.forEach(node, (child) => {
-      if (!React.isValidElement(child)) return;
+      if (!isSidebarElement(child)) return;
 
-      if (isElementOfType(child, SidebarItem)) {
+      if (child.type === SidebarItem) {
         const item = parseSidebarItemElement(child);
         if (item) items.push(item);
         return;
       }
 
-      if (isElementOfType(child, SidebarItemButton)) {
+      if (child.type === SidebarItemButton) {
         const item = parseSidebarItemElement(child);
         if (item) items.push(item);
         return;
       }
 
-      if (isElementOfType(child, SegmentedControl)) {
+      if (
+        React.isValidElement<React.ComponentProps<typeof SegmentedControl>>(
+          child,
+        ) &&
+        child.type === SegmentedControl
+      ) {
         items.push(...parseSegmentedControl(child));
         return;
       }
 
       if (typeof child.type === "string" && child.type === "button") {
-        const item = parseNativeToggleButton(
-          child as React.ReactElement<Record<string, unknown>>,
-        );
+        const item = parseNativeToggleButton(child);
         if (item) items.push(item);
         return;
       }
 
-      visit((child.props as Record<string, unknown>).children);
+      visit(child.props.children);
     });
   };
 
@@ -347,7 +358,7 @@ export function buildSidebarAutoRailItemsFromDom(container: HTMLElement) {
       }
       return !element.parentElement?.closest(SIDEBAR_AUTO_RAIL_DOM_SELECTOR);
     })
-    .map((element, index) => {
+    .map<SidebarAutoRailItem | null>((element, index) => {
       const label = extractDomRailLabel(element);
       if (!label) return null;
 

@@ -18,7 +18,7 @@ export {
   StatCard,
   StatusBadge,
   StatusDot,
-  type StatusTone,
+  type StatusVariant,
   Switch,
   statusToneForBoolean,
   useConfirm,
@@ -83,6 +83,7 @@ export * from "./MediaGalleryView";
 export * from "./MediaSettingsSection";
 export * from "./MessageContent";
 export * from "./OnboardingWizard";
+
 export * from "./PairingView";
 export * from "./PermissionsSection";
 export * from "./PluginsPageView";
@@ -106,6 +107,7 @@ export * from "./StartupFailureView";
 export * from "./StreamView";
 export * from "./SubscriptionStatus";
 export * from "./SystemWarningBanner";
+export * from "./TasksEventsPanel";
 export { useSharedCompanionScene } from "./shared-companion-scene-context";
 export * from "./steward";
 export * from "./ThemeToggle";

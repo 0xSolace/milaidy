@@ -59,10 +59,7 @@ export const ChatModalView = memo(function ChatModalView({
       sidebar={<ConversationsSidebar variant="game-modal" />}
       showSidebar={showSidebar}
       thread={
-        <ChatView
-          variant="game-modal"
-          onPtySessionClick={onPtySessionClick}
-        />
+        <ChatView variant="game-modal" onPtySessionClick={onPtySessionClick} />
       }
     />
   );

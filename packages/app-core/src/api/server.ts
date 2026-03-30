@@ -213,6 +213,7 @@ import {
   clearPersistedOnboardingConfig,
   resolveExistingOnboardingConnection,
 } from "./provider-switch-config";
+import { isOnboardingConnectionComplete } from "../contracts/onboarding";
 
 // ---------------------------------------------------------------------------
 // Import from extracted modules for use within this file
@@ -680,18 +681,8 @@ function hasCompatPersistedOnboardingState(config: ElizaConfig): boolean {
   const existingConnection = resolveExistingOnboardingConnection(
     config as Record<string, unknown>,
   );
-  if (existingConnection?.kind === "local-provider") {
+  if (isOnboardingConnectionComplete(existingConnection)) {
     return true;
-  }
-  if (existingConnection?.kind === "remote-provider") {
-    return Boolean(existingConnection.remoteApiBase.trim());
-  }
-  if (existingConnection?.kind === "cloud-managed") {
-    return Boolean(
-      existingConnection.apiKey?.trim() &&
-        existingConnection.smallModel?.trim() &&
-        existingConnection.largeModel?.trim(),
-    );
   }
 
   if (Array.isArray(config.agents?.list) && config.agents.list.length > 0) {
@@ -2400,6 +2391,7 @@ async function handleMiladyCompatRoute(
   }
 
   if (method === "POST" && url.pathname === "/api/tts/cloud") {
+    if (!ensureCompatApiAuthorized(req, res)) return true;
     return await _handleCloudTtsPreviewRoute(req, res);
   }
 
@@ -3991,6 +3983,9 @@ async function handleMiladyCompatRoute(
     return true;
   }
 
+  // Key prefixes that contain wallet private keys or other high-value secrets
+  // require the hardened sensitive-route auth (loopback + elevated checks).
+  const SENSITIVE_KEY_PREFIXES = ["SOLANA_", "ETHEREUM_", "EVM_", "WALLET_"];
   const REVEALABLE_KEY_PREFIXES = [
     "OPENAI_",
     "ANTHROPIC_",
@@ -4020,10 +4015,6 @@ async function handleMiladyCompatRoute(
     "AWS_",
     "AZURE_",
     "CLOUDFLARE_",
-    "SOLANA_",
-    "ETHEREUM_",
-    "EVM_",
-    "WALLET_",
     "ELIZA_",
     "MILADY_",
     "PLUGIN_",
@@ -4034,6 +4025,7 @@ async function handleMiladyCompatRoute(
     "LETZAI_",
     "GAIANET_",
     "LIVEPEER_",
+    ...SENSITIVE_KEY_PREFIXES,
   ];
   const revealMatch =
     method === "POST" &&
@@ -4057,6 +4049,11 @@ async function handleMiladyCompatRoute(
         "Key is not in the allowlist of revealable plugin config keys",
       );
       return true;
+    }
+    // Wallet / private-key prefixes require elevated auth to prevent
+    // accidental exposure through the general plugin config UI.
+    if (SENSITIVE_KEY_PREFIXES.some((prefix) => upperKey.startsWith(prefix))) {
+      if (!ensureCompatSensitiveRouteAuthorized(req, res)) return true;
     }
     const config = loadElizaConfig();
     const value =

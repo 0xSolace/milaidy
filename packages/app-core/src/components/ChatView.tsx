@@ -787,6 +787,7 @@ export function ChatView({
     setChatPendingImages,
     uiLanguage,
     ptySessions,
+    sendChatText,
     t,
   } = useApp();
 
@@ -798,6 +799,31 @@ export function ChatView({
   const [imageDragOver, setImageDragOver] = useState(false);
   const [ptyDrawerSessionId, setPtyDrawerSessionId] = useState<string | null>(
     null,
+  );
+
+  // ── Coding agent preflight ──────────────────────────────────────
+  const [codingAgentsAvailable, setCodingAgentsAvailable] = useState(false);
+  useEffect(() => {
+    fetch("/api/coding-agents/preflight")
+      .then((r) => r.json())
+      .then((data: { installed?: unknown[]; available?: boolean }) => {
+        setCodingAgentsAvailable(
+          (Array.isArray(data.installed) && data.installed.length > 0) ||
+            data.available === true,
+        );
+      })
+      .catch(() => {
+        /* preflight unavailable — hide code button */
+      });
+  }, []);
+
+  const handleCreateTask = useCallback(
+    (description: string, agentType: string) => {
+      void sendChatText(description, {
+        metadata: { intent: "create_task", agentType },
+      });
+    },
+    [sendChatText],
   );
 
   // ── Derived composer state ──────────────────────────────────────
@@ -1216,6 +1242,8 @@ export function ChatView({
         onToggleAgentVoice={() =>
           setState("chatAgentVoiceMuted", !agentVoiceMuted)
         }
+        codingAgentsAvailable={codingAgentsAvailable}
+        onCreateTask={handleCreateTask}
       />
     </ChatComposerShell>
   ) : (
@@ -1251,6 +1279,8 @@ export function ChatView({
         onToggleAgentVoice={() =>
           setState("chatAgentVoiceMuted", !agentVoiceMuted)
         }
+        codingAgentsAvailable={codingAgentsAvailable}
+        onCreateTask={handleCreateTask}
       />
     </ChatComposerShell>
   );

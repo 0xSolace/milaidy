@@ -281,6 +281,7 @@ export interface AppState {
   uiShellMode: UiShellMode;
   uiLanguage: UiLanguage;
   uiTheme: UiTheme;
+  ownerName: string | null;
   /** VRM quality vs GPU use: always full quality, battery-aware (default), or always efficient. */
   companionVrmPowerMode: CompanionVrmPowerMode;
   /**
@@ -676,6 +677,16 @@ export interface AppActions {
   suggestConversationTitle: (id: string) => Promise<string | null>;
   /** Send a programmatic message (e.g. from a UiSpec action) without touching chatInput. */
   sendActionMessage: (text: string) => Promise<void>;
+  /** Send a chat message with optional metadata (e.g. task creation intent). */
+  sendChatText: (
+    rawInput: string,
+    options?: {
+      channelType?: ConversationChannelType;
+      conversationId?: string | null;
+      images?: ImageAttachment[];
+      metadata?: Record<string, unknown>;
+    },
+  ) => Promise<void>;
 
   // Triggers
   loadTriggers: (options?: { silent?: boolean }) => Promise<void>;
@@ -743,10 +754,18 @@ export interface AppActions {
     status?: string;
     limit?: number;
     offset?: number;
-  }) => Promise<{ records: StewardHistoryResponse; total: number; offset: number; limit: number }>;
+  }) => Promise<{
+    records: StewardHistoryResponse;
+    total: number;
+    offset: number;
+    limit: number;
+  }>;
   getStewardPending: () => Promise<StewardPendingResponse>;
   approveStewardTx: (txId: string) => Promise<StewardApprovalActionResponse>;
-  rejectStewardTx: (txId: string, reason?: string) => Promise<StewardApprovalActionResponse>;
+  rejectStewardTx: (
+    txId: string,
+    reason?: string,
+  ) => Promise<StewardApprovalActionResponse>;
   loadWalletTradingProfile: (
     window?: WalletTradingProfileWindow,
     source?: WalletTradingProfileSourceFilter,

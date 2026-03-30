@@ -50,7 +50,6 @@ describe("navigation", () => {
     expect(advanced?.tabs.includes("advanced")).toBe(true);
     expect(advanced?.tabs.includes("plugins")).toBe(true);
     expect(advanced?.tabs.includes("skills")).toBe(true);
-    expect(advanced?.tabs.includes("actions")).toBe(true);
     expect(advanced?.tabs.includes("triggers")).toBe(false);
     expect(advanced?.tabs.includes("fine-tuning")).toBe(true);
     expect(advanced?.tabs.includes("trajectories")).toBe(true);

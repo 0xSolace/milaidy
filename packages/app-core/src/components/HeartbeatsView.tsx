@@ -811,7 +811,7 @@ function HeartbeatsLayout({ standalone }: { standalone: boolean }) {
                               ? t("appsview.Active")
                               : t("heartbeatsview.statusPaused")
                           }
-                          tone={trigger.enabled ? "success" : "muted"}
+                          variant={trigger.enabled ? "success" : "muted"}
                           withDot
                         />
                       </div>
@@ -825,7 +825,7 @@ function HeartbeatsLayout({ standalone }: { standalone: boolean }) {
                               trigger.lastStatus,
                               t,
                             )}
-                            tone={toneForLastStatus(trigger.lastStatus)}
+                            variant={toneForLastStatus(trigger.lastStatus)}
                           />
                         )}
                       </div>
@@ -1385,7 +1385,7 @@ function HeartbeatsLayout({ standalone }: { standalone: boolean }) {
                               ? t("appsview.Active")
                               : t("heartbeatsview.statusPaused")
                           }
-                          tone={trigger.enabled ? "success" : "muted"}
+                          variant={trigger.enabled ? "success" : "muted"}
                           withDot
                         />
                       </div>
@@ -1536,7 +1536,7 @@ function HeartbeatsLayout({ standalone }: { standalone: boolean }) {
                             <div className="flex items-center justify-between gap-2 mb-1">
                               <StatusBadge
                                 label={localizedExecutionStatus(run.status, t)}
-                                tone={toneForLastStatus(run.status)}
+                                variant={toneForLastStatus(run.status)}
                               />
                               <span className="text-[11px] text-muted/70 font-mono">
                                 {formatDateTime(run.startedAt)}

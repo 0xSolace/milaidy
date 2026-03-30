@@ -1312,7 +1312,7 @@ function SkillsFullView({ contentHeader }: { contentHeader?: ReactNode } = {}) {
                                   ? t("skillsview.statusActive")
                                   : t("skillsview.statusInactive")
                           }
-                          tone={
+                          variant={
                             selectedSkill.scanStatus === "warning"
                               ? "warning"
                               : selectedSkill.scanStatus === "blocked" ||

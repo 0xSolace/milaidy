@@ -57,8 +57,9 @@ export const ChatMessage = memo(function ChatMessage({
     typeof onEdit === "function" &&
     message.source !== "local_command" &&
     !message.id.startsWith("temp-");
-  const canPlay =
-    !isUser && typeof onSpeak === "function" && message.text.trim();
+  const canPlay = Boolean(
+    !isUser && typeof onSpeak === "function" && message.text.trim(),
+  );
 
   const handleCopy = useCallback(() => {
     onCopy?.(message.text);

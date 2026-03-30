@@ -504,10 +504,26 @@ export function CharacterEditor({
     }
   }, [onboardingPresetStyles, uiLanguage]);
 
-  const characterRoster = useMemo(
+  const baseRosterEntries = useMemo(
     () => resolveRosterEntries(rosterStyles),
     [rosterStyles],
   );
+
+  // If the user renamed the selected character, reflect it in the roster
+  const characterRoster = useMemo(() => {
+    const activeId = selectedCharacterId ?? savedCharacterId;
+    const draftName =
+      typeof characterDraft.name === "string" ? characterDraft.name.trim() : "";
+    if (!activeId || !draftName) return baseRosterEntries;
+    return baseRosterEntries.map((entry) =>
+      entry.id === activeId ? { ...entry, name: draftName } : entry,
+    );
+  }, [
+    baseRosterEntries,
+    selectedCharacterId,
+    savedCharacterId,
+    characterDraft.name,
+  ]);
 
   const d = characterDraft;
   const fallbackCharacterName =
@@ -643,7 +659,9 @@ export function CharacterEditor({
             setSelectedVoicePresetId(preset?.id ?? null);
           }
         }
-      } catch {}
+      } catch (err) {
+        console.warn("[CharacterEditor] Failed to load voice config:", err);
+      }
       setVoiceLoading(false);
     })();
   }, []);
@@ -1061,7 +1079,12 @@ export function CharacterEditor({
               if (parsed.chat) handleStyleEdit("chat", parsed.chat.join("\n"));
               if (parsed.post) handleStyleEdit("post", parsed.post.join("\n"));
             }
-          } catch {}
+          } catch (err) {
+            console.warn(
+              "[CharacterEditor] Failed to parse AI-generated style JSON:",
+              err,
+            );
+          }
         } else if (field === "chatExamples") {
           const formatted = normalizeCharacterMessageExamples(
             generated,
@@ -1083,7 +1106,12 @@ export function CharacterEditor({
                 handleCharacterArrayInput("postExamples", parsed.join("\n"));
               }
             }
-          } catch {}
+          } catch (err) {
+            console.warn(
+              "[CharacterEditor] Failed to parse AI-generated postExamples JSON:",
+              err,
+            );
+          }
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Generation failed";
@@ -1878,17 +1906,17 @@ export function CharacterEditor({
         {(characterSaveSuccess || combinedSaveError || generateError) && (
           <div className="flex flex-wrap items-center justify-center gap-2">
             {characterSaveSuccess && (
-              <span className="rounded-lg border border-green-400/20 bg-green-400/10 px-3 py-1 text-xs font-bold text-green-400">
+              <span className="rounded-lg border border-status-success/20 bg-status-success-bg px-3 py-1 text-xs font-bold text-status-success">
                 {characterSaveSuccess}
               </span>
             )}
             {combinedSaveError && (
-              <span className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-1 text-xs font-medium text-red-500">
+              <span className="rounded-lg border border-status-danger/20 bg-status-danger-bg px-3 py-1 text-xs font-medium text-status-danger">
                 {combinedSaveError}
               </span>
             )}
             {generateError && (
-              <span className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-1 text-xs font-medium text-red-500">
+              <span className="rounded-lg border border-status-danger/20 bg-status-danger-bg px-3 py-1 text-xs font-medium text-status-danger">
                 {generateError}
               </span>
             )}

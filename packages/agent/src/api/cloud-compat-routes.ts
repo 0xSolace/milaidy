@@ -154,6 +154,9 @@ function handleUpstreamError(error: unknown, res: http.ServerResponse): void {
   sendJsonError(res, "Failed to reach Eliza Cloud.", 502);
 }
 
+/** Paths under /api/cloud/v1/ are forwarded directly as /api/v1/ on the cloud backend. */
+const CLOUD_V1_PREFIX = "/api/cloud/v1/";
+
 export async function handleCloudCompatRoute(
   req: http.IncomingMessage,
   res: http.ServerResponse,
@@ -161,7 +164,9 @@ export async function handleCloudCompatRoute(
   method: string,
   state: CloudCompatRouteState,
 ): Promise<boolean> {
-  if (!pathname.startsWith("/api/cloud/compat/")) return false;
+  const isCompatRoute = pathname.startsWith("/api/cloud/compat/");
+  const isV1Route = pathname.startsWith(CLOUD_V1_PREFIX);
+  if (!isCompatRoute && !isV1Route) return false;
 
   const apiKey = state.config.cloud?.apiKey?.trim();
   if (!apiKey || apiKey.toUpperCase() === "[REDACTED]") {
@@ -180,7 +185,11 @@ export async function handleCloudCompatRoute(
     return true;
   }
 
-  const compatPath = pathname.replace("/api/cloud", "/api");
+  // /api/cloud/compat/* → /api/compat/*  (existing mapping)
+  // /api/cloud/v1/*    → /api/v1/*       (milady v1 endpoints, e.g. pairing-token)
+  const compatPath = isV1Route
+    ? pathname.slice("/api/cloud".length)
+    : pathname.replace("/api/cloud", "/api");
   const fullUrl = req.url ?? pathname;
   const qsIndex = fullUrl.indexOf("?");
   const queryString = qsIndex >= 0 ? fullUrl.slice(qsIndex) : "";
@@ -203,21 +212,23 @@ export async function handleCloudCompatRoute(
     }
 
     if (parsed.kind === "json") {
-      // Cloud API may not have all routes deployed yet. Return a friendlier
-      // message instead of a raw 404 so the dashboard can show "coming soon".
-      // TODO: Remove or refine this unconditional 404 intercept when Cloud
-      // goes to production — legitimate 404s (e.g. agent not found) will be
-      // incorrectly masked as "coming soon".
       if (upstreamRes.status === 404) {
-        sendJson(
-          res,
-          {
-            success: false,
-            error: "This Cloud feature is not available yet.",
-            code: "CLOUD_NOT_READY",
-          },
-          404,
-        );
+        const compatSegments = pathname.split("/").filter(Boolean);
+        const isResourcePath = compatSegments.length >= 5;
+
+        if (isResourcePath) {
+          sendJson(res, parsed.body, 404);
+        } else {
+          sendJson(
+            res,
+            {
+              success: false,
+              error: "This Cloud feature is not available yet.",
+              code: "CLOUD_NOT_READY",
+            },
+            404,
+          );
+        }
         return true;
       }
       sendJson(res, parsed.body, upstreamRes.status);

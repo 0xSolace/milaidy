@@ -1,9 +1,10 @@
 import * as React from "react";
 import { cn } from "../../lib/utils";
 
-export type StatusTone = "success" | "warning" | "danger" | "muted";
+export type StatusVariant = "success" | "warning" | "danger" | "muted";
+export type StatusTone = StatusVariant;
 
-const STATUS_TONE_STYLES: Record<StatusTone, { badge: string; dot: string }> = {
+const STATUS_VARIANT_STYLES: Record<StatusVariant, { badge: string; dot: string }> = {
   success: {
     badge: "border-ok/35 bg-ok/12 text-ok",
     dot: "bg-ok",
@@ -24,13 +25,13 @@ const STATUS_TONE_STYLES: Record<StatusTone, { badge: string; dot: string }> = {
 
 export function statusToneForBoolean(
   condition: boolean,
-  onTone: StatusTone = "success",
-  offTone: StatusTone = "muted",
-): StatusTone {
+  onTone: StatusVariant = "success",
+  offTone: StatusVariant = "muted",
+): StatusVariant {
   return condition ? onTone : offTone;
 }
 
-export function statusToneForState(status: string): StatusTone {
+export function statusToneForState(status: string): StatusVariant {
   const normalized = status.trim().toLowerCase();
   if (
     normalized === "success" ||
@@ -67,13 +68,15 @@ export function statusLabelForState(status: string): string {
 export interface StatusBadgeProps
   extends React.HTMLAttributes<HTMLSpanElement> {
   label: string;
-  tone: StatusTone;
+  variant?: StatusVariant;
+  tone?: StatusTone;
   withDot?: boolean;
 }
 
 export const StatusBadge = React.forwardRef<HTMLSpanElement, StatusBadgeProps>(
-  ({ label, tone, withDot = false, className, ...props }, ref) => {
-    const styles = STATUS_TONE_STYLES[tone];
+  ({ label, variant, tone, withDot = false, className, ...props }, ref) => {
+    const resolvedVariant = variant ?? tone ?? "muted";
+    const styles = STATUS_VARIANT_STYLES[resolvedVariant];
     return (
       <span
         ref={ref}
@@ -95,15 +98,15 @@ export const StatusBadge = React.forwardRef<HTMLSpanElement, StatusBadgeProps>(
 StatusBadge.displayName = "StatusBadge";
 
 export interface StatusDotProps extends React.HTMLAttributes<HTMLSpanElement> {
-  /** Semantic status string — mapped to a tone internally. */
+  /** Semantic status string — mapped to a variant internally. */
   status?: string;
-  /** Direct tone override — when provided, `status` is ignored. */
-  tone?: StatusTone;
+  /** Direct variant override — when provided, `status` is ignored. */
+  tone?: StatusVariant;
 }
 
 export const StatusDot = React.forwardRef<HTMLSpanElement, StatusDotProps>(
   ({ status, tone: toneProp, className, ...props }, ref) => {
-    const tone: StatusTone =
+    const variant: StatusVariant =
       toneProp ??
       (status === "success" || status === "completed" || status === "connected"
         ? "success"
@@ -111,7 +114,7 @@ export const StatusDot = React.forwardRef<HTMLSpanElement, StatusDotProps>(
           ? "danger"
           : "muted");
 
-    const styles = STATUS_TONE_STYLES[tone];
+    const styles = STATUS_VARIANT_STYLES[variant];
     return (
       <span
         ref={ref}

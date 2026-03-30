@@ -24,12 +24,12 @@ import type {
 import type { DropStatus, MintResult } from "@miladyai/agent/contracts/drop";
 import type {
   CloudProviderOption,
-  ConnectorConfig,
   InventoryProviderOption,
   MessageExample,
   MessageExampleContent,
   ModelOption,
   OnboardingConnection,
+  OnboardingConnectorConfig as ConnectorConfig,
   OnboardingData,
   OnboardingOptions,
   OpenRouterModelOption,
@@ -39,7 +39,7 @@ import type {
   StylePreset,
   SubscriptionProviderStatus,
   SubscriptionStatusResponse,
-} from "@miladyai/agent/contracts/onboarding";
+} from "@miladyai/shared/contracts/onboarding";
 import type {
   AllPermissionsState,
   PermissionState,
@@ -2115,16 +2115,22 @@ export class MiladyClient {
 
   constructor(baseUrl?: string, token?: string) {
     this.clientId = MiladyClient.generateClientId();
+    this._token = token?.trim() || null;
+
+    const injectedBase = getElizaApiBase();
     const storedBase =
       typeof window !== "undefined"
         ? window.sessionStorage.getItem(SESSION_STORAGE_API_BASE_KEY)
         : null;
-    this._explicitBase = baseUrl != null || Boolean(storedBase?.trim());
-    this._token = token?.trim() || null;
-    // Priority: explicit arg > session storage(base only) > boot config > same origin (Vite proxy)
     const bootBase = getBootConfig().apiBase;
-    this._baseUrl =
-      baseUrl ?? storedBase ?? bootBase ?? getElizaApiBase() ?? "";
+
+    this._explicitBase = baseUrl != null || Boolean(storedBase?.trim());
+
+    // Priority: explicit arg > desktop injection > boot config > session storage > same origin.
+    // Injected global (window.__MILADY_API_BASE__) must beat stale sessionStorage
+    // from a prior cloud/remote session so the desktop always connects to the
+    // correct local agent.
+    this._baseUrl = baseUrl ?? injectedBase ?? bootBase ?? storedBase ?? "";
   }
 
   /**
@@ -2456,12 +2462,13 @@ export class MiladyClient {
           return { required: false, pairingEnabled: false, expiresAt: null };
         }
         lastErr = err;
-        const kind = (err as Error & { kind?: string })?.kind;
-        if (kind === "timeout" && attempt < maxRetries) {
+        // Retry on transient errors (timeout, network) — the server may not
+        // be listening yet during boot. Non-transient HTTP errors (401, 404)
+        // are handled above and never reach here.
+        if (attempt < maxRetries) {
           await new Promise((r) => setTimeout(r, baseBackoffMs * 2 ** attempt));
           continue;
         }
-        if (attempt >= maxRetries) break;
       }
     }
     throw lastErr;
@@ -3595,7 +3602,12 @@ export class MiladyClient {
     status?: string;
     limit?: number;
     offset?: number;
-  }): Promise<{ records: StewardHistoryResponse; total: number; offset: number; limit: number }> {
+  }): Promise<{
+    records: StewardHistoryResponse;
+    total: number;
+    offset: number;
+    limit: number;
+  }> {
     const params = new URLSearchParams();
     if (opts?.status) params.set("status", opts.status);
     if (opts?.limit) params.set("limit", String(opts.limit));
@@ -3615,14 +3627,19 @@ export class MiladyClient {
     });
   }
 
-  async rejectStewardTx(txId: string, reason?: string): Promise<StewardApprovalActionResponse> {
+  async rejectStewardTx(
+    txId: string,
+    reason?: string,
+  ): Promise<StewardApprovalActionResponse> {
     return this.fetch("/api/wallet/steward-deny-tx", {
       method: "POST",
       body: JSON.stringify({ txId, reason }),
     });
   }
 
-  async signViaSteward(request: StewardSignRequest): Promise<StewardSignResponse> {
+  async signViaSteward(
+    request: StewardSignRequest,
+  ): Promise<StewardSignResponse> {
     return this.fetch("/api/wallet/steward-sign", {
       method: "POST",
       body: JSON.stringify(request),
@@ -3840,6 +3857,17 @@ export class MiladyClient {
   }> {
     return this.fetch(
       `/api/cloud/compat/agents/${encodeURIComponent(agentId)}/launch`,
+      { method: "POST" },
+    );
+  }
+
+  /** Fetch a pairing token for a cloud agent (for opening Web UI in a new tab). */
+  async getCloudCompatPairingToken(agentId: string): Promise<{
+    success: boolean;
+    data: { token: string; redirectUrl: string; expiresIn: number };
+  }> {
+    return this.fetch(
+      `/api/cloud/v1/milady/agents/${encodeURIComponent(agentId)}/pairing-token`,
       { method: "POST" },
     );
   }
@@ -4388,20 +4416,23 @@ export class MiladyClient {
     if (this.ws?.readyState === WebSocket.OPEN) return;
 
     let host: string;
+    let wsProtocol: "ws:" | "wss:";
     if (this.baseUrl) {
-      host = new URL(this.baseUrl).host;
+      const parsed = new URL(this.baseUrl);
+      host = parsed.host;
+      wsProtocol = parsed.protocol === "https:" ? "wss:" : "ws:";
     } else {
       // In non-HTTP environments (electrobun://, file://, etc.)
       // window.location.host may be empty or a non-routable placeholder like "-".
       const loc = window.location;
       if (loc.protocol !== "http:" && loc.protocol !== "https:") return;
       host = loc.host;
+      wsProtocol = loc.protocol === "https:" ? "wss:" : "ws:";
     }
 
     if (!host) return;
 
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    let url = `${protocol}//${host}/ws`;
+    let url = `${wsProtocol}//${host}/ws`;
     const params = new URLSearchParams({ clientId: this.clientId });
     url += `?${params.toString()}`;
 
@@ -4646,6 +4677,7 @@ export class MiladyClient {
     signal?: AbortSignal,
     images?: ImageAttachment[],
     conversationMode?: ConversationMode,
+    metadata?: Record<string, unknown>,
   ): Promise<{
     text: string;
     agentName: string;
@@ -4663,6 +4695,7 @@ export class MiladyClient {
         channelType,
         ...(images?.length ? { images } : {}),
         ...(conversationMode ? { conversationMode } : {}),
+        ...(metadata ? { metadata } : {}),
       }),
       signal,
     });
@@ -4761,16 +4794,30 @@ export class MiladyClient {
     };
 
     // Contract: the API must emit `data: {"type":"done",...}` or
-    // `data: {"type":"error",...}` and then end the response. If it stops
-    // mid-stream without either, the UI stays in "sending" until the user
-    // aborts — fix belongs in the conversation stream handler (@miladyai/agent).
+    // `data: {"type":"error",...}` and then end the response. If the server
+    // stalls mid-stream (e.g. LLM provider timeout without error propagation),
+    // the idle timeout below aborts the read so the UI doesn't hang forever.
+    const SSE_IDLE_TIMEOUT_MS = 60_000;
     while (true) {
       let done = false;
       let value: Uint8Array | undefined;
       try {
-        ({ done, value } = await reader.read());
+        const readPromise = reader.read();
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          const id = setTimeout(
+            () => reject(new Error("SSE idle timeout — no data for 60s")),
+            SSE_IDLE_TIMEOUT_MS,
+          );
+          // Clear timeout if the read resolves first
+          void readPromise.then(
+            () => clearTimeout(id),
+            () => clearTimeout(id),
+          );
+        });
+        ({ done, value } = await Promise.race([readPromise, timeoutPromise]));
       } catch (streamErr) {
         console.warn("[api-client] SSE stream interrupted:", streamErr);
+        void reader.cancel("milady-sse-idle-timeout").catch(() => {});
         break;
       }
       if (done || !value) break;
@@ -4954,6 +5001,7 @@ export class MiladyClient {
     signal?: AbortSignal,
     images?: ImageAttachment[],
     conversationMode?: ConversationMode,
+    metadata?: Record<string, unknown>,
   ): Promise<{
     text: string;
     agentName: string;
@@ -4968,6 +5016,7 @@ export class MiladyClient {
       signal,
       images,
       conversationMode,
+      metadata,
     );
   }
 
@@ -5604,7 +5653,11 @@ export class MiladyClient {
       return await this.fetch<CodingAgentScratchWorkspace[]>(
         "/api/coding-agents/scratch",
       );
-    } catch {
+    } catch (err) {
+      console.warn(
+        "[api-client] Failed to list coding agent scratch workspaces:",
+        err,
+      );
       return [];
     }
   }

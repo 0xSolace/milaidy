@@ -29,11 +29,9 @@ vi.mock("../../src/app-shell-components", () => ({
   HeartbeatsView: () => React.createElement("div", null, "HeartbeatsView"),
   InventoryView: () => React.createElement("div", null, "InventoryView"),
   KnowledgeView: () => React.createElement("div", null, "KnowledgeView"),
-  OnboardingWizard: () =>
-    React.createElement("div", null, "OnboardingWizard"),
+  OnboardingWizard: () => React.createElement("div", null, "OnboardingWizard"),
   PairingView: () => React.createElement("div", null, "PairingView"),
-  SaveCommandModal: () =>
-    React.createElement("div", null, "SaveCommandModal"),
+  SaveCommandModal: () => React.createElement("div", null, "SaveCommandModal"),
   SettingsView: () => React.createElement("div", null, "SettingsView"),
   SharedCompanionScene: ({ children }: { children: React.ReactNode }) =>
     React.createElement(React.Fragment, null, children),
@@ -108,7 +106,9 @@ describe("startup failure: bundled assets missing", () => {
 
     const rendered = textOf(tree!.root);
     expect(rendered).toContain("StartupFailureView:asset-missing");
-    expect(rendered).toContain("Required companion assets could not be loaded.");
+    expect(rendered).toContain(
+      "Required companion assets could not be loaded.",
+    );
     expect(rendered).toContain("Bundled avatar ELIZA-01 could not be loaded.");
     expect(rendered).not.toContain("PairingView");
 
