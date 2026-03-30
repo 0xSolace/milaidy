@@ -430,8 +430,12 @@ export const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
       }
     }, [needsDomAutoRailFallback]);
 
-    const transitionFrameRef = React.useRef<number | null>(null);
-    const transitionTimeoutRef = React.useRef<number | null>(null);
+    type SidebarTimerHandle = ReturnType<typeof globalThis.setTimeout>;
+
+    const transitionFrameRef = React.useRef<
+      number | SidebarTimerHandle | null
+    >(null);
+    const transitionTimeoutRef = React.useRef<SidebarTimerHandle | null>(null);
 
     const clearTransitionTimers = React.useCallback(() => {
       if (typeof window === "undefined") return;
@@ -440,10 +444,15 @@ export const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
           ? window.clearTimeout.bind(window)
           : globalThis.clearTimeout.bind(globalThis);
       if (transitionFrameRef.current !== null) {
+        const frameHandle = transitionFrameRef.current;
         if (typeof window.cancelAnimationFrame === "function") {
-          window.cancelAnimationFrame(transitionFrameRef.current);
+          if (typeof frameHandle === "number") {
+            window.cancelAnimationFrame(frameHandle);
+          } else {
+            clearTimer(frameHandle);
+          }
         } else {
-          clearTimer(transitionFrameRef.current);
+          clearTimer(frameHandle);
         }
         transitionFrameRef.current = null;
       }
