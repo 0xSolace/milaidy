@@ -47,6 +47,7 @@ import {
   SharedCompanionScene,
   ShellOverlays,
   StartupFailureView,
+  StartupShell,
   StreamView,
   SystemWarningBanner,
 } from "./app-shell-components";
@@ -293,6 +294,7 @@ export function App() {
     onboardingHandoffPhase,
     startupPhase,
     startupError,
+    startupCoordinator,
     authRequired,
     onboardingComplete,
     retryStartup,
@@ -497,18 +499,25 @@ export function App() {
   }, [showFullScreenLoader]);
 
   useEffect(() => {
-    // During "initializing-agent" phase the agent-wait loop has its own
-    // sliding deadline (up to 900s for first-run embedding downloads).
-    // Only arm the watchdog during "starting-backend" to avoid killing a
-    // valid agent download mid-flight.
+    // Safety-net watchdog: the coordinator has its own timeouts, but this
+    // catches any edge case where the legacy startupPhase gets stuck on
+    // "starting-backend". During "initializing-agent" the agent-wait loop
+    // has its own sliding deadline (up to 900s for embedding downloads).
     const STARTUP_TIMEOUT_MS = 300_000;
-    if (startupPhase === "starting-backend" && !startupError) {
+    const coordinatorPolling =
+      startupCoordinator.phase === "polling-backend" ||
+      startupCoordinator.phase === "booting" ||
+      startupCoordinator.phase === "restoring-session";
+    if (
+      (startupPhase === "starting-backend" || coordinatorPolling) &&
+      !startupError
+    ) {
       const timer = setTimeout(() => {
         retryStartup();
       }, STARTUP_TIMEOUT_MS);
       return () => clearTimeout(timer);
     }
-  }, [startupPhase, startupError, retryStartup]);
+  }, [startupPhase, startupCoordinator.phase, startupError, retryStartup]);
 
   // Agent startup must not hide onboarding: after reset the runtime often goes
   // to "starting" while we need to show the wizard immediately.
@@ -573,7 +582,20 @@ export function App() {
     );
   }
 
-  // After loader hooks (stable hook order); do not return startupError before useState above.
+  // StartupCoordinator gates — delegate to StartupShell for non-ready phases.
+  // The legacy startupError / authRequired / onboardingComplete checks below
+  // remain as a safety net during the transition period.
+  if (startupCoordinator.phase !== "ready") {
+    return (
+      <BugReportProvider value={bugReport}>
+        <StartupShell />
+        <BugReportModal />
+      </BugReportProvider>
+    );
+  }
+
+  // Legacy safety nets — kept during transition. Once the coordinator is fully
+  // validated these can be removed.
   if (startupError) {
     return (
       <BugReportProvider value={bugReport}>

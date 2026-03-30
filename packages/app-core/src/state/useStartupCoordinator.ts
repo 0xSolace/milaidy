@@ -15,6 +15,7 @@
  */
 
 import { useCallback, useEffect, useReducer, useRef } from "react";
+import type { AgentStatus } from "../api";
 import { client } from "../api";
 import { isElectrobunRuntime } from "../bridge/electrobun-runtime";
 import {
@@ -45,6 +46,7 @@ import {
   type StartupEvent,
   type StartupState,
 } from "./startup-coordinator";
+import type { StartupErrorState, StartupPhase } from "./types";
 
 // ── Platform detection ───────────────────────────────────────────────
 
@@ -52,6 +54,20 @@ function detectPlatformPolicy(): PlatformPolicy {
   if (isElectrobunRuntime()) return createDesktopPolicy();
   // Future: detect Capacitor native for mobile policy
   return createWebPolicy();
+}
+
+// ── Lifecycle bridge deps ────────────────────────────────────────────
+
+export interface StartupCoordinatorDeps {
+  setConnected: (v: boolean) => void;
+  setStartupPhase: (v: StartupPhase) => void;
+  setStartupError: (v: StartupErrorState | null) => void;
+  setAuthRequired: (v: boolean) => void;
+  setOnboardingComplete: (v: boolean) => void;
+  setOnboardingLoading: (v: boolean) => void;
+  setAgentStatus: (v: AgentStatus | null) => void;
+  setPairingEnabled: (v: boolean) => void;
+  setPairingExpiresAt: (v: number | null) => void;
 }
 
 // ── Hook ─────────────────────────────────────────────────────────────
@@ -79,7 +95,9 @@ export interface StartupCoordinatorHandle {
   target: RuntimeTarget | null;
 }
 
-export function useStartupCoordinator(): StartupCoordinatorHandle {
+export function useStartupCoordinator(
+  deps?: StartupCoordinatorDeps,
+): StartupCoordinatorHandle {
   const [state, dispatch] = useReducer(startupReducer, INITIAL_STARTUP_STATE);
   const policy = useRef(detectPlatformPolicy()).current;
   const cancelledRef = useRef(false);
@@ -392,6 +410,69 @@ export function useStartupCoordinator(): StartupCoordinatorHandle {
       cancelled = true;
     };
   }, [state.phase]);
+
+  // ── Lifecycle bridge — sync coordinator state to legacy setters ──
+
+  const prevPhaseRef = useRef<string>(state.phase);
+  useEffect(() => {
+    if (!deps) return;
+    const prev = prevPhaseRef.current;
+    const cur = state.phase;
+    prevPhaseRef.current = cur;
+
+    // Only fire on actual phase transitions (or first mount)
+    if (prev === cur && prev !== "booting") return;
+
+    switch (cur) {
+      case "booting":
+      case "restoring-session":
+      case "resolving-target":
+        // Early phases — no legacy setters needed beyond initial state
+        break;
+
+      case "polling-backend":
+        deps.setStartupPhase("starting-backend");
+        deps.setConnected(false);
+        break;
+
+      case "pairing-required":
+        deps.setAuthRequired(true);
+        deps.setStartupPhase("ready");
+        break;
+
+      case "onboarding-required":
+        deps.setOnboardingComplete(false);
+        deps.setOnboardingLoading(false);
+        deps.setStartupPhase("ready");
+        break;
+
+      case "starting-runtime":
+        deps.setStartupPhase("initializing-agent");
+        deps.setConnected(true);
+        break;
+
+      case "hydrating":
+        // Agent is running — bridge to legacy
+        deps.setAgentStatus({ state: "running" } as AgentStatus);
+        break;
+
+      case "ready":
+        deps.setStartupPhase("ready");
+        deps.setOnboardingLoading(false);
+        deps.setConnected(true);
+        break;
+
+      case "error": {
+        const errState = state as Extract<StartupState, { phase: "error" }>;
+        deps.setStartupError({
+          reason: errState.reason,
+          message: errState.message,
+          phase: toLegacyStartupPhase(state),
+        });
+        break;
+      }
+    }
+  }, [state, deps]);
 
   // ── Public interface ─────────────────────────────────────────────
 

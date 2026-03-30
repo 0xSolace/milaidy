@@ -24,5 +24,6 @@ export { SaveCommandModal } from "./components/SaveCommandModal";
 export { SettingsView } from "./components/SettingsView";
 export { ShellOverlays } from "./components/ShellOverlays";
 export { StartupFailureView } from "./components/StartupFailureView";
+export { StartupShell } from "./components/StartupShell";
 export { StreamView } from "./components/StreamView";
 export { SystemWarningBanner } from "./components/SystemWarningBanner";

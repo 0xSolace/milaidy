@@ -670,11 +670,6 @@ function AppProviderInner({
   // ── Lifecycle state (consolidated from 20+ useState hooks) ──
   const lifecycle = useLifecycleState();
 
-  // StartupCoordinator — runs alongside the legacy startup effect for now.
-  // Exposes coordinator state for debugging and incremental migration.
-  // Once validated, the legacy startup effect will be replaced.
-  const startupCoordinator = useStartupCoordinator();
-
   const {
     state: {
       connected,
@@ -780,6 +775,21 @@ function AppProviderInner({
     setPairingCodeInput,
     handlePairingSubmit,
   } = pairingHook;
+
+  // StartupCoordinator — runs alongside the legacy startup effect for now.
+  // Bridges coordinator phase transitions to the legacy lifecycle setters so
+  // components that depend on the old state shape stay in sync.
+  const startupCoordinator = useStartupCoordinator({
+    setConnected,
+    setStartupPhase,
+    setStartupError,
+    setAuthRequired,
+    setOnboardingComplete,
+    setOnboardingLoading,
+    setAgentStatus,
+    setPairingEnabled,
+    setPairingExpiresAt,
+  });
 
   // ── Chat state (consolidated from 18+ useState + 10 useEffect hooks) ──
   const chatState = useChatState();

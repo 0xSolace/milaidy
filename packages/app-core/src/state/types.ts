@@ -242,7 +242,8 @@ export type StartupErrorReason =
   | "backend-unreachable"
   | "agent-timeout"
   | "agent-error"
-  | "asset-missing";
+  | "asset-missing"
+  | "unknown";
 
 export interface StartupErrorState {
   reason: StartupErrorReason;
