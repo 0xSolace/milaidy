@@ -116,6 +116,7 @@ describe("App", () => {
       onboardingLoading: false,
       startupPhase: "ready",
       startupError: null,
+      startupCoordinator: { phase: "ready" },
       authRequired: false,
       onboardingComplete: true,
       retryStartup: vi.fn(),

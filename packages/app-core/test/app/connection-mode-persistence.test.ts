@@ -26,6 +26,7 @@ const { mockClient } = vi.hoisted(() => ({
       expiresAt: null,
     })),
     getOnboardingStatus: vi.fn(async () => ({ complete: false })),
+    getConfig: vi.fn(async () => null),
     disconnectWs: vi.fn(),
     getCodingAgentStatus: vi.fn(async () => null),
     setToken: vi.fn(),
