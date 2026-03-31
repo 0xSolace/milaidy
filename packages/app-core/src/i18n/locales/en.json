@@ -1005,7 +1005,6 @@
   "knowledgeview.Match": "% match",
   "knowledgeview.NoDocumentSelected": "No document selected",
   "knowledgeview.NoDocumentSelectedDesc": "Upload a file or choose an item from the sidebar to start viewing fragments and metadata.",
-  "knowledgeview.ClearSearch": "Clear search",
   "knowledgeview.NoDocumentsYet": "No documents yet",
   "knowledgeview.NoFragmentsFound": "No fragments found",
   "knowledgeview.NoMatchingDocuments": "No matching documents",
@@ -1746,7 +1745,7 @@
   "secretsview.Saving": "Saving...",
   "secretsview.SearchByKeyDescr": "Search by key, description, or plugin name...",
   "secretsview.YourVaultIsEmpty": "Your vault is empty. Click \"Add Secret\" to choose which API keys to\n          manage here.",
-  "settings.advancedKeyWarning": "Not needed with Steward. Use with caution.",
+  "settings.advancedKeyWarning": "Local keys are not needed when Steward manages your wallet. Only use this if you know what you're doing.",
   "settings.browse": "Browse",
   "settings.change": "Change",
   "settings.codingAgentsDescription": "Configure AI coding agents for multi-agent task execution.",
@@ -1793,8 +1792,6 @@
   "settings.sections.wallet.stewardDesc": "Managed by Steward vault",
   "settings.sections.walletpolicies.label": "Wallet Policies",
   "settings.sections.walletpolicies.desc": "Spending limits, address controls, and transaction safety rules",
-  "settings.advancedKeyWarning": "Local keys are not needed when Steward manages your wallet. Only use this if you know what you're doing.",
-  "settings.rpcConfiguration": "RPC Configuration",
   "settings.showAdvancedKeyManagement": "Advanced key management",
   "settings.stewardNoAddresses": "No vault addresses available yet. Check steward configuration.",
   "settings.stewardVaultDegraded": "Vault connected — degraded",
@@ -2156,5 +2153,11 @@
   "whatsappqroverlay.ScanWithWhatsApp": "Scan with WhatsApp",
   "whatsappqroverlay.Tap": "Tap",
   "whatsappqroverlay.TryAgain": "Try Again",
-  "whatsappqroverlay.UsesAnUnofficialW": "Uses an unofficial WhatsApp API. Use a dedicated phone number."
+  "whatsappqroverlay.UsesAnUnofficialW": "Uses an unofficial WhatsApp API. Use a dedicated phone number.",
+  "startupshell.Starting": "Starting…",
+  "startupshell.ConnectingBackend": "Connecting to backend…",
+  "startupshell.InitializingAgent": "Initializing agent…",
+  "startupshell.Loading": "Loading…",
+  "startupshell.Elapsed": "elapsed",
+  "startupshell.TakingLonger": "Taking longer than expected…"
 }

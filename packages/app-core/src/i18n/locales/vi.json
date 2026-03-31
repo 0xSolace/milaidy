@@ -1800,13 +1800,6 @@
   "settings.stewardWalletManaged": "Ví được quản lý bởi Steward",
   "settings.viewWalletPolicies": "Xem chính sách ví",
   "settings.walletRpcDescription": "Cấu hình RPC chain cho giao dịch và dữ liệu thị trường.",
-  "settings.showAdvancedKeyManagement": "Quản lý khóa nâng cao",
-  "settings.stewardNoAddresses": "Chưa có địa chỉ vault",
-  "settings.stewardVaultDegraded": "Vault đã kết nối — suy giảm",
-  "settings.stewardVaultError": "Vault đã kết nối — trạng thái lỗi",
-  "settings.stewardVaultHealthy": "Vault đã kết nối và hoạt động tốt",
-  "settings.stewardWalletManaged": "Ví được quản lý bởi Steward",
-  "settings.viewWalletPolicies": "Xem chính sách ví",
   "settingsview.BackupFile": "File sao lưu",
   "settingsview.ChooseAnExportedBack": "Chọn file backup đã xuất...",
   "settingsview.ClearSearch": "Xoá tìm kiếm",
@@ -2160,5 +2153,11 @@
   "whatsappqroverlay.ScanWithWhatsApp": "Quét bằng WhatsApp",
   "whatsappqroverlay.Tap": "Chạm",
   "whatsappqroverlay.TryAgain": "Thử lại",
-  "whatsappqroverlay.UsesAnUnofficialW": "Dùng API WhatsApp không chính thức. Hãy dùng số riêng."
+  "whatsappqroverlay.UsesAnUnofficialW": "Dùng API WhatsApp không chính thức. Hãy dùng số riêng.",
+  "startupshell.Starting": "Starting…",
+  "startupshell.ConnectingBackend": "Connecting to backend…",
+  "startupshell.InitializingAgent": "Initializing agent…",
+  "startupshell.Loading": "Loading…",
+  "startupshell.Elapsed": "elapsed",
+  "startupshell.TakingLonger": "Taking longer than expected…"
 }

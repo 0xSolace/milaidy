@@ -14,25 +14,25 @@ import { OnboardingWizard } from "./OnboardingWizard";
 import { PairingView } from "./PairingView";
 import { StartupFailureView } from "./StartupFailureView";
 
-function phaseToStatusText(phase: string): string {
+function phaseToStatusKey(phase: string): string {
   switch (phase) {
     case "booting":
     case "restoring-session":
-      return "Starting\u2026";
+      return "startupshell.Starting";
     case "resolving-target":
     case "polling-backend":
-      return "Connecting to backend\u2026";
+      return "startupshell.ConnectingBackend";
     case "starting-runtime":
-      return "Initializing agent\u2026";
+      return "startupshell.InitializingAgent";
     case "hydrating":
-      return "Loading\u2026";
+      return "startupshell.Loading";
     default:
-      return "Starting\u2026";
+      return "startupshell.Starting";
   }
 }
 
 export function StartupShell() {
-  const { startupCoordinator, startupError, retryStartup } = useApp();
+  const { startupCoordinator, startupError, retryStartup, t } = useApp();
   const branding = useBranding();
   const phase = startupCoordinator.phase;
 
@@ -78,16 +78,12 @@ export function StartupShell() {
   }
 
   // Loading phases — branded loading screen
-  const statusText = phaseToStatusText(phase);
+  const statusText = t(phaseToStatusKey(phase));
   const showSlow = elapsedSec >= 10;
 
   return (
     <div className="fixed inset-0 z-[200] flex items-end justify-start bg-[#ffe600] font-body text-black overflow-hidden">
-      {/*
-        Branded splash background — intentionally included as a product identity
-        element. This is the Milady character art chosen by the project owner.
-        Do NOT remove or replace with a generic loading screen.
-      */}
+      {/* Branded splash background — see CLAUDE.md § Startup Splash */}
       <img
         src="/splash-bg.png"
         alt=""
@@ -107,14 +103,15 @@ export function StartupShell() {
         {elapsedSec > 0 && (
           <p className="text-xs text-black/50 tabular-nums pl-8">
             {Math.floor(elapsedSec / 60)}:
-            {(elapsedSec % 60).toString().padStart(2, "0")} elapsed
+            {(elapsedSec % 60).toString().padStart(2, "0")}{" "}
+            {t("startupshell.Elapsed")}
           </p>
         )}
 
         {/* Slow startup warning */}
         {showSlow && (
           <p className="text-xs text-black/60 pl-8">
-            Taking longer than expected&hellip;
+            {t("startupshell.TakingLonger")}
           </p>
         )}
       </div>

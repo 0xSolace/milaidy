@@ -31,12 +31,11 @@ describe("StartupCoordinator", () => {
       });
       expect(state.phase).toBe("resolving-target");
 
-      // resolving-target auto-advances to polling-backend (driven by effect)
-      state = startupReducer(state, {
-        type: "BACKEND_POLL_RETRY",
-      } as StartupEvent);
-      // resolving-target doesn't handle BACKEND_POLL_RETRY — need to advance manually
-      // The transition from resolving-target to polling-backend is automatic in the reducer
+      // resolving-target is a transient state — the reducer auto-advances
+      // to polling-backend on ANY event (the event is ignored). In the real
+      // app, the useEffect dispatches a kick event; here we verify the
+      // auto-advance directly by sending a neutral event.
+      state = startupReducer(state, { type: "RETRY" });
       expect(state).toEqual({
         phase: "polling-backend",
         target: "embedded-local",
@@ -70,9 +69,8 @@ describe("StartupCoordinator", () => {
         target: "cloud-managed",
       });
 
-      state = startupReducer(state, {
-        type: "BACKEND_POLL_RETRY",
-      } as StartupEvent);
+      // resolving-target auto-advances on any event
+      state = startupReducer(state, { type: "RETRY" });
       expect(state.phase).toBe("polling-backend");
 
       state = startupReducer(state, {
@@ -146,6 +144,15 @@ describe("StartupCoordinator", () => {
 
       state = startupReducer(state, { type: "ONBOARDING_COMPLETE" });
       expect(state.phase).toBe("starting-runtime");
+    });
+
+    it("RETRY from onboarding-required restarts from booting", () => {
+      const state: StartupState = {
+        phase: "onboarding-required",
+        serverReachable: true,
+      };
+      const next = startupReducer(state, { type: "RETRY" });
+      expect(next.phase).toBe("booting");
     });
   });
 

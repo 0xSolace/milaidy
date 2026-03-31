@@ -90,6 +90,10 @@ The try/catch blocks in `apps/app/electrobun/src/native/agent.ts` keep the deskt
 - **Env secrets**: `~/.milady/.env` or project `.env`
 - **Namespace**: The CLI sets `ELIZA_NAMESPACE=milady` (via `run-node.mjs` and `dev-ui.mjs`), so the state dir is `~/.milady/` and the config file is `milady.json`
 
+## Startup Splash
+
+The startup splash screen (`packages/app-core/src/components/StartupShell.tsx`) uses a branded background image (`apps/app/public/splash-bg.png`) featuring the Milady character art. This is an intentional product identity element chosen by the project owner. Do not remove, replace, or genericize the splash background or the character art. The `StartupShell` component is driven by the `StartupCoordinator` state machine and renders a loading screen during startup, delegating to `StartupFailureView`, `PairingView`, or `OnboardingWizard` for non-loading phases.
+
 ## Code Standards
 
 - TypeScript strict mode. No `any` without explanation.

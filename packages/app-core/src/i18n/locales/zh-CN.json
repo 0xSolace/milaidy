@@ -2153,5 +2153,11 @@
   "whatsappqroverlay.ScanWithWhatsApp": "使用 WhatsApp 扫描",
   "whatsappqroverlay.Tap": "轻敲",
   "whatsappqroverlay.TryAgain": "再试一次",
-  "whatsappqroverlay.UsesAnUnofficialW": "使用非官方 WhatsApp API。使用专用电话号码。"
+  "whatsappqroverlay.UsesAnUnofficialW": "使用非官方 WhatsApp API。使用专用电话号码。",
+  "startupshell.Starting": "Starting…",
+  "startupshell.ConnectingBackend": "Connecting to backend…",
+  "startupshell.InitializingAgent": "Initializing agent…",
+  "startupshell.Loading": "Loading…",
+  "startupshell.Elapsed": "elapsed",
+  "startupshell.TakingLonger": "Taking longer than expected…"
 }

@@ -1800,13 +1800,6 @@
   "settings.stewardWalletManaged": "Billetera gestionada por Steward",
   "settings.viewWalletPolicies": "Ver políticas de billetera",
   "settings.walletRpcDescription": "Configura proveedores RPC de cadena para trading y datos de mercado.",
-  "settings.showAdvancedKeyManagement": "Gestión avanzada de claves",
-  "settings.stewardNoAddresses": "Aún no hay direcciones de bóveda",
-  "settings.stewardVaultDegraded": "Bóveda conectada — degradada",
-  "settings.stewardVaultError": "Bóveda conectada — estado de error",
-  "settings.stewardVaultHealthy": "Bóveda conectada y en buen estado",
-  "settings.stewardWalletManaged": "Billetera gestionada por Steward",
-  "settings.viewWalletPolicies": "Ver políticas de billetera",
   "settingsview.BackupFile": "Archivo de copia de seguridad",
   "settingsview.ChooseAnExportedBack": "Elige un archivo de backup exportado...",
   "settingsview.ClearSearch": "Borrar búsqueda",
@@ -2160,5 +2153,11 @@
   "whatsappqroverlay.ScanWithWhatsApp": "Escanear con WhatsApp",
   "whatsappqroverlay.Tap": "Toca",
   "whatsappqroverlay.TryAgain": "Intentar otra vez",
-  "whatsappqroverlay.UsesAnUnofficialW": "Utiliza una API de WhatsApp no ​​oficial. Utilice un número de teléfono exclusivo."
+  "whatsappqroverlay.UsesAnUnofficialW": "Utiliza una API de WhatsApp no ​​oficial. Utilice un número de teléfono exclusivo.",
+  "startupshell.Starting": "Starting…",
+  "startupshell.ConnectingBackend": "Connecting to backend…",
+  "startupshell.InitializingAgent": "Initializing agent…",
+  "startupshell.Loading": "Loading…",
+  "startupshell.Elapsed": "elapsed",
+  "startupshell.TakingLonger": "Taking longer than expected…"
 }

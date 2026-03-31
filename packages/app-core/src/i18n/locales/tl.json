@@ -1800,13 +1800,6 @@
   "settings.stewardWalletManaged": "Wallet na pinamamahalaan ng Steward",
   "settings.viewWalletPolicies": "Tingnan ang mga patakaran ng wallet",
   "settings.walletRpcDescription": "I-configure ang mga chain RPC provider para sa trading at market data.",
-  "settings.showAdvancedKeyManagement": "Advanced na pamamahala ng key",
-  "settings.stewardNoAddresses": "Wala pang vault address",
-  "settings.stewardVaultDegraded": "Vault nakakonekta — degraded",
-  "settings.stewardVaultError": "Vault nakakonekta — error state",
-  "settings.stewardVaultHealthy": "Vault nakakonekta at malusog",
-  "settings.stewardWalletManaged": "Wallet na pinamamahalaan ng Steward",
-  "settings.viewWalletPolicies": "Tingnan ang mga patakaran ng wallet",
   "settingsview.BackupFile": "Backup na file",
   "settingsview.ChooseAnExportedBack": "Pumili ng exported backup file...",
   "settingsview.ClearSearch": "I-clear ang paghahanap",
@@ -2160,5 +2153,11 @@
   "whatsappqroverlay.ScanWithWhatsApp": "I-scan gamit ang WhatsApp",
   "whatsappqroverlay.Tap": "I-tap ang",
   "whatsappqroverlay.TryAgain": "Subukan Muli",
-  "whatsappqroverlay.UsesAnUnofficialW": "Gumagamit ng unofficial WhatsApp API. Gumamit ng dedicated phone number."
+  "whatsappqroverlay.UsesAnUnofficialW": "Gumagamit ng unofficial WhatsApp API. Gumamit ng dedicated phone number.",
+  "startupshell.Starting": "Starting…",
+  "startupshell.ConnectingBackend": "Connecting to backend…",
+  "startupshell.InitializingAgent": "Initializing agent…",
+  "startupshell.Loading": "Loading…",
+  "startupshell.Elapsed": "elapsed",
+  "startupshell.TakingLonger": "Taking longer than expected…"
 }

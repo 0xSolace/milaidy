@@ -1800,13 +1800,6 @@
   "settings.stewardWalletManaged": "Steward가 관리하는 지갑",
   "settings.viewWalletPolicies": "지갑 정책 보기",
   "settings.walletRpcDescription": "트레이딩과 시장 데이터용 체인 RPC 제공자를 구성합니다.",
-  "settings.showAdvancedKeyManagement": "고급 키 관리",
-  "settings.stewardNoAddresses": "아직 금고 주소가 없습니다",
-  "settings.stewardVaultDegraded": "금고 연결됨 — 저하됨",
-  "settings.stewardVaultError": "금고 연결됨 — 오류 상태",
-  "settings.stewardVaultHealthy": "금고 연결됨 및 정상",
-  "settings.stewardWalletManaged": "Steward가 관리하는 지갑",
-  "settings.viewWalletPolicies": "지갑 정책 보기",
   "settingsview.BackupFile": "백업 파일",
   "settingsview.ChooseAnExportedBack": "내보낸 백업 파일을 선택하세요...",
   "settingsview.ClearSearch": "검색 지우기",
@@ -2160,5 +2153,11 @@
   "whatsappqroverlay.ScanWithWhatsApp": "WhatsApp으로 스캔",
   "whatsappqroverlay.Tap": "탭",
   "whatsappqroverlay.TryAgain": "다시 시도",
-  "whatsappqroverlay.UsesAnUnofficialW": "비공식 WhatsApp API를 사용합니다. 전용 전화번호를 사용하세요."
+  "whatsappqroverlay.UsesAnUnofficialW": "비공식 WhatsApp API를 사용합니다. 전용 전화번호를 사용하세요.",
+  "startupshell.Starting": "Starting…",
+  "startupshell.ConnectingBackend": "Connecting to backend…",
+  "startupshell.InitializingAgent": "Initializing agent…",
+  "startupshell.Loading": "Loading…",
+  "startupshell.Elapsed": "elapsed",
+  "startupshell.TakingLonger": "Taking longer than expected…"
 }
