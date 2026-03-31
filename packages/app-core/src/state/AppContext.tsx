@@ -4756,10 +4756,18 @@ function AppProviderInner({
   }, [agentStatus, setAgentStatus]);
 
   const handleOnboardingFinish = useCallback(async () => {
-    await runOnboardingChatHandoff(
-      elizaCloudConnected ? "cloud_fast_track" : "full",
-    );
-  }, [elizaCloudConnected, runOnboardingChatHandoff]);
+    // If the user explicitly chose a local provider with their own API key,
+    // use the full onboarding flow even if cloud is connected. Cloud login
+    // on the splash provides account access, but the provider selection in
+    // onboarding determines which LLM is used for inference.
+    const userChoseLocalProvider =
+      onboardingRunMode === "local" && onboardingProvider && onboardingProvider !== "elizacloud";
+    const mode =
+      elizaCloudConnected && !userChoseLocalProvider
+        ? "cloud_fast_track"
+        : "full";
+    await runOnboardingChatHandoff(mode);
+  }, [elizaCloudConnected, onboardingRunMode, onboardingProvider, runOnboardingChatHandoff]);
 
   // ── Onboarding motion (flow graph: packages/app-core/src/onboarding/flow.ts) ──
   // WHY split from flow.ts: advance/revert need handleCloudLoginRef, finish,
