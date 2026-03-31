@@ -7,7 +7,13 @@
  * checkExtensionStatus.
  */
 
-import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   type AgentStatus,
   type BscTradeExecuteRequest,
@@ -96,7 +102,9 @@ function buildLocalizedCharacterPayload(
 
 export interface DataLoadersDeps {
   // Autonomy refs + setters (from useChatState)
-  autonomousStoreRef: RefObject<ReturnType<typeof mergeAutonomyEvents>["store"]>;
+  autonomousStoreRef: RefObject<
+    ReturnType<typeof mergeAutonomyEvents>["store"]
+  >;
   autonomousEventsRef: RefObject<StreamEventEnvelope[]>;
   autonomousLatestEventIdRef: RefObject<string | null>;
   autonomousRunHealthByRunIdRef: RefObject<AutonomyRunHealthMap>;

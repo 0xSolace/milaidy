@@ -66,7 +66,6 @@ const CHAT_MOBILE_BREAKPOINT_PX = 820;
 const CHAT_DESKTOP_COMPOSER_UNDERLAY_CLASS =
   "pointer-events-none absolute inset-x-0 bottom-0 h-[5.75rem]";
 
-
 /** Check if we're in pop-out mode (StreamView only, no chrome). */
 function useIsPopout(): boolean {
   const [popout] = useState(() => {

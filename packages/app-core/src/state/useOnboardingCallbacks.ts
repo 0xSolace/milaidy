@@ -53,9 +53,7 @@ function isPrivateNetworkHost(host: string): boolean {
   if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)) return true;
   if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(host)) return true;
   if (/^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(host)) return true;
-  if (
-    /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d{1,3}\.\d{1,3}$/.test(host)
-  ) {
+  if (/^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d{1,3}\.\d{1,3}$/.test(host)) {
     return true;
   }
   return false;
@@ -366,8 +364,7 @@ export function useOnboardingCallbacks(deps: OnboardingCallbacksDeps) {
           onboardingVoiceApiKey,
           onboardingPrimaryModel,
           onboardingOpenRouterModel,
-          onboardingRemoteConnected:
-            onboardingRemote.status === "connected",
+          onboardingRemoteConnected: onboardingRemote.status === "connected",
           onboardingRemoteApiBase,
           onboardingRemoteToken,
           onboardingSmallModel,
@@ -672,8 +669,7 @@ export function useOnboardingCallbacks(deps: OnboardingCallbacksDeps) {
   );
 
   const handleOnboardingNext = useCallback(
-    async (options?: OnboardingNextOptions) =>
-      advanceOnboarding(options),
+    async (options?: OnboardingNextOptions) => advanceOnboarding(options),
     [advanceOnboarding],
   );
 

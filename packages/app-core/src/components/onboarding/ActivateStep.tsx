@@ -12,12 +12,8 @@ import {
 
 export function ActivateStep() {
   const branding = useBranding();
-  const {
-    onboardingName,
-    handleOnboardingNext,
-    handleOnboardingBack,
-    t,
-  } = useApp();
+  const { onboardingName, handleOnboardingNext, handleOnboardingBack, t } =
+    useApp();
 
   return (
     <>

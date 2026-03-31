@@ -1392,7 +1392,9 @@ function AppProviderInner({
     setOnboardingCloudProvider,
     setOnboardingProvider,
     setOnboardingApiKey,
-    setOnboardingVoiceProvider: setOnboardingVoiceProvider as (v: string) => void,
+    setOnboardingVoiceProvider: setOnboardingVoiceProvider as (
+      v: string,
+    ) => void,
     setOnboardingVoiceApiKey: setOnboardingVoiceApiKey as (v: string) => void,
     setOnboardingPrimaryModel,
     setOnboardingOpenRouterModel,
@@ -1788,7 +1790,8 @@ function AppProviderInner({
 
   // Wire coordinator refs so callbacks defined before the coordinator can reach it
   coordinatorRetryRef.current = startupCoordinator.retry;
-  coordinatorOnboardingCompleteRef.current = startupCoordinator.onboardingComplete;
+  coordinatorOnboardingCompleteRef.current =
+    startupCoordinator.onboardingComplete;
 
   const requestGreetingWhenRunningRef2 = useRef(requestGreetingWhenRunning);
   useEffect(() => {

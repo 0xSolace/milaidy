@@ -55,9 +55,7 @@ export function OnboardingWizard() {
     t,
     onboardingUiRevealNonce,
   } = useApp();
-  const revealWelcomeUiImmediately =
-    disableVrm ||
-    onboardingUiRevealNonce > 0;
+  const revealWelcomeUiImmediately = disableVrm || onboardingUiRevealNonce > 0;
   // After Reset Agent from chat/companion, nonce bumps: show cloud ui immediately instead
   // of waiting for VrmStage reveal (often missing when remounting after an active session).
   const [revealStarted, setRevealStarted] = useState(

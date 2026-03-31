@@ -154,11 +154,19 @@ export interface UseChatCallbacksDeps {
     updatedAt: number;
   }) => void;
   setChatPendingImages: (v: ImageAttachment[]) => void;
-  setConversations: (v: Conversation[] | ((prev: Conversation[]) => Conversation[])) => void;
+  setConversations: (
+    v: Conversation[] | ((prev: Conversation[]) => Conversation[]),
+  ) => void;
   setActiveConversationId: (v: string | null) => void;
   setCompanionMessageCutoffTs: (v: number) => void;
-  setConversationMessages: (v: ConversationMessage[] | ((prev: ConversationMessage[]) => ConversationMessage[])) => void;
-  setUnreadConversations: (v: Set<string> | ((prev: Set<string>) => Set<string>)) => void;
+  setConversationMessages: (
+    v:
+      | ConversationMessage[]
+      | ((prev: ConversationMessage[]) => ConversationMessage[]),
+  ) => void;
+  setUnreadConversations: (
+    v: Set<string> | ((prev: Set<string>) => Set<string>),
+  ) => void;
   resetConversationDraftState: () => void;
 
   // Refs from useChatState
@@ -181,13 +189,21 @@ export interface UseChatCallbacksDeps {
   lifecycleBusyRef: MutableRefObject<boolean>;
   lifecycleActionRef: MutableRefObject<LifecycleAction | null>;
   setAgentStatus: (s: AgentStatus | null) => void;
-  setActionNotice: (text: string, tone: "success" | "error" | "info", ttlMs?: number, once?: boolean, busy?: boolean) => void;
+  setActionNotice: (
+    text: string,
+    tone: "success" | "error" | "info",
+    ttlMs?: number,
+    once?: boolean,
+    busy?: boolean,
+  ) => void;
 
   // Pending restart
   pendingRestart: boolean;
   pendingRestartReasons: string[];
   setPendingRestart: (v: boolean) => void;
-  setPendingRestartReasons: (v: string[] | ((prev: string[]) => string[])) => void;
+  setPendingRestartReasons: (
+    v: string[] | ((prev: string[]) => string[]),
+  ) => void;
 
   // Backend connection
   setBackendDisconnectedBannerDismissed: (v: boolean) => void;
@@ -195,7 +211,9 @@ export interface UseChatCallbacksDeps {
 
   // Loaders
   loadConversations: () => Promise<Conversation[] | null>;
-  loadConversationMessages: (convId: string) => Promise<LoadConversationMessagesResult>;
+  loadConversationMessages: (
+    convId: string,
+  ) => Promise<LoadConversationMessagesResult>;
   loadPlugins: () => Promise<unknown>;
 
   // Cloud state

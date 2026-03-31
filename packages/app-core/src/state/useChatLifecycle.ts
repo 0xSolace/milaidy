@@ -6,19 +6,9 @@
  */
 
 import { type MutableRefObject, useCallback, useEffect, useRef } from "react";
-import {
-  type AgentStatus,
-  type StreamEventEnvelope,
-  client,
-} from "../api";
-import {
-  invokeDesktopBridgeRequest,
-  isElectrobunRuntime,
-} from "../bridge";
-import {
-  alertDesktopMessage,
-  confirmDesktopAction,
-} from "../utils";
+import { type AgentStatus, type StreamEventEnvelope, client } from "../api";
+import { invokeDesktopBridgeRequest, isElectrobunRuntime } from "../bridge";
+import { alertDesktopMessage, confirmDesktopAction } from "../utils";
 import type { AppState } from "./internal";
 import {
   clearAvatarIndex,
@@ -94,13 +84,21 @@ export interface UseChatLifecycleDeps {
   finishLifecycleAction: () => void;
   lifecycleBusyRef: MutableRefObject<boolean>;
   lifecycleActionRef: MutableRefObject<LifecycleAction | null>;
-  setActionNotice: (text: string, tone: "success" | "error" | "info", ttlMs?: number, once?: boolean, busy?: boolean) => void;
+  setActionNotice: (
+    text: string,
+    tone: "success" | "error" | "info",
+    ttlMs?: number,
+    once?: boolean,
+    busy?: boolean,
+  ) => void;
 
   // Pending restart
   pendingRestart: boolean;
   pendingRestartReasons: string[];
   setPendingRestart: (v: boolean) => void;
-  setPendingRestartReasons: (v: string[] | ((prev: string[]) => string[])) => void;
+  setPendingRestartReasons: (
+    v: string[] | ((prev: string[]) => string[]),
+  ) => void;
 
   // Backend connection
   setBackendDisconnectedBannerDismissed: (v: boolean) => void;
@@ -118,8 +116,14 @@ export interface UseChatLifecycleDeps {
   interruptActiveChatPipeline: () => void;
   resetConversationDraftState: () => void;
   setActiveConversationId: (v: string | null) => void;
-  setConversationMessages: (v: ConversationMessage[] | ((prev: ConversationMessage[]) => ConversationMessage[])) => void;
-  setConversations: (v: Conversation[] | ((prev: Conversation[]) => Conversation[])) => void;
+  setConversationMessages: (
+    v:
+      | ConversationMessage[]
+      | ((prev: ConversationMessage[]) => ConversationMessage[]),
+  ) => void;
+  setConversations: (
+    v: Conversation[] | ((prev: Conversation[]) => Conversation[]),
+  ) => void;
   activeConversationIdRef: MutableRefObject<string | null>;
 
   // Cloud state

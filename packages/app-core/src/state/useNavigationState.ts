@@ -27,10 +27,7 @@ import {
   type UiShellMode,
 } from "./internal";
 import { NavigationEventHub } from "./navigation-events";
-import {
-  deriveUiShellModeForTab,
-  getTabForShellView,
-} from "./shell-routing";
+import { deriveUiShellModeForTab, getTabForShellView } from "./shell-routing";
 
 // ── Hook deps ─────────────────────────────────────────────────────────────
 

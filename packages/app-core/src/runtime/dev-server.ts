@@ -343,8 +343,8 @@ async function main() {
   if (actualPort !== port) {
     console.error(
       `${getLogPrefix()} [CRITICAL] API bound to port ${actualPort} but orchestrator expected ${port}. ` +
-      `Electrobun renderer has MILADY_DESKTOP_API_BASE pointing at the wrong port. ` +
-      `Kill the process using port ${port} or set MILADY_API_PORT to a free port.`,
+        `Electrobun renderer has MILADY_DESKTOP_API_BASE pointing at the wrong port. ` +
+        `Kill the process using port ${port} or set MILADY_API_PORT to a free port.`,
     );
   }
   syncResolvedApiPort(process.env, actualPort);

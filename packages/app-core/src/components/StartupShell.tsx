@@ -48,7 +48,6 @@ export function StartupShell() {
   const { startupCoordinator, startupError, retryStartup, t } = useApp();
   const phase = startupCoordinator.phase;
 
-
   // Error — delegate
   if (phase === "error") {
     const coordState = startupCoordinator.state;

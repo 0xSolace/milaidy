@@ -70,12 +70,26 @@ export interface UseChatSendDeps {
     updatedAt: number;
   }) => void;
   setChatPendingImages: (v: ImageAttachment[]) => void;
-  setConversations: (v: Conversation[] | ((prev: Conversation[]) => Conversation[])) => void;
+  setConversations: (
+    v: Conversation[] | ((prev: Conversation[]) => Conversation[]),
+  ) => void;
   setActiveConversationId: (v: string | null) => void;
   setCompanionMessageCutoffTs: (v: number) => void;
-  setConversationMessages: (v: ConversationMessage[] | ((prev: ConversationMessage[]) => ConversationMessage[])) => void;
-  setUnreadConversations: (v: Set<string> | ((prev: Set<string>) => Set<string>)) => void;
-  setActionNotice: (text: string, tone: "success" | "error" | "info", ttlMs?: number, once?: boolean, busy?: boolean) => void;
+  setConversationMessages: (
+    v:
+      | ConversationMessage[]
+      | ((prev: ConversationMessage[]) => ConversationMessage[]),
+  ) => void;
+  setUnreadConversations: (
+    v: Set<string> | ((prev: Set<string>) => Set<string>),
+  ) => void;
+  setActionNotice: (
+    text: string,
+    tone: "success" | "error" | "info",
+    ttlMs?: number,
+    once?: boolean,
+    busy?: boolean,
+  ) => void;
 
   // Refs
   activeConversationIdRef: MutableRefObject<string | null>;
@@ -88,7 +102,9 @@ export interface UseChatSendDeps {
 
   // Loaders
   loadConversations: () => Promise<Conversation[] | null>;
-  loadConversationMessages: (convId: string) => Promise<LoadConversationMessagesResult>;
+  loadConversationMessages: (
+    convId: string,
+  ) => Promise<LoadConversationMessagesResult>;
 
   // Cloud state
   elizaCloudEnabled: boolean;

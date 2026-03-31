@@ -27,7 +27,9 @@ describe("StartupCoordinator", () => {
     });
 
     it("SPLASH_LOADED sets loaded=true", () => {
-      const state = startupReducer(INITIAL_STARTUP_STATE, { type: "SPLASH_LOADED" });
+      const state = startupReducer(INITIAL_STARTUP_STATE, {
+        type: "SPLASH_LOADED",
+      });
       expect(state).toEqual({ phase: "splash", loaded: true });
     });
 
