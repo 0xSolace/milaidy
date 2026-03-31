@@ -2477,8 +2477,41 @@ function PluginListView({
             }
           />
         ) : (
-          <div data-testid="connectors-settings-content" className="space-y-4">
-            {visiblePlugins.map((plugin) => {
+          <div data-testid="connectors-settings-content" className="space-y-6">
+            {(() => {
+              // Group plugins by subgroup for visual categorization
+              const groups: Array<{
+                id: string;
+                label: string;
+                plugins: typeof visiblePlugins;
+              }> = [];
+              const groupMap = new Map<string, typeof visiblePlugins>();
+              const groupOrder: string[] = [];
+              for (const plugin of visiblePlugins) {
+                const sg = subgroupForPlugin(plugin);
+                if (!groupMap.has(sg)) {
+                  groupMap.set(sg, []);
+                  groupOrder.push(sg);
+                }
+                groupMap.get(sg)!.push(plugin);
+              }
+              for (const sg of groupOrder) {
+                groups.push({
+                  id: sg,
+                  label: SUBGROUP_LABELS[sg] ?? sg,
+                  plugins: groupMap.get(sg)!,
+                });
+              }
+              return groups.map((group) => (
+                <div
+                  key={group.id}
+                  className="relative rounded-xl border border-border/30 pt-5 pb-2 px-2"
+                >
+                  <span className="absolute -top-2.5 left-3 bg-bg px-2 text-[10px] font-semibold uppercase tracking-wider text-muted">
+                    {group.label}
+                  </span>
+                  <div className="space-y-4">
+                    {group.plugins.map((plugin) => {
               const hasParams =
                 (plugin.parameters?.length ?? 0) > 0 &&
                 plugin.id !== "__ui-showcase__";
@@ -2806,6 +2839,10 @@ function PluginListView({
                 </div>
               );
             })}
+                  </div>
+                </div>
+              ));
+            })()}
           </div>
         )}
       </div>
