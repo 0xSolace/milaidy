@@ -761,6 +761,7 @@ function AppProviderInner({
   // The coordinator's phase effects will re-run from restoring-session.
   // We store a ref to the coordinator's retry since it's created after this line.
   const coordinatorRetryRef = useRef<(() => void) | null>(null);
+  const coordinatorOnboardingCompleteRef = useRef<(() => void) | null>(null);
   const retryStartup = useCallback(() => {
     lifecycle.retryStartup();
     coordinatorRetryRef.current?.();
@@ -4354,6 +4355,7 @@ function AppProviderInner({
       }) as AppState["onboardingDetectedProviders"],
     );
     setOnboardingComplete(true);
+    coordinatorOnboardingCompleteRef.current?.();
     initialTabSetRef.current = true;
     setTab(DEFAULT_LANDING_TAB);
     setOnboardingHandoffPhase("idle");
@@ -5388,8 +5390,9 @@ function AppProviderInner({
     onboardingMode,
   });
 
-  // Wire coordinatorRetryRef so retryStartup() also triggers coordinator retry
+  // Wire coordinator refs so callbacks defined before the coordinator can reach it
   coordinatorRetryRef.current = startupCoordinator.retry;
+  coordinatorOnboardingCompleteRef.current = startupCoordinator.onboardingComplete;
 
   // ── Initialization (LEGACY — replaced by StartupCoordinator above) ──
   // The legacy startup effect below has been replaced by the coordinator.
