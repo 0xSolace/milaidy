@@ -244,8 +244,7 @@ export function App() {
   // delaying WebSocket agent-status updates (which would freeze the loader).
   const companionSceneActive =
     COMPANION_ENABLED &&
-    !onboardingLoading &&
-    agentStatus?.state !== "starting" &&
+    startupCoordinator.phase === "ready" &&
     (companionShellVisible || characterSceneVisible);
   const contextMenu = useContextMenu();
 

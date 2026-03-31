@@ -216,6 +216,7 @@ import { useCharacterState } from "./useCharacterState";
 import { useWalletState } from "./useWalletState";
 import { usePluginsSkillsState } from "./usePluginsSkillsState";
 import { useCloudState } from "./useCloudState";
+import { useOnboardingCallbacks } from "./useOnboardingCallbacks";
 
 export {
   type ActionNotice,
@@ -4216,7 +4217,7 @@ function AppProviderInner({
     loadCharacter,
   ]);
 
-  const runOnboardingChatHandoff = useCallback(
+  const submitOnboardingAndComplete = useCallback(
     async () => {
       if (!onboardingOptions) return;
 
@@ -4462,8 +4463,8 @@ function AppProviderInner({
   );
 
   const handleOnboardingFinish = useCallback(async () => {
-    await runOnboardingChatHandoff();
-  }, [runOnboardingChatHandoff]);
+    await submitOnboardingAndComplete();
+  }, [submitOnboardingAndComplete]);
 
   // ── Onboarding motion (flow graph: packages/app-core/src/onboarding/flow.ts) ──
   // WHY split from flow.ts: advance/revert need handleCloudLoginRef, finish,
@@ -4742,11 +4743,11 @@ function AppProviderInner({
     setOnboardingRunMode,
   ]);
 
-  // handleCloudOnboardingFinish — one-liner kept here because runOnboardingChatHandoff
+  // handleCloudOnboardingFinish — one-liner kept here because submitOnboardingAndComplete
   // is defined above and cloud hook is instantiated earlier.
   const handleCloudOnboardingFinish = useCallback(async () => {
-    await runOnboardingChatHandoff();
-  }, [runOnboardingChatHandoff]);
+    await submitOnboardingAndComplete();
+  }, [submitOnboardingAndComplete]);
 
   // ── Updates ────────────────────────────────────────────────────────
 

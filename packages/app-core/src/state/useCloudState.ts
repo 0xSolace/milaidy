@@ -14,7 +14,7 @@
  * - `t`                      — translation function, used for auth-rejected notice key
  *
  * Note: `handleCloudOnboardingFinish` is kept in AppContext (one-liner that calls
- * `runOnboardingChatHandoff`, which is defined later in AppContext's render order).
+ * `submitOnboardingAndComplete`, which is defined later in AppContext's render order).
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";

@@ -32,8 +32,6 @@ type AppHarnessState = {
   startupError: null;
   authRequired: boolean;
   onboardingComplete: boolean;
-  onboardingHandoffError: string | null;
-  onboardingHandoffPhase: string;
   tab: string;
   actionNotice: null;
   onboardingStep: OnboardingStep;
@@ -632,8 +630,6 @@ function createHarnessState(
     startupError: null,
     authRequired: false,
     onboardingComplete: false,
-    onboardingHandoffError: null,
-    onboardingHandoffPhase: "idle",
     tab: "chat",
     actionNotice: null,
     onboardingStep: "identity",
@@ -825,7 +821,6 @@ function setupMock(state: AppHarnessState) {
   mockUseApp.mockImplementation(() => ({
     t: (k: string) => k,
     ...state,
-    cancelOnboardingHandoff: vi.fn(),
     setState: (key: string, value: unknown) => {
       state[key] = value;
     },
@@ -852,7 +847,6 @@ function setupMock(state: AppHarnessState) {
       generated: true,
       persisted: false,
     })),
-    retryOnboardingHandoff: vi.fn(async () => {}),
     retryStartup: vi.fn(),
     startupPhase:
       state.startupStatus === "ready" ? "ready" : "starting-backend",
