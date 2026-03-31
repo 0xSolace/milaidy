@@ -569,12 +569,17 @@ async function _getTableColumnNames(
  * Reads from env vars at call time so tests can override.
  */
 export function buildCorsAllowedPorts(): Set<string> {
-  return new Set([
+  const ports = new Set([
     String(process.env.MILADY_API_PORT ?? process.env.ELIZA_PORT ?? "31337"),
     String(process.env.MILADY_PORT ?? "2138"),
     String(process.env.MILADY_GATEWAY_PORT ?? "18789"),
     String(process.env.MILADY_HOME_PORT ?? "2142"),
   ]);
+  // Electrobun renderer static server picks a free port in the 5174–5200
+  // range. Allow the full range so cross-origin fetches from WKWebView
+  // to the local API succeed.
+  for (let p = 5174; p <= 5200; p++) ports.add(String(p));
+  return ports;
 }
 
 /**
