@@ -61,21 +61,22 @@ export function StartupShell() {
           className="pointer-events-none absolute inset-0 h-full w-full object-contain object-right-bottom"
         />
         <div className="relative z-10 flex flex-col items-center gap-6 px-8 text-center max-w-md">
-          <h1 className="text-4xl font-black tracking-tight text-black drop-shadow-sm">
+          <h1 style={{ fontFamily: "'Press Start 2P', 'Courier New', monospace" }} className="text-3xl text-black drop-shadow-sm">
             MILADY
           </h1>
-          <p className="text-sm text-black/60">
+          <p style={{ fontFamily: "'Press Start 2P', 'Courier New', monospace" }} className="text-[8px] text-black/50 uppercase leading-relaxed">
             {t("startupshell.SplashTagline", { defaultValue: "Your local-first AI assistant" })}
           </p>
           <button
             type="button"
             disabled={!splashState.loaded}
             onClick={() => startupCoordinator.dispatch({ type: "SPLASH_CONTINUE" })}
-            className="mt-4 rounded-md bg-black px-8 py-3 text-sm font-bold uppercase tracking-wider text-[#ffe600] shadow-lg hover:bg-black/80 disabled:opacity-40 disabled:cursor-wait transition-all"
+            style={{ fontFamily: "'Press Start 2P', 'Courier New', monospace" }}
+            className="mt-4 border-2 border-black bg-black px-6 py-3 text-[10px] uppercase text-[#ffe600] shadow-lg hover:bg-black/80 disabled:opacity-40 disabled:cursor-wait transition-all"
           >
             {splashState.loaded
-              ? t("startupshell.GetStarted", { defaultValue: "Get Started" })
-              : t("startupshell.Loading", { defaultValue: "Loading\u2026" })}
+              ? t("startupshell.GetStarted", { defaultValue: "Press Start" })
+              : t("startupshell.Loading", { defaultValue: "Loading..." })}
           </button>
         </div>
       </div>
@@ -110,63 +111,23 @@ export function StartupShell() {
     return null;
   }
 
-  // Loading phases — retro-styled loading screen centered in the window
-  const statusText = t(phaseToStatusKey(phase));
-  const showSlow = elapsedSec >= 10;
-
-  // Progress estimate based on phase (0-100)
-  const progressPct =
-    phase === "restoring-session" ? 15 :
-    phase === "resolving-target" ? 25 :
-    phase === "polling-backend" ? 45 :
-    phase === "starting-runtime" ? 70 :
-    phase === "hydrating" ? 90 : 10;
-
+  // All other intermediate phases (restoring-session, polling-backend, etc.)
+  // show the splash with a status indicator — no separate loading screen.
   return (
     <div className="absolute inset-0 flex items-center justify-center bg-[#ffe600] font-body text-black overflow-hidden">
-      {/* Branded splash background — see CLAUDE.md § Startup Splash */}
       <img
         src="/splash-bg.png"
         alt=""
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 h-full w-full object-contain object-right-bottom opacity-30"
+        className="pointer-events-none absolute inset-0 h-full w-full object-contain object-right-bottom"
       />
-
-      {/* Centered loading card */}
-      <div className="relative z-10 flex flex-col items-center gap-5 px-8 w-full max-w-sm">
-        {/* Status text */}
-        <p className="text-sm font-bold uppercase tracking-widest text-black/80">
-          {statusText}
+      <div className="relative z-10 flex flex-col items-center gap-4 px-8 text-center">
+        <h1 style={{ fontFamily: "'Press Start 2P', 'Courier New', monospace" }} className="text-3xl text-black drop-shadow-sm">
+          MILADY
+        </h1>
+        <p style={{ fontFamily: "'Press Start 2P', 'Courier New', monospace" }} className="text-[10px] text-black/60 uppercase tracking-wider animate-pulse">
+          {t(phaseToStatusKey(phase))}
         </p>
-
-        {/* Retro progress bar */}
-        <div className="w-full">
-          <div className="h-6 w-full border-2 border-black/80 bg-black/10 overflow-hidden">
-            <div
-              className="h-full bg-black/80 transition-all duration-700 ease-out"
-              style={{ width: `${progressPct}%` }}
-            >
-              {/* Segmented bar effect */}
-              <div className="h-full w-full"
-                style={{
-                  backgroundImage: "repeating-linear-gradient(90deg, transparent, transparent 8px, rgba(255,230,0,0.4) 8px, rgba(255,230,0,0.4) 10px)",
-                }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Elapsed time */}
-        <p className="text-xs text-black/50 tabular-nums font-mono">
-          {Math.floor(elapsedSec / 60)}:{(elapsedSec % 60).toString().padStart(2, "0")}
-        </p>
-
-        {/* Slow startup warning */}
-        {showSlow && (
-          <p className="text-xs text-black/60">
-            {t("startupshell.TakingLonger")}
-          </p>
-        )}
       </div>
     </div>
   );

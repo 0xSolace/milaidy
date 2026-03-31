@@ -111,7 +111,6 @@ import {
   resolveOnboardingPreviousStep,
 } from "../onboarding/flow";
 import { buildOnboardingConnectionConfig } from "../onboarding-config";
-import { restartAgentAfterOnboarding } from "./onboarding-restart";
 import {
   alertDesktopMessage,
   confirmDesktopAction,
@@ -218,9 +217,6 @@ import { useCharacterState } from "./useCharacterState";
 import { useWalletState } from "./useWalletState";
 import { usePluginsSkillsState } from "./usePluginsSkillsState";
 import { useCloudState } from "./useCloudState";
-
-const AGENT_STATUS_POLL_INTERVAL_MS = 500;
-const ONBOARDING_GREETING_READY_TIMEOUT_MS = 15_000;
 
 type OnboardingHandoffMode = "full" | "cloud_fast_track";
 
@@ -2158,37 +2154,6 @@ function AppProviderInner({
     [fetchGreeting],
   );
 
-  const waitForOnboardingGreetingBootstrap = useCallback(async () => {
-    const deadlineAt = Date.now() + ONBOARDING_GREETING_READY_TIMEOUT_MS;
-
-    while (Date.now() < deadlineAt) {
-      try {
-        const status = await client.getStatus();
-        setAgentStatus(status);
-        setConnected(true);
-
-        if (status.pendingRestart) {
-          setPendingRestart(true);
-          setPendingRestartReasons(status.pendingRestartReasons ?? []);
-        }
-
-        if (status.state === "running" || status.state === "error") {
-          return;
-        }
-      } catch {
-        setConnected(false);
-      }
-
-      await new Promise<void>((resolve) => {
-        setTimeout(resolve, AGENT_STATUS_POLL_INTERVAL_MS);
-      });
-    }
-  }, [
-    setAgentStatus,
-    setConnected,
-    setPendingRestart,
-    setPendingRestartReasons,
-  ]);
 
   const hydrateInitialConversationState = useCallback(async (): Promise<
     string | null
@@ -2990,95 +2955,6 @@ function AppProviderInner({
     ],
   );
 
-  /**
-   * After agent is up: load conversations; if the server has none, create a
-   * default thread (same as sidebar "new chat") so greeting/bootstrap can run.
-   */
-  const bootstrapConversationAfterAgentReady = useCallback(
-    async (
-      context: string,
-      options?: {
-        forceFreshConversation?: boolean;
-        skipAgentRunningWait?: boolean;
-      },
-    ) => {
-      traceMiladyGreeting(`${context}:begin`, {
-        forceFreshConversation: options?.forceFreshConversation === true,
-        skipAgentRunningWait: options?.skipAgentRunningWait === true,
-      });
-      if (options?.skipAgentRunningWait !== true) {
-        await waitForOnboardingGreetingBootstrap();
-      }
-      if (options?.forceFreshConversation === true) {
-        try {
-          const { conversations: existingConversations } =
-            await client.listConversations();
-          setConversations(existingConversations);
-        } catch (err) {
-          console.warn(
-            "[milady][chat:init] failed to load existing conversations before onboarding handoff",
-            err,
-          );
-          setConversations([]);
-        }
-        greetingFiredRef.current = false;
-        conversationMessagesRef.current = [];
-        setConversationMessages([]);
-        setActiveConversationId(null);
-        activeConversationIdRef.current = null;
-        traceMiladyGreeting(`${context}:force_fresh_conversation`);
-        await handleNewConversation();
-        if (!activeConversationIdRef.current) {
-          throw new Error("Failed to create your first conversation.");
-        }
-        return;
-      }
-      const greetConvId = await hydrateInitialConversationState();
-      traceMiladyGreeting(`${context}:hydrate`, {
-        greetConvId,
-        activeConversationId: activeConversationIdRef.current,
-        messageCount: conversationMessagesRef.current.length,
-        greetingFired: greetingFiredRef.current,
-      });
-
-      if (!greetConvId && !activeConversationIdRef.current) {
-        traceMiladyGreeting(`${context}:create_default_conversation`);
-        await handleNewConversation();
-        traceMiladyGreeting(`${context}:after_create`, {
-          activeConversationId: activeConversationIdRef.current,
-          messageCount: conversationMessagesRef.current.length,
-          greetingFired: greetingFiredRef.current,
-        });
-        return;
-      }
-
-      if (greetConvId) {
-        traceMiladyGreeting(`${context}:request_greeting`, { greetConvId });
-        await requestGreetingWhenRunning(greetConvId);
-        traceMiladyGreeting(`${context}:after_request_greeting`, {
-          messageCount: conversationMessagesRef.current.length,
-          greetingFired: greetingFiredRef.current,
-        });
-      } else {
-        traceMiladyGreeting(`${context}:skip_request_greeting`, {
-          activeConversationId: activeConversationIdRef.current,
-          messageCount: conversationMessagesRef.current.length,
-        });
-      }
-    },
-    [
-      activeConversationIdRef,
-      conversationMessagesRef,
-      greetingFiredRef,
-      handleNewConversation,
-      hydrateInitialConversationState,
-      requestGreetingWhenRunning,
-      setActiveConversationId,
-      setConversationMessages,
-      setConversations,
-      waitForOnboardingGreetingBootstrap,
-    ],
-  );
 
   useEffect(() => {
     if (uiShellMode !== "companion" || tab !== "companion") {
@@ -4486,13 +4362,6 @@ function AppProviderInner({
             }
           }
 
-          setOnboardingHandoffPhase("restarting");
-          setAgentStatus(await restartAgentAfterOnboarding(client));
-          setOnboardingHandoffPhase("bootstrapping");
-          await bootstrapConversationAfterAgentReady(
-            "onboarding:cloud_fast_track",
-            { forceFreshConversation: true },
-          );
           completeOnboardingChatHandoff();
           return;
         }
@@ -4681,12 +4550,6 @@ function AppProviderInner({
           await new Promise((r) => setTimeout(r, 1000));
         }
 
-        setOnboardingHandoffPhase("restarting");
-        setAgentStatus(await restartAgentAfterOnboarding(client));
-        setOnboardingHandoffPhase("bootstrapping");
-        await bootstrapConversationAfterAgentReady("onboarding:full_finish", {
-          forceFreshConversation: true,
-        });
         completeOnboardingChatHandoff();
       } catch (err) {
         failOnboardingChatHandoff(err);
@@ -4697,7 +4560,6 @@ function AppProviderInner({
       }
     },
     [
-      agentStatus,
       onboardingRestarting,
       onboardingOptions,
       onboardingStyle,
@@ -4725,7 +4587,6 @@ function AppProviderInner({
       onboardingFinishSavingRef,
       setOnboardingRestarting,
       prepareOnboardingChatHandoffAttempt,
-      bootstrapConversationAfterAgentReady,
       completeOnboardingChatHandoff,
       failOnboardingChatHandoff,
     ],
@@ -5393,12 +5254,6 @@ function AppProviderInner({
   // Wire coordinator refs so callbacks defined before the coordinator can reach it
   coordinatorRetryRef.current = startupCoordinator.retry;
   coordinatorOnboardingCompleteRef.current = startupCoordinator.onboardingComplete;
-
-  // ── Initialization (LEGACY — replaced by StartupCoordinator above) ──
-  // The legacy startup effect below has been replaced by the coordinator.
-  // It is kept here as a tombstone comment for reference during review.
-  // The coordinator's phase effects in useStartupCoordinator.ts are
-  // the sole startup authority now.
 
   const requestGreetingWhenRunningRef2 = useRef(requestGreetingWhenRunning);
   useEffect(() => {
