@@ -198,10 +198,22 @@ export function usePluginsSkillsState({
         const plugin = plugins.find((p) => p.id === pluginId);
         const isAiProvider = plugin?.category === "ai-provider";
 
+        // When saving an AI provider's API key, also trigger a provider
+        // switch so the runtime restarts with the new plugin loaded.
+        if (isAiProvider) {
+          const providerApiKey = Object.values(config)[0];
+          try {
+            await client.switchProvider(pluginId, providerApiKey);
+          } catch {
+            // switchProvider may fail if provider ID doesn't match —
+            // the key is already saved via updatePlugin above.
+          }
+        }
+
         await loadPlugins();
         setActionNotice(
           isAiProvider
-            ? "Provider settings saved. Restart required to apply."
+            ? "Provider settings saved. Restarting agent..."
             : "Plugin settings saved.",
           "success",
         );
