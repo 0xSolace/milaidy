@@ -49,6 +49,39 @@ export function StartupShell() {
     return () => window.clearInterval(id);
   }, [phase]);
 
+  // Splash phase — branded welcome screen with "Get Started" button
+  if (phase === "splash") {
+    const splashState = startupCoordinator.state as { phase: "splash"; loaded: boolean };
+    return (
+      <div className="absolute inset-0 flex items-center justify-center bg-[#ffe600] font-body text-black overflow-hidden">
+        <img
+          src="/splash-bg.png"
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 h-full w-full object-contain object-right-bottom"
+        />
+        <div className="relative z-10 flex flex-col items-center gap-6 px-8 text-center max-w-md">
+          <h1 className="text-4xl font-black tracking-tight text-black drop-shadow-sm">
+            MILADY
+          </h1>
+          <p className="text-sm text-black/60">
+            {t("startupshell.SplashTagline", { defaultValue: "Your local-first AI assistant" })}
+          </p>
+          <button
+            type="button"
+            disabled={!splashState.loaded}
+            onClick={() => startupCoordinator.dispatch({ type: "SPLASH_CONTINUE" })}
+            className="mt-4 rounded-md bg-black px-8 py-3 text-sm font-bold uppercase tracking-wider text-[#ffe600] shadow-lg hover:bg-black/80 disabled:opacity-40 disabled:cursor-wait transition-all"
+          >
+            {splashState.loaded
+              ? t("startupshell.GetStarted", { defaultValue: "Get Started" })
+              : t("startupshell.Loading", { defaultValue: "Loading\u2026" })}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Error phase — delegate to StartupFailureView
   if (phase === "error") {
     const coordState = startupCoordinator.state;

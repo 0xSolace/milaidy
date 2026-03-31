@@ -246,6 +246,15 @@ export function useStartupCoordinator(
   // Track whether the ready-phase WS bindings have been set up
   const wsBindingsActiveRef = useRef(false);
 
+  // ── Phase: splash — mark as loaded once deps are ready ──────────
+  useEffect(() => {
+    if (state.phase !== "splash") return;
+    // Once React has mounted and deps are wired, splash is "loaded"
+    if (depsReady) {
+      dispatch({ type: "SPLASH_LOADED" });
+    }
+  }, [state.phase, depsReady]);
+
   // ── Phase: restoring-session ────────────────────────────────────
   useEffect(() => {
     if (state.phase !== "restoring-session" || !depsReady) return;
@@ -316,7 +325,15 @@ export function useStartupCoordinator(
           providers: [...ONBOARDING_PROVIDER_CATALOG] as OnboardingOptions["providers"],
           cloudProviders: [], models: { small: [], large: [] }, inventoryProviders: [], sharedStyleRules: "",
         });
-        try { const det = await scanProviderCredentials(); if (!cancelled) d.applyDetectedProviders(det); } catch {}
+        try {
+          const det = await scanProviderCredentials();
+          if (!cancelled && det.length > 0) {
+            console.log(`[milady][startup] Keychain scan found ${det.length} provider(s):`, det.map(p => p.id));
+            d.applyDetectedProviders(det);
+          }
+        } catch (scanErr) {
+          console.warn("[milady][startup] Keychain credential scan failed:", scanErr);
+        }
         d.setStartupPhase("ready");
         d.setOnboardingComplete(false);
         d.setOnboardingLoading(false);

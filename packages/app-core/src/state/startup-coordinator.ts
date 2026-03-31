@@ -37,6 +37,7 @@ export interface PlatformPolicy {
 // ── State ────────────────────────────────────────────────────────────
 
 export type StartupState =
+  | { phase: "splash"; loaded: boolean }
   | { phase: "restoring-session" }
   | {
       phase: "resolving-target";
@@ -107,7 +108,9 @@ export type StartupEvent =
 
   // User actions
   | { type: "RETRY" }
-  | { type: "PAIRING_SUCCESS" };
+  | { type: "PAIRING_SUCCESS" }
+  | { type: "SPLASH_CONTINUE" }
+  | { type: "SPLASH_LOADED" };
 
 // ── Reducer ──────────────────────────────────────────────────────────
 
@@ -116,6 +119,18 @@ export function startupReducer(
   event: StartupEvent,
 ): StartupState {
   switch (state.phase) {
+    case "splash":
+      switch (event.type) {
+        case "SPLASH_LOADED":
+          return { phase: "splash", loaded: true };
+        case "SPLASH_CONTINUE":
+          return { phase: "restoring-session" };
+        case "RETRY":
+          return { phase: "splash", loaded: false };
+        default:
+          return state;
+      }
+
     case "restoring-session":
       switch (event.type) {
         case "SESSION_RESTORED":
@@ -251,7 +266,8 @@ export function startupReducer(
 // ── Initial state ────────────────────────────────────────────────────
 
 export const INITIAL_STARTUP_STATE: StartupState = {
-  phase: "restoring-session",
+  phase: "splash",
+  loaded: false,
 };
 
 // ── Policy factories ─────────────────────────────────────────────────
