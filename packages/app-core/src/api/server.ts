@@ -108,6 +108,7 @@ import {
   saveElizaConfig,
 } from "@miladyai/agent/config/config";
 import { resolveUserPath } from "@miladyai/agent/config/paths";
+import { buildCharacterFromConfig } from "../runtime/eliza";
 import { resolveDefaultAgentWorkspaceDir } from "@miladyai/agent/providers/workspace";
 import {
   isMiladySettingsDebugEnabled,
@@ -861,6 +862,27 @@ async function handleMiladyCompatRoute(
   if (await handlePluginsCompatRoutes(req, res, state)) return true;
 
   if (await handleOnboardingCompatRoute(req, res, state)) return true;
+
+  // GET /api/agents — return the running agent's info.
+  // Milady runs a single agent; this returns it as a one-element array
+  // for compatibility with the upstream elizaOS health probe convention.
+  if (method === "GET" && url.pathname === "/api/agents") {
+    if (!ensureCompatApiAuthorized(req, res)) {
+      return true;
+    }
+    const config = loadElizaConfig();
+    const character = buildCharacterFromConfig(config);
+    const agentId =
+      state.current?.agentId ?? character.id ?? "00000000-0000-0000-0000-000000000000";
+    sendJsonResponse(res, 200, [
+      {
+        id: agentId,
+        name: character.name,
+        status: state.current ? "running" : "stopped",
+      },
+    ]);
+    return true;
+  }
 
   if (method === "GET" && url.pathname === "/api/config") {
     if (!ensureCompatApiAuthorized(req, res)) {
