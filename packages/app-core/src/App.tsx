@@ -35,6 +35,7 @@ import {
   CustomActionsPanel,
   GameViewOverlay,
   Header,
+  HeartbeatsDesktopShell,
   HeartbeatsView,
   InventoryView,
   KnowledgeView,
@@ -49,15 +50,14 @@ import {
 } from "./app-shell-components";
 import { CompanionHeader } from "./components/companion/CompanionHeader";
 import { DeferredSetupChecklist } from "./components/FlaminaGuide";
-import { SceneOverlayDataBridge } from "./components/scene-overlay-bridge";
 import { TasksEventsPanel } from "./components/TasksEventsPanel";
-import { useActivityEvents } from "./hooks/useActivityEvents";
 import {
   BugReportProvider,
   useBugReportState,
   useContextMenu,
   useStreamPopoutNavigation,
 } from "./hooks";
+import { useActivityEvents } from "./hooks/useActivityEvents";
 import type { Tab } from "./navigation";
 import { APPS_ENABLED, COMPANION_ENABLED } from "./navigation";
 import { useApp } from "./state";
@@ -163,15 +163,15 @@ function ViewRouter({
         );
       case "voice":
         return (
-          <TabScrollView className="[scrollbar-gutter:stable] [scroll-padding-top:7rem]">
+          <TabContentView>
             <SettingsView key="settings-media" initialSection="media" />
-          </TabScrollView>
+          </TabContentView>
         );
       case "settings":
         return (
-          <TabScrollView className="[scrollbar-gutter:stable] [scroll-padding-top:7rem]">
+          <TabContentView>
             <SettingsView key="settings-root" />
-          </TabScrollView>
+          </TabContentView>
         );
       case "advanced":
       case "plugins":
@@ -265,6 +265,22 @@ export function App() {
   const [mobileConversationsOpen, setMobileConversationsOpen] = useState(false);
 
   const isChat = tab === "chat";
+  const isWallets = tab === "wallets";
+  const isConnectors = tab === "connectors";
+  const isHeartbeats = tab === "triggers";
+  const isKnowledge = tab === "knowledge";
+  const isSettingsPage = tab === "settings" || tab === "voice";
+  const isAdvancedPage =
+    tab === "advanced" ||
+    tab === "plugins" ||
+    tab === "skills" ||
+    tab === "fine-tuning" ||
+    tab === "trajectories" ||
+    tab === "runtime" ||
+    tab === "database" ||
+    tab === "desktop" ||
+    tab === "logs" ||
+    tab === "security";
   const unreadCount = unreadConversations?.size ?? 0;
   const mobileChatControls = isChatMobileLayout ? (
     <div className="flex items-center gap-2 w-max">
@@ -429,14 +445,20 @@ export function App() {
   const shellContent = companionShellVisible ? (
     <CompanionShell tab={effectiveTab} actionNotice={actionNotice} />
   ) : tab === "stream" ? (
-    <div className="flex flex-col flex-1 min-h-0 w-full font-body text-txt bg-bg">
+    <div
+      key="stream-shell"
+      className="flex flex-col flex-1 min-h-0 w-full font-body text-txt bg-bg"
+    >
       <Header />
       <main className="flex-1 min-h-0 overflow-hidden">
         <StreamView />
       </main>
     </div>
   ) : isChat ? (
-    <div className="flex flex-col flex-1 min-h-0 w-full font-body text-txt bg-bg">
+    <div
+      key="chat-shell"
+      className="flex flex-col flex-1 min-h-0 w-full font-body text-txt bg-bg"
+    >
       <Header
         mobileLeft={mobileChatControls}
         tasksEventsPanelOpen={tasksEventsPanelOpen}
@@ -475,6 +497,7 @@ export function App() {
                     </DrawerSheetTitle>
                   </DrawerSheetHeader>
                   <ConversationsSidebar
+                    key="chat-sidebar-mobile"
                     mobile
                     onClose={() => setMobileConversationsOpen(false)}
                   />
@@ -512,13 +535,13 @@ export function App() {
           </>
         ) : (
           <>
-            <ConversationsSidebar />
+            <ConversationsSidebar key="chat-sidebar-desktop" />
             <main className="flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden">
               <DeferredSetupChecklist
                 className="mx-3 mb-3 mt-3 xl:mx-5"
                 onOpenTask={handleDeferredTaskOpen}
               />
-              <ChatView />
+              <ChatView key="chat-view-desktop" />
             </main>
             <TasksEventsPanel
               open={tasksEventsPanelOpen}
@@ -538,8 +561,74 @@ export function App() {
         />
       </div>
     </div>
+  ) : isHeartbeats ? (
+    <div
+      key="heartbeats-shell"
+      className="flex flex-col flex-1 min-h-0 w-full font-body text-txt bg-bg"
+    >
+      <Header />
+      <div className="flex flex-1 min-h-0 min-w-0 overflow-hidden">
+        <HeartbeatsDesktopShell key="heartbeats-view-desktop" />
+      </div>
+    </div>
+  ) : isConnectors ? (
+    <div
+      key="connectors-shell"
+      className="flex flex-col flex-1 min-h-0 w-full font-body text-txt bg-bg"
+    >
+      <Header />
+      <div className="flex flex-1 min-h-0 min-w-0 overflow-hidden">
+        <ConnectorsPageView />
+      </div>
+    </div>
+  ) : isKnowledge ? (
+    <div
+      key="knowledge-shell"
+      className="flex flex-col flex-1 min-h-0 w-full font-body text-txt bg-bg"
+    >
+      <Header />
+      <div className="flex flex-1 min-h-0 min-w-0 overflow-hidden">
+        <KnowledgeView />
+      </div>
+    </div>
+  ) : isSettingsPage ? (
+    <div
+      key={`settings-shell-${tab}`}
+      className="flex flex-col flex-1 min-h-0 w-full font-body text-txt bg-bg"
+    >
+      <Header />
+      <div className="flex flex-1 min-h-0 min-w-0 overflow-hidden">
+        <SettingsView
+          key={tab === "voice" ? "settings-media" : "settings-root"}
+          initialSection={tab === "voice" ? "media" : undefined}
+        />
+      </div>
+    </div>
+  ) : isWallets ? (
+    <div
+      key="wallets-shell"
+      className="flex flex-col flex-1 min-h-0 w-full font-body text-txt bg-bg"
+    >
+      <Header />
+      <div className="flex flex-1 min-h-0 min-w-0 overflow-hidden">
+        <InventoryView />
+      </div>
+    </div>
+  ) : isAdvancedPage ? (
+    <div
+      key={`advanced-shell-${tab}`}
+      className="flex flex-col flex-1 min-h-0 w-full font-body text-txt bg-bg"
+    >
+      <Header />
+      <div className="flex flex-1 min-h-0 min-w-0 overflow-hidden">
+        <AdvancedPageView />
+      </div>
+    </div>
   ) : characterSceneVisible ? (
-    <div className="relative flex flex-col flex-1 min-h-0 w-full font-body text-txt bg-transparent">
+    <div
+      key="character-shell"
+      className="relative flex flex-col flex-1 min-h-0 w-full font-body text-txt bg-transparent"
+    >
       <CompanionHeader
         activeShellView="character"
         onShellViewChange={(view) => switchShellView(view)}
@@ -559,7 +648,10 @@ export function App() {
       </main>
     </div>
   ) : (
-    <div className="flex flex-col flex-1 min-h-0 w-full font-body text-txt bg-bg">
+    <div
+      key={`tab-shell-${tab}`}
+      className="flex flex-col flex-1 min-h-0 w-full font-body text-txt bg-bg"
+    >
       <Header />
       <main className="flex flex-1 min-h-0 min-w-0 overflow-hidden px-3 xl:px-5 py-4 xl:py-6">
         <ViewRouter />
@@ -580,8 +672,6 @@ export function App() {
 
   return (
     <BugReportProvider value={bugReport}>
-      {/* Bridge React state into the 3D scene overlay panels */}
-      {COMPANION_ENABLED && <SceneOverlayDataBridge />}
       {/*
         If we are in the crossfade phase, mount the shell but cover it with the fading onboarding layer.
       */}

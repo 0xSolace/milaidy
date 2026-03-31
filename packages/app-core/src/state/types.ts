@@ -340,6 +340,7 @@ export interface AppState {
 
   // Triggers
   triggers: TriggerSummary[];
+  triggersLoaded: boolean;
   triggersLoading: boolean;
   triggersSaving: boolean;
   triggerRunsById: Record<string, TriggerRunRecord[]>;
@@ -672,7 +673,8 @@ export interface AppActions {
   ) => Promise<void>;
 
   // Triggers
-  loadTriggers: () => Promise<void>;
+  loadTriggers: (options?: { silent?: boolean }) => Promise<void>;
+  ensureTriggersLoaded: () => Promise<void>;
   createTrigger: (
     request: CreateTriggerRequest,
   ) => Promise<TriggerSummary | null>;
@@ -689,7 +691,8 @@ export interface AppActions {
   handlePairingSubmit: () => Promise<void>;
 
   // Plugins
-  loadPlugins: () => Promise<void>;
+  loadPlugins: (options?: { silent?: boolean }) => Promise<void>;
+  ensurePluginsLoaded: () => Promise<void>;
   handlePluginToggle: (pluginId: string, enabled: boolean) => Promise<void>;
   handlePluginConfigSave: (
     pluginId: string,

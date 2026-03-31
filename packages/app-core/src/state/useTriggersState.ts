@@ -30,6 +30,7 @@ function sortTriggersByNextRun(items: TriggerSummary[]): TriggerSummary[] {
 
 export function useTriggersState() {
   const [triggers, setTriggers] = useState<TriggerSummary[]>([]);
+  const [triggersLoaded, setTriggersLoaded] = useState(false);
   const [triggersLoading, setTriggersLoading] = useState(false);
   const [triggersSaving, setTriggersSaving] = useState(false);
   const [triggerRunsById, setTriggerRunsById] = useState<
@@ -48,8 +49,11 @@ export function useTriggersState() {
     }
   }, []);
 
-  const loadTriggers = useCallback(async () => {
-    setTriggersLoading(true);
+  const loadTriggers = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent === true;
+    if (!silent) {
+      setTriggersLoading(true);
+    }
     try {
       const data = await client.getTriggers();
       setTriggers(sortTriggersByNextRun(data.triggers));
@@ -58,11 +62,20 @@ export function useTriggersState() {
       const message =
         err instanceof Error ? err.message : "Failed to load triggers";
       setTriggerError(message);
-      setTriggers([]);
+      if (!silent) {
+        setTriggers([]);
+      }
     } finally {
-      setTriggersLoading(false);
+      setTriggersLoaded(true);
+      if (!silent) {
+        setTriggersLoading(false);
+      }
     }
   }, []);
+
+  const ensureTriggersLoaded = useCallback(async () => {
+    await loadTriggers(triggersLoaded ? { silent: true } : undefined);
+  }, [loadTriggers, triggersLoaded]);
 
   const loadTriggerRuns = useCallback(async (id: string) => {
     try {
@@ -198,6 +211,7 @@ export function useTriggersState() {
   return {
     state: {
       triggers,
+      triggersLoaded,
       triggersLoading,
       triggersSaving,
       triggerRunsById,
@@ -207,6 +221,7 @@ export function useTriggersState() {
     loadTriggers,
     loadTriggerHealth,
     loadTriggerRuns,
+    ensureTriggersLoaded,
     createTrigger,
     updateTrigger,
     deleteTrigger,

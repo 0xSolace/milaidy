@@ -38,6 +38,7 @@ export function usePluginsSkillsState({
 }: PluginsSkillsStateParams) {
   // --- Plugins ---
   const [plugins, setPlugins] = useState<PluginInfo[]>([]);
+  const [pluginsLoaded, setPluginsLoaded] = useState(false);
   const [pluginFilter, setPluginFilter] = useState<
     "all" | "ai-provider" | "connector" | "feature" | "streaming"
   >("all");
@@ -123,14 +124,23 @@ export function usePluginsSkillsState({
 
   // ── Plugin callbacks ────────────────────────────────────────────────
 
-  const loadPlugins = useCallback(async () => {
+  const loadPlugins = useCallback(async (_options?: { silent?: boolean }) => {
     try {
       const { plugins: p } = await client.getPlugins();
       setPlugins(p);
+      setPluginsLoaded(true);
     } catch {
       /* ignore */
     }
   }, []);
+
+  const ensurePluginsLoaded = useCallback(
+    async (options?: { refresh?: boolean }) => {
+      if (pluginsLoaded && !options?.refresh) return;
+      await loadPlugins(pluginsLoaded ? { silent: true } : undefined);
+    },
+    [loadPlugins, pluginsLoaded],
+  );
 
   const handlePluginToggle = useCallback(
     async (pluginId: string, enabled: boolean) => {
@@ -518,6 +528,7 @@ export function usePluginsSkillsState({
 
     // Plugin callbacks
     loadPlugins,
+    ensurePluginsLoaded,
     handlePluginToggle,
     handlePluginConfigSave,
 
