@@ -116,10 +116,19 @@ function getPersistableLocalProviderEnvKey(
 export async function extractAndPersistOnboardingApiKey(
   body: Record<string, unknown>,
 ): Promise<string | null> {
+  logger.info(
+    `[onboarding] extractAndPersistOnboardingApiKey: connection=${body.connection ? "present" : "missing"}, keys=${Object.keys(body).join(",")}`,
+  );
   const persistedConnection = resolvePersistedOnboardingConnection(body);
   if (!persistedConnection) {
+    logger.warn(
+      "[onboarding] No persisted connection resolved from onboarding body",
+    );
     return null;
   }
+  logger.info(
+    `[onboarding] Resolved connection: kind=${persistedConnection.kind}, provider=${"provider" in persistedConnection ? persistedConnection.provider : "N/A"}, hasKey=${Boolean("apiKey" in persistedConnection && persistedConnection.apiKey)}`,
+  );
 
   if (persistedConnection.kind === "local-provider") {
     const envKey = getPersistableLocalProviderEnvKey(persistedConnection);
