@@ -2158,6 +2158,6 @@
   "startupshell.ConnectingBackend": "Connecting to backend…",
   "startupshell.InitializingAgent": "Initializing agent…",
   "startupshell.Loading": "Loading…",
-  "startupshell.Elapsed": "elapsed",
-  "startupshell.TakingLonger": "Taking longer than expected…"
+  "startupshell.GetStarted": "Press Start",
+  "startupshell.SplashTagline": "Your local-first AI assistant"
 }

@@ -6,7 +6,6 @@
  * When ready, renders nothing (children pass through in App.tsx).
  */
 
-import { useEffect, useState } from "react";
 import { useApp } from "../state";
 import type { StartupErrorState } from "../state/types";
 import { OnboardingWizard } from "./OnboardingWizard";
@@ -37,17 +36,6 @@ export function StartupShell() {
     t,
   } = useApp();
   const phase = startupCoordinator.phase;
-
-  // Elapsed time counter
-  const [elapsedSec, setElapsedSec] = useState(0);
-  useEffect(() => {
-    setElapsedSec(0);
-    const t0 = Date.now();
-    const id = window.setInterval(() => {
-      setElapsedSec(Math.floor((Date.now() - t0) / 1000));
-    }, 1000);
-    return () => window.clearInterval(id);
-  }, [phase]);
 
   // Error phase — delegate to StartupFailureView
   if (phase === "error") {

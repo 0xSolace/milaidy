@@ -246,13 +246,19 @@ export function useStartupCoordinator(
   // Track whether the ready-phase WS bindings have been set up
   const wsBindingsActiveRef = useRef(false);
 
-  // ── Phase: splash — mark as loaded once deps are ready ──────────
+  // ── Phase: splash — auto-skip for returning users, mark loaded for new users
   useEffect(() => {
     if (state.phase !== "splash") return;
-    // Once React has mounted and deps are wired, splash is "loaded"
-    if (depsReady) {
-      dispatch({ type: "SPLASH_LOADED" });
+    if (!depsReady) return;
+
+    // Returning users skip the splash entirely — go straight to restoring-session
+    if (loadPersistedOnboardingComplete()) {
+      dispatch({ type: "SPLASH_CONTINUE" });
+      return;
     }
+
+    // New users see the splash with "Press Start"
+    dispatch({ type: "SPLASH_LOADED" });
   }, [state.phase, depsReady]);
 
   // ── Phase: restoring-session ────────────────────────────────────
