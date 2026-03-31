@@ -582,6 +582,14 @@ export function buildCorsAllowedPorts(): Set<string> {
   return ports;
 }
 
+/** Lazily cached port set — computed once on first request. */
+let _cachedCorsAllowedPorts: Set<string> | undefined;
+function getCorsAllowedPorts(): Set<string> {
+  if (!_cachedCorsAllowedPorts)
+    _cachedCorsAllowedPorts = buildCorsAllowedPorts();
+  return _cachedCorsAllowedPorts;
+}
+
 /**
  * Check whether a URL string is an allowed localhost origin for CORS.
  */
@@ -905,7 +913,7 @@ export function patchHttpCreateServerForMiladyCompat(
       // only when Origin is absent so we never reflect an arbitrary Origin.
       const originHeader = req.headers.origin ?? "";
       // Build allowed origins from configured ports (API, UI, gateway, home)
-      const corsAllowedPorts = buildCorsAllowedPorts();
+      const corsAllowedPorts = getCorsAllowedPorts();
       const allowOrigin = (() => {
         if (originHeader !== "") {
           return isAllowedLocalOrigin(originHeader, corsAllowedPorts)
