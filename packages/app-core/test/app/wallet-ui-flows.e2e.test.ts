@@ -451,6 +451,16 @@ vi.mock("@miladyai/ui", () => {
     TabsTrigger: passthrough,
     TabsContent: passthrough,
     Badge: passthrough,
+    Dialog: passthrough,
+    DialogContent: passthrough,
+    DialogHeader: passthrough,
+    DialogTitle: passthrough,
+    DialogTrigger: passthrough,
+    ConfirmDialog: passthrough,
+    Label: passthrough,
+    Slider: passthrough,
+    Switch: passthrough,
+    Spinner: passthrough,
   };
 });
 
