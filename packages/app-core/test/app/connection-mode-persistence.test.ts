@@ -29,6 +29,7 @@ const { mockClient } = vi.hoisted(() => ({
     getConfig: vi.fn(async () => null),
     disconnectWs: vi.fn(),
     getCodingAgentStatus: vi.fn(async () => null),
+    getConfig: vi.fn(async () => ({})),
     setToken: vi.fn(),
   },
 }));

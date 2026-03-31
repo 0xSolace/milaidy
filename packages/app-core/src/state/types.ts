@@ -283,7 +283,6 @@ export interface AppState {
   uiLanguage: UiLanguage;
   uiTheme: UiTheme;
   ownerName: string | null;
-  showOwnerNamePrompt: boolean;
   /** VRM quality vs GPU use: always full quality, battery-aware (default), or always efficient. */
   companionVrmPowerMode: CompanionVrmPowerMode;
   /**
@@ -681,6 +680,16 @@ export interface AppActions {
   suggestConversationTitle: (id: string) => Promise<string | null>;
   /** Send a programmatic message (e.g. from a UiSpec action) without touching chatInput. */
   sendActionMessage: (text: string) => Promise<void>;
+  /** Send a chat message with optional metadata (e.g. task creation intent). */
+  sendChatText: (
+    rawInput: string,
+    options?: {
+      channelType?: ConversationChannelType;
+      conversationId?: string | null;
+      images?: ImageAttachment[];
+      metadata?: Record<string, unknown>;
+    },
+  ) => Promise<void>;
 
   // Triggers
   loadTriggers: () => Promise<void>;
@@ -801,7 +810,6 @@ export interface AppActions {
   goToOnboardingStep: (step: OnboardingStep) => void;
   handleOnboardingRemoteConnect: () => Promise<void>;
   handleOnboardingUseLocalBackend: () => void;
-  handleOwnerNameSubmit: (name: string) => void;
 
   // Cloud
   handleCloudLogin: () => Promise<void>;

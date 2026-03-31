@@ -30,6 +30,7 @@ describe("tabFromPath", () => {
     expect(tabFromPath("/advanced")).toBe("advanced");
     expect(tabFromPath("/plugins")).toBe("plugins");
     expect(tabFromPath("/skills")).toBe("skills");
+    expect(tabFromPath("/actions")).toBeNull();
     expect(tabFromPath("/triggers")).toBe("triggers");
     expect(tabFromPath("/fine-tuning")).toBe("fine-tuning");
     expect(tabFromPath("/trajectories")).toBe("trajectories");

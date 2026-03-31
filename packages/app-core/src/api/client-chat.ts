@@ -93,6 +93,7 @@ declare module "./client-base" {
       channelType?: ConversationChannelType,
       images?: ImageAttachment[],
       conversationMode?: ConversationMode,
+      metadata?: Record<string, unknown>,
     ): Promise<{
       text: string;
       agentName: string;
@@ -106,6 +107,7 @@ declare module "./client-base" {
       signal?: AbortSignal,
       images?: ImageAttachment[],
       conversationMode?: ConversationMode,
+      metadata?: Record<string, unknown>,
     ): Promise<{
       text: string;
       agentName: string;
@@ -437,6 +439,7 @@ MiladyClient.prototype.sendConversationMessage = async function (
   channelType = "DM",
   images?,
   conversationMode?,
+  metadata?,
 ) {
   const response = await this.fetch<{
     text: string;
@@ -449,6 +452,7 @@ MiladyClient.prototype.sendConversationMessage = async function (
       channelType,
       ...(images?.length ? { images } : {}),
       ...(conversationMode ? { conversationMode } : {}),
+      ...(metadata ? { metadata } : {}),
     }),
   });
   return {
@@ -466,6 +470,7 @@ MiladyClient.prototype.sendConversationMessageStream = async function (
   signal?,
   images?,
   conversationMode?,
+  metadata?,
 ) {
   return this.streamChatEndpoint(
     `/api/conversations/${encodeURIComponent(id)}/messages/stream`,
@@ -475,6 +480,7 @@ MiladyClient.prototype.sendConversationMessageStream = async function (
     signal,
     images,
     conversationMode,
+    metadata,
   );
 };
 

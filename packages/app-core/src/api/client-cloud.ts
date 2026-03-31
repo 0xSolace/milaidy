@@ -123,6 +123,11 @@ declare module "./client-base" {
       success: boolean;
       data: CloudCompatLaunchResult;
     }>;
+    /** Fetch a pairing token for a cloud agent (for opening Web UI in a new tab). */
+    getCloudCompatPairingToken(agentId: string): Promise<{
+      success: boolean;
+      data: { token: string; redirectUrl: string; expiresIn: number };
+    }>;
     getCloudCompatAvailability(): Promise<{
       success: boolean;
       data: {
@@ -398,6 +403,16 @@ MiladyClient.prototype.launchCloudCompatAgent = async function (
 ) {
   return this.fetch(
     `/api/cloud/compat/agents/${encodeURIComponent(agentId)}/launch`,
+    { method: "POST" },
+  );
+};
+
+MiladyClient.prototype.getCloudCompatPairingToken = async function (
+  this: MiladyClient,
+  agentId,
+) {
+  return this.fetch(
+    `/api/cloud/v1/milady/agents/${encodeURIComponent(agentId)}/pairing-token`,
     { method: "POST" },
   );
 };

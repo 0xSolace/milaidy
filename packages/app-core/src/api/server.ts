@@ -28,6 +28,7 @@ import {
   startApiServer as upstreamStartApiServer,
   validateMcpServerConfig,
 } from "@miladyai/agent/api/server";
+import type { PolicyResult } from "@stwd/sdk";
 import {
   ensureCompatApiAuthorized,
   ensureCompatSensitiveRouteAuthorized,
@@ -163,7 +164,11 @@ import { getMiladyStartupEmbeddingAugmentation } from "../runtime/milady-startup
 import { hydrateWalletKeysFromNodePlatformSecureStore } from "../security/hydrate-wallet-keys-from-platform-store";
 import { deleteWalletSecretsFromOsStore } from "../security/wallet-os-store-actions";
 import { clearCloudSecrets, getCloudSecret } from "./cloud-secrets";
-import { clearPersistedOnboardingConfig } from "./provider-switch-config";
+import {
+  clearPersistedOnboardingConfig,
+  resolveExistingOnboardingConnection,
+} from "./provider-switch-config";
+import { isOnboardingConnectionComplete } from "../contracts/onboarding";
 
 // ---------------------------------------------------------------------------
 // Import from extracted modules for use within this file
