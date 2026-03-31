@@ -48,7 +48,6 @@ export type StartupState =
       attempts: number;
     }
   | { phase: "pairing-required" }
-  | { phase: "cloud-login-required" }
   | {
       phase: "onboarding-required";
       /** true = server reachable, fetch options from it. false = first-run, use static options. */
@@ -92,10 +91,6 @@ export type StartupEvent =
   | { type: "BACKEND_TIMEOUT" }
   | { type: "BACKEND_POLL_RETRY" }
 
-  // Cloud auth
-  | { type: "CLOUD_LOGIN_REQUIRED" }
-  | { type: "CLOUD_LOGIN_SUCCESS" }
-
   // Onboarding
   | { type: "ONBOARDING_OPTIONS_LOADED" }
   | { type: "ONBOARDING_COMPLETE" }
@@ -137,7 +132,7 @@ export function startupReducer(
               timedOut: false,
             };
           }
-          return { phase: "cloud-login-required" };
+          return { phase: "onboarding-required", serverReachable: false };
         default:
           return state;
       }
@@ -181,16 +176,6 @@ export function startupReducer(
       switch (event.type) {
         case "PAIRING_SUCCESS":
           return { phase: "restoring-session" };
-        case "RETRY":
-          return { phase: "restoring-session" };
-        default:
-          return state;
-      }
-
-    case "cloud-login-required":
-      switch (event.type) {
-        case "CLOUD_LOGIN_SUCCESS":
-          return { phase: "onboarding-required", serverReachable: false };
         case "RETRY":
           return { phase: "restoring-session" };
         default:

@@ -389,24 +389,12 @@ export function useStartupCoordinator(
           let sessionComplete = complete || d.onboardingCompletionCommittedRef.current || (ctx?.shouldPreserveCompletedOnboarding ?? false);
 
           // If the backend says onboarding is "complete" but there's no
-          // persisted connection mode AND no cloud auth, force re-onboarding.
+          // persisted connection mode AND no prior onboarding, force re-onboarding.
           // This catches the case where the upstream runtime auto-creates a
           // default agent (onboarding: complete) but the user never actually
           // went through the setup flow.
           if (sessionComplete && !ctx?.persistedConnection && !ctx?.hadPriorOnboarding) {
-            try {
-              const cloudStatus = await client.getCloudStatus();
-              if (!cloudStatus.connected && !cloudStatus.hasApiKey) {
-                console.log("[milady][startup] Backend reports complete but no cloud auth — requiring cloud login");
-                d.setOnboardingLoading(false);
-                dispatch({ type: "CLOUD_LOGIN_REQUIRED" });
-                return;
-              }
-            } catch {
-              d.setOnboardingLoading(false);
-              dispatch({ type: "CLOUD_LOGIN_REQUIRED" });
-              return;
-            }
+            sessionComplete = false;
           }
 
           if (complete && sessionComplete) { clearPersistedOnboardingStep(); d.onboardingResumeConnectionRef.current = null; }
