@@ -9,14 +9,13 @@
  * Non-loading phases (error, pairing, onboarding) delegate to their views.
  */
 
-import { useEffect, useState } from "react";
 import { useApp } from "../state";
 import type { StartupErrorState } from "../state/types";
 import { OnboardingWizard } from "./OnboardingWizard";
 import { PairingView } from "./PairingView";
 import { StartupFailureView } from "./StartupFailureView";
 
-const FONT = "'Press Start 2P', 'Courier New', monospace";
+const FONT = "'Courier New', 'Courier', 'Monaco', monospace";
 
 const PHASE_PROGRESS: Record<string, number> = {
   splash: 0,
@@ -49,17 +48,6 @@ export function StartupShell() {
   const { startupCoordinator, startupError, retryStartup, t } = useApp();
   const phase = startupCoordinator.phase;
 
-  // Keep splash visible for 1.5s after coordinator reaches ready
-  // so the app has time to mount the companion scene + VRM
-  const [settled, setSettled] = useState(false);
-  useEffect(() => {
-    if (phase !== "ready") {
-      setSettled(false);
-      return;
-    }
-    const timer = setTimeout(() => setSettled(true), 1500);
-    return () => clearTimeout(timer);
-  }, [phase]);
 
   // Error — delegate
   if (phase === "error") {
@@ -84,8 +72,8 @@ export function StartupShell() {
     return <OnboardingWizard />;
   }
 
-  // Ready AND settled — let the app through
-  if (phase === "ready" && settled) {
+  // Ready — let the app through
+  if (phase === "ready") {
     return null;
   }
 
