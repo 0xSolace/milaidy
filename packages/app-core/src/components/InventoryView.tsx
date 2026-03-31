@@ -350,16 +350,15 @@ export function InventoryView() {
     legacyRpcChain !== null &&
     cfg?.legacyCustomChains?.includes(legacyRpcChain)
       ? {
-          title: t("inventoryview.LegacyRpcConfigTitle", {
-            chain:
-              focusedChainLabel ??
-              (singleChainFocus === "bsc"
-                ? "BSC"
-                : singleChainFocus === "solana"
-                  ? "Solana"
-                  : "EVM"),
-          }),
-          body: t("inventoryview.LegacyRpcConfigBody"),
+          title: `${
+            focusedChainLabel ??
+            (singleChainFocus === "bsc"
+              ? "BSC"
+              : singleChainFocus === "solana"
+                ? "Solana"
+                : "EVM")
+          } is using legacy raw RPC config.`,
+          body: "Re-save a supported provider in Settings to migrate fully.",
           actionLabel: t("wallet.setup.configureRpc"),
         }
       : singleChainFocus === "bsc" && evmAddr && !bscReady
@@ -682,7 +681,6 @@ export function InventoryView() {
                           <TooltipTrigger asChild>
                             <button
                               type="button"
-                              data-testid={`inventory-chain-toggle-${item.key}`}
                               onClick={
                                 disabled
                                   ? undefined

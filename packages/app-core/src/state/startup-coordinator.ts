@@ -323,7 +323,15 @@ export function isStartupTerminal(state: StartupState): boolean {
   return state.phase === "ready" || state.phase === "error";
 }
 
-/** Derive the legacy StartupPhase from the coordinator state. */
+/**
+ * Derive the legacy StartupPhase from the coordinator state.
+ *
+ * NOTE: pairing-required, onboarding-required, error, and hydrating all map
+ * to "ready" — this looks counterintuitive but is correct because App.tsx's
+ * coordinator gate (`startupCoordinator.phase !== "ready"`) catches these
+ * phases BEFORE the legacy startupPhase/startupStatus rendering logic runs.
+ * The legacy "ready" value is a no-op passthrough that never renders.
+ */
 export function toLegacyStartupPhase(
   state: StartupState,
 ): "starting-backend" | "initializing-agent" | "ready" {

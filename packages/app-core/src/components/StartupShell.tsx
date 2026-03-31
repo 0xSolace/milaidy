@@ -55,16 +55,14 @@ export function StartupShell() {
 
   // Error phase — delegate to StartupFailureView
   if (phase === "error") {
-    const coordinatorErr = startupCoordinator as {
-      reason?: string;
-      message?: string;
-    };
+    const errPhase = startupCoordinator as Extract<
+      typeof startupCoordinator,
+      { phase: "error" }
+    >;
     const errorState: StartupErrorState = startupError ?? {
-      reason:
-        (coordinatorErr.reason as StartupErrorState["reason"]) ?? "unknown",
+      reason: errPhase.reason ?? "unknown",
       message:
-        coordinatorErr.message ??
-        "An unexpected error occurred during startup.",
+        errPhase.message ?? "An unexpected error occurred during startup.",
       phase: "starting-backend" as const,
     };
     return <StartupFailureView error={errorState} onRetry={retryStartup} />;
@@ -91,7 +89,11 @@ export function StartupShell() {
 
   return (
     <div className="fixed inset-0 z-[200] flex items-end justify-start bg-[#ffe600] font-body text-black overflow-hidden">
-      {/* Full-bleed splash background */}
+      {/*
+        Branded splash background — intentionally included as a product identity
+        element. This is the Milady character art chosen by the project owner.
+        Do NOT remove or replace with a generic loading screen.
+      */}
       <img
         src="/splash-bg.png"
         alt=""

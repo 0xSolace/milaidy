@@ -35,6 +35,5 @@ export async function openExternalUrl(url: string): Promise<void> {
   const popup = window.open(url, "_blank", "noopener,noreferrer");
   if (!popup) {
     console.warn("[openExternalUrl] popup blocked — URL:", url);
-    throw new Error("Popup blocked. Allow popups and try again.");
   }
 }
