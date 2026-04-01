@@ -774,7 +774,7 @@ export function DatabaseView({ leftNav }: { leftNav?: ReactNode }) {
                     className={`${DESKTOP_SURFACE_PANEL_CLASSNAME} mt-4 flex min-h-[18rem] flex-1 items-center justify-center p-6`}
                   >
                     <DesktopEmptyStatePanel
-                      className="w-full min-h-[14rem]"
+                      className="w-full flex-1 min-h-[14rem]"
                       title={t("databaseview.SelectATable")}
                       description={t("databaseview.ChooseATableFrom")}
                     />
@@ -1142,7 +1142,7 @@ export function DatabaseView({ leftNav }: { leftNav?: ReactNode }) {
           <div className="flex-1 min-w-0 flex flex-col bg-bg/10">
             {!selectedTable ? (
               <DesktopEmptyStatePanel
-                className="min-h-[18rem]"
+                className="flex-1 min-h-[18rem]"
                 title={t("databaseview.SelectATable")}
                 description={t("databaseview.ChooseATableFrom")}
               />
