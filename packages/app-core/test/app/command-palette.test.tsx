@@ -54,7 +54,7 @@ vi.mock("@miladyai/ui", () => {
   };
 });
 
-import { CommandPalette } from "../../src/components/CommandPalette";
+import { CommandPalette } from "../../src/components/shell/CommandPalette";
 
 type PaletteContext = {
   commandPaletteOpen: boolean;

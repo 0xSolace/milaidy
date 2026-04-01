@@ -74,7 +74,7 @@ vi.mock("@miladyai/app-core/hooks", async () => {
   };
 });
 
-vi.mock("../../src/components/MessageContent", () => ({
+vi.mock("../../src/components/chat/MessageContent", () => ({
   MessageContent: ({ message }: { message: { text: string } }) =>
     React.createElement("span", null, message.text),
 }));
@@ -91,7 +91,7 @@ import { textOf } from "../../../../test/helpers/react-test";
 import {
   __resetCompanionSpeechMemoryForTests,
   ChatView,
-} from "../../src/components/ChatView";
+} from "../../src/components/pages/ChatView";
 
 function createContext(
   overrides?: Partial<ChatViewContextStub>,

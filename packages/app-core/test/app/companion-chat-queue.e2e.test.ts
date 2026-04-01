@@ -140,14 +140,14 @@ vi.mock("@miladyai/app-core/hooks", async () => {
   };
 });
 
-vi.mock("../../src/components/MessageContent", () => ({
+vi.mock("../../src/components/chat/MessageContent", () => ({
   MessageContent: ({ message }: { message: { text: string } }) =>
     React.createElement("span", null, message.text),
 }));
 
 import { client } from "@miladyai/app-core/api";
 import { AppProvider, useApp } from "@miladyai/app-core/state";
-import { ChatView } from "../../src/components/ChatView";
+import { ChatView } from "../../src/components/pages/ChatView";
 import { createDeferred } from "../../../../test/helpers/test-utils";
 
 type ProbeApi = {

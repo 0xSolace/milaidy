@@ -27,12 +27,12 @@ vi.mock("@miladyai/app-core/utils", () => ({
   resolveAppAssetUrl: (value: string) => value,
 }));
 
-vi.mock("../../src/components/VrmStage", () => ({
+vi.mock("../../src/components/companion/VrmStage", () => ({
   VrmStage: () =>
     React.createElement("div", { "data-testid": "companion-vrm-stage" }),
 }));
 
-import { CompanionSceneHost } from "../../src/components/CompanionSceneHost";
+import { CompanionSceneHost } from "../../src/components/companion/CompanionSceneHost";
 
 function createCompanionRootMock() {
   return {

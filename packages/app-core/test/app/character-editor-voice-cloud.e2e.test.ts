@@ -71,7 +71,7 @@ vi.mock("../../src/state/useApp", () => ({
   useApp: useAppMock,
 }));
 
-vi.mock("../../src/components/CharacterRoster", () => ({
+vi.mock("../../src/components/character/CharacterRoster", () => ({
   CharacterRoster: ({
     entries,
     onSelect,
@@ -162,7 +162,7 @@ vi.mock("@miladyai/ui", async (importOriginal) => {
   };
 });
 
-import { CharacterEditor } from "../../src/components/CharacterEditor";
+import { CharacterEditor } from "../../src/components/character/CharacterEditor";
 
 function createAppState() {
   return {

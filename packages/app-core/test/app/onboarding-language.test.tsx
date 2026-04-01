@@ -31,7 +31,7 @@ vi.mock("@miladyai/app-core/components", async () => {
   };
 });
 
-vi.mock("../../src/components/AvatarSelector", () => ({
+vi.mock("../../src/components/character/AvatarSelector", () => ({
   AvatarSelector: () => null,
 }));
 
@@ -48,7 +48,7 @@ vi.mock("@miladyai/app-core/api", () => ({
   },
 }));
 
-import { OnboardingWizard } from "../../src/components/OnboardingWizard";
+import { OnboardingWizard } from "../../src/components/onboarding/OnboardingWizard";
 
 function createOnboardingContext(
   overrides?: Record<string, unknown>,

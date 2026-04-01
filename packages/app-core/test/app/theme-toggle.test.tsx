@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { ThemeToggle } from "../../src/components/ThemeToggle";
+import { ThemeToggle } from "../../src/components/shared/ThemeToggle";
 import TestRenderer, { act } from "react-test-renderer";
 import { describe, expect, it, vi } from "vitest";
 

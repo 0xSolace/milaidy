@@ -46,17 +46,17 @@ vi.mock("@miladyai/app-core/components", async () => {
   };
 });
 
-vi.mock("../../src/components/ConfigPageView", () => ({
+vi.mock("../../src/components/pages/ConfigPageView", () => ({
   ConfigPageView: () =>
     React.createElement("div", { "data-testid": "config-page" }, "ConfigPage"),
 }));
 
-vi.mock("../../src/components/CodingAgentSettingsSection", () => ({
+vi.mock("../../src/components/coding/CodingAgentSettingsSection", () => ({
   CodingAgentSettingsSection: () =>
     React.createElement("div", null, "CodingAgentSettingsSection"),
 }));
 
-vi.mock("../../src/components/MediaSettingsSection", () => ({
+vi.mock("../../src/components/settings/MediaSettingsSection", () => ({
   MediaSettingsSection: () =>
     React.createElement(
       "div",
@@ -65,11 +65,11 @@ vi.mock("../../src/components/MediaSettingsSection", () => ({
     ),
 }));
 
-vi.mock("../../src/components/ElizaCloudDashboard", () => ({
+vi.mock("../../src/components/pages/ElizaCloudDashboard", () => ({
   CloudDashboard: () => React.createElement("div", null, "ElizaCloudDashboard"),
 }));
 
-vi.mock("../../src/components/PermissionsSection", () => ({
+vi.mock("../../src/components/settings/PermissionsSection", () => ({
   PermissionsSection: () =>
     React.createElement(
       "div",
@@ -78,7 +78,7 @@ vi.mock("../../src/components/PermissionsSection", () => ({
     ),
 }));
 
-vi.mock("../../src/components/ProviderSwitcher", () => ({
+vi.mock("../../src/components/settings/ProviderSwitcher", () => ({
   ProviderSwitcher: () =>
     React.createElement(
       "div",
@@ -87,7 +87,7 @@ vi.mock("../../src/components/ProviderSwitcher", () => ({
     ),
 }));
 
-vi.mock("../../src/components/VoiceConfigView", () => ({
+vi.mock("../../src/components/settings/VoiceConfigView", () => ({
   VoiceConfigView: () =>
     React.createElement(
       "div",
@@ -96,7 +96,7 @@ vi.mock("../../src/components/VoiceConfigView", () => ({
     ),
 }));
 
-vi.mock("../../src/components/ReleaseCenterView", () => ({
+vi.mock("../../src/components/pages/ReleaseCenterView", () => ({
   ReleaseCenterView: () =>
     React.createElement(
       "div",
@@ -105,7 +105,7 @@ vi.mock("../../src/components/ReleaseCenterView", () => ({
     ),
 }));
 
-vi.mock("../../src/components/DesktopWorkspaceSection", () => ({
+vi.mock("../../src/components/settings/DesktopWorkspaceSection", () => ({
   DesktopWorkspaceSection: () =>
     React.createElement(
       "div",
@@ -114,7 +114,7 @@ vi.mock("../../src/components/DesktopWorkspaceSection", () => ({
     ),
 }));
 
-import { SettingsView } from "../../src/components/SettingsView";
+import { SettingsView } from "../../src/components/pages/SettingsView";
 
 type SettingsState = {
   // Cloud

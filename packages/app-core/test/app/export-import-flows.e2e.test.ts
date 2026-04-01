@@ -351,38 +351,38 @@ vi.mock("@miladyai/app-core/components", async () => {
   };
 });
 
-vi.mock("../../src/components/ConfigPageView", () => ({
+vi.mock("../../src/components/pages/ConfigPageView", () => ({
   ConfigPageView: () => React.createElement("div", null, "ConfigPageView"),
 }));
 
-vi.mock("../../src/components/CodingAgentSettingsSection", () => ({
+vi.mock("../../src/components/coding/CodingAgentSettingsSection", () => ({
   CodingAgentSettingsSection: () =>
     React.createElement("div", null, "CodingAgentSettingsSection"),
 }));
 
-vi.mock("../../src/components/MediaSettingsSection", () => ({
+vi.mock("../../src/components/settings/MediaSettingsSection", () => ({
   MediaSettingsSection: () =>
     React.createElement("div", null, "MediaSettingsSection"),
 }));
 
-vi.mock("../../src/components/ElizaCloudDashboard", () => ({
+vi.mock("../../src/components/pages/ElizaCloudDashboard", () => ({
   CloudDashboard: () => React.createElement("div", null, "ElizaCloudDashboard"),
 }));
 
-vi.mock("../../src/components/PermissionsSection", () => ({
+vi.mock("../../src/components/settings/PermissionsSection", () => ({
   PermissionsSection: () =>
     React.createElement("div", null, "PermissionsSection"),
 }));
 
-vi.mock("../../src/components/ProviderSwitcher", () => ({
+vi.mock("../../src/components/settings/ProviderSwitcher", () => ({
   ProviderSwitcher: () => React.createElement("div", null, "ProviderSwitcher"),
 }));
 
-vi.mock("../../src/components/VoiceConfigView", () => ({
+vi.mock("../../src/components/settings/VoiceConfigView", () => ({
   VoiceConfigView: () => React.createElement("div", null, "VoiceConfigView"),
 }));
 
-import { SettingsView } from "../../src/components/SettingsView";
+import { SettingsView } from "../../src/components/pages/SettingsView";
 
 type ExportImportState = {
   currentTheme: string;

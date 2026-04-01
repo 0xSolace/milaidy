@@ -278,7 +278,7 @@ vi.mock("@miladyai/app-core/state", async () => {
   };
 });
 
-vi.mock("../../src/components/PluginsView", () => ({
+vi.mock("../../src/components/pages/PluginsView", () => ({
   PluginsView: ({ mode }: { mode: string }) =>
     React.createElement(
       "div",
@@ -287,7 +287,7 @@ vi.mock("../../src/components/PluginsView", () => ({
     ),
 }));
 
-import { ConnectorsPageView } from "../../src/components/ConnectorsPageView";
+import { ConnectorsPageView } from "../../src/components/pages/ConnectorsPageView";
 
 type ConnectorState = {
   plugins: Array<{

@@ -301,12 +301,12 @@ vi.mock("@miladyai/app-core/config", () => ({
   defaultRegistry: {},
 }));
 
-vi.mock("../../src/components/WhatsAppQrOverlay", () => ({
+vi.mock("../../src/components/connectors/WhatsAppQrOverlay", () => ({
   WhatsAppQrOverlay: () =>
     React.createElement("div", null, "WhatsAppQrOverlay"),
 }));
 
-import { PluginsView } from "../../src/components/PluginsView";
+import { PluginsView } from "../../src/components/pages/PluginsView";
 
 type PluginInfo = {
   id: string;

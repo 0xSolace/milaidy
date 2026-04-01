@@ -277,7 +277,7 @@ vi.mock("@miladyai/app-core/utils", async () => {
   };
 });
 
-vi.mock("../../src/components/BscTradePanel", async () => {
+vi.mock("../../src/components/inventory/BscTradePanel", async () => {
   const React = await import("react");
   return {
     TradePanel: () => React.createElement("div", null, "TradePanel"),
@@ -325,8 +325,8 @@ vi.mock("../../src/components/inventory/useInventoryData", () => ({
   }),
 }));
 
-import { InventoryView } from "../../src/components/InventoryView";
-import { KnowledgeView } from "../../src/components/KnowledgeView";
+import { InventoryView } from "../../src/components/pages/InventoryView";
+import { KnowledgeView } from "../../src/components/pages/KnowledgeView";
 
 const testRendererOptions = {
   createNodeMock: () => ({}),

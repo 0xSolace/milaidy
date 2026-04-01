@@ -369,7 +369,7 @@ vi.mock("@miladyai/app-core/api", () => ({
 
 import { client } from "@miladyai/app-core/api";
 import { flush } from "../../../../test/helpers/react-test";
-import { VectorBrowserView } from "../../src/components/VectorBrowserView";
+import { VectorBrowserView } from "../../src/components/pages/VectorBrowserView";
 
 // ── Component Tests ────────────────────────────────────────────────────
 

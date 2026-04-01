@@ -258,7 +258,7 @@ vi.mock("@miladyai/ui", () => ({
 
 import type { TrajectoryListResult } from "@miladyai/app-core/api";
 import { flush } from "../../../../test/helpers/react-test";
-import { TrajectoriesView } from "../../src/components/TrajectoriesView";
+import { TrajectoriesView } from "../../src/components/pages/TrajectoriesView";
 
 const { mockClient, mockUseApp } = hoisted;
 

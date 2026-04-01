@@ -522,7 +522,7 @@ vi.mock("@miladyai/ui", () => ({
   }),
 }));
 
-import { PluginsView } from "../../src/components/PluginsView";
+import { PluginsView } from "../../src/components/pages/PluginsView";
 
 function hasClass(
   node: TestRenderer.ReactTestInstance,

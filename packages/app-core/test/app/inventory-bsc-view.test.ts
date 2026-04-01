@@ -252,7 +252,7 @@ vi.mock("@miladyai/ui", () => {
   };
 });
 
-import { InventoryView } from "../../src/components/InventoryView";
+import { InventoryView } from "../../src/components/pages/InventoryView";
 
 const INVENTORY_FILTERS_ALL_ON = {
   ethereum: true,

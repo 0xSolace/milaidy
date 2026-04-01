@@ -386,7 +386,7 @@ vi.mock("@miladyai/ui", async (importOriginal) => {
   };
 });
 
-import { KnowledgeView } from "../../src/components/KnowledgeView";
+import { KnowledgeView } from "../../src/components/pages/KnowledgeView";
 
 type KnowledgeState = {
   knowledgeStats: { documentCount: number; fragmentCount: number } | null;

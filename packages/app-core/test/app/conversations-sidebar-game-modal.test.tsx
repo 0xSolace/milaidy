@@ -186,7 +186,7 @@ vi.mock("@miladyai/app-core/api", () => ({
 }));
 
 import { textOf } from "../../../../test/helpers/react-test";
-import { ConversationsSidebar } from "../../src/components/ConversationsSidebar";
+import { ConversationsSidebar } from "../../src/components/conversations/ConversationsSidebar";
 
 function createContext(
   overrides?: Partial<SidebarContextStub>,

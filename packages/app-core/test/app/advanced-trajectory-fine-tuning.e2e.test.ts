@@ -74,15 +74,15 @@ vi.mock("@miladyai/app-core/components", () => {
 // Mock ALL child views of AdvancedPageView to avoid react-test-renderer
 // incompatibilities with Radix UI DOM methods and infinite useEffect loops.
 // ---------------------------------------------------------------------------
-vi.mock("../../src/components/CustomActionsView", () => {
+vi.mock("../../src/components/custom-actions/CustomActionsView", () => {
   const R = require("react");
   return { CustomActionsView: () => R.createElement("div", null, "stub") };
 });
-vi.mock("../../src/components/TriggersView", () => {
+vi.mock("../../src/components/pages/TriggersView", () => {
   const R = require("react");
   return { TriggersView: () => R.createElement("div", null, "stub") };
 });
-vi.mock("../../src/components/FineTuningView", () => {
+vi.mock("../../src/components/settings/FineTuningView", () => {
   const R = require("react");
   return {
     FineTuningView: (props: { contentHeader?: React.ReactNode }) =>
@@ -91,7 +91,7 @@ vi.mock("../../src/components/FineTuningView", () => {
 });
 
 // TrajectoriesView: render a clickable row so the test can trigger selection
-vi.mock("../../src/components/TrajectoriesView", () => {
+vi.mock("../../src/components/pages/TrajectoriesView", () => {
   const R = require("react");
   return {
     TrajectoriesView: (props: {
@@ -125,7 +125,7 @@ vi.mock("../../src/components/TrajectoriesView", () => {
 });
 
 // TrajectoryDetailView: render the trajectory ID and a back button
-vi.mock("../../src/components/TrajectoryDetailView", () => {
+vi.mock("../../src/components/pages/TrajectoryDetailView", () => {
   const R = require("react");
   return {
     TrajectoryDetailView: (props: {
@@ -208,7 +208,7 @@ vi.mock("@miladyai/ui", () => {
 });
 
 import { flush } from "../../../../test/helpers/react-test";
-import { AdvancedPageView } from "../../src/components/AdvancedPageView";
+import { AdvancedPageView } from "../../src/components/pages/AdvancedPageView";
 
 const SHARED_TRAJECTORY_ID = "shared-traj-123456789";
 

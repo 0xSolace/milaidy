@@ -108,7 +108,7 @@ vi.mock("lucide-react", () => ({
   Terminal: () => React.createElement("span", null, "💻"),
 }));
 
-import { PermissionsSection } from "../../src/components/PermissionsSection";
+import { PermissionsSection } from "../../src/components/settings/PermissionsSection";
 
 // ── Helpers ───────────────────────────────────────────────────────────
 

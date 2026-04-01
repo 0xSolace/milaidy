@@ -29,7 +29,7 @@ import {
   MessageContent,
   normalizePluginId,
   tryParsePatch,
-} from "../../src/components/MessageContent";
+} from "../../src/components/chat/MessageContent";
 
 // ---------------------------------------------------------------------------
 // Helpers

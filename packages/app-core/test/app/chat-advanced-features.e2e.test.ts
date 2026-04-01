@@ -291,17 +291,17 @@ vi.mock("@miladyai/app-core/state", async () => {
   };
 });
 
-vi.mock("../../src/components/ChatAvatar", () => ({
+vi.mock("../../src/components/chat/ChatAvatar", () => ({
   ChatAvatar: () =>
     React.createElement("div", { "data-testid": "chat-avatar" }, "Avatar"),
 }));
 
-vi.mock("../../src/components/MessageContent", () => ({
+vi.mock("../../src/components/chat/MessageContent", () => ({
   MessageContent: ({ content }: { content: string }) =>
     React.createElement("div", { "data-testid": "message-content" }, content),
 }));
 
-import { ChatView } from "../../src/components/ChatView";
+import { ChatView } from "../../src/components/pages/ChatView";
 
 type ChatState = {
   conversationMessages: Array<{

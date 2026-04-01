@@ -2,7 +2,7 @@ import {
   getKnowledgeUploadFilename,
   type KnowledgeUploadFile,
   shouldReadKnowledgeFileAsText,
-} from "../../src/components/KnowledgeView";
+} from "../../src/components/pages/KnowledgeView";
 import {
   isKnowledgeImageFile,
   type KnowledgeImageCompressionPlatform,

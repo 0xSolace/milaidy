@@ -41,7 +41,7 @@ vi.mock("../../src/components/avatar/VrmViewer", () => ({
   },
 }));
 
-vi.mock("../../src/components/ChatModalView", () => ({
+vi.mock("../../src/components/pages/ChatModalView", () => ({
   ChatModalView: () =>
     React.createElement(
       "div",
@@ -50,11 +50,11 @@ vi.mock("../../src/components/ChatModalView", () => ({
     ),
 }));
 
-vi.mock("../../src/components/PtyConsoleDrawer", () => ({
+vi.mock("../../src/components/coding/PtyConsoleDrawer", () => ({
   PtyConsoleDrawer: () => React.createElement("div", null, "PtyConsoleDrawer"),
 }));
 
-vi.mock("../../src/components/PtyConsoleSidePanel", () => ({
+vi.mock("../../src/components/coding/PtyConsoleSidePanel", () => ({
   PtyConsoleSidePanel: () =>
     React.createElement("div", null, "PtyConsoleSidePanel"),
 }));
@@ -78,8 +78,8 @@ vi.mock("@miladyai/app-core/utils", () => ({
   modelLooksLikeElizaCloudHosted: () => false,
 }));
 
-import { CompanionSceneHost } from "../../src/components/CompanionSceneHost";
-import { CompanionView } from "../../src/components/CompanionView";
+import { CompanionSceneHost } from "../../src/components/companion/CompanionSceneHost";
+import { CompanionView } from "../../src/components/pages/CompanionView";
 
 const COMPANION_ZOOM_STORAGE_KEY = "milady.companion.zoom.v1";
 

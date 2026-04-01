@@ -296,7 +296,7 @@ vi.mock("../../src/api", () => ({
   },
 }));
 
-import { SkillsView } from "../../src/components/SkillsView";
+import { SkillsView } from "../../src/components/pages/SkillsView";
 
 function createAppState(overrides?: Record<string, unknown>) {
   return {

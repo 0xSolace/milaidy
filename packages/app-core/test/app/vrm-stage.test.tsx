@@ -33,11 +33,11 @@ vi.mock("../../src/components/avatar/VrmViewer", () => ({
   },
 }));
 
-vi.mock("../../src/components/AvatarLoader", () => ({
+vi.mock("../../src/components/character/AvatarLoader", () => ({
   AvatarLoader: () => React.createElement("div", null, "AvatarLoader"),
 }));
 
-import { VrmStage } from "../../src/components/VrmStage";
+import { VrmStage } from "../../src/components/companion/VrmStage";
 
 describe("VrmStage", () => {
   beforeEach(() => {

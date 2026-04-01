@@ -49,7 +49,7 @@ vi.mock("@miladyai/app-core/state", () => ({
   useApp: () => mockUseApp(),
 }));
 
-import { GameView } from "../../src/components/GameView";
+import { GameView } from "../../src/components/apps/GameView";
 
 function createContext(overrides?: Partial<GameContextStub>): GameContextStub {
   return {

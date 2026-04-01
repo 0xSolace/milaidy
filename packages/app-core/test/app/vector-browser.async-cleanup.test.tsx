@@ -156,7 +156,7 @@ vi.mock("@miladyai/app-core/state", () => ({
 }));
 
 import { client } from "@miladyai/app-core/api";
-import { VectorBrowserView } from "../../src/components/VectorBrowserView";
+import { VectorBrowserView } from "../../src/components/pages/VectorBrowserView";
 
 async function flush(times = 4): Promise<void> {
   for (let i = 0; i < times; i++) {

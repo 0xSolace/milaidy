@@ -464,7 +464,7 @@ vi.mock("@miladyai/ui", () => {
   };
 });
 
-import { InventoryView } from "../../src/components/InventoryView";
+import { InventoryView } from "../../src/components/pages/InventoryView";
 
 type WalletState = {
   walletConfig: { chains: string[]; selectedChain: string } | null;

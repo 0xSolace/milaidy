@@ -132,7 +132,7 @@ vi.mock("@miladyai/ui", () => {
   };
 });
 
-import { FineTuningView } from "../../src/components/FineTuningView";
+import { FineTuningView } from "../../src/components/settings/FineTuningView";
 
 function baseTrajectoryList(): TrainingTrajectoryList {
   return {

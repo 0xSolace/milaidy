@@ -167,7 +167,7 @@ vi.mock("../../src/utils/desktop-bug-report", () => ({
     `Startup Phase: ${diagnostics.phase}\nLast Error: ${diagnostics.lastError ?? "none"}`,
 }));
 
-import { BugReportModal } from "../../src/components/BugReportModal";
+import { BugReportModal } from "../../src/components/shell/BugReportModal";
 
 // --- helpers ----------------------------------------------------------------
 

@@ -45,7 +45,7 @@ vi.mock("@miladyai/app-core/state", () => ({
   useApp: () => ({ t: (key: string) => key }),
 }));
 
-import { SaveCommandModal } from "../../src/components/SaveCommandModal";
+import { SaveCommandModal } from "../../src/components/chat/SaveCommandModal";
 
 describe("SaveCommandModal keyboard behavior", () => {
   it("closes via Dialog onOpenChange when open becomes false", () => {

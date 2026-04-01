@@ -1,4 +1,4 @@
-import { AvatarLoader } from "../../src/components/AvatarLoader";
+import { AvatarLoader } from "../../src/components/character/AvatarLoader";
 import React from "react";
 import TestRenderer, { act } from "react-test-renderer";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";

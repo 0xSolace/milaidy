@@ -18,7 +18,7 @@ vi.mock("@miladyai/app-core/state", () => ({
   useApp: () => ({ t: testT }),
 }));
 
-import { AgentActivityBox } from "../../src/components/AgentActivityBox";
+import { AgentActivityBox } from "../../src/components/chat/AgentActivityBox";
 
 function makeSession(
   overrides: Partial<CodingAgentSession> = {},
