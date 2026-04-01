@@ -12,7 +12,6 @@
 
 import type {
   KnowledgeDocument,
-  KnowledgeFragment,
   KnowledgeSearchResult,
 } from "@miladyai/app-core/api";
 import { client } from "@miladyai/app-core/api";
@@ -25,8 +24,6 @@ import { useApp } from "@miladyai/app-core/state";
 import { confirmDesktopAction } from "@miladyai/app-core/utils";
 import {
   Button,
-  Checkbox,
-  Input,
   PageLayout,
   PagePanel,
   Sidebar,
@@ -41,99 +38,31 @@ import {
   MAX_KNOWLEDGE_IMAGE_PROCESSING_BYTES,
   maybeCompressKnowledgeUploadImage,
 } from "../../utils/knowledge-upload-image";
+import {
+  DocumentViewer,
+  getKnowledgeDocumentSummary,
+  getKnowledgeSourceLabel,
+  getKnowledgeTypeLabel,
+} from "./knowledge-detail";
+import {
+  BULK_UPLOAD_TARGET_BYTES,
+  getKnowledgeUploadFilename,
+  isSupportedKnowledgeFile,
+  type KnowledgeUploadFile,
+  type KnowledgeUploadOptions,
+  LARGE_FILE_WARNING_BYTES,
+  MAX_BULK_REQUEST_DOCUMENTS,
+  MAX_UPLOAD_REQUEST_BYTES,
+  shouldReadKnowledgeFileAsText,
+  UploadZone,
+} from "./knowledge-upload";
 
-const MAX_UPLOAD_REQUEST_BYTES = 32 * 1_048_576; // Must match server knowledge route limit
-const BULK_UPLOAD_TARGET_BYTES = 24 * 1_048_576;
-const MAX_BULK_REQUEST_DOCUMENTS = 100;
-const LARGE_FILE_WARNING_BYTES = 8 * 1_048_576;
-const SUPPORTED_UPLOAD_EXTENSIONS = new Set([
-  ".txt",
-  ".md",
-  ".mdx",
-  ".pdf",
-  ".docx",
-  ".json",
-  ".csv",
-  ".xml",
-  ".html",
-  ".png",
-  ".jpg",
-  ".jpeg",
-  ".webp",
-  ".gif",
-]);
-
-export type KnowledgeUploadFile = File & {
-  webkitRelativePath?: string;
-};
-
-type KnowledgeUploadOptions = {
-  includeImageDescriptions: boolean;
-};
-
-export function getKnowledgeUploadFilename(file: KnowledgeUploadFile): string {
-  return file.webkitRelativePath?.trim() || file.name;
-}
-
-export function shouldReadKnowledgeFileAsText(
-  file: Pick<File, "type" | "name">,
-): boolean {
-  const textTypes = [
-    "text/plain",
-    "text/markdown",
-    "text/html",
-    "text/csv",
-    "application/json",
-    "application/xml",
-  ];
-
-  return (
-    textTypes.some((t) => file.type.includes(t)) ||
-    file.name.endsWith(".md") ||
-    file.name.endsWith(".mdx")
-  );
-}
-
-function isSupportedKnowledgeFile(file: Pick<File, "name">): boolean {
-  const lowerName = file.name.toLowerCase();
-  for (const extension of SUPPORTED_UPLOAD_EXTENSIONS) {
-    if (lowerName.endsWith(extension)) return true;
-  }
-  return false;
-}
-
-function getKnowledgeTypeLabel(contentType?: string): string {
-  return contentType?.split("/").pop()?.toUpperCase() || "DOC";
-}
-
-function getKnowledgeSourceLabel(
-  source: string | undefined,
-  t: (key: string, options?: Record<string, unknown>) => string,
-): string {
-  if (source === "youtube") {
-    return t("knowledgeview.YouTube", { defaultValue: "YouTube" });
-  }
-  if (source === "url") {
-    return t("knowledgeview.FromUrl", { defaultValue: "From URL" });
-  }
-  return t("knowledgeview.Upload", { defaultValue: "Upload" });
-}
-
-function getKnowledgeDocumentSummary(
-  doc: KnowledgeDocument,
-  t: (key: string, options?: Record<string, unknown>) => string,
-): string {
-  const fragmentLabel =
-    doc.fragmentCount === 1
-      ? t("knowledgeview.FragmentCountOne", {
-          defaultValue: "1 fragment",
-        })
-      : t("knowledgeview.FragmentCountMany", {
-          defaultValue: "{{count}} fragments",
-          count: doc.fragmentCount,
-        });
-  return `${getKnowledgeSourceLabel(doc.source, t)} • ${fragmentLabel} • ${formatByteSize(doc.fileSize)}`;
-}
+// Re-export public API used by tests and other modules
+export {
+  getKnowledgeUploadFilename,
+  type KnowledgeUploadFile,
+  shouldReadKnowledgeFileAsText,
+} from "./knowledge-upload";
 
 function getRailMonogram(label: string): string {
   const words = label.trim().split(/\s+/).filter(Boolean);
@@ -142,201 +71,6 @@ function getRailMonogram(label: string): string {
     .map((word) => word[0]?.toUpperCase() ?? "")
     .join("");
   return (initials || label.slice(0, 1).toUpperCase() || "?").slice(0, 2);
-}
-
-/* ── Upload Zone ────────────────────────────────────────────────────── */
-
-function UploadZone({
-  onFilesUpload,
-  onUrlUpload,
-  uploading,
-  uploadStatus,
-}: {
-  onFilesUpload: (
-    files: KnowledgeUploadFile[],
-    options: KnowledgeUploadOptions,
-  ) => void;
-  onUrlUpload: (url: string, options: KnowledgeUploadOptions) => void;
-  uploading: boolean;
-  uploadStatus: { current: number; total: number; filename: string } | null;
-}) {
-  const { t } = useApp();
-  const [dragOver, setDragOver] = useState(false);
-  const [urlInput, setUrlInput] = useState("");
-  const [showUrlInput, setShowUrlInput] = useState(false);
-  const [includeImageDescriptions, setIncludeImageDescriptions] =
-    useState(true);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      setDragOver(false);
-      const files = Array.from(e.dataTransfer.files) as KnowledgeUploadFile[];
-      if (files.length > 0 && !uploading) {
-        onFilesUpload(files, { includeImageDescriptions });
-      }
-    },
-    [includeImageDescriptions, onFilesUpload, uploading],
-  );
-
-  const handleFileSelect = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = e.target.files;
-      if (files && files.length > 0 && !uploading) {
-        onFilesUpload(Array.from(files) as KnowledgeUploadFile[], {
-          includeImageDescriptions,
-        });
-      }
-      e.target.value = "";
-    },
-    [includeImageDescriptions, onFilesUpload, uploading],
-  );
-
-  const handleUrlSubmit = useCallback(() => {
-    const url = urlInput.trim();
-    if (url && !uploading) {
-      onUrlUpload(url, { includeImageDescriptions });
-      setUrlInput("");
-      setShowUrlInput(false);
-    }
-  }, [includeImageDescriptions, urlInput, uploading, onUrlUpload]);
-
-  return (
-    <fieldset
-      className="w-full"
-      onDragOver={(e) => {
-        e.preventDefault();
-        setDragOver(true);
-      }}
-      onDragLeave={() => setDragOver(false)}
-      onDrop={handleDrop}
-      aria-label={t("aria.knowledgeUpload")}
-    >
-      <input
-        ref={fileInputRef}
-        type="file"
-        className="hidden"
-        multiple
-        accept=".txt,.md,.mdx,.pdf,.docx,.json,.csv,.xml,.html,.png,.jpg,.jpeg,.webp,.gif"
-        onChange={handleFileSelect}
-      />
-      <div className="flex items-start justify-between gap-3 px-1">
-        <PagePanel.Meta compact tone="strong">
-          {t("knowledgeview.FormatsCount", {
-            defaultValue: "{{count}} formats",
-            count: SUPPORTED_UPLOAD_EXTENSIONS.size,
-          })}
-        </PagePanel.Meta>
-      </div>
-
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <Button
-          variant="default"
-          size="sm"
-          className="h-10 px-4 text-[11px] font-semibold text-txt-strong shadow-sm hover:text-txt-strong"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-        >
-          {t("knowledgeview.ChooseFiles")}
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-10 px-4 text-[11px] font-semibold text-txt shadow-sm hover:text-txt"
-          onClick={() => setShowUrlInput(!showUrlInput)}
-          disabled={uploading}
-        >
-          {t("knowledgeview.AddFromURL")}
-        </Button>
-      </div>
-      <div className="mt-2 inline-flex min-h-11 w-full items-center gap-2 rounded-xl border border-border/35 bg-bg/18 px-3 text-[11px] leading-relaxed text-muted-strong transition-colors hover:border-border/55 hover:bg-bg/28 hover:text-txt">
-        <Checkbox
-          id="knowledge-upload-image-descriptions"
-          checked={includeImageDescriptions}
-          onCheckedChange={(checked) => setIncludeImageDescriptions(!!checked)}
-          disabled={uploading}
-        />
-        <label
-          htmlFor="knowledge-upload-image-descriptions"
-          className="min-w-0 cursor-pointer"
-        >
-          {t("knowledgeview.IncludeAIImageDes")}
-        </label>
-      </div>
-      <div
-        className={`mt-3 rounded-2xl border px-3 py-3 transition-colors ${
-          dragOver
-            ? "border-accent/50 bg-accent/8 shadow-sm"
-            : "border-dashed border-border/35 bg-card/62"
-        } ${uploading ? "opacity-60" : ""}`}
-      >
-        {(dragOver || uploading) && (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted/80">
-            <span className="font-medium text-txt/80">
-              {uploadStatus
-                ? t("knowledgeview.UploadingProgress", {
-                    defaultValue: "Uploading {{current}}/{{total}}{{filename}}",
-                    current: uploadStatus.current,
-                    total: uploadStatus.total,
-                    filename: uploadStatus.filename
-                      ? `: ${uploadStatus.filename}`
-                      : "",
-                  })
-                : t("knowledgeview.DropFilesOrFoldersToUpload", {
-                    defaultValue: "Drop files or folders to upload",
-                  })}
-            </span>
-          </div>
-        )}
-
-        {!dragOver && !uploading && !showUrlInput && (
-          <div className="space-y-1 py-1 text-center">
-            <div className="text-[11px] font-medium text-muted-strong">
-              {t("knowledgeview.DropFilesHereToUpload", {
-                defaultValue: "Drop files here to upload",
-              })}
-            </div>
-            <div className="text-[10px] text-muted">
-              {t("knowledgeview.UploadSupportedTypes", {
-                defaultValue: "Docs, PDFs, JSON, CSV, and supported images.",
-              })}
-            </div>
-          </div>
-        )}
-
-        {showUrlInput && (
-          <div
-            className={`${dragOver || uploading ? "mt-2" : ""} animate-in fade-in slide-in-from-top-2 duration-300`}
-          >
-            <div className="mb-2 text-[11px] font-medium leading-relaxed text-muted">
-              {t("knowledgeview.PasteAURLToImpor")}
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Input
-                type="url"
-                placeholder={t("knowledgeview.httpsExampleCom")}
-                value={urlInput}
-                onChange={(e) => setUrlInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleUrlSubmit()}
-                disabled={uploading}
-                className="h-10 flex-1 border-border/55 bg-bg/72 text-xs shadow-none"
-              />
-              <Button
-                variant="default"
-                size="sm"
-                className="h-10 px-4 text-[11px] font-semibold"
-                onClick={handleUrlSubmit}
-                disabled={!urlInput.trim() || uploading}
-              >
-                {t("settings.import")}
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
-    </fieldset>
-  );
 }
 
 /* ── Search Result Item ─────────────────────────────────────────────── */
@@ -443,240 +177,6 @@ function DocumentListItem({
         />
       </span>
     </SidebarContent.Item>
-  );
-}
-
-/* ── Document Viewer ────────────────────────────────────────────────── */
-
-function DocumentViewer({ documentId }: { documentId: string | null }) {
-  const { t } = useApp();
-  const [doc, setDoc] = useState<KnowledgeDocument | null>(null);
-  const [fragments, setFragments] = useState<KnowledgeFragment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const id = documentId ?? "";
-    if (!id) {
-      setDoc(null);
-      setFragments([]);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-
-    let cancelled = false;
-
-    async function load() {
-      setLoading(true);
-      setError(null);
-
-      const [docRes, fragRes] = await Promise.all([
-        client.getKnowledgeDocument(id),
-        client.getKnowledgeFragments(id),
-      ]);
-
-      if (cancelled) return;
-
-      setDoc(docRes.document);
-      setFragments(fragRes.fragments);
-      setLoading(false);
-    }
-
-    load().catch((err) => {
-      if (!cancelled) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : t("knowledgeview.FailedToLoadDocument", {
-                defaultValue: "Failed to load document",
-              }),
-        );
-        setLoading(false);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [documentId, t]);
-
-  const previewText = doc?.content?.text?.trim();
-
-  return (
-    <PagePanel className="min-h-[62vh] overflow-hidden">
-      {doc && (
-        <div className="flex flex-wrap items-center gap-2 px-5 pt-5 sm:px-6 lg:justify-end">
-          <span className="rounded-full border border-border/45 bg-bg/25 px-3 py-1.5 text-[11px] font-semibold text-muted">
-            {getKnowledgeTypeLabel(doc.contentType)}
-          </span>
-          <span className="rounded-full border border-accent/25 bg-accent/8 px-3 py-1.5 text-[11px] font-semibold text-txt-strong">
-            {getKnowledgeSourceLabel(doc.source, t)}
-          </span>
-        </div>
-      )}
-      <div className="space-y-4 px-5 py-5 sm:px-6">
-        {loading && (
-          <div className="py-12 text-center font-bold tracking-wide text-muted animate-pulse">
-            <span className="mr-3 inline-block h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent align-middle" />
-            {t("databaseview.Loading")}
-          </div>
-        )}
-
-        {error && (
-          <div className="mx-auto max-w-lg rounded-[18px] border border-danger/25 bg-danger/10 py-10 text-center font-medium text-danger">
-            {error}
-          </div>
-        )}
-
-        {!loading && !error && !doc && (
-          <PagePanel.Empty
-            variant="inset"
-            className="px-6 py-16"
-            description={t("knowledgeview.NoDocumentSelectedDesc", {
-              defaultValue:
-                "Upload a file or choose an item from the sidebar to start viewing fragments and metadata.",
-            })}
-            title={t("knowledgeview.NoDocumentSelected", {
-              defaultValue: "No document selected",
-            })}
-          />
-        )}
-
-        {!loading && !error && doc && (
-          <>
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.9fr)]">
-              <PagePanel variant="inset" className="p-5">
-                <div className="mb-3 flex items-center justify-between gap-3 border-b border-border/25 pb-3">
-                  <div className="text-sm font-semibold text-txt">
-                    {t("knowledgeview.Preview", { defaultValue: "Preview" })}
-                  </div>
-                  <span className="rounded-full border border-border/35 bg-bg/25 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted/70">
-                    {formatByteSize(doc.fileSize)}
-                  </span>
-                </div>
-                {previewText ? (
-                  <pre className="max-h-[12rem] overflow-auto whitespace-pre-wrap break-words text-[13px] leading-relaxed text-txt/88 custom-scrollbar">
-                    {previewText.slice(0, 1200)}
-                  </pre>
-                ) : (
-                  <PagePanel.Empty
-                    variant="inset"
-                    className="min-h-[10rem] px-4 py-10 text-sm"
-                    description={t("knowledgeview.NoPreviewDesc", {
-                      defaultValue:
-                        "Indexed fragments are still available below for this document type.",
-                    })}
-                    title={t("knowledgeview.NoPreview", {
-                      defaultValue: "Full text preview is not available",
-                    })}
-                  />
-                )}
-              </PagePanel>
-
-              <PagePanel variant="inset" className="p-5">
-                <div className="text-sm font-semibold text-txt">
-                  {t("knowledgeview.Details", { defaultValue: "Details" })}
-                </div>
-                <div className="mt-4 grid gap-3 text-xs">
-                  <div className="flex flex-col gap-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted/70">
-                      {t("knowledgeview.Type")}
-                    </span>
-                    <span className="inline-block w-fit rounded-md border border-border/25 bg-bg-hover px-2 py-1 font-medium text-txt">
-                      {doc.contentType}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted/70">
-                      {t("knowledgeview.Source")}
-                    </span>
-                    <span className="inline-block w-fit rounded-md border border-border/25 bg-bg-hover px-2 py-1 font-medium text-txt">
-                      {doc.source}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted/70">
-                      {t("knowledgeview.Uploaded", {
-                        defaultValue: "Uploaded",
-                      })}
-                    </span>
-                    <span className="inline-block w-fit rounded-md border border-border/25 bg-bg-hover px-2 py-1 font-medium text-txt">
-                      {formatShortDate(doc.createdAt, { fallback: "—" })}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted/70">
-                      {t("knowledgeview.FragmentsLabel", {
-                        defaultValue: "Fragments",
-                      })}
-                    </span>
-                    <span className="inline-block w-fit rounded-md border border-border/25 bg-bg-hover px-2 py-1 font-medium text-txt">
-                      {fragments.length}
-                    </span>
-                  </div>
-                  {doc.url && (
-                    <div className="mt-1 flex flex-col gap-1.5 border-t border-border/20 pt-4">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted/70">
-                        {t("appsview.URL")}
-                      </span>
-                      <a
-                        href={doc.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="break-all text-sm font-medium text-txt underline decoration-accent/30 underline-offset-4 transition-colors hover:text-txt/80"
-                      >
-                        {doc.url}
-                      </a>
-                    </div>
-                  )}
-                </div>
-              </PagePanel>
-            </div>
-
-            <PagePanel variant="inset" className="p-5">
-              <div className="mb-4 flex items-center justify-between border-b border-border/30 pb-3">
-                <h3 className="text-sm font-bold tracking-wide text-txt">
-                  {t("knowledgeview.Fragments1")}
-                  <span className="ml-2 rounded-full border border-border/30 bg-bg-hover px-2 py-0.5 font-mono text-xs text-muted-strong">
-                    {fragments.length}
-                  </span>
-                </h3>
-              </div>
-              <div className="space-y-4">
-                {fragments.map((fragment, index) => (
-                  <div
-                    key={fragment.id}
-                    className="rounded-xl border border-border/30 bg-card/86 p-4 shadow-sm transition-colors hover:border-accent/30"
-                  >
-                    <div className="mb-3 flex items-center justify-between">
-                      <span className="text-[11px] font-bold uppercase tracking-widest text-muted">
-                        {t("knowledgeview.Fragment")} {index + 1}
-                      </span>
-                      {fragment.position !== undefined && (
-                        <span className="rounded-md border border-border/25 bg-bg-hover px-2 py-0.5 font-mono text-[10px] text-muted-strong">
-                          {t("knowledgeview.Position")} {fragment.position}
-                        </span>
-                      )}
-                    </div>
-                    <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-txt/90 line-clamp-6">
-                      {fragment.text}
-                    </p>
-                  </div>
-                ))}
-                {fragments.length === 0 && (
-                  <PagePanel.Empty
-                    variant="inset"
-                    className="min-h-[10rem] py-12"
-                    title={t("knowledgeview.NoFragmentsFound")}
-                  />
-                )}
-              </div>
-            </PagePanel>
-          </>
-        )}
-      </div>
-    </PagePanel>
   );
 }
 
