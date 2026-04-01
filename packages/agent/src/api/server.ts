@@ -166,8 +166,19 @@ import { parseClampedInteger } from "../utils/number-parsing.js";
 import { sanitizeSpeechText } from "../utils/spoken-text.js";
 import { handleAgentAdminRoutes } from "./agent-admin-routes.js";
 import { handleAgentLifecycleRoutes } from "./agent-lifecycle-routes.js";
+import { handleAvatarRoutes } from "./avatar-routes.js";
 import { handleChatRoutes } from "./chat-routes.js";
+import { handleConnectorRoutes } from "./connector-routes.js";
 import { handleConversationRoutes } from "./conversation-routes.js";
+import { handleDropRoutes } from "./drop-routes.js";
+import { handleMcpRoutes } from "./mcp-routes.js";
+import { handleMiscRoutes } from "./misc-routes.js";
+import { handleOnboardingRoutes } from "./onboarding-routes.js";
+import { handlePermissionsExtraRoutes } from "./permissions-routes-extra.js";
+import { handleProviderSwitchRoutes } from "./provider-switch-routes.js";
+import { handleTtsRoutes } from "./tts-routes.js";
+import { handleUpdateRoutes } from "./update-routes.js";
+import { handleWorkbenchRoutes } from "./workbench-routes.js";
 import { detectRuntimeModel, resolveProviderFromModel } from "./agent-model.js";
 import { handleAgentTransferRoutes } from "./agent-transfer-routes.js";
 import { handleAppsRoutes } from "./apps-routes.js";
@@ -9363,119 +9374,26 @@ async function handleRequest(
     // Gemini CLI and Aider — no proxy support via ElizaCloud inference
   };
 
-  // ── POST /api/provider/switch ─────────────────────────────────────────
-  // Atomically switch the active AI provider selection while preserving
-  // previously configured credentials and cloud auth as capability state.
-  if (method === "POST" && pathname === "/api/provider/switch") {
-    const body = await readJsonBody<{
-      provider: string;
-      apiKey?: string;
-      primaryModel?: string;
-    }>(req, res);
-    if (!body) return;
-    if (!body.provider || typeof body.provider !== "string") {
-      error(res, "Missing provider", 400);
-      return;
-    }
-
-    const normalizedProvider = normalizeOnboardingProviderId(body.provider);
-    if (!normalizedProvider) {
-      error(res, "Invalid provider", 400);
-      return;
-    }
-
-    // P0 §3 — race guard: reject concurrent provider switch requests
-    if (providerSwitchInProgress) {
-      error(res, "Provider switch already in progress", 409);
-      return;
-    }
-    providerSwitchInProgress = true;
-
-    try {
-      const trimmedApiKey =
-        typeof body.apiKey === "string" ? body.apiKey.trim() : undefined;
-      if (trimmedApiKey && trimmedApiKey.length > 512) {
-        providerSwitchInProgress = false;
-        error(res, "API key is too long", 400);
-        return;
-      }
-
-      const config = state.config;
-      let connection:
-        | ReturnType<typeof createProviderSwitchConnection>
-        | {
-            kind: "cloud-managed";
-            cloudProvider: "elizacloud";
-            apiKey?: string;
-          }
-        | null;
-      if (normalizedProvider === "elizacloud") {
-        connection = {
-          kind: "cloud-managed" as const,
-          cloudProvider: "elizacloud" as const,
-          apiKey: trimmedApiKey,
-        };
-        if (trimmedApiKey) {
-          // Configure coding agent CLIs to proxy through ElizaCloud /api/v1.
-          // Persisted cloud.* + ELIZAOS_* come from applyOnboardingConnectionConfig
-          // (enableCloudInference there); this block is process-only for SDK-compatible CLIs.
-          // Omitting trimmedApiKey leaves existing direct keys (E2E: switch to elizacloud
-          // without apiKey preserves OPENAI_API_KEY).
-          const cloudApiKey = trimmedApiKey;
-          const cloudBaseUrl = "https://www.elizacloud.ai";
-          process.env.ANTHROPIC_BASE_URL = `${cloudBaseUrl}/api/v1`;
-          process.env.ANTHROPIC_API_KEY = cloudApiKey;
-          process.env.OPENAI_BASE_URL = `${cloudBaseUrl}/api/v1`;
-          process.env.OPENAI_API_KEY = cloudApiKey;
-          // Gemini CLI and Aider — no proxy support via ElizaCloud inference
-        }
-      } else if (normalizedProvider) {
-        connection = createProviderSwitchConnection({
-          provider: normalizedProvider,
-          apiKey: trimmedApiKey,
-          primaryModel:
-            typeof body.primaryModel === "string"
-              ? body.primaryModel.trim()
-              : undefined,
-        });
-      } else {
-        connection = null;
-      }
-
-      if (!connection) {
-        providerSwitchInProgress = false;
-        error(res, "Invalid provider", 400);
-        return;
-      }
-
-      await applyOnboardingConnectionConfig(config, connection);
-      saveElizaConfig(config);
-
-      // Schedule runtime restart so the new provider takes effect.
-      scheduleRuntimeRestart(`provider switch to ${normalizedProvider}`);
-      // Keep the lock briefly in restart-capable environments to prevent
-      // double-submits from racing with restart-required propagation.
-      if (ctx?.onRestart) {
-        setTimeout(() => {
-          providerSwitchInProgress = false;
-        }, 250);
-      } else {
-        providerSwitchInProgress = false;
-      }
-
-      json(res, {
-        success: true,
-        provider: normalizedProvider,
-        restarting: true,
-      });
-    } catch (err) {
-      providerSwitchInProgress = false;
-      // P1 §8 — don't leak internal error details to client
-      logger.error(
-        `[api] Provider switch failed: ${err instanceof Error ? err.stack : err}`,
-      );
-      error(res, "Provider switch failed", 500);
-    }
+  // ── POST /api/provider/switch (extracted to provider-switch-routes.ts) ──
+  if (
+    await handleProviderSwitchRoutes({
+      req,
+      res,
+      method,
+      pathname,
+      state,
+      json,
+      error,
+      readJsonBody,
+      saveElizaConfig,
+      scheduleRuntimeRestart,
+      providerSwitchInProgress,
+      setProviderSwitchInProgress: (v: boolean) => {
+        providerSwitchInProgress = v;
+      },
+      onRestart: ctx?.onRestart ?? undefined,
+    })
+  ) {
     return;
   }
 
@@ -9538,116 +9456,36 @@ async function handleRequest(
     return;
   }
 
-  // ── GET /api/onboarding/status ──────────────────────────────────────────
-  if (method === "GET" && pathname === "/api/onboarding/status") {
-    if (isCloudProvisionedContainer()) {
-      json(res, { complete: true });
-      return;
-    }
-
-    let config = state.config;
-    let complete = configFileExists() && hasPersistedOnboardingState(config);
-
-    // Hot restarts and transient config-load failures can leave state.config
-    // stale even though the persisted config is valid. Re-read from disk once
-    // before telling the client to fall back into onboarding.
-    if (!complete && configFileExists()) {
-      try {
-        config = loadElizaConfig();
-        complete = hasPersistedOnboardingState(config);
-        if (complete) {
-          state.config = config;
-        }
-      } catch (err) {
-        logger.warn(
-          `[eliza-api] Failed to refresh config for onboarding status: ${err instanceof Error ? err.message : err}`,
-        );
-      }
-    }
-    json(res, { complete });
-    return;
-  }
-
-  // ── GET /api/wallet/keys (onboarding only) ─────────────────────────────
-  if (method === "GET" && pathname === "/api/wallet/keys") {
-    // Only expose private keys before onboarding is complete
-    if (hasPersistedOnboardingState(state.config)) {
-      json(
-        res,
-        { error: "Wallet keys are only available during onboarding" },
-        403,
-      );
-      return;
-    }
-
-    logger.warn(
-      `[eliza-api] Wallet keys requested during onboarding (ip=${req.socket?.remoteAddress ?? "unknown"})`,
-    );
-
-    // Ensure keys exist (generates if missing)
-    ensureWalletKeysInEnvAndConfig(state.config);
-    try {
-      saveElizaConfig(state.config);
-    } catch {
-      // Non-fatal — keys are in process.env regardless
-    }
-
-    const evmPrivateKey = process.env.EVM_PRIVATE_KEY ?? "";
-    const solanaPrivateKey = process.env.SOLANA_PRIVATE_KEY ?? "";
-
-    // Derive addresses from keys
-    const addresses = getWalletAddresses();
-
-    // Mask private keys — only expose last 4 chars for verification.
-    // Full keys should never be returned over the API.
-    const maskKey = (key: string): string => {
-      if (!key || key.length <= 4) return key ? "****" : "";
-      return "****" + key.slice(-4);
-    };
-
-    json(res, {
-      evmPrivateKey: maskKey(evmPrivateKey),
-      evmAddress: addresses.evmAddress ?? "",
-      solanaPrivateKey: maskKey(solanaPrivateKey),
-      solanaAddress: addresses.solanaAddress ?? "",
-    });
-    return;
-  }
-
-  // ── GET /api/onboarding/options ─────────────────────────────────────────
-  if (method === "GET" && pathname === "/api/onboarding/options") {
-    let piAiModels: Array<{
-      id: string;
-      name: string;
-      provider: string;
-      isDefault: boolean;
-    }> = [];
-    let piAiDefaultModel: string | null = null;
-
-    try {
-      const piAi = await (await loadPiAiPluginModule()).listPiAiModelOptions();
-      piAiModels = piAi.models;
-      piAiDefaultModel = piAi.defaultModelSpec ?? null;
-    } catch (err) {
-      logger.warn(
-        `[api] Failed to load pi-ai model options: ${err instanceof Error ? err.message : String(err)}`,
-      );
-    }
-
-    json(res, {
-      names: pickRandomNames(5),
-      styles: getStylePresets(
-        resolveConfiguredCharacterLanguage(state.config, req),
-      ),
-      providers: getProviderOptions(),
-      cloudProviders: getCloudProviderOptions(),
-      models: getModelOptions(),
-      piAiModels,
-      piAiDefaultModel,
-      inventoryProviders: getInventoryProviderOptions(),
-      sharedStyleRules: "Keep responses brief. Be helpful and concise.",
-      githubOAuthAvailable: Boolean(process.env.GITHUB_OAUTH_CLIENT_ID?.trim()),
-    });
+  // ── Onboarding GET routes (extracted to onboarding-routes.ts) ─────────
+  if (
+    await handleOnboardingRoutes({
+      req,
+      res,
+      method,
+      pathname,
+      url,
+      state: state as any,
+      json,
+      error,
+      readJsonBody,
+      isCloudProvisionedContainer,
+      hasPersistedOnboardingState,
+      ensureWalletKeysInEnvAndConfig,
+      getWalletAddresses: getWalletAddresses as any,
+      pickRandomNames,
+      getStylePresets: getStylePresets as any,
+      getProviderOptions: getProviderOptions as any,
+      getCloudProviderOptions: getCloudProviderOptions as any,
+      getModelOptions: getModelOptions as any,
+      getInventoryProviderOptions: getInventoryProviderOptions as any,
+      resolveConfiguredCharacterLanguage: resolveConfiguredCharacterLanguage as any,
+      normalizeCharacterLanguage: normalizeCharacterLanguage as any,
+      readUiLanguageHeader: readUiLanguageHeader as any,
+      applyOnboardingVoicePreset: applyOnboardingVoicePreset as any,
+      saveElizaConfig,
+      loadPiAiPluginModule: loadPiAiPluginModule as any,
+    })
+  ) {
     return;
   }
 
@@ -10608,324 +10446,62 @@ async function handleRequest(
   }
 
   // ═══════════════════════════════════════════════════════════════════════
-  //  Drop / Mint Routes
+  //  Drop / Mint / Whitelist Routes (extracted to drop-routes.ts)
   // ═══════════════════════════════════════════════════════════════════════
-
-  if (method === "GET" && pathname === "/api/drop/status") {
-    if (!dropService) {
-      json(res, {
-        dropEnabled: false,
-        publicMintOpen: false,
-        whitelistMintOpen: false,
-        mintedOut: false,
-        currentSupply: 0,
-        maxSupply: 2138,
-        shinyPrice: "0.1",
-        userHasMinted: false,
-      });
-      return;
-    }
-    const status = await dropService.getStatus();
-    json(res, status);
+  if (
+    await handleDropRoutes({
+      req,
+      res,
+      method,
+      pathname,
+      url,
+      json,
+      error,
+      readJsonBody,
+      dropService,
+      agentName: state.agentName,
+      getWalletAddresses: getWalletAddresses as any,
+      readOGCodeFromState,
+    })
+  ) {
     return;
   }
 
-  if (method === "POST" && pathname === "/api/drop/mint") {
-    if (!dropService) {
-      error(res, "Drop service not configured.", 503);
-      return;
-    }
-    const body = await readJsonBody<{
-      name?: string;
-      endpoint?: string;
-      shiny?: boolean;
-    }>(req, res);
-    if (!body) return;
-
-    const agentName = body.name || state.agentName || "Eliza";
-    const endpoint = body.endpoint || "";
-
-    const result = body.shiny
-      ? await dropService.mintShiny(agentName, endpoint)
-      : await dropService.mint(agentName, endpoint);
-    json(res, result);
+  // ── Update routes (extracted to update-routes.ts) ─────────────────────
+  if (
+    await handleUpdateRoutes({
+      req,
+      res,
+      method,
+      pathname,
+      url,
+      state,
+      json,
+      error,
+      readJsonBody,
+      saveElizaConfig,
+    })
+  ) {
     return;
   }
 
-  if (method === "POST" && pathname === "/api/drop/mint-whitelist") {
-    if (!dropService) {
-      error(res, "Drop service not configured.", 503);
-      return;
-    }
-    const body = await readJsonBody<{
-      name?: string;
-      endpoint?: string;
-      proof?: string[];
-    }>(req, res);
-    if (!body) return;
-    let proof = body.proof;
-    if (!proof || proof.length === 0) {
-      const addrs = getWalletAddresses();
-      const walletAddress = addrs.evmAddress ?? "";
-      if (!walletAddress) {
-        error(res, "EVM wallet not configured.");
-        return;
-      }
-      const proofResult = generateProof(walletAddress);
-      if (!proofResult.isWhitelisted) {
-        error(
-          res,
-          "Address not whitelisted. Complete Twitter or NFT verification first.",
-        );
-        return;
-      }
-      proof = proofResult.proof;
-    }
-
-    const agentName = body.name || state.agentName || "Eliza";
-    const endpoint = body.endpoint || "";
-    const result = await dropService.mintWithWhitelist(
-      agentName,
-      endpoint,
-      proof,
-    );
-    json(res, result);
-    return;
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════
-  //  Whitelist Routes
-  // ═══════════════════════════════════════════════════════════════════════
-
-  if (method === "GET" && pathname === "/api/whitelist/status") {
-    const addrs = getWalletAddresses();
-    const walletAddress = addrs.evmAddress ?? "";
-    const twitterVerified = walletAddress
-      ? isAddressWhitelisted(walletAddress)
-      : false;
-    const ogCode = readOGCodeFromState();
-
-    const { info } = buildWhitelistTree();
-    const proofReady = walletAddress
-      ? generateProof(walletAddress).isWhitelisted
-      : false;
-
-    json(res, {
-      eligible: twitterVerified,
-      twitterVerified,
-      nftVerified: twitterVerified, // We'll leave it as is if there's no way to distinguish, or we can check the file
-      whitelisted: walletAddress ? isAddressWhitelisted(walletAddress) : false,
-      ogCode: ogCode ?? null,
-      walletAddress,
-      merkle: {
-        root: info.root,
-        addressCount: info.addressCount,
-        proofReady,
-      },
-    });
-    return;
-  }
-
-  if (method === "POST" && pathname === "/api/whitelist/twitter/message") {
-    const addrs = getWalletAddresses();
-    const walletAddress = addrs.evmAddress ?? "";
-    if (!walletAddress) {
-      error(res, "EVM wallet not configured. Complete onboarding first.");
-      return;
-    }
-    const agentName = state.agentName || "Eliza";
-    const message = generateVerificationMessage(agentName, walletAddress);
-    json(res, { message, walletAddress });
-    return;
-  }
-
-  if (method === "POST" && pathname === "/api/whitelist/twitter/verify") {
-    const body = await readJsonBody<{ tweetUrl?: string }>(req, res);
-    if (!body || !body.tweetUrl) {
-      error(res, "tweetUrl is required");
-      return;
-    }
-
-    const addrs = getWalletAddresses();
-    const walletAddress = addrs.evmAddress ?? "";
-    if (!walletAddress) {
-      error(res, "EVM wallet not configured.");
-      return;
-    }
-
-    const result = await verifyTweet(body.tweetUrl, walletAddress);
-    if (result.verified && result.handle) {
-      markAddressVerified(walletAddress, body.tweetUrl, result.handle);
-    }
-    json(res, result);
-    return;
-  }
-
-  // ── GET /api/whitelist/merkle/root — tree info and root hash
-  if (method === "GET" && pathname === "/api/whitelist/merkle/root") {
-    const { info } = buildWhitelistTree();
-    json(res, {
-      root: info.root,
-      addressCount: info.addressCount,
-      proofReady: true,
-    });
-    return;
-  }
-
-  // ── GET /api/whitelist/merkle/proof?address=0x... — proof for an address
-  if (method === "GET" && pathname === "/api/whitelist/merkle/proof") {
-    const url = new URL(req.url ?? "", `http://${req.headers.host}`);
-    const addr = url.searchParams.get("address");
-    if (!addr) {
-      error(res, "address query parameter is required", 400);
-      return;
-    }
-    const result = generateProof(addr);
-    json(res, result);
-    return;
-  }
-
-  // ── GET /api/update/status ───────────────────────────────────────────────
-  if (method === "GET" && pathname === "/api/update/status") {
-    const { VERSION } = await import("../runtime/version.js");
-    const {
-      resolveChannel,
-      checkForUpdate,
-      fetchAllChannelVersions,
-      CHANNEL_DIST_TAGS,
-    } = await import("../services/update-checker.js");
-    const { detectInstallMethod } = await import("../services/self-updater.js");
-    const channel = resolveChannel(state.config.update);
-
-    const [check, versions] = await Promise.all([
-      checkForUpdate({ force: req.url?.includes("force=true") }),
-      fetchAllChannelVersions(),
-    ]);
-
-    json(res, {
-      currentVersion: VERSION,
-      channel,
-      installMethod: detectInstallMethod(),
-      updateAvailable: check.updateAvailable,
-      latestVersion: check.latestVersion,
-      channels: {
-        stable: versions.stable,
-        beta: versions.beta,
-        nightly: versions.nightly,
-      },
-      distTags: CHANNEL_DIST_TAGS,
-      lastCheckAt: state.config.update?.lastCheckAt ?? null,
-      error: check.error,
-    });
-    return;
-  }
-
-  // ── PUT /api/update/channel ────────────────────────────────────────────
-  if (method === "PUT" && pathname === "/api/update/channel") {
-    const body = (await readJsonBody(req, res)) as { channel?: string } | null;
-    if (!body) return;
-    const ch = body.channel;
-    if (ch !== "stable" && ch !== "beta" && ch !== "nightly") {
-      error(res, `Invalid channel "${ch}". Must be stable, beta, or nightly.`);
-      return;
-    }
-    state.config.update = {
-      ...state.config.update,
-      channel: ch,
-      lastCheckAt: undefined,
-      lastCheckVersion: undefined,
-    };
-    saveElizaConfig(state.config);
-    json(res, { channel: ch });
-    return;
-  }
-
-  // ── GET /api/connectors ──────────────────────────────────────────────────
-  if (method === "GET" && pathname === "/api/connectors") {
-    const connectors =
-      state.config.connectors ??
-      (state.config as Record<string, unknown>).channels ??
-      {};
-    json(res, {
-      connectors: redactConfigSecrets(connectors as Record<string, unknown>),
-    });
-    return;
-  }
-
-  // ── POST /api/connectors ─────────────────────────────────────────────────
-  if (method === "POST" && pathname === "/api/connectors") {
-    const body = await readJsonBody(req, res);
-    if (!body) return;
-    const name = body.name;
-    const config = body.config;
-    if (!name || typeof name !== "string" || !name.trim()) {
-      error(res, "Missing connector name", 400);
-      return;
-    }
-    // Prevent prototype pollution via special keys
-    const connectorName = name.trim();
-    if (isBlockedObjectKey(connectorName)) {
-      error(
-        res,
-        'Invalid connector name: "__proto__", "constructor", and "prototype" are reserved',
-        400,
-      );
-      return;
-    }
-    if (!config || typeof config !== "object") {
-      error(res, "Missing connector config", 400);
-      return;
-    }
-    if (!state.config.connectors) state.config.connectors = {};
-    state.config.connectors[connectorName] = cloneWithoutBlockedObjectKeys(
-      config,
-    ) as ConnectorConfig;
-    try {
-      saveElizaConfig(state.config);
-    } catch {
-      /* test envs */
-    }
-    json(res, {
-      connectors: redactConfigSecrets(
-        (state.config.connectors ?? {}) as Record<string, unknown>,
-      ),
-    });
-    return;
-  }
-
-  // ── DELETE /api/connectors/:name ─────────────────────────────────────────
-  if (method === "DELETE" && pathname.startsWith("/api/connectors/")) {
-    const name = decodeURIComponent(pathname.slice("/api/connectors/".length));
-    if (!name || isBlockedObjectKey(name)) {
-      error(res, "Missing or invalid connector name", 400);
-      return;
-    }
-    if (
-      state.config.connectors &&
-      Object.hasOwn(state.config.connectors, name)
-    ) {
-      delete state.config.connectors[name];
-    }
-    // Also remove from legacy channels key
-    const stateConfigRecord = state.config as Record<string, unknown>;
-    if (
-      stateConfigRecord.channels &&
-      typeof stateConfigRecord.channels === "object" &&
-      Object.hasOwn(stateConfigRecord.channels, name)
-    ) {
-      delete (stateConfigRecord.channels as Record<string, unknown>)[name];
-    }
-
-    try {
-      saveElizaConfig(state.config);
-    } catch {
-      /* test envs */
-    }
-    json(res, {
-      connectors: redactConfigSecrets(
-        (state.config.connectors ?? {}) as Record<string, unknown>,
-      ),
-    });
+  // ── Connector routes (extracted to connector-routes.ts) ──────────────
+  if (
+    await handleConnectorRoutes({
+      req,
+      res,
+      method,
+      pathname,
+      state,
+      json,
+      error,
+      readJsonBody,
+      saveElizaConfig,
+      redactConfigSecrets,
+      isBlockedObjectKey,
+      cloneWithoutBlockedObjectKeys,
+    })
+  ) {
     return;
   }
 
@@ -11011,370 +10587,54 @@ async function handleRequest(
     if (handled) return;
   }
 
-  // ── POST /api/restart ───────────────────────────────────────────────────
+  // ── Restart ──────────────────────────────────────────────────────────
   if (method === "POST" && pathname === "/api/restart") {
     state.agentState = "restarting";
-    state.startup = {
-      ...state.startup,
-      phase: "restarting",
-    };
+    state.startup = { ...state.startup, phase: "restarting" };
     state.broadcastStatus?.();
     json(res, { ok: true, message: "Restarting...", restarting: true });
     setTimeout(() => process.exit(0), 1000);
     return;
   }
 
-  // ── POST /api/tts/elevenlabs ─────────────────────────────────────────────
-  if (method === "POST" && pathname === "/api/tts/elevenlabs") {
-    const body = await readJsonBody<{
-      text?: string;
-      voiceId?: string;
-      modelId?: string;
-      outputFormat?: string;
-      apiKey?: string;
-      apply_text_normalization?: "auto" | "on" | "off";
-      voice_settings?: {
-        stability?: number;
-        similarity_boost?: number;
-        speed?: number;
-      };
-    }>(req, res);
-    if (!body) return;
-
-    const text =
-      typeof body.text === "string" ? sanitizeSpeechText(body.text) : "";
-    if (!text) {
-      error(res, "Missing text", 400);
-      return;
-    }
-
-    const messages =
-      state.config && typeof state.config === "object"
-        ? ((state.config as Record<string, unknown>).messages as
-            | Record<string, unknown>
-            | undefined)
-        : undefined;
-    const tts =
-      messages && typeof messages === "object"
-        ? ((messages.tts as Record<string, unknown>) ?? undefined)
-        : undefined;
-    const eleven =
-      tts && typeof tts === "object"
-        ? ((tts.elevenlabs as Record<string, unknown>) ?? undefined)
-        : undefined;
-
-    const requestedApiKey =
-      typeof body.apiKey === "string" ? body.apiKey.trim() : "";
-    const configuredApiKey =
-      typeof eleven?.apiKey === "string" ? eleven.apiKey.trim() : "";
-    const envApiKey =
-      typeof process.env.ELEVENLABS_API_KEY === "string"
-        ? process.env.ELEVENLABS_API_KEY.trim()
-        : "";
-
-    const resolvedApiKey =
-      requestedApiKey && !isRedactedSecretValue(requestedApiKey)
-        ? requestedApiKey
-        : configuredApiKey && !isRedactedSecretValue(configuredApiKey)
-          ? configuredApiKey
-          : envApiKey && !isRedactedSecretValue(envApiKey)
-            ? envApiKey
-            : "";
-
-    if (!resolvedApiKey) {
-      error(
-        res,
-        "ElevenLabs API key is not available. Set ELEVENLABS_API_KEY in Secrets.",
-        400,
-      );
-      return;
-    }
-
-    const voiceId =
-      (typeof body.voiceId === "string" && body.voiceId.trim()) ||
-      (typeof eleven?.voiceId === "string" && eleven.voiceId.trim()) ||
-      "EXAVITQu4vr4xnSDxMaL";
-    const modelId =
-      (typeof body.modelId === "string" && body.modelId.trim()) ||
-      (typeof eleven?.modelId === "string" && eleven.modelId.trim()) ||
-      "eleven_flash_v2_5";
-    const outputFormat =
-      (typeof body.outputFormat === "string" && body.outputFormat.trim()) ||
-      "mp3_22050_32";
-
-    const requestedVoiceSettings =
-      body.voice_settings &&
-      typeof body.voice_settings === "object" &&
-      !Array.isArray(body.voice_settings)
-        ? body.voice_settings
-        : undefined;
-
-    const voiceSettings: Record<string, number> = {};
-    const stability = requestedVoiceSettings?.stability;
-    if (typeof stability === "number" && stability >= 0 && stability <= 1) {
-      voiceSettings.stability = stability;
-    }
-    const similarityBoost = requestedVoiceSettings?.similarity_boost;
-    if (
-      typeof similarityBoost === "number" &&
-      similarityBoost >= 0 &&
-      similarityBoost <= 1
-    ) {
-      voiceSettings.similarity_boost = similarityBoost;
-    }
-    const speed = requestedVoiceSettings?.speed;
-    if (typeof speed === "number" && speed >= 0.5 && speed <= 2) {
-      voiceSettings.speed = speed;
-    }
-
-    const payload: Record<string, unknown> = {
-      text,
-      model_id: modelId,
-      apply_text_normalization:
-        body.apply_text_normalization === "on" ||
-        body.apply_text_normalization === "off"
-          ? body.apply_text_normalization
-          : "auto",
-    };
-    if (Object.keys(voiceSettings).length > 0) {
-      payload.voice_settings = voiceSettings;
-    }
-
-    try {
-      const upstreamUrl = new URL(
-        `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}/stream`,
-      );
-      upstreamUrl.searchParams.set("output_format", outputFormat);
-
-      const upstream = await fetchWithTimeoutGuard(
-        upstreamUrl.toString(),
-        {
-          method: "POST",
-          headers: {
-            "xi-api-key": resolvedApiKey,
-            "Content-Type": "application/json",
-            Accept: "audio/mpeg",
-          },
-          body: JSON.stringify(payload),
-        },
-        ELEVENLABS_FETCH_TIMEOUT_MS,
-      );
-
-      if (!upstream.ok) {
-        const upstreamBody = await upstream.text().catch(() => "");
-        error(
-          res,
-          `ElevenLabs request failed (${upstream.status}): ${upstreamBody.slice(0, 240)}`,
-          upstream.status === 429 ? 429 : 502,
-        );
-        return;
-      }
-
-      const contentType = upstream.headers.get("content-type") || "audio/mpeg";
-      const contentLength = responseContentLength(upstream.headers);
-      if (
-        contentLength !== null &&
-        contentLength > ELEVENLABS_AUDIO_MAX_BYTES
-      ) {
-        error(
-          res,
-          `ElevenLabs response exceeds maximum size of ${ELEVENLABS_AUDIO_MAX_BYTES} bytes`,
-          502,
-        );
-        return;
-      }
-
-      res.writeHead(200, {
-        "Content-Type": contentType,
-        "Cache-Control": "no-store",
-        ...(contentLength !== null
-          ? { "Content-Length": String(contentLength) }
-          : {}),
-      });
-
-      await streamResponseBodyWithByteLimit(
-        upstream,
-        res,
-        ELEVENLABS_AUDIO_MAX_BYTES,
-        ELEVENLABS_FETCH_TIMEOUT_MS,
-      );
-      res.end();
-      return;
-    } catch (err) {
-      if (res.headersSent) {
-        res.destroy(
-          err instanceof Error
-            ? err
-            : new Error(
-                `ElevenLabs proxy error: ${typeof err === "string" ? err : String(err)}`,
-              ),
-        );
-        return;
-      }
-      error(
-        res,
-        `ElevenLabs proxy error: ${err instanceof Error ? err.message : String(err)}`,
-        isAbortError(err) ? 504 : 502,
-      );
-      return;
-    }
-  }
-
-  // ── POST /api/avatar/vrm ─────────────────────────────────────────────────
-  // Upload a custom VRM avatar file. Saved to ~/.eliza/avatars/custom.vrm.
-  if (method === "POST" && pathname === "/api/avatar/vrm") {
-    const MAX_VRM_BYTES = 50 * 1024 * 1024; // 50 MB
-    const rawBody = await readRequestBodyBuffer(req, {
-      maxBytes: MAX_VRM_BYTES,
-      returnNullOnTooLarge: true,
-    });
-    if (!rawBody || rawBody.length === 0) {
-      error(res, "Request body is empty or exceeds 50 MB", 400);
-      return;
-    }
-    // VRM files are GLB (binary glTF) — validate the 4-byte magic header
-    const GLB_MAGIC = Buffer.from([0x67, 0x6c, 0x54, 0x46]); // "glTF"
-    if (rawBody.length < 4 || !rawBody.subarray(0, 4).equals(GLB_MAGIC)) {
-      error(res, "Invalid VRM file: not a valid glTF/GLB file", 400);
-      return;
-    }
-    const avatarDir = path.join(resolveStateDir(), "avatars");
-    fs.mkdirSync(avatarDir, { recursive: true });
-    const vrmPath = path.join(avatarDir, "custom.vrm");
-    fs.writeFileSync(vrmPath, rawBody);
-    json(res, { ok: true, size: rawBody.length });
-    return;
-  }
-
-  // ── GET /api/avatar/vrm ──────────────────────────────────────────────────
-  // Serve the user's custom VRM avatar file if it exists.
+  // ── TTS routes (extracted to tts-routes.ts) ──────────────────────────
   if (
-    (method === "GET" || method === "HEAD") &&
-    pathname === "/api/avatar/vrm"
+    await handleTtsRoutes({
+      req,
+      res,
+      method,
+      pathname,
+      state,
+      json,
+      error,
+      readJsonBody,
+      isRedactedSecretValue,
+      fetchWithTimeoutGuard,
+      streamResponseBodyWithByteLimit: streamResponseBodyWithByteLimit as any,
+      responseContentLength,
+      isAbortError,
+      ELEVENLABS_FETCH_TIMEOUT_MS,
+      ELEVENLABS_AUDIO_MAX_BYTES,
+    })
   ) {
-    const vrmPath = path.join(resolveStateDir(), "avatars", "custom.vrm");
-    try {
-      const stat = fs.statSync(vrmPath);
-      if (!stat.isFile()) {
-        error(res, "No custom avatar found", 404);
-        return;
-      }
-      const headers: Record<string, string | number> = {
-        "Content-Type": "model/gltf-binary",
-        "Content-Length": stat.size,
-        "Cache-Control": "no-cache",
-      };
-      if (method === "HEAD") {
-        res.writeHead(200, headers);
-        res.end();
-        return;
-      }
-      const body = fs.readFileSync(vrmPath);
-      res.writeHead(200, headers);
-      res.end(body);
-    } catch {
-      error(res, "No custom avatar found", 404);
-    }
     return;
   }
 
-  // ── POST /api/avatar/background ──────────────────────────────────────────
-  // Upload a custom background image. Saved to ~/.eliza/avatars/custom-background.<ext>.
-  if (method === "POST" && pathname === "/api/avatar/background") {
-    const MAX_BG_BYTES = 10 * 1024 * 1024; // 10 MB
-    const rawBody = await readRequestBodyBuffer(req, {
-      maxBytes: MAX_BG_BYTES,
-      returnNullOnTooLarge: true,
-    });
-    if (!rawBody || rawBody.length === 0) {
-      error(res, "Request body is empty or exceeds 10 MB", 400);
-      return;
-    }
-    // Detect image format from magic bytes
-    let ext = "";
-    if (
-      rawBody[0] === 0x89 &&
-      rawBody[1] === 0x50 &&
-      rawBody[2] === 0x4e &&
-      rawBody[3] === 0x47
-    ) {
-      ext = "png";
-    } else if (rawBody[0] === 0xff && rawBody[1] === 0xd8) {
-      ext = "jpg";
-    } else if (
-      rawBody[0] === 0x52 &&
-      rawBody[1] === 0x49 &&
-      rawBody[2] === 0x46 &&
-      rawBody[3] === 0x46 &&
-      rawBody.length >= 12 &&
-      rawBody[8] === 0x57 &&
-      rawBody[9] === 0x45 &&
-      rawBody[10] === 0x42 &&
-      rawBody[11] === 0x50
-    ) {
-      ext = "webp";
-    } else {
-      error(res, "Invalid image file: expected PNG, JPEG, or WebP", 400);
-      return;
-    }
-    const avatarDir = path.join(resolveStateDir(), "avatars");
-    fs.mkdirSync(avatarDir, { recursive: true });
-    // Remove any previous custom background (may have a different extension)
-    for (const old of ["png", "jpg", "webp"]) {
-      const p = path.join(avatarDir, `custom-background.${old}`);
-      try {
-        fs.unlinkSync(p);
-      } catch {}
-    }
-    const bgPath = path.join(avatarDir, `custom-background.${ext}`);
-    fs.writeFileSync(bgPath, rawBody);
-    json(res, { ok: true, size: rawBody.length });
-    return;
-  }
 
-  // ── GET /api/avatar/background ─────────────────────────────────────────────
-  // Serve the user's custom background image if it exists.
+  // ── Avatar routes (extracted to avatar-routes.ts) ───────────────────
   if (
-    (method === "GET" || method === "HEAD") &&
-    pathname === "/api/avatar/background"
+    await handleAvatarRoutes({
+      req,
+      res,
+      method,
+      pathname,
+      json,
+      error,
+    })
   ) {
-    const avatarDir = path.join(resolveStateDir(), "avatars");
-    const MIME: Record<string, string> = {
-      png: "image/png",
-      jpg: "image/jpeg",
-      webp: "image/webp",
-    };
-    let found = "";
-    for (const ext of ["png", "jpg", "webp"]) {
-      const p = path.join(avatarDir, `custom-background.${ext}`);
-      try {
-        if (fs.statSync(p).isFile()) {
-          found = p;
-          break;
-        }
-      } catch {}
-    }
-    if (!found) {
-      error(res, "No custom background found", 404);
-      return;
-    }
-    const stat = fs.statSync(found);
-    const fileExt = path.extname(found).slice(1);
-    const headers: Record<string, string | number> = {
-      "Content-Type": MIME[fileExt] || "application/octet-stream",
-      "Content-Length": stat.size,
-      "Cache-Control": "no-cache",
-    };
-    if (method === "HEAD") {
-      res.writeHead(200, headers);
-      res.end();
-      return;
-    }
-    const body = fs.readFileSync(found);
-    res.writeHead(200, headers);
-    res.end(body);
     return;
   }
+
 
   // ═══════════════════════════════════════════════════════════════════════
   // Config routes (extracted to config-routes.ts)
@@ -11410,96 +10670,28 @@ async function handleRequest(
 
 
 
-  // ── GET /api/permissions/automation-mode ──────────────────────────────
-  // Return agent automation permission mode for self-directed config actions.
-  if (method === "GET" && pathname === "/api/permissions/automation-mode") {
-    const mode = state.agentAutomationMode ?? "full";
-    json(res, {
-      mode,
-      options: ["connectors-only", "full"] as AgentAutomationMode[],
-    });
+  // ── Permissions extra routes (extracted to permissions-routes-extra.ts) ──
+  if (
+    await handlePermissionsExtraRoutes({
+      req,
+      res,
+      method,
+      pathname,
+      state: state as any,
+      json,
+      error,
+      readJsonBody,
+      saveElizaConfig,
+      resolveTradePermissionMode: resolveTradePermissionMode as any,
+      canUseLocalTradeExecution: canUseLocalTradeExecution as any,
+      parseAgentAutomationMode,
+      persistAgentAutomationMode: persistAgentAutomationMode as any,
+    })
+  ) {
     return;
   }
 
-  // ── PUT /api/permissions/automation-mode ──────────────────────────────
-  // Update agent automation permission mode.
-  if (method === "PUT" && pathname === "/api/permissions/automation-mode") {
-    const body = await readJsonBody<{ mode?: unknown }>(req, res);
-    if (!body) return;
-    const parsed = parseAgentAutomationMode(body.mode);
-    if (!parsed) {
-      error(res, 'Invalid mode. Expected "connectors-only" or "full".', 400);
-      return;
-    }
 
-    persistAgentAutomationMode(state, parsed);
-    saveElizaConfig(state.config);
-
-    json(res, {
-      mode: parsed,
-      options: ["connectors-only", "full"] as AgentAutomationMode[],
-    });
-    return;
-  }
-
-  // ── GET /api/permissions/trade-mode ────────────────────────────────────
-  // Returns the current trade permission mode (must be before handlePermissionRoutes).
-  if (method === "GET" && pathname === "/api/permissions/trade-mode") {
-    const mode = resolveTradePermissionMode(state.config);
-    json(res, {
-      tradePermissionMode: mode,
-      canUserLocalExecute: canUseLocalTradeExecution(mode, false),
-      canAgentAutoTrade: canUseLocalTradeExecution(mode, true, undefined, {
-        consumeAgentQuota: false,
-      }),
-    });
-    return;
-  }
-
-  // ── PUT /api/permissions/trade-mode ────────────────────────────────────
-  // Update the trade permission mode.
-  if (method === "PUT" && pathname === "/api/permissions/trade-mode") {
-    const body = await readJsonBody<{ mode?: string }>(req, res);
-    if (!body) return;
-
-    const newMode = body.mode;
-    if (
-      newMode !== "user-sign-only" &&
-      newMode !== "manual-local-key" &&
-      newMode !== "agent-auto"
-    ) {
-      error(
-        res,
-        'mode must be "user-sign-only", "manual-local-key", or "agent-auto"',
-        400,
-      );
-      return;
-    }
-
-    if (!state.config.features) {
-      state.config.features = {};
-    }
-    (state.config.features as Record<string, unknown>).tradePermissionMode =
-      newMode;
-
-    try {
-      saveElizaConfig(state.config);
-    } catch (err) {
-      logger.warn(
-        `[api] Trade-mode config save failed: ${err instanceof Error ? err.message : err}`,
-      );
-    }
-
-    json(res, {
-      ok: true,
-      tradePermissionMode: newMode,
-      canUserLocalExecute: canUseLocalTradeExecution(newMode, false),
-      canAgentAutoTrade: canUseLocalTradeExecution(newMode, true, undefined, {
-        consumeAgentQuota: false,
-      }),
-    });
-    return;
-  }
 
   if (
     await handlePermissionRoutes({
@@ -14413,1557 +13605,95 @@ async function handleRequest(
   }
 
   // ═══════════════════════════════════════════════════════════════════════
-  // Workbench routes
   // ═══════════════════════════════════════════════════════════════════════
-
-  // ── GET /api/workbench/overview ──────────────────────────────────────
-  if (method === "GET" && pathname === "/api/workbench/overview") {
-    const tasks: WorkbenchTaskView[] = [];
-    const triggers: Array<
-      NonNullable<ReturnType<typeof taskToTriggerSummary>>
-    > = [];
-    const todos: WorkbenchTodoView[] = [];
-    const summary = {
-      totalTasks: 0,
-      completedTasks: 0,
-      totalTriggers: 0,
-      activeTriggers: 0,
-      totalTodos: 0,
-      completedTodos: 0,
-    };
-
-    let tasksAvailable = false;
-    let triggersAvailable = false;
-    let todosAvailable = false;
-    let runtimeTasks: Task[] = [];
-    let todoData: TodoDataServiceLike | null = null;
-
-    if (state.runtime) {
-      try {
-        runtimeTasks = await state.runtime.getTasks({});
-        tasksAvailable = true;
-        todosAvailable = true;
-
-        for (const task of runtimeTasks) {
-          const todo = toWorkbenchTodo(task);
-          if (todo) {
-            todos.push(todo);
-            continue;
-          }
-          const mappedTask = toWorkbenchTask(task);
-          if (mappedTask) {
-            tasks.push(mappedTask);
-          }
-        }
-      } catch {
-        tasksAvailable = false;
-        todosAvailable = false;
-      }
-
-      try {
-        todoData = await getTodoDataService(state.runtime);
-        if (todoData) {
-          const dbTodos = await todoData.getTodos({
-            agentId: state.runtime.agentId,
-          });
-          todosAvailable = true;
-          for (const rawTodo of dbTodos) {
-            const mapped = toWorkbenchTodoFromRecord(rawTodo);
-            if (mapped) {
-              todos.push(mapped);
-            }
-          }
-        }
-      } catch (err) {
-        if (todoData) {
-          recordTodoDbFailure(state.runtime, "overview.getTodos", err);
-        }
-        // plugin todo unavailable or errored; keep fallback todos
-      }
-
-      try {
-        const triggerTasks = await listTriggerTasks(state.runtime);
-        triggersAvailable = true;
-        for (const task of triggerTasks) {
-          const summaryItem = taskToTriggerSummary(task);
-          if (summaryItem) {
-            triggers.push(summaryItem);
-          }
-        }
-      } catch {
-        if (tasksAvailable) {
-          triggersAvailable = true;
-          for (const task of runtimeTasks) {
-            const summaryItem = taskToTriggerSummary(task);
-            if (summaryItem) {
-              triggers.push(summaryItem);
-            }
-          }
-        }
-      }
-    }
-
-    if (todos.length > 1) {
-      const dedupedTodos = new Map<string, WorkbenchTodoView>();
-      for (const todo of todos) {
-        dedupedTodos.set(todo.id, todo);
-      }
-      todos.length = 0;
-      todos.push(...dedupedTodos.values());
-    }
-
-    tasks.sort((a, b) => a.name.localeCompare(b.name));
-    todos.sort((a, b) => a.name.localeCompare(b.name));
-    triggers.sort((a, b) => a.displayName.localeCompare(b.displayName));
-    summary.totalTasks = tasks.length;
-    summary.completedTasks = tasks.filter((task) => task.isCompleted).length;
-    summary.totalTriggers = triggers.length;
-    summary.activeTriggers = triggers.filter(
-      (trigger) => trigger.enabled,
-    ).length;
-    summary.totalTodos = todos.length;
-    summary.completedTodos = todos.filter((todo) => todo.isCompleted).length;
-
-    json(res, {
-      tasks,
-      triggers,
-      todos,
-      summary,
-      tasksAvailable,
-      triggersAvailable,
-      todosAvailable,
-    });
-    return;
-  }
-
-  // ── GET /api/workbench/tasks ─────────────────────────────────────────
-  if (method === "GET" && pathname === "/api/workbench/tasks") {
-    if (!state.runtime) {
-      error(res, "Agent runtime is not available", 503);
-      return;
-    }
-    const runtimeTasks = await state.runtime.getTasks({});
-    const tasks = runtimeTasks
-      .map((task) => toWorkbenchTask(task))
-      .filter((task): task is WorkbenchTaskView => task !== null)
-      .sort((a, b) => a.name.localeCompare(b.name));
-    json(res, { tasks });
-    return;
-  }
-
-  // ── POST /api/workbench/tasks ────────────────────────────────────────
-  if (method === "POST" && pathname === "/api/workbench/tasks") {
-    if (!state.runtime) {
-      error(res, "Agent runtime is not available", 503);
-      return;
-    }
-    const body = await readJsonBody<{
-      name?: string;
-      description?: string;
-      tags?: string[];
-      isCompleted?: boolean;
-    }>(req, res);
-    if (!body) return;
-    const name = typeof body.name === "string" ? body.name.trim() : "";
-    if (!name) {
-      error(res, "name is required", 400);
-      return;
-    }
-    const description =
-      typeof body.description === "string" ? body.description : "";
-    const isCompleted = body.isCompleted === true;
-    const metadata = {
-      isCompleted,
-      workbench: { kind: "task" },
-    };
-    const taskId = await state.runtime.createTask({
-      name,
-      description,
-      tags: normalizeTags(body.tags, [WORKBENCH_TASK_TAG]),
-      metadata,
-    });
-    const created = await state.runtime.getTask(taskId);
-    const task = created ? toWorkbenchTask(created) : null;
-    if (!task) {
-      error(res, "Task created but unavailable", 500);
-      return;
-    }
-    json(res, { task }, 201);
-    return;
-  }
-
-  const taskItemMatch = /^\/api\/workbench\/tasks\/([^/]+)$/.exec(pathname);
-  if (taskItemMatch && ["GET", "PUT", "DELETE"].includes(method)) {
-    if (!state.runtime) {
-      error(res, "Agent runtime is not available", 503);
-      return;
-    }
-    const decodedTaskId = decodePathComponent(taskItemMatch[1], res, "task id");
-    if (!decodedTaskId) return;
-    const task = await state.runtime.getTask(decodedTaskId as UUID);
-    const taskView = task ? toWorkbenchTask(task) : null;
-    if (!task || !taskView || !task.id) {
-      error(res, "Task not found", 404);
-      return;
-    }
-
-    if (method === "GET") {
-      json(res, { task: taskView });
-      return;
-    }
-
-    if (method === "DELETE") {
-      await state.runtime.deleteTask(task.id);
-      json(res, { ok: true });
-      return;
-    }
-
-    const body = await readJsonBody<{
-      name?: string;
-      description?: string;
-      tags?: string[];
-      isCompleted?: boolean;
-    }>(req, res);
-    if (!body) return;
-
-    const update: Partial<Task> = {};
-    if (typeof body.name === "string") {
-      const name = body.name.trim();
-      if (!name) {
-        error(res, "name cannot be empty", 400);
-        return;
-      }
-      update.name = name;
-    }
-    if (typeof body.description === "string") {
-      update.description = body.description;
-    }
-    if (body.tags !== undefined) {
-      update.tags = normalizeTags(body.tags, [WORKBENCH_TASK_TAG]);
-    }
-    if (typeof body.isCompleted === "boolean") {
-      update.metadata = {
-        ...readTaskMetadata(task),
-        isCompleted: body.isCompleted,
-      };
-    }
-    await state.runtime.updateTask(task.id, update);
-    const refreshed = await state.runtime.getTask(task.id);
-    const refreshedView = refreshed ? toWorkbenchTask(refreshed) : null;
-    if (!refreshedView) {
-      error(res, "Task updated but unavailable", 500);
-      return;
-    }
-    json(res, { task: refreshedView });
-    return;
-  }
-
-  // ── GET /api/workbench/todos ─────────────────────────────────────────
-  if (method === "GET" && pathname === "/api/workbench/todos") {
-    if (!state.runtime) {
-      error(res, "Agent runtime is not available", 503);
-      return;
-    }
-    const runtimeTasks = await state.runtime.getTasks({});
-    const todos = runtimeTasks
-      .map((task) => toWorkbenchTodo(task))
-      .filter((todo): todo is WorkbenchTodoView => todo !== null)
-      .sort((a, b) => a.name.localeCompare(b.name));
-    const todoData = await getTodoDataService(state.runtime);
-    if (todoData) {
-      try {
-        const dbTodos = await todoData.getTodos({
-          agentId: state.runtime.agentId,
-        });
-        for (const rawTodo of dbTodos) {
-          const mapped = toWorkbenchTodoFromRecord(rawTodo);
-          if (mapped) {
-            const existingIndex = todos.findIndex(
-              (todo) => todo.id === mapped.id,
-            );
-            if (existingIndex >= 0) {
-              todos[existingIndex] = mapped;
-            } else {
-              todos.push(mapped);
-            }
-          }
-        }
-        todos.sort((a, b) => a.name.localeCompare(b.name));
-      } catch (err) {
-        recordTodoDbFailure(state.runtime, "todos.list", err);
-        // fallback to task-backed todos only
-      }
-    }
-    json(res, { todos });
-    return;
-  }
-
-  // ── POST /api/workbench/todos ────────────────────────────────────────
-  if (method === "POST" && pathname === "/api/workbench/todos") {
-    if (!state.runtime) {
-      error(res, "Agent runtime is not available", 503);
-      return;
-    }
-    const body = await readJsonBody<{
-      name?: string;
-      description?: string;
-      priority?: number | string | null;
-      isUrgent?: boolean;
-      type?: string;
-      isCompleted?: boolean;
-      tags?: string[];
-    }>(req, res);
-    if (!body) return;
-    const name = typeof body.name === "string" ? body.name.trim() : "";
-    if (!name) {
-      error(res, "name is required", 400);
-      return;
-    }
-    const description =
-      typeof body.description === "string" ? body.description : "";
-    const isCompleted = body.isCompleted === true;
-    const priority = parseNullableNumber(body.priority);
-    const isUrgent = body.isUrgent === true;
-    const type =
-      typeof body.type === "string" && body.type.trim().length > 0
-        ? body.type.trim()
-        : "task";
-
-    const todoData = await getTodoDataService(state.runtime);
-    if (todoData) {
-      try {
-        const now = Date.now();
-        const roomId =
-          (
-            state.runtime.getService("AUTONOMY") as {
-              getAutonomousRoomId?: () => UUID;
-            } | null
-          )?.getAutonomousRoomId?.() ??
-          stringToUuid(`workbench-todo-room-${state.runtime.agentId}`);
-        const worldId = stringToUuid(
-          `workbench-todo-world-${state.runtime.agentId}`,
-        );
-        const entityId =
-          state.adminEntityId ?? stringToUuid(`workbench-todo-entity-${now}`);
-        const createdTodoId = await todoData.createTodo({
-          agentId: state.runtime.agentId,
-          worldId,
-          roomId,
-          entityId,
-          name,
-          description: description || name,
-          type,
-          priority: priority ?? undefined,
-          isUrgent,
-          metadata: {
-            createdAt: new Date(now).toISOString(),
-            source: "workbench-api",
-          },
-          tags: normalizeTags(body.tags, ["TODO"]),
-        });
-        const createdDbTodo = await todoData.getTodo(createdTodoId);
-        const mappedDbTodo = createdDbTodo
-          ? toWorkbenchTodoFromRecord(createdDbTodo)
-          : null;
-        if (mappedDbTodo) {
-          json(res, { todo: mappedDbTodo }, 201);
-          return;
-        }
-      } catch (err) {
-        recordTodoDbFailure(state.runtime, "todos.create", err);
-        // fallback to task-backed todo creation
-      }
-    }
-
-    const metadata = {
-      isCompleted,
-      workbenchTodo: {
-        description,
-        priority,
-        isUrgent,
-        isCompleted,
-        type,
-      },
-    };
-    const taskId = await state.runtime.createTask({
-      name,
-      description,
-      tags: normalizeTags(body.tags, [WORKBENCH_TODO_TAG, "todo"]),
-      metadata,
-    });
-    const created = await state.runtime.getTask(taskId);
-    const todo = created ? toWorkbenchTodo(created) : null;
-    if (!todo) {
-      error(res, "Todo created but unavailable", 500);
-      return;
-    }
-    json(res, { todo }, 201);
-    return;
-  }
-
-  const todoCompleteMatch = /^\/api\/workbench\/todos\/([^/]+)\/complete$/.exec(
-    pathname,
-  );
-  if (method === "POST" && todoCompleteMatch) {
-    if (!state.runtime) {
-      error(res, "Agent runtime is not available", 503);
-      return;
-    }
-    const decodedTodoId = decodePathComponent(
-      todoCompleteMatch[1],
-      res,
-      "todo id",
-    );
-    if (!decodedTodoId) return;
-    const body = await readJsonBody<{ isCompleted?: boolean }>(req, res);
-    if (!body) return;
-    const isCompleted = body.isCompleted === true;
-    const todoData = await getTodoDataService(state.runtime);
-    if (todoData) {
-      try {
-        const updated = await todoData.updateTodo(decodedTodoId, {
-          isCompleted,
-          completedAt: isCompleted ? new Date() : null,
-        });
-        if (updated !== false) {
-          json(res, { ok: true });
-          return;
-        }
-        // updateTodo returned false — fall through to task-backed path
-      } catch (err) {
-        recordTodoDbFailure(state.runtime, "todos.complete", err);
-        // fallback to task-backed path
-      }
-    }
-    const todoTask = await state.runtime.getTask(decodedTodoId as UUID);
-    if (!todoTask || !todoTask.id || !toWorkbenchTodo(todoTask)) {
-      error(res, "Todo not found", 404);
-      return;
-    }
-    const metadata = readTaskMetadata(todoTask);
-    const todoMeta =
-      asObject(metadata.workbenchTodo) ?? asObject(metadata.todo) ?? {};
-    await state.runtime.updateTask(todoTask.id, {
-      metadata: {
-        ...metadata,
-        isCompleted,
-        workbenchTodo: {
-          ...todoMeta,
-          isCompleted,
-        },
-      },
-    });
-    json(res, { ok: true });
-    return;
-  }
-
-  const todoItemMatch = /^\/api\/workbench\/todos\/([^/]+)$/.exec(pathname);
-  if (todoItemMatch && ["GET", "PUT", "DELETE"].includes(method)) {
-    if (!state.runtime) {
-      error(res, "Agent runtime is not available", 503);
-      return;
-    }
-    const decodedTodoId = decodePathComponent(todoItemMatch[1], res, "todo id");
-    if (!decodedTodoId) return;
-    const todoData = await getTodoDataService(state.runtime);
-
-    if (method === "GET" && todoData) {
-      try {
-        const dbTodo = await todoData.getTodo(decodedTodoId);
-        const mapped = dbTodo ? toWorkbenchTodoFromRecord(dbTodo) : null;
-        if (mapped) {
-          json(res, { todo: mapped });
-          return;
-        }
-      } catch (err) {
-        recordTodoDbFailure(state.runtime, "todos.get", err);
-        // fallback to task-backed path
-      }
-    }
-
-    if (method === "GET") {
-      const todoTask = await state.runtime.getTask(decodedTodoId as UUID);
-      const todoView = todoTask ? toWorkbenchTodo(todoTask) : null;
-      if (!todoTask || !todoTask.id || !todoView) {
-        error(res, "Todo not found", 404);
-        return;
-      }
-      json(res, { todo: todoView });
-      return;
-    }
-
-    if (method === "DELETE" && todoData) {
-      try {
-        const deleted = await todoData.deleteTodo(decodedTodoId);
-        if (deleted !== false) {
-          json(res, { ok: true });
-          return;
-        }
-      } catch (err) {
-        recordTodoDbFailure(state.runtime, "todos.delete", err);
-        // fallback to task-backed path
-      }
-    }
-
-    if (method === "DELETE") {
-      const todoTask = await state.runtime.getTask(decodedTodoId as UUID);
-      if (!todoTask?.id || !toWorkbenchTodo(todoTask)) {
-        error(res, "Todo not found", 404);
-        return;
-      }
-      await state.runtime.deleteTask(todoTask.id);
-      json(res, { ok: true });
-      return;
-    }
-
-    const body = await readJsonBody<{
-      name?: string;
-      description?: string;
-      priority?: number | string | null;
-      isUrgent?: boolean;
-      type?: string;
-      isCompleted?: boolean;
-      tags?: string[];
-    }>(req, res);
-    if (!body) return;
-
-    if (todoData) {
-      try {
-        const updates: Record<string, unknown> = {};
-        if (typeof body.name === "string") {
-          const name = body.name.trim();
-          if (!name) {
-            error(res, "name cannot be empty", 400);
-            return;
-          }
-          updates.name = name;
-        }
-        if (typeof body.description === "string") {
-          updates.description = body.description;
-        }
-        if (body.priority !== undefined) {
-          updates.priority = parseNullableNumber(body.priority);
-        }
-        if (typeof body.isUrgent === "boolean") {
-          updates.isUrgent = body.isUrgent;
-        }
-        if (typeof body.type === "string" && body.type.trim().length > 0) {
-          updates.type = body.type.trim();
-        }
-        if (typeof body.isCompleted === "boolean") {
-          updates.isCompleted = body.isCompleted;
-          updates.completedAt = body.isCompleted ? new Date() : null;
-        }
-        const updated = await todoData.updateTodo(decodedTodoId, updates);
-        if (updated === false) throw new Error("updateTodo returned false");
-        const refreshedDbTodo = await todoData.getTodo(decodedTodoId);
-        const refreshedMapped = refreshedDbTodo
-          ? toWorkbenchTodoFromRecord(refreshedDbTodo)
-          : null;
-        if (refreshedMapped) {
-          json(res, { todo: refreshedMapped });
-          return;
-        }
-      } catch (err) {
-        recordTodoDbFailure(state.runtime, "todos.update", err);
-        // fallback to task-backed path
-      }
-    }
-
-    const todoTask = await state.runtime.getTask(decodedTodoId as UUID);
-    const todoView = todoTask ? toWorkbenchTodo(todoTask) : null;
-    if (!todoTask || !todoTask.id || !todoView) {
-      error(res, "Todo not found", 404);
-      return;
-    }
-
-    const update: Partial<Task> = {};
-    if (typeof body.name === "string") {
-      const name = body.name.trim();
-      if (!name) {
-        error(res, "name cannot be empty", 400);
-        return;
-      }
-      update.name = name;
-    }
-    if (typeof body.description === "string") {
-      update.description = body.description;
-    }
-    if (body.tags !== undefined) {
-      update.tags = normalizeTags(body.tags, [WORKBENCH_TODO_TAG, "todo"]);
-    }
-
-    const metadata = readTaskMetadata(todoTask);
-    const existingTodoMeta =
-      asObject(metadata.workbenchTodo) ?? asObject(metadata.todo) ?? {};
-    const nextTodoMeta: Record<string, unknown> = {
-      ...existingTodoMeta,
-    };
-    if (typeof body.description === "string") {
-      nextTodoMeta.description = body.description;
-    }
-    if (body.priority !== undefined) {
-      nextTodoMeta.priority = parseNullableNumber(body.priority);
-    }
-    if (typeof body.isUrgent === "boolean") {
-      nextTodoMeta.isUrgent = body.isUrgent;
-    }
-    if (typeof body.type === "string" && body.type.trim().length > 0) {
-      nextTodoMeta.type = body.type.trim();
-    }
-
-    let isCompleted = readTaskCompleted(todoTask);
-    if (typeof body.isCompleted === "boolean") {
-      isCompleted = body.isCompleted;
-    }
-    nextTodoMeta.isCompleted = isCompleted;
-    update.metadata = {
-      ...metadata,
-      isCompleted,
-      workbenchTodo: nextTodoMeta,
-    };
-
-    await state.runtime.updateTask(todoTask.id, update);
-    const refreshed = await state.runtime.getTask(todoTask.id);
-    const refreshedTodo = refreshed ? toWorkbenchTodo(refreshed) : null;
-    if (!refreshedTodo) {
-      error(res, "Todo updated but unavailable", 500);
-      return;
-    }
-    json(res, { todo: refreshedTodo });
-    return;
-  }
-
+  // Workbench routes (extracted to workbench-routes.ts)
   // ═══════════════════════════════════════════════════════════════════════
-  // Share ingest routes
-  // ═══════════════════════════════════════════════════════════════════════
-
-  // ── POST /api/ingest/share ───────────────────────────────────────────
-  if (method === "POST" && pathname === "/api/ingest/share") {
-    const body = await readJsonBody<{
-      source?: string;
-      title?: string;
-      url?: string;
-      text?: string;
-    }>(req, res);
-    if (!body) return;
-
-    const item: ShareIngestItem = {
-      id: crypto.randomUUID(),
-      source: (body.source as string) ?? "unknown",
-      title: body.title as string | undefined,
-      url: body.url as string | undefined,
-      text: body.text as string | undefined,
-      suggestedPrompt: body.title
-        ? `What do you think about "${body.title}"?`
-        : body.url
-          ? `Can you analyze this: ${body.url}`
-          : body.text
-            ? `What are your thoughts on: ${(body.text as string).slice(0, 100)}`
-            : "What do you think about this shared content?",
-      receivedAt: Date.now(),
-    };
-    state.shareIngestQueue.push(item);
-    json(res, { ok: true, item });
-    return;
-  }
-
-  // ── GET /api/ingest/share ────────────────────────────────────────────
-  if (method === "GET" && pathname === "/api/ingest/share") {
-    const consume = url.searchParams.get("consume") === "1";
-    if (consume) {
-      const items = [...state.shareIngestQueue];
-      state.shareIngestQueue.length = 0;
-      json(res, { items });
-    } else {
-      json(res, { items: state.shareIngestQueue });
-    }
-    return;
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════
-  // MCP marketplace routes
-  // ═══════════════════════════════════════════════════════════════════════
-
-  // ── GET /api/mcp/marketplace/search ──────────────────────────────────
-  if (method === "GET" && pathname === "/api/mcp/marketplace/search") {
-    const query = url.searchParams.get("q") ?? "";
-    const limitStr = url.searchParams.get("limit");
-    const limit = limitStr
-      ? parseClampedInteger(limitStr, { min: 1, max: 50, fallback: 30 })
-      : 30;
-    try {
-      const result = await searchMcpMarketplace(query || undefined, limit);
-      json(res, { ok: true, results: result.results });
-    } catch (err) {
-      error(
+  if (pathname.startsWith("/api/workbench")) {
+    if (
+      await handleWorkbenchRoutes({
+        req,
         res,
-        `MCP marketplace search failed: ${err instanceof Error ? err.message : err}`,
-        502,
-      );
+        method,
+        pathname,
+        url,
+        state: state as any,
+        json,
+        error,
+        readJsonBody,
+        toWorkbenchTask: toWorkbenchTask as any,
+        toWorkbenchTodo: toWorkbenchTodo as any,
+        toWorkbenchTodoFromRecord: toWorkbenchTodoFromRecord as any,
+        getTodoDataService: getTodoDataService as any,
+        recordTodoDbFailure,
+        normalizeTags,
+        readTaskMetadata,
+        readTaskCompleted,
+        parseNullableNumber,
+        asObject,
+        decodePathComponent,
+        taskToTriggerSummary: taskToTriggerSummary as any,
+        listTriggerTasks: listTriggerTasks as any,
+      })
+    ) {
+      return;
     }
-    return;
   }
 
-  // ── GET /api/mcp/marketplace/details/:name ───────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  // MCP routes (extracted to mcp-routes.ts)
+  // ═══════════════════════════════════════════════════════════════════════
+  if (pathname.startsWith("/api/mcp")) {
+    if (
+      await handleMcpRoutes({
+        req,
+        res,
+        method,
+        pathname,
+        url,
+        state,
+        json,
+        error,
+        readJsonBody,
+        saveElizaConfig,
+        redactDeep,
+        isBlockedObjectKey,
+        cloneWithoutBlockedObjectKeys,
+        resolveMcpServersRejection,
+        resolveMcpTerminalAuthorizationRejection,
+        decodePathComponent,
+      })
+    ) {
+      return;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Misc routes (extracted to misc-routes.ts)
+  // ═══════════════════════════════════════════════════════════════════════
   if (
-    method === "GET" &&
-    pathname.startsWith("/api/mcp/marketplace/details/")
+    await handleMiscRoutes({
+      req,
+      res,
+      method,
+      pathname,
+      url,
+      state: state as any,
+      json,
+      error,
+      readJsonBody,
+      AGENT_EVENT_ALLOWED_STREAMS,
+      resolveTerminalRunRejection,
+      resolveTerminalRunClientId,
+      isSharedTerminalClientId,
+      activeTerminalRunCount,
+      setActiveTerminalRunCount: (delta: number) => {
+        activeTerminalRunCount = Math.max(0, activeTerminalRunCount + delta);
+      },
+    })
   ) {
-    const serverName = decodePathComponent(
-      pathname.slice("/api/mcp/marketplace/details/".length),
-      res,
-      "server name",
-    );
-    if (serverName === null) return;
-    if (!serverName.trim()) {
-      error(res, "Server name is required", 400);
-      return;
-    }
-    try {
-      const details = await getMcpServerDetails(serverName);
-      if (!details) {
-        error(res, `MCP server "${serverName}" not found`, 404);
-        return;
-      }
-      json(res, { ok: true, server: details });
-    } catch (err) {
-      error(
-        res,
-        `Failed to fetch server details: ${err instanceof Error ? err.message : err}`,
-        502,
-      );
-    }
     return;
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
-  // MCP config routes
-  // ═══════════════════════════════════════════════════════════════════════
-
-  // ── GET /api/mcp/config ──────────────────────────────────────────────
-  if (method === "GET" && pathname === "/api/mcp/config") {
-    const servers = state.config.mcp?.servers ?? {};
-    json(res, { ok: true, servers: redactDeep(servers) });
-    return;
-  }
-
-  // ── POST /api/mcp/config/server ──────────────────────────────────────
-  if (method === "POST" && pathname === "/api/mcp/config/server") {
-    const body = await readJsonBody<{
-      name?: string;
-      config?: Record<string, unknown>;
-      terminalToken?: string;
-    }>(req, res);
-    if (!body) return;
-
-    const serverName = (body.name as string | undefined)?.trim();
-    if (!serverName) {
-      error(res, "Server name is required", 400);
-      return;
-    }
-    if (isBlockedObjectKey(serverName)) {
-      error(
-        res,
-        'Invalid server name: "__proto__", "constructor", and "prototype" are reserved',
-        400,
-      );
-      return;
-    }
-
-    const config = body.config as Record<string, unknown> | undefined;
-    if (!config || typeof config !== "object" || Array.isArray(config)) {
-      error(res, "Server config object is required", 400);
-      return;
-    }
-
-    const mcpRejection = await resolveMcpServersRejection({
-      [serverName]: config,
-    });
-    if (mcpRejection) {
-      error(res, mcpRejection, 400);
-      return;
-    }
-
-    const mcpTerminalRejection = resolveMcpTerminalAuthorizationRejection(
-      req,
-      { [serverName]: config },
-      body,
-    );
-    if (mcpTerminalRejection) {
-      error(
-        res,
-        `Configuring stdio MCP servers requires terminal authorization. ${mcpTerminalRejection.reason}`,
-        mcpTerminalRejection.status,
-      );
-      return;
-    }
-
-    if (!state.config.mcp) state.config.mcp = {};
-    if (!state.config.mcp.servers) state.config.mcp.servers = {};
-    const sanitized = cloneWithoutBlockedObjectKeys(config);
-    state.config.mcp.servers[serverName] = sanitized as NonNullable<
-      NonNullable<typeof state.config.mcp>["servers"]
-    >[string];
-
-    try {
-      saveElizaConfig(state.config);
-    } catch (err) {
-      logger.warn(
-        `[api] Config save failed: ${err instanceof Error ? err.message : err}`,
-      );
-    }
-
-    json(res, { ok: true, name: serverName, requiresRestart: true });
-    return;
-  }
-
-  // ── DELETE /api/mcp/config/server/:name ──────────────────────────────
-  if (method === "DELETE" && pathname.startsWith("/api/mcp/config/server/")) {
-    const serverName = decodePathComponent(
-      pathname.slice("/api/mcp/config/server/".length),
-      res,
-      "server name",
-    );
-    if (serverName === null) return;
-    if (isBlockedObjectKey(serverName)) {
-      error(
-        res,
-        'Invalid server name: "__proto__", "constructor", and "prototype" are reserved',
-        400,
-      );
-      return;
-    }
-
-    if (state.config.mcp?.servers?.[serverName]) {
-      delete state.config.mcp.servers[serverName];
-      try {
-        saveElizaConfig(state.config);
-      } catch (err) {
-        logger.warn(
-          `[api] Config save failed: ${err instanceof Error ? err.message : err}`,
-        );
-      }
-    }
-
-    json(res, { ok: true, requiresRestart: true });
-    return;
-  }
-
-  // ── PUT /api/mcp/config ──────────────────────────────────────────────
-  if (method === "PUT" && pathname === "/api/mcp/config") {
-    const body = await readJsonBody<{
-      servers?: Record<string, unknown>;
-      terminalToken?: string;
-    }>(req, res);
-    if (!body) return;
-
-    if (!state.config.mcp) state.config.mcp = {};
-    if (body.servers !== undefined) {
-      if (
-        !body.servers ||
-        typeof body.servers !== "object" ||
-        Array.isArray(body.servers)
-      ) {
-        error(res, "servers must be a JSON object", 400);
-        return;
-      }
-      const mcpRejection = await resolveMcpServersRejection(
-        body.servers as Record<string, unknown>,
-      );
-      if (mcpRejection) {
-        error(res, mcpRejection, 400);
-        return;
-      }
-      const mcpTerminalRejection = resolveMcpTerminalAuthorizationRejection(
-        req,
-        body.servers as Record<string, unknown>,
-        body,
-      );
-      if (mcpTerminalRejection) {
-        error(
-          res,
-          `Configuring stdio MCP servers requires terminal authorization. ${mcpTerminalRejection.reason}`,
-          mcpTerminalRejection.status,
-        );
-        return;
-      }
-      const sanitized = cloneWithoutBlockedObjectKeys(body.servers);
-      state.config.mcp.servers = sanitized as NonNullable<
-        NonNullable<typeof state.config.mcp>["servers"]
-      >;
-    }
-
-    try {
-      saveElizaConfig(state.config);
-    } catch (err) {
-      logger.warn(
-        `[api] Config save failed: ${err instanceof Error ? err.message : err}`,
-      );
-    }
-
-    json(res, { ok: true });
-    return;
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════
-  // MCP status route
-  // ═══════════════════════════════════════════════════════════════════════
-
-  // ── GET /api/mcp/status ──────────────────────────────────────────────
-  if (method === "GET" && pathname === "/api/mcp/status") {
-    const servers: Array<{
-      name: string;
-      status: string;
-      toolCount: number;
-      resourceCount: number;
-    }> = [];
-
-    // If runtime has an MCP service, enumerate active servers
-    if (state.runtime) {
-      try {
-        const mcpService = state.runtime.getService("MCP") as {
-          getServers?: () => Array<{
-            name: string;
-            status: string;
-            tools?: unknown[];
-            resources?: unknown[];
-          }>;
-        } | null;
-        if (mcpService && typeof mcpService.getServers === "function") {
-          for (const s of mcpService.getServers()) {
-            servers.push({
-              name: s.name,
-              status: s.status,
-              toolCount: Array.isArray(s.tools) ? s.tools.length : 0,
-              resourceCount: Array.isArray(s.resources)
-                ? s.resources.length
-                : 0,
-            });
-          }
-        }
-      } catch (err) {
-        logger.debug(
-          `[api] Service not available: ${err instanceof Error ? err.message : err}`,
-        );
-      }
-    }
-
-    json(res, { ok: true, servers });
-    return;
-  }
-
-  // ── GET /api/emotes ──────────────────────────────────────────────────────
-  if (method === "GET" && pathname === "/api/emotes") {
-    json(res, { emotes: EMOTE_CATALOG });
-    return;
-  }
-
-  // ── POST /api/emote ─────────────────────────────────────────────────────
-  if (method === "POST" && pathname === "/api/emote") {
-    const body = await readJsonBody<{ emoteId?: string }>(req, res);
-    if (!body) return;
-    const emote = body.emoteId ? EMOTE_BY_ID.get(body.emoteId) : undefined;
-    if (!emote) {
-      error(res, `Unknown emote: ${body.emoteId ?? "(none)"}`);
-      return;
-    }
-    state.broadcastWs?.({
-      type: "emote",
-      emoteId: emote.id,
-      path: emote.path,
-      duration: emote.duration,
-      // Emotes are always treated as one-shot performances in the app and
-      // blend back to idle automatically after their catalog duration.
-      loop: false,
-    });
-    json(res, { ok: true });
-    return;
-  }
-
-  // ── POST /api/agent/event ──────────────────────────────────────────────
-  // Push an event into the agent event stream (WebSocket + buffer).
-  // Used by plugins to surface activity in the StreamView.
-  // Auth: protected by the isAuthorized(req) gate at L5631.
-  if (method === "POST" && pathname === "/api/agent/event") {
-    const body = await readJsonBody<{
-      stream?: string;
-      data?: Record<string, unknown>;
-      roomId?: string;
-    }>(req, res);
-    if (!body || !body.stream) {
-      error(res, "Missing 'stream' field");
-      return;
-    }
-    if (!AGENT_EVENT_ALLOWED_STREAMS.has(body.stream)) {
-      error(
-        res,
-        `Invalid stream: ${body.stream}. Allowed: ${[...AGENT_EVENT_ALLOWED_STREAMS].join(", ")}`,
-        400,
-      );
-      return;
-    }
-    const envelope: StreamEventEnvelope = {
-      type: "agent_event",
-      version: 1,
-      eventId: `evt-${state.nextEventId}`,
-      ts: Date.now(),
-      stream: body.stream,
-      agentId: state.runtime?.agentId
-        ? String(state.runtime.agentId)
-        : undefined,
-      roomId: body.roomId,
-      payload: body.data ?? {},
-    };
-    state.nextEventId += 1;
-    state.eventBuffer.push(envelope);
-    if (state.eventBuffer.length > 1500) {
-      state.eventBuffer.splice(0, state.eventBuffer.length - 1500);
-    }
-    state.broadcastWs?.(envelope as unknown as Record<string, unknown>);
-    json(res, { ok: true });
-    return;
-  }
-
-  // ── POST /api/terminal/run ──────────────────────────────────────────────
-  // Execute a shell command server-side and stream output via WebSocket.
-  if (method === "POST" && pathname === "/api/terminal/run") {
-    if (state.shellEnabled === false) {
-      error(res, "Shell access is disabled", 403);
-      return;
-    }
-
-    const body = await readJsonBody<{
-      command?: string;
-      clientId?: unknown;
-      terminalToken?: string;
-    }>(req, res);
-    if (!body) return;
-
-    const terminalRejection = resolveTerminalRunRejection(req, body);
-    if (terminalRejection) {
-      error(res, terminalRejection.reason, terminalRejection.status);
-      return;
-    }
-
-    const command = typeof body.command === "string" ? body.command.trim() : "";
-    if (!command) {
-      error(res, "Missing or empty command");
-      return;
-    }
-
-    // Guard against excessively long commands (likely injection or abuse)
-    if (command.length > 4096) {
-      error(res, "Command exceeds maximum length (4096 chars)", 400);
-      return;
-    }
-
-    // Prevent multiline/control-character payloads that can smuggle
-    // unintended command chains through a single request.
-    if (
-      command.includes("\n") ||
-      command.includes("\r") ||
-      command.includes("\0")
-    ) {
-      error(
-        res,
-        "Command must be a single line without control characters",
-        400,
-      );
-      return;
-    }
-
-    const targetClientId = resolveTerminalRunClientId(req, body);
-    if (!targetClientId) {
-      error(
-        res,
-        "Missing client id. Provide X-Eliza-Client-Id header or clientId in the request body.",
-        400,
-      );
-      return;
-    }
-
-    const emitTerminalEvent = (payload: Record<string, unknown>) => {
-      if (isSharedTerminalClientId(targetClientId)) {
-        state.broadcastWs?.(payload);
-        return;
-      }
-      if (typeof state.broadcastWsToClientId !== "function") return;
-      state.broadcastWsToClientId(targetClientId, payload);
-    };
-
-    const { maxConcurrent, maxDurationMs } = resolveTerminalRunLimits();
-    if (activeTerminalRunCount >= maxConcurrent) {
-      error(
-        res,
-        `Too many active terminal runs (${maxConcurrent}). Wait for a command to finish.`,
-        429,
-      );
-      return;
-    }
-
-    // Respond immediately — output streams via WebSocket
-    json(res, { ok: true });
-
-    // Spawn in background and broadcast output
-    const { spawn } = await import("node:child_process");
-    const runId = `run-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-
-    emitTerminalEvent({
-      type: "terminal-output",
-      runId,
-      event: "start",
-      command,
-      maxDurationMs,
-    });
-
-    const proc = spawn(command, {
-      shell: true,
-      cwd: process.cwd(),
-      env: { ...process.env, FORCE_COLOR: "0" },
-    });
-
-    activeTerminalRunCount += 1;
-    let finalized = false;
-    const finalize = () => {
-      if (finalized) return;
-      finalized = true;
-      activeTerminalRunCount = Math.max(0, activeTerminalRunCount - 1);
-      clearTimeout(timeoutHandle);
-    };
-
-    const timeoutHandle = setTimeout(() => {
-      if (proc.killed) return;
-      proc.kill("SIGTERM");
-      emitTerminalEvent({
-        type: "terminal-output",
-        runId,
-        event: "timeout",
-        maxDurationMs,
-      });
-
-      setTimeout(() => {
-        if (!proc.killed) proc.kill("SIGKILL");
-      }, 3000);
-    }, maxDurationMs);
-
-    proc.stdout?.on("data", (chunk: Buffer) => {
-      emitTerminalEvent({
-        type: "terminal-output",
-        runId,
-        event: "stdout",
-        data: chunk.toString("utf-8"),
-      });
-    });
-
-    proc.stderr?.on("data", (chunk: Buffer) => {
-      emitTerminalEvent({
-        type: "terminal-output",
-        runId,
-        event: "stderr",
-        data: chunk.toString("utf-8"),
-      });
-    });
-
-    proc.on("close", (code: number | null) => {
-      finalize();
-      emitTerminalEvent({
-        type: "terminal-output",
-        runId,
-        event: "exit",
-        code: code ?? 1,
-      });
-    });
-
-    proc.on("error", (err: Error) => {
-      finalize();
-      emitTerminalEvent({
-        type: "terminal-output",
-        runId,
-        event: "error",
-        data: err.message,
-      });
-    });
-
-    return;
-  }
-
-  // ── Custom Actions CRUD ──────────────────────────────────────────────
-
-  if (method === "GET" && pathname === "/api/custom-actions") {
-    const config = loadElizaConfig();
-    json(res, { actions: config.customActions ?? [] });
-    return;
-  }
-
-  if (method === "POST" && pathname === "/api/custom-actions") {
-    const body = await readJsonBody<Record<string, unknown>>(req, res);
-    if (!body) return;
-
-    const name = typeof body.name === "string" ? body.name.trim() : "";
-    const description =
-      typeof body.description === "string" ? body.description.trim() : "";
-
-    if (!name || !description) {
-      error(res, "name and description are required", 400);
-      return;
-    }
-
-    const handler = body.handler as CustomActionDef["handler"] | undefined;
-    const validHandlerTypes = new Set(["http", "shell", "code"]);
-    if (!handler || !handler.type || !validHandlerTypes.has(handler.type)) {
-      error(
-        res,
-        "handler with valid type (http, shell, code) is required",
-        400,
-      );
-      return;
-    }
-
-    // Security gate: shell and code handlers execute arbitrary commands or
-    // code on the host machine, and the resulting action persists in config
-    // (survives restarts). Require the ELIZA_TERMINAL_RUN_TOKEN to prove
-    // the caller has explicit operator authority for code execution.
-    if (handler.type === "shell" || handler.type === "code") {
-      const terminalRejection = resolveTerminalRunRejection(
-        req,
-        body as TerminalRunRequestBody,
-      );
-      if (terminalRejection) {
-        error(
-          res,
-          `Creating ${handler.type} actions requires terminal authorization. ${terminalRejection.reason}`,
-          terminalRejection.status,
-        );
-        return;
-      }
-    }
-
-    // Validate type-specific required fields
-    if (
-      handler.type === "http" &&
-      (typeof handler.url !== "string" || !handler.url.trim())
-    ) {
-      error(res, "HTTP handler requires a url", 400);
-      return;
-    }
-    if (
-      handler.type === "shell" &&
-      (typeof handler.command !== "string" || !handler.command.trim())
-    ) {
-      error(res, "Shell handler requires a command", 400);
-      return;
-    }
-    if (
-      handler.type === "code" &&
-      (typeof handler.code !== "string" || !handler.code.trim())
-    ) {
-      error(res, "Code handler requires code", 400);
-      return;
-    }
-
-    const now = new Date().toISOString();
-    const actionDef: CustomActionDef = {
-      id: crypto.randomUUID(),
-      name: name.toUpperCase().replace(/\s+/g, "_"),
-      description,
-      similes: Array.isArray(body.similes)
-        ? body.similes.filter((s): s is string => typeof s === "string")
-        : [],
-      parameters: Array.isArray(body.parameters)
-        ? (body.parameters as Array<{
-            name: string;
-            description: string;
-            required: boolean;
-          }>)
-        : [],
-      handler,
-      enabled: body.enabled !== false,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    const config = loadElizaConfig();
-    if (!config.customActions) config.customActions = [];
-    config.customActions.push(actionDef);
-    saveElizaConfig(config);
-
-    // Hot-register into the running agent so it's available immediately
-    if (actionDef.enabled) {
-      registerCustomActionLive(actionDef);
-    }
-
-    json(res, { ok: true, action: actionDef });
-    return;
-  }
-
-  // Generate a custom action definition from a natural language prompt
-  if (method === "POST" && pathname === "/api/custom-actions/generate") {
-    const body = await readJsonBody<{ prompt?: string }>(req, res);
-    if (!body) return;
-
-    const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
-    if (!prompt) {
-      error(res, "prompt is required", 400);
-      return;
-    }
-
-    const runtime = state.runtime;
-    if (!runtime) {
-      error(res, "Agent runtime not available", 503);
-      return;
-    }
-
-    try {
-      const systemPrompt = [
-        "You are a helper that generates custom action definitions from natural language descriptions.",
-        "Given a user's description of what they want an action to do, generate a JSON object with these fields:",
-        "",
-        "- name: string (UPPER_SNAKE_CASE action name)",
-        "- description: string (clear description of what the action does)",
-        "- similes: optional string[] of alternative action names and phrases",
-        '- handlerType: "http" | "shell" | "code"',
-        "- handler: object with type-specific fields:",
-        '  For http: { type: "http", method: "GET"|"POST"|etc, url: string, headers?: object, bodyTemplate?: string }',
-        '  For shell: { type: "shell", command: string }',
-        '  For code: { type: "code", code: string }',
-        "- parameters: array of { name: string, description: string, required: boolean }",
-        "",
-        "Use {{paramName}} placeholders in URLs, body templates, and shell commands.",
-        "For code handlers, parameters are available via params.paramName and fetch() is available.",
-        "",
-        "Respond with ONLY the JSON object, no markdown fences or explanation.",
-      ].join("\n");
-
-      const llmResponse = await runtime.useModel(ModelType.TEXT_SMALL, {
-        prompt: `${systemPrompt}\n\nUser request: ${prompt}`,
-      });
-
-      // Parse the JSON from the LLM response
-      const text =
-        typeof llmResponse === "string" ? llmResponse : String(llmResponse);
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        error(res, "Failed to generate action definition", 500);
-        return;
-      }
-
-      const generated = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
-      json(res, { ok: true, generated });
-    } catch (err) {
-      error(
-        res,
-        `Generation failed: ${err instanceof Error ? err.message : String(err)}`,
-        500,
-      );
-    }
-    return;
-  }
-
-  const customActionMatch = pathname.match(/^\/api\/custom-actions\/([^/]+)$/);
-  const customActionTestMatch = pathname.match(
-    /^\/api\/custom-actions\/([^/]+)\/test$/,
-  );
-
-  if (method === "POST" && customActionTestMatch) {
-    const actionId = decodeURIComponent(customActionTestMatch[1]);
-    const body = await readJsonBody<{ params?: Record<string, string> }>(
-      req,
-      res,
-    );
-    if (!body) return;
-
-    const config = loadElizaConfig();
-    const def = (config.customActions ?? []).find((a) => a.id === actionId);
-    if (!def) {
-      error(res, "Action not found", 404);
-      return;
-    }
-
-    // Security gate: shell/code handlers execute arbitrary commands on the host.
-    if (def.handler.type === "shell" || def.handler.type === "code") {
-      const terminalRejection = resolveTerminalRunRejection(
-        req,
-        body as TerminalRunRequestBody,
-      );
-      if (terminalRejection) {
-        error(
-          res,
-          `Testing ${def.handler.type} actions requires terminal authorization. ${terminalRejection.reason}`,
-          terminalRejection.status,
-        );
-        return;
-      }
-    }
-
-    const testParams = body.params ?? {};
-    const start = Date.now();
-    try {
-      const handler = buildTestHandler(def);
-      const result = await handler(testParams);
-      json(res, {
-        ok: result.ok,
-        output: result.output,
-        durationMs: Date.now() - start,
-      });
-    } catch (err) {
-      json(res, {
-        ok: false,
-        output: "",
-        error: err instanceof Error ? err.message : String(err),
-        durationMs: Date.now() - start,
-      });
-    }
-    return;
-  }
-
-  if (method === "PUT" && customActionMatch) {
-    const actionId = decodeURIComponent(customActionMatch[1]);
-    const body = await readJsonBody<Record<string, unknown>>(req, res);
-    if (!body) return;
-
-    const config = loadElizaConfig();
-    const actions = config.customActions ?? [];
-    const idx = actions.findIndex((a) => a.id === actionId);
-    if (idx === -1) {
-      error(res, "Action not found", 404);
-      return;
-    }
-
-    const existing = actions[idx];
-
-    // Validate handler if provided in the update
-    let newHandler = existing.handler;
-    if (body.handler != null) {
-      const h = body.handler as Record<string, unknown>;
-      const hValidTypes = new Set(["http", "shell", "code"]);
-      if (!h.type || !hValidTypes.has(h.type as string)) {
-        error(res, "handler.type must be http, shell, or code", 400);
-        return;
-      }
-      newHandler = h as unknown as CustomActionDef["handler"];
-    }
-
-    // Security gate: if the new/updated handler is shell or code, require
-    // terminal authorization — same gate as POST creation.
-    if (newHandler.type === "shell" || newHandler.type === "code") {
-      const terminalRejection = resolveTerminalRunRejection(
-        req,
-        body as TerminalRunRequestBody,
-      );
-      if (terminalRejection) {
-        error(
-          res,
-          `Updating to ${newHandler.type} handler requires terminal authorization. ${terminalRejection.reason}`,
-          terminalRejection.status,
-        );
-        return;
-      }
-    }
-
-    const updated: CustomActionDef = {
-      ...existing,
-      name:
-        typeof body.name === "string"
-          ? body.name.trim().toUpperCase().replace(/\s+/g, "_")
-          : existing.name,
-      description:
-        typeof body.description === "string"
-          ? body.description.trim()
-          : existing.description,
-      similes: Array.isArray(body.similes)
-        ? body.similes.filter((s): s is string => typeof s === "string")
-        : existing.similes,
-      parameters: Array.isArray(body.parameters)
-        ? (body.parameters as CustomActionDef["parameters"])
-        : existing.parameters,
-      handler: newHandler,
-      enabled:
-        typeof body.enabled === "boolean" ? body.enabled : existing.enabled,
-      updatedAt: new Date().toISOString(),
-    };
-
-    actions[idx] = updated;
-    config.customActions = actions;
-    saveElizaConfig(config);
-
-    json(res, { ok: true, action: updated });
-    return;
-  }
-
-  if (method === "DELETE" && customActionMatch) {
-    const actionId = decodeURIComponent(customActionMatch[1]);
-
-    const config = loadElizaConfig();
-    const actions = config.customActions ?? [];
-    const idx = actions.findIndex((a) => a.id === actionId);
-    if (idx === -1) {
-      error(res, "Action not found", 404);
-      return;
-    }
-
-    actions.splice(idx, 1);
-    config.customActions = actions;
-    saveElizaConfig(config);
-
-    json(res, { ok: true });
-    return;
-  }
-
-  // ── Stream Manager routes ──────────────────────────────────────────────
-  // Handled by handleStreamRoute() in stream-routes.ts (registered via
-  // connectorRouteHandlers below). Endpoints: /api/stream/*
-
-  // ── LTCG Autonomy routes ─────────────────────────────────────────────
-  // The LTCG plugin registers these as elizaOS plugin routes, but Eliza's
-  // server doesn't dispatch plugin routes. Wire them up directly here.
-  if (pathname.startsWith("/api/ltcg/autonomy")) {
-    try {
-      const { getAutonomyController } = await import("@lunchtable/plugin-ltcg");
-      const ctrl = getAutonomyController();
-
-      if (method === "GET" && pathname === "/api/ltcg/autonomy/status") {
-        json(res, ctrl.getStatus());
-        return;
-      }
-
-      if (method === "POST" && pathname === "/api/ltcg/autonomy/start") {
-        const body = (await readJsonBody(req, res)) ?? {};
-        const bodyRecord = body as Record<string, unknown>;
-        const mode = bodyRecord.mode === "pvp" ? "pvp" : "story";
-        const continuousValue = bodyRecord.continuous;
-        const continuous =
-          typeof continuousValue === "boolean" ? continuousValue : true;
-        await ctrl.start({ mode, continuous });
-        json(res, { ok: true, mode, continuous });
-        return;
-      }
-
-      if (method === "POST" && pathname === "/api/ltcg/autonomy/pause") {
-        ctrl.pause();
-        json(res, { ok: true, state: "paused" });
-        return;
-      }
-
-      if (method === "POST" && pathname === "/api/ltcg/autonomy/resume") {
-        ctrl.resume();
-        json(res, { ok: true, state: "running" });
-        return;
-      }
-
-      if (method === "POST" && pathname === "/api/ltcg/autonomy/stop") {
-        await ctrl.stop();
-        json(res, { ok: true, state: "idle" });
-        return;
-      }
-    } catch (err) {
-      logger.error(
-        `[ltcg-autonomy] ${err instanceof Error ? err.message : err}`,
-      );
-      error(res, err instanceof Error ? err.message : "Autonomy error", 500);
-      return;
-    }
-  }
 
   // ── Connector plugin routes (dynamically registered) ────────────────────
   for (const handler of state.connectorRouteHandlers) {
