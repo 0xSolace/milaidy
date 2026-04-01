@@ -1,0 +1,538 @@
+/**
+ * Plugin discovery and resolution logic.
+ *
+ * Resolves Eliza plugins from config and auto-enable logic, loading them
+ * from static imports, npm packages, workspace overrides, or drop-in
+ * directories. Each plugin is wrapped in an error boundary so a single
+ * failing plugin cannot crash the agent startup.
+ *
+ * Extracted from eliza.ts to reduce file size.
+ *
+ * @module plugin-resolver
+ */
+import { existsSync } from "node:fs";
+import fs from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+import { logger, type Plugin } from "@elizaos/core";
+
+import { type ElizaConfig, saveElizaConfig } from "../config/config";
+import {
+  type ApplyPluginAutoEnableParams,
+  applyPluginAutoEnable,
+} from "../config/plugin-auto-enable";
+import { resolveStateDir, resolveUserPath } from "../config/paths";
+import type { PluginInstallRecord } from "../config/types.eliza";
+import { diagnoseNoAIProvider } from "../services/version-compat";
+import { CORE_PLUGINS, OPTIONAL_CORE_PLUGINS } from "./core-plugins";
+import {
+  collectPluginNames,
+  CHANNEL_PLUGIN_MAP,
+  OPTIONAL_PLUGIN_MAP,
+} from "./plugin-collector";
+import {
+  CUSTOM_PLUGINS_DIRNAME,
+  EJECTED_PLUGINS_DIRNAME,
+  ensureBrowserServerLink,
+  findRuntimePluginExport,
+  mergeDropInPlugins,
+  repairBrokenInstallRecord,
+  resolveElizaPluginImportSpecifier,
+  resolvePackageEntry,
+  scanDropInPlugins,
+  shouldIgnoreMissingPluginExport,
+  STATIC_ELIZA_PLUGINS,
+  type PluginModuleShape,
+  type ResolvedPlugin,
+} from "./eliza";
+
+// ---------------------------------------------------------------------------
+// Helpers (private)
+// ---------------------------------------------------------------------------
+
+function formatError(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+function redactUserSegments(filepath: string): string {
+  // Replace /Users/<name>/ or /home/<name>/ with /Users/<redacted>/ etc.
+  return filepath.replace(
+    /\/(Users|home)\/[^/]+\//g,
+    "/$1/<redacted>/",
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Workspace plugin overrides
+// ---------------------------------------------------------------------------
+
+const WORKSPACE_PLUGIN_OVERRIDES = new Set<string>([
+  // "@elizaos/plugin-trajectory-logger",
+  // "@elizaos/plugin-plugin-manager",
+  // "@elizaos/plugin-media-generation",
+  "@elizaos/plugin-twitch-streaming",
+  "@elizaos/plugin-youtube-streaming",
+]);
+
+function getWorkspacePluginOverridePath(pluginName: string): string | null {
+  if (process.env.ELIZA_DISABLE_WORKSPACE_PLUGIN_OVERRIDES === "1") {
+    return null;
+  }
+  if (!WORKSPACE_PLUGIN_OVERRIDES.has(pluginName)) {
+    return null;
+  }
+
+  const pluginSegmentMatch = pluginName.match(/^@[^/]+\/(plugin-[^/]+)$/);
+  const pluginSegment = pluginSegmentMatch?.[1];
+  if (!pluginSegment) return null;
+
+  const thisDir = path.dirname(fileURLToPath(import.meta.url));
+  const elizaRoot = path.resolve(thisDir, "..", "..");
+  const workspaceRoot = path.resolve(elizaRoot, "..");
+  const candidates = [
+    path.join(elizaRoot, "plugins", pluginSegment, "typescript"),
+    path.join(workspaceRoot, "plugins", pluginSegment, "typescript"),
+    path.join(elizaRoot, "plugins", pluginSegment),
+    path.join(workspaceRoot, "plugins", pluginSegment),
+    path.join(elizaRoot, "packages", pluginSegment),
+    path.join(workspaceRoot, "packages", pluginSegment),
+  ];
+
+  for (const candidate of candidates) {
+    if (existsSync(path.join(candidate, "package.json"))) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Plugin error boundary wrapper
+// ---------------------------------------------------------------------------
+
+/**
+ * Wrap a plugin's `init` and `providers` with error boundaries so that a
+ * crash in any single plugin does not take down the entire agent or GUI.
+ *
+ * NOTE: Actions are NOT wrapped here because elizaOS's action dispatch
+ * already has its own error boundary.  Only `init` (startup) and
+ * `providers` (called every turn) need protection at this layer.
+ *
+ * The wrapper catches errors, logs them with the plugin name for easy
+ * debugging, and continues execution.
+ */
+function wrapPluginWithErrorBoundary(
+  pluginName: string,
+  plugin: Plugin,
+  options?: { isCore?: boolean },
+): Plugin {
+  const wrapped: Plugin = { ...plugin };
+
+  // Wrap init if present
+  if (plugin.init) {
+    const originalInit = plugin.init;
+    wrapped.init = async (...args: Parameters<typeof originalInit>) => {
+      try {
+        return await originalInit(...args);
+      } catch (err) {
+        logger.error(
+          `[eliza] Plugin "${pluginName}" crashed during init: ${formatError(err)}`,
+        );
+        // Core plugins are essential — re-throw so the agent does not
+        // start in an undefined state (e.g. missing database adapter).
+        if (options?.isCore) {
+          throw err;
+        }
+        // Optional plugins continue in degraded mode.
+        logger.warn(
+          `[eliza] Plugin "${pluginName}" will run in degraded mode (init failed)`,
+        );
+      }
+    };
+  }
+
+  // Wrap providers with error boundaries
+  if (plugin.providers && plugin.providers.length > 0) {
+    wrapped.providers = plugin.providers.map((provider) => ({
+      ...provider,
+      get: async (...args: Parameters<typeof provider.get>) => {
+        try {
+          return await provider.get(...args);
+        } catch (err) {
+          const msg = formatError(err);
+          logger.error(
+            `[eliza] Provider "${provider.name}" (plugin: ${pluginName}) crashed: ${msg}`,
+          );
+          // Return an error marker so downstream consumers can detect
+          // the failure rather than silently using empty data.
+          return {
+            text: `[Provider ${provider.name} error: ${msg}]`,
+            data: { _providerError: true },
+          };
+        }
+      },
+    }));
+  }
+
+  return wrapped;
+}
+
+// ---------------------------------------------------------------------------
+// Import helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Import a plugin module from its install directory on disk.
+ *
+ * Handles two install layouts:
+ *   1. npm layout:  <installPath>/node_modules/@scope/package/  (from `bun add`)
+ *   2. git layout:  <installPath>/ is the package root directly  (from `git clone`)
+ *
+ * @param installPath  Root directory of the installation (e.g. ~/.eliza/plugins/installed/foo/).
+ * @param packageName  The npm package name (e.g. "@elizaos/plugin-discord") — used
+ *                     to navigate directly into node_modules when present.
+ */
+async function importFromPath(
+  installPath: string,
+  packageName: string,
+): Promise<PluginModuleShape> {
+  const absPath = path.resolve(installPath);
+
+  // npm/bun layout:  installPath/node_modules/@scope/name/
+  // git layout:      installPath/ is the package itself
+  const nmCandidate = path.join(
+    absPath,
+    "node_modules",
+    ...packageName.split("/"),
+  );
+  let pkgRoot = absPath;
+  try {
+    if ((await fs.stat(nmCandidate)).isDirectory()) pkgRoot = nmCandidate;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw err;
+    }
+    /* git layout — pkgRoot stays as absPath */
+  }
+
+  // Resolve entry point from package.json
+  const entryPoint = await resolvePackageEntry(pkgRoot);
+  return (await import(pathToFileURL(entryPoint).href)) as PluginModuleShape;
+}
+
+/**
+ * Resolve a statically-imported @elizaos plugin by name.
+ * Returns the module if found in STATIC_ELIZA_PLUGINS, otherwise null.
+ */
+function resolveStaticElizaPlugin(pluginName: string): unknown | null {
+  return STATIC_ELIZA_PLUGINS[pluginName] ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Main function
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolve Eliza plugins from config and auto-enable logic.
+ * Returns an array of elizaOS Plugin instances ready for AgentRuntime.
+ *
+ * Handles three categories of plugins:
+ * 1. Built-in/npm plugins — imported by package name
+ * 2. User-installed plugins — from ~/.eliza/plugins/installed/
+ * 3. Custom/drop-in plugins — from ~/.eliza/plugins/custom/ and plugins.load.paths
+ *
+ * Each plugin is loaded inside an error boundary so a single failing plugin
+ * cannot crash the entire agent startup.
+ */
+export async function resolvePlugins(
+  config: ElizaConfig,
+  opts?: { quiet?: boolean },
+): Promise<ResolvedPlugin[]> {
+  const plugins: ResolvedPlugin[] = [];
+  const failedPlugins: Array<{ name: string; error: string }> = [];
+  const repairedInstallRecords = new Set<string>();
+
+  // NOTE: Auto-enable runs before dependency validation intentionally.
+  // It mutates config.plugins.allow based on env vars and connector config
+  // so that collectPluginNames() includes auto-enabled plugins. Dependency
+  // validation happens later during plugin init when the runtime is available.
+  applyPluginAutoEnable({
+    config,
+    env: process.env,
+  } satisfies ApplyPluginAutoEnableParams);
+
+  const pluginsToLoad = collectPluginNames(config);
+  const corePluginSet = new Set<string>(CORE_PLUGINS);
+
+  // Build a mutable map of install records so we can merge drop-in discoveries
+  const installRecords: Record<string, PluginInstallRecord> = {
+    ...(config.plugins?.installs ?? {}),
+  };
+
+  const denyList = new Set<string>((config.plugins?.deny || []) as string[]);
+
+  // ── Auto-discover ejected plugins ───────────────────────────────────────
+  // Ejected plugins override npm/core versions, so they are tracked
+  // separately and consulted first at import time.
+  const ejectedRecords = await scanDropInPlugins(
+    path.join(resolveStateDir(), EJECTED_PLUGINS_DIRNAME),
+  );
+  const ejectedPluginNames: string[] = [];
+  for (const [name, _record] of Object.entries(ejectedRecords)) {
+    if (denyList.has(name)) continue;
+    pluginsToLoad.add(name);
+    ejectedPluginNames.push(name);
+  }
+  if (ejectedPluginNames.length > 0) {
+    logger.info(
+      `[eliza] Discovered ${ejectedPluginNames.length} ejected plugin(s): ${ejectedPluginNames.join(", ")}`,
+    );
+  }
+
+  // ── Auto-discover drop-in custom plugins ────────────────────────────────
+  // Scan well-known dir + any extra dirs from plugins.load.paths (first wins).
+  const scanDirs = [
+    path.join(resolveStateDir(), CUSTOM_PLUGINS_DIRNAME),
+    ...(config.plugins?.load?.paths ?? []).map(resolveUserPath),
+  ];
+  const dropInRecords: Record<string, PluginInstallRecord> = {};
+  for (const dir of scanDirs) {
+    for (const [name, record] of Object.entries(await scanDropInPlugins(dir))) {
+      if (!dropInRecords[name]) dropInRecords[name] = record;
+    }
+  }
+
+  // Merge into load set — deny list and core collisions are filtered out.
+  const { accepted: customPluginNames, skipped } = mergeDropInPlugins({
+    dropInRecords,
+    installRecords,
+    corePluginNames: corePluginSet,
+    denyList,
+    pluginsToLoad,
+  });
+
+  for (const msg of skipped) logger.warn(msg);
+  if (customPluginNames.length > 0) {
+    logger.info(
+      `[eliza] Discovered ${customPluginNames.length} custom plugin(s): ${customPluginNames.join(", ")}`,
+    );
+  }
+
+  logger.info(`[eliza] Resolving ${pluginsToLoad.size} plugins...`);
+  const loadStartTime = Date.now();
+
+  // Built once so we don't rebuild on every optional plugin failure.
+  const optionalPluginNames = new Set([
+    ...Object.values(OPTIONAL_PLUGIN_MAP),
+    ...Object.values(CHANNEL_PLUGIN_MAP),
+    ...OPTIONAL_CORE_PLUGINS,
+  ]);
+
+  // Load a single plugin - returns result or null on skip/failure
+  async function loadSinglePlugin(pluginName: string): Promise<{
+    name: string;
+    plugin: Plugin;
+  } | null> {
+    const isCore = corePluginSet.has(pluginName);
+    const ejectedRecord = ejectedRecords[pluginName];
+    const installRecord = installRecords[pluginName];
+    const workspaceOverridePath = getWorkspacePluginOverridePath(pluginName);
+
+    // Pre-flight: ensure native dependencies are available for special plugins.
+    if (pluginName === "@elizaos/plugin-browser") {
+      if (!ensureBrowserServerLink()) {
+        failedPlugins.push({
+          name: pluginName,
+          error: "browser server binary not found",
+        });
+        logger.warn(
+          `[eliza] Skipping ${pluginName}: browser server not available. ` +
+            `Build the stagehand-server or remove the plugin from plugins.allow.`,
+        );
+        return null;
+      }
+    }
+
+    try {
+      let mod: PluginModuleShape;
+
+      if (ejectedRecord?.installPath) {
+        // Ejected plugin — always prefer local source over npm/core.
+        logger.debug(
+          `[eliza] Loading ejected plugin: ${pluginName} from ${ejectedRecord.installPath}`,
+        );
+        mod = await importFromPath(ejectedRecord.installPath, pluginName);
+      } else if (workspaceOverridePath) {
+        logger.debug(
+          `[eliza] Loading workspace plugin override: ${pluginName} from ${workspaceOverridePath}`,
+        );
+        mod = await importFromPath(workspaceOverridePath, pluginName);
+      } else if (installRecord?.installPath) {
+        // Prefer bundled/node_modules copies for official Eliza plugins.
+        const isOfficialElizaPlugin = pluginName.startsWith("@elizaos/plugin-");
+
+        if (isOfficialElizaPlugin) {
+          try {
+            const staticMod = await resolveStaticElizaPlugin(pluginName);
+            mod = staticMod
+              ? (staticMod as PluginModuleShape)
+              : ((await import(pluginName)) as PluginModuleShape);
+            if (repairBrokenInstallRecord(config, pluginName)) {
+              repairedInstallRecords.add(pluginName);
+            }
+          } catch (npmErr) {
+            logger.warn(
+              `[eliza] Node_modules resolution failed for ${pluginName} (${formatError(npmErr)}). Trying installed path at ${redactUserSegments(installRecord.installPath)}.`,
+            );
+            mod = await importFromPath(installRecord.installPath, pluginName);
+          }
+        } else {
+          // User-installed plugin — load from its install directory on disk.
+          try {
+            mod = await importFromPath(installRecord.installPath, pluginName);
+          } catch (installErr) {
+            logger.warn(
+              `[eliza] Installed plugin ${pluginName} failed at ${redactUserSegments(installRecord.installPath)} (${formatError(installErr)}). Falling back to node_modules resolution.`,
+            );
+            const staticMod = await resolveStaticElizaPlugin(pluginName);
+            mod = staticMod
+              ? (staticMod as PluginModuleShape)
+              : ((await import(pluginName)) as PluginModuleShape);
+            if (repairBrokenInstallRecord(config, pluginName)) {
+              repairedInstallRecords.add(pluginName);
+            }
+          }
+        }
+      } else if (pluginName.startsWith("@elizaos/plugin-")) {
+        // Eliza plugins can resolve either from bundled local wrappers
+        // under eliza-dist/plugins/* or from packaged node_modules.
+        mod = (await import(
+          resolveElizaPluginImportSpecifier(pluginName)
+        )) as PluginModuleShape;
+      } else {
+        // Built-in/npm plugin — try bundled static import first, then
+        // fall back to bare node_modules resolution.
+        const staticMod = pluginName.startsWith("@elizaos/plugin-")
+          ? await resolveStaticElizaPlugin(pluginName)
+          : null;
+        mod = staticMod
+          ? (staticMod as PluginModuleShape)
+          : ((await import(pluginName)) as PluginModuleShape);
+      }
+
+      const pluginInstance = findRuntimePluginExport(mod);
+
+      if (pluginInstance) {
+        // Wrap the plugin's init function with an error boundary.
+        // Core plugins re-throw on init failure; optional plugins degrade gracefully.
+        const wrappedPlugin = wrapPluginWithErrorBoundary(
+          pluginName,
+          pluginInstance,
+          { isCore },
+        );
+        logger.debug(`[eliza] ✓ Loaded plugin: ${pluginName}`);
+        return { name: pluginName, plugin: wrappedPlugin };
+      } else {
+        if (shouldIgnoreMissingPluginExport(pluginName)) {
+          logger.info(
+            `[eliza] Skipping helper package ${pluginName}: no Plugin export is expected`,
+          );
+          return null;
+        }
+
+        const msg = `[eliza] Plugin ${pluginName} did not export a valid Plugin object`;
+        failedPlugins.push({
+          name: pluginName,
+          error: "no valid Plugin export",
+        });
+        if (isCore) {
+          logger.error(msg);
+        } else {
+          logger.warn(msg);
+        }
+        return null;
+      }
+    } catch (err) {
+      const msg = formatError(err);
+
+      failedPlugins.push({ name: pluginName, error: msg });
+      if (isCore) {
+        logger.error(
+          `[eliza] Failed to load core plugin ${pluginName}: ${msg}`,
+        );
+      } else {
+        if (optionalPluginNames.has(pluginName)) {
+          logger.debug(
+            `[eliza] Optional plugin ${pluginName} not available: ${msg}`,
+          );
+        } else {
+          logger.info(`[eliza] Could not load plugin ${pluginName}: ${msg}`);
+        }
+      }
+      return null;
+    }
+  }
+
+  // Load all plugins in parallel for faster startup.
+  // SECURITY NOTE: Plugins that modify process.env during import or init
+  // may race with each other. This is an accepted trade-off for startup
+  // performance. Critical env vars (database, AI provider keys) are set
+  // before this point in buildCharacterFromConfig / resolveDbEnv.
+  logger.info(`[eliza] Loading ${pluginsToLoad.size} plugins...`);
+  const pluginResults = await Promise.all(
+    Array.from(pluginsToLoad).map(loadSinglePlugin),
+  );
+
+  // Collect successful loads
+  for (const result of pluginResults) {
+    if (result) {
+      plugins.push(result);
+    }
+  }
+
+  const loadDuration = Date.now() - loadStartTime;
+  logger.info(`[eliza] Plugin loading took ${loadDuration}ms`);
+
+  // Summary logging
+  logger.info(
+    `[eliza] Plugin resolution complete: ${plugins.length}/${pluginsToLoad.size} loaded` +
+      (failedPlugins.length > 0 ? `, ${failedPlugins.length} failed` : ""),
+  );
+  if (failedPlugins.length > 0) {
+    logger.info(
+      `[eliza] Failed plugins: ${failedPlugins.map((f) => `${f.name} (${f.error})`).join(", ")}`,
+    );
+  }
+
+  // Diagnose version-skew issues when AI providers failed to load (#10)
+  const loadedNames = plugins.map((p) => p.name);
+  const diagnostic = diagnoseNoAIProvider(loadedNames, failedPlugins);
+  if (diagnostic) {
+    if (opts?.quiet) {
+      // In headless/GUI mode before onboarding, this is expected — the user
+      // will configure a provider through the onboarding wizard and restart.
+      logger.info(`[eliza] ${diagnostic}`);
+    } else {
+      logger.error(`[eliza] ${diagnostic}`);
+    }
+  }
+
+  // Persist repaired install records so future startups do not keep trying
+  // to import from stale install directories.
+  if (repairedInstallRecords.size > 0) {
+    try {
+      saveElizaConfig(config);
+      logger.info(
+        `[eliza] Repaired ${repairedInstallRecords.size} plugin install record(s): ${Array.from(repairedInstallRecords).join(", ")}`,
+      );
+    } catch (err) {
+      logger.warn(
+        `[eliza] Failed to persist plugin install repairs: ${formatError(err)}`,
+      );
+    }
+  }
+
+  return plugins;
+}
