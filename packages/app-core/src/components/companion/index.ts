@@ -10,9 +10,9 @@
 export * from "../avatar/VrmEngine";
 export * from "../avatar/VrmViewer";
 export * from "../chat/ChatAvatar";
-export * from "../CompanionSceneHost";
+export * from "./CompanionSceneHost";
 export * from "../shell/CompanionShell";
 export * from "../pages/CompanionView";
 export * from "../shell/companion-shell-styles";
 export { useSharedCompanionScene } from "./shared-companion-scene-context";
-export * from "../VrmStage";
+export * from "./VrmStage";

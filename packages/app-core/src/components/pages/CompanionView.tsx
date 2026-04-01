@@ -6,10 +6,8 @@ import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { ChatModalView } from "./ChatModalView";
 import { useCompanionSceneStatus } from "../companion/companion-scene-status-context";
 import { CompanionHeader } from "../companion/CompanionHeader";
-import {
-  CompanionSceneHost,
-  useSharedCompanionScene,
-} from "../companion/CompanionSceneHost";
+import { CompanionSceneHost } from "../companion/CompanionSceneHost";
+import { useSharedCompanionScene } from "../companion/shared-companion-scene-context";
 import { InferenceCloudAlertButton } from "../companion/InferenceCloudAlertButton";
 import { resolveCompanionInferenceNotice } from "../companion/resolve-companion-inference-notice";
 import { PtyConsoleSidePanel } from "../coding/PtyConsoleSidePanel";
