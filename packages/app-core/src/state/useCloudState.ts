@@ -393,9 +393,12 @@ export function useCloudState({
               });
             }
             void loadWalletConfig();
-            // Delay the credit fetch slightly so the backend has time to
-            // persist the API key before we query cloud status / credits.
-            setTimeout(() => void pollCloudCredits(), 2000);
+            // Skip the immediate pollCloudCredits() call after login.
+            // The cloud-preference-patch masks getCloudStatus() when a
+            // local provider is configured, which would instantly undo
+            // the login we just completed. The recurring 60s poll will
+            // pick up credits once the backend has fully persisted the
+            // API key and the cloud status stabilizes.
           } else if (poll.status === "expired" || poll.status === "error") {
             stopCloudLoginPolling(
               poll.error ?? "Login session expired. Please try again.",
