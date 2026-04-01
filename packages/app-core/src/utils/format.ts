@@ -2,6 +2,34 @@
  * Shared formatting helpers for Eliza app views.
  */
 
+/**
+ * Format an uptime duration in seconds into a compact human string.
+ *
+ * When `verbose` is true the output uses every non-zero unit (e.g. "2d 3h 15m").
+ * Otherwise the two most-significant units are returned (e.g. "2d 3h").
+ */
+export function formatUptime(seconds?: number, verbose?: boolean): string {
+  if (seconds == null || seconds < 0) return "—";
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+
+  if (verbose) {
+    const parts: string[] = [];
+    if (d > 0) parts.push(`${d}d`);
+    if (h > 0) parts.push(`${h}h`);
+    if (m > 0) parts.push(`${m}m`);
+    if (parts.length === 0) parts.push(`${s}s`);
+    return parts.join(" ");
+  }
+
+  if (d > 0) return `${d}d ${h}h`;
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m`;
+  return `${s}s`;
+}
+
 type ByteSizeFormatterOptions = {
   /**
    * Fallback string for invalid or negative byte values.

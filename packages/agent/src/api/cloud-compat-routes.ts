@@ -4,13 +4,7 @@ import { normalizeCloudSiteUrl } from "../cloud/base-url";
 import { validateCloudBaseUrl } from "../cloud/validate-url";
 import { sendJson, sendJsonError } from "./http-helpers";
 
-interface CloudProxyConfigLike {
-  cloud?: {
-    apiKey?: string;
-    baseUrl?: string;
-    serviceKey?: string;
-  };
-}
+import type { CloudProxyConfigLike } from "../types/config-like";
 
 export interface CloudCompatRouteState {
   config: CloudProxyConfigLike;

@@ -12,9 +12,7 @@ type AgentStateStatus =
   | "restarting"
   | "error";
 
-interface AutonomousConfigLike {
-  [key: string]: unknown;
-}
+import type { AutonomousConfigLike } from "../types/config-like";
 
 function resolveDefaultAgentName(config: AutonomousConfigLike): string {
   const ui = config.ui as { language?: unknown } | undefined;

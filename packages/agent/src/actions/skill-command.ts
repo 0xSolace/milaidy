@@ -20,19 +20,7 @@ import type {
 } from "@elizaos/core";
 import { logger } from "@elizaos/core";
 
-/**
- * Subset of AgentSkillsService we use — avoids importing the package.
- */
-interface AgentSkillsServiceLike {
-  getLoadedSkills(): Array<{
-    slug: string;
-    name: string;
-    description: string;
-  }>;
-  getSkillInstructions(
-    slug: string,
-  ): { slug: string; body: string; estimatedTokens: number } | null;
-}
+import type { AgentSkillsServiceLike } from "../types/agent-skills";
 
 /** Set of registered skill slugs — populated by registerSkillCommands(). */
 const registeredSkillSlugs = new Set<string>();

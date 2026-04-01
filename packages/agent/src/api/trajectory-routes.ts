@@ -21,107 +21,21 @@ import {
 } from "./http-helpers";
 import { createZipArchive } from "./zip-utils";
 
-// ============================================================================
-// Types
-// ============================================================================
+import type {
+  Trajectory,
+  TrajectoryExportFormat,
+  TrajectoryExportOptions,
+  TrajectoryExportResult,
+  TrajectoryLlmCall,
+  TrajectoryListItem,
+  TrajectoryListOptions,
+  TrajectoryListResult,
+  TrajectoryProviderAccess,
+  TrajectoryStatus,
+  TrajectoryStep,
+} from "../types/trajectory";
 
-type TrajectoryStatus = "active" | "completed" | "error" | "timeout";
-
-interface TrajectoryListOptions {
-  limit?: number;
-  offset?: number;
-  source?: string;
-  status?: TrajectoryStatus;
-  startDate?: string;
-  endDate?: string;
-  search?: string;
-  scenarioId?: string;
-  batchId?: string;
-  isTrainingData?: boolean;
-}
-
-interface TrajectoryListItem {
-  id: string;
-  agentId: string;
-  source: string;
-  status: TrajectoryStatus;
-  startTime: number;
-  endTime: number | null;
-  durationMs: number | null;
-  llmCallCount: number;
-  providerAccessCount?: number;
-  totalPromptTokens: number;
-  totalCompletionTokens: number;
-  createdAt: string;
-}
-
-interface TrajectoryLlmCall {
-  callId?: string;
-  timestamp?: number;
-  model?: string;
-  systemPrompt?: string;
-  userPrompt?: string;
-  response?: string;
-  temperature?: number;
-  maxTokens?: number;
-  purpose?: string;
-  actionType?: string;
-  latencyMs?: number;
-  promptTokens?: number;
-  completionTokens?: number;
-}
-
-interface TrajectoryProviderAccess {
-  providerId?: string;
-  providerName?: string;
-  purpose?: string;
-  data?: Record<string, unknown>;
-  query?: Record<string, unknown>;
-  timestamp?: number;
-}
-
-interface TrajectoryStep {
-  stepId?: string;
-  timestamp: number;
-  llmCalls?: TrajectoryLlmCall[];
-  providerAccesses?: TrajectoryProviderAccess[];
-}
-
-interface Trajectory {
-  trajectoryId: string;
-  agentId: string;
-  startTime: number;
-  endTime?: number;
-  durationMs?: number;
-  steps?: TrajectoryStep[];
-  metrics?: { finalStatus?: string };
-  metadata?: Record<string, unknown>;
-}
-
-interface TrajectoryListResult {
-  trajectories: TrajectoryListItem[];
-  total: number;
-  offset: number;
-  limit: number;
-}
-
-export type TrajectoryExportFormat = "json" | "csv" | "art" | "zip";
-
-interface TrajectoryExportOptions {
-  format: TrajectoryExportFormat;
-  includePrompts?: boolean;
-  trajectoryIds?: string[];
-  startDate?: string;
-  endDate?: string;
-  scenarioId?: string;
-  batchId?: string;
-}
-
-interface TrajectoryExportResult {
-  filename: string;
-  data: string | Uint8Array;
-  mimeType: string;
-}
+export type { TrajectoryExportFormat };
 
 interface TrajectoryLoggerApi {
   isEnabled(): boolean;

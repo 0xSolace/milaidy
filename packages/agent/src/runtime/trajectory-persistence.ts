@@ -11,106 +11,16 @@ import {
   logger as coreLogger,
 } from "@elizaos/core";
 
-type TrajectoryStatus = "active" | "completed" | "error" | "timeout";
-
-// ============================================================================
-// Types for the full TrajectoryLoggerApi (compatible with trajectory-routes.ts)
-// ============================================================================
-
-interface TrajectoryListOptions {
-  limit?: number;
-  offset?: number;
-  source?: string;
-  status?: TrajectoryStatus;
-  startDate?: string;
-  endDate?: string;
-  search?: string;
-  scenarioId?: string;
-  batchId?: string;
-  isTrainingData?: boolean;
-}
-
-interface TrajectoryListItem {
-  id: string;
-  agentId: string;
-  source: string;
-  status: TrajectoryStatus;
-  startTime: number;
-  endTime: number | null;
-  durationMs: number | null;
-  stepCount: number;
-  llmCallCount: number;
-  providerAccessCount: number;
-  totalPromptTokens: number;
-  totalCompletionTokens: number;
-  createdAt: string;
-  metadata?: Record<string, unknown>;
-}
-
-interface TrajectoryListResult {
-  trajectories: TrajectoryListItem[];
-  total: number;
-  offset: number;
-  limit: number;
-}
-
-interface TrajectoryStep {
-  stepId?: string;
-  timestamp: number;
-  llmCalls?: Array<{
-    callId?: string;
-    timestamp?: number;
-    model?: string;
-    systemPrompt?: string;
-    userPrompt?: string;
-    response?: string;
-    temperature?: number;
-    maxTokens?: number;
-    purpose?: string;
-    actionType?: string;
-    latencyMs?: number;
-    promptTokens?: number;
-    completionTokens?: number;
-  }>;
-  providerAccesses?: Array<{
-    providerId?: string;
-    providerName?: string;
-    purpose?: string;
-    data?: Record<string, unknown>;
-    query?: Record<string, unknown>;
-    timestamp?: number;
-  }>;
-}
-
-interface Trajectory {
-  trajectoryId: string;
-  agentId: string;
-  startTime: number;
-  endTime?: number;
-  durationMs?: number;
-  steps?: TrajectoryStep[];
-  metrics?: { finalStatus?: string };
-  metadata?: Record<string, unknown>;
-  stepsJson?: string;
-}
-
-type TrajectoryExportFormat = "json" | "csv" | "art";
-
-interface TrajectoryExportOptions {
-  format: TrajectoryExportFormat;
-  includePrompts?: boolean;
-  trajectoryIds?: string[];
-  startDate?: string;
-  endDate?: string;
-  scenarioId?: string;
-  batchId?: string;
-}
-
-interface TrajectoryExportResult {
-  filename: string;
-  data: string | Uint8Array;
-  mimeType: string;
-}
+import type {
+  Trajectory,
+  TrajectoryExportOptions,
+  TrajectoryExportResult,
+  TrajectoryListItem,
+  TrajectoryListOptions,
+  TrajectoryListResult,
+  TrajectoryStatus,
+  TrajectoryStep,
+} from "../types/trajectory";
 
 type RuntimeDb = {
   execute: (query: { queryChunks: object[] }) => Promise<unknown>;

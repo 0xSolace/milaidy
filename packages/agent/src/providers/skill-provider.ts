@@ -315,20 +315,7 @@ const MAX_INSTRUCTION_CHARS = 2000;
 
 // ── Provider ─────────────────────────────────────────────────────────────────
 
-/**
- * The AgentSkillsService type as exposed by @elizaos/plugin-agent-skills.
- * We only declare the subset we use to avoid importing the package.
- */
-interface AgentSkillsServiceLike {
-  getLoadedSkills(): Array<{
-    slug: string;
-    name: string;
-    description: string;
-  }>;
-  getSkillInstructions(
-    slug: string,
-  ): { slug: string; body: string; estimatedTokens: number } | null;
-}
+import type { AgentSkillsServiceLike } from "../types/agent-skills";
 
 export function createDynamicSkillProvider(): Provider {
   let indexCache: BM25Index | null = null;

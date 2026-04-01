@@ -36,7 +36,9 @@ interface AgentConfigLike {
   postExamples?: string[];
 }
 
-export interface AutonomousConfigLike {
+import type { AutonomousConfigLike } from "../types/config-like";
+
+export interface CharacterAutonomousConfigLike extends AutonomousConfigLike {
   agents?: {
     list?: AgentConfigLike[];
   };
@@ -58,13 +60,13 @@ type CharacterValidationResult =
 export interface CharacterRouteState {
   runtime: AgentRuntime | null;
   agentName: string;
-  config?: AutonomousConfigLike;
+  config?: CharacterAutonomousConfigLike;
 }
 
 export interface CharacterRouteContext extends RouteRequestContext {
   state: CharacterRouteState;
   pickRandomNames: (count: number) => string[];
-  saveConfig?: (config: AutonomousConfigLike) => void;
+  saveConfig?: (config: CharacterAutonomousConfigLike) => void;
   validateCharacter: (
     body: Record<string, unknown>,
   ) => CharacterValidationResult;
@@ -72,7 +74,7 @@ export interface CharacterRouteContext extends RouteRequestContext {
 
 function syncRuntimeCharacterToConfig(
   state: CharacterRouteState,
-  saveConfig?: (config: AutonomousConfigLike) => void,
+  saveConfig?: (config: CharacterAutonomousConfigLike) => void,
 ): void {
   const runtime = state.runtime;
   const config = state.config;

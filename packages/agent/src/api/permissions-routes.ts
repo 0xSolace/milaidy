@@ -1,7 +1,9 @@
 import type { AgentRuntime } from "@elizaos/core";
 import type { RouteRequestContext } from "./route-helpers";
 
-interface AutonomousConfigLike {
+import type { AutonomousConfigLike } from "../types/config-like";
+
+interface PermissionAutonomousConfigLike extends AutonomousConfigLike {
   features?: {
     shellEnabled?: boolean;
   };
@@ -19,14 +21,14 @@ interface PermissionState {
 
 export interface PermissionRouteState {
   runtime: AgentRuntime | null;
-  config: AutonomousConfigLike;
+  config: PermissionAutonomousConfigLike;
   permissionStates?: Record<string, PermissionState>;
   shellEnabled?: boolean;
 }
 
 export interface PermissionRouteContext extends RouteRequestContext {
   state: PermissionRouteState;
-  saveConfig: (config: AutonomousConfigLike) => void;
+  saveConfig: (config: PermissionAutonomousConfigLike) => void;
   scheduleRuntimeRestart: (reason: string) => void;
 }
 

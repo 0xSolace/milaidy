@@ -19,7 +19,9 @@ import type {
   BscUnsignedTradeTx,
 } from "../contracts/wallet.js";
 import {
+  normalizeRpcUrl,
   resolveBscRpcUrls as resolveWalletBscRpcUrls,
+  resolveWalletNetworkMode,
 } from "./wallet-rpc.js";
 
 const FETCH_TIMEOUT_MS = 15_000;
@@ -102,15 +104,8 @@ interface BscExecutionContext {
   explorerBaseUrl: string;
 }
 
-function resolveWalletNetwork(): "mainnet" | "testnet" {
-  const normalized = (process.env.MILADY_WALLET_NETWORK ?? "")
-    .trim()
-    .toLowerCase();
-  return normalized === "testnet" ? "testnet" : "mainnet";
-}
-
 function resolveBscExecutionContext(): BscExecutionContext {
-  const walletNetwork = resolveWalletNetwork();
+  const walletNetwork = resolveWalletNetworkMode();
   if (walletNetwork === "mainnet") {
     return {
       walletNetwork,
@@ -164,22 +159,8 @@ function resolveBscExecutionContext(): BscExecutionContext {
   };
 }
 
-function normalizeRpcUrl(url: string | null | undefined): string | null {
-  if (typeof url !== "string") return null;
-  const trimmed = url.trim();
-  if (!trimmed) return null;
-  try {
-    const parsed = new URL(trimmed);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:")
-      return null;
-    return parsed.toString();
-  } catch {
-    return null;
-  }
-}
-
 export function resolveBscRpcUrls(input: BscTradeRpcConfig): string[] {
-  const walletNetwork = resolveWalletNetwork();
+  const walletNetwork = resolveWalletNetworkMode();
   const candidates = [
     ...(input.rpcUrls ?? []).map((url) => normalizeRpcUrl(url)),
     normalizeRpcUrl(process.env.BSC_TESTNET_RPC_URL),

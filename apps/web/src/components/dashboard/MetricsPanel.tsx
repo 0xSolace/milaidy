@@ -3,20 +3,13 @@
 import { useEffect, useState } from "react";
 import { useAgents } from "../../lib/AgentProvider";
 import type { MetricsData } from "../../lib/cloud-api";
+import { formatUptime } from "../../lib/format";
 
 interface AgentMetrics {
   agentId: string;
   agentName: string;
   data: MetricsData | null;
   error?: string;
-}
-
-function formatUptime(seconds?: number): string {
-  if (!seconds) return "—";
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m}m`;
 }
 
 function StatBox({
