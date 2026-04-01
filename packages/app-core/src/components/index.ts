@@ -118,4 +118,5 @@ export * from "../utils/trajectory-format";
 export * from "./pages/VectorBrowserView";
 export * from "./settings/VoiceConfigView";
 export * from "./companion/VrmStage";
+export * from "./config-ui";
 export * from "./connectors/WhatsAppQrOverlay";

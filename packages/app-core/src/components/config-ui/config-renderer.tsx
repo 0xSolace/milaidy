@@ -19,15 +19,15 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { useApp } from "../state";
-import type { ConfigUiHint, PluginUiTheme } from "../types";
+import { useApp } from "../../state";
+import type { ConfigUiHint, PluginUiTheme } from "../../types";
 import type {
   FieldRegistry,
   FieldRenderer,
   FieldRenderProps,
   JsonSchemaObject,
   ResolvedField,
-} from "./config-catalog";
+} from "../../config/config-catalog";
 import {
   defaultCatalog,
   defineRegistry,
@@ -35,7 +35,7 @@ import {
   evaluateVisibility,
   resolveFields,
   runValidation,
-} from "./config-catalog";
+} from "../../config/config-catalog";
 import { ConfigField } from "./config-field";
 
 // ── Props ──────────────────────────────────────────────────────────────

@@ -26,9 +26,9 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { useApp } from "../state";
-import { confirmDesktopAction, resolveAppAssetUrl } from "../utils";
-import { getByPath, setByPath } from "./config-catalog";
+import { useApp } from "../../state";
+import { confirmDesktopAction, resolveAppAssetUrl } from "../../utils";
+import { getByPath, setByPath } from "../../config/config-catalog";
 import {
   CONFIG_FIELD_LABEL_CLASSNAME,
   ConfigFieldErrors,
@@ -44,7 +44,7 @@ import type {
   UiSpec,
   ValidationCheck,
   VisibilityCondition,
-} from "./ui-spec";
+} from "../../config/ui-spec";
 
 const UiContext = createContext<UiRenderContext | null>(null);
 

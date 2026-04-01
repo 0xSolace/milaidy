@@ -6,33 +6,15 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  BUILT_IN_TEMPLATES,
+  type HeartbeatTemplate,
+  loadUserTemplates,
+  saveUserTemplates,
+  TEMPLATES_STORAGE_KEY,
+} from "./heartbeat-utils";
 
 // ── Template storage ────────────────────────────────────────────────
-
-const TEMPLATES_STORAGE_KEY = "milady:heartbeat-templates";
-
-interface HeartbeatTemplate {
-  id: string;
-  name: string;
-  instructions: string;
-  interval: string;
-  unit: string;
-}
-
-// Simulate the storage functions from HeartbeatsView
-function loadUserTemplates(): HeartbeatTemplate[] {
-  try {
-    const raw = localStorage.getItem(TEMPLATES_STORAGE_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw) as HeartbeatTemplate[];
-  } catch {
-    return [];
-  }
-}
-
-function saveUserTemplates(templates: HeartbeatTemplate[]): void {
-  localStorage.setItem(TEMPLATES_STORAGE_KEY, JSON.stringify(templates));
-}
 
 describe("HeartbeatTemplate storage", () => {
   beforeEach(() => {
@@ -125,33 +107,6 @@ describe("HeartbeatTemplate storage", () => {
 // ── Built-in templates ──────────────────────────────────────────────
 
 describe("Built-in templates", () => {
-  const BUILT_IN_TEMPLATES = [
-    {
-      id: "__builtin_crypto",
-      name: "Check crypto prices",
-      instructions:
-        "Check the current prices of BTC, ETH, and SOL. Summarize any significant moves in the last hour.",
-      interval: "30",
-      unit: "minutes",
-    },
-    {
-      id: "__builtin_journal",
-      name: "Daily journal prompt",
-      instructions:
-        "Write a brief, thoughtful journal prompt for the user based on current events or seasonal themes. Keep it under 2 sentences.",
-      interval: "24",
-      unit: "hours",
-    },
-    {
-      id: "__builtin_trending",
-      name: "Trending topics digest",
-      instructions:
-        "Scan for trending topics on crypto Twitter and tech news. Give a 3-bullet summary of what's worth paying attention to.",
-      interval: "4",
-      unit: "hours",
-    },
-  ];
-
   it("has 3 built-in templates", () => {
     expect(BUILT_IN_TEMPLATES).toHaveLength(3);
   });

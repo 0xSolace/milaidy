@@ -1,7 +1,7 @@
 export * from "./boot-config";
 export * from "./branding";
 export * from "./config-catalog";
-export * from "./config-renderer";
+export * from "../components/config-ui/config-renderer";
 export {
   evaluateUiVisibility,
   getSupportedComponents,
@@ -9,7 +9,7 @@ export {
   sanitizeLinkHref,
   UiRenderer,
   type UiRendererProps,
-} from "./ui-renderer";
+} from "../components/config-ui/ui-renderer";
 export * from "./ui-spec";
 export {
   buildPluginConfigUiSpec,

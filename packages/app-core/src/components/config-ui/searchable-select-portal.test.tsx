@@ -17,7 +17,7 @@ import {
   SELECT_FLOATING_LAYER_NAME,
   SELECT_FLOATING_LAYER_Z_INDEX,
 } from "@miladyai/ui";
-import { ProviderSwitcher } from "../components/settings/ProviderSwitcher";
+import { ProviderSwitcher } from "../settings/ProviderSwitcher";
 
 const mockGetConfig = vi.fn();
 const mockGetOnboardingOptions = vi.fn();
@@ -26,7 +26,7 @@ const mockUpdateConfig = vi.fn();
 const mockRestartAgent = vi.fn();
 const mockSwitchProvider = vi.fn();
 
-vi.mock("../api", () => ({
+vi.mock("../../api", () => ({
   client: {
     getConfig: (...args: unknown[]) => mockGetConfig(...args),
     getOnboardingOptions: (...args: unknown[]) =>
@@ -39,11 +39,11 @@ vi.mock("../api", () => ({
   },
 }));
 
-vi.mock("../components/ApiKeyConfig", () => ({
+vi.mock("../settings/ApiKeyConfig", () => ({
   ApiKeyConfig: () => null,
 }));
 
-vi.mock("../components/SubscriptionStatus", () => ({
+vi.mock("../settings/SubscriptionStatus", () => ({
   SubscriptionStatus: () => null,
 }));
 
@@ -53,7 +53,7 @@ const configFieldSource = readFileSync(
 );
 
 const providerSwitcherSource = readFileSync(
-  path.resolve(import.meta.dirname, "..", "components", "settings", "ProviderSwitcher.tsx"),
+  path.resolve(import.meta.dirname, "..", "settings", "ProviderSwitcher.tsx"),
   "utf-8",
 );
 
