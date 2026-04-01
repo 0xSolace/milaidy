@@ -22,7 +22,7 @@
     "scripts/setup-eliza-workspace.mjs",
     "scripts/run-repo-setup.mjs",
     "scripts/ensure-skills.mjs",
-    "scripts/skills",
+    "skills",
     "scripts/ensure-avatars.mjs",
     "scripts/link-browser-server.mjs",
     "scripts/ensure-vision-deps.mjs"

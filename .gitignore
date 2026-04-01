@@ -61,11 +61,7 @@ USER.md
 .milady-repo-setup.lock
 .milady/desktop-dev-console.log
 .turbo/
-skills/*
-!skills/README.md
-!skills/integration-dod-map/
-skills/integration-dod-map/*
-!skills/integration-dod-map/SKILL.md
+skills/.cache/
 apps/app/electron/.eliza
 apps/app/electron/skills/
 

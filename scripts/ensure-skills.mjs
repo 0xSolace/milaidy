@@ -18,7 +18,7 @@ import { fileURLToPath } from "node:url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-export const SHIPPED_SKILLS_DIR = join(__dirname, "skills");
+export const SHIPPED_SKILLS_DIR = join(__dirname, "..", "skills");
 
 function resolveUserPath(input, home = homedir) {
   const trimmed = input.trim();
