@@ -5,7 +5,6 @@
  */
 
 import { ONBOARDING_PROVIDER_CATALOG } from "@miladyai/shared/contracts/onboarding";
-import { getStylePresets } from "@miladyai/shared/onboarding-presets";
 import {
   type ReactNode,
   useCallback,
@@ -39,7 +38,6 @@ import {
   type SkillMarketplaceResult,
   type SkillScanReportSummary,
   type StreamEventEnvelope,
-  type StylePreset,
   type TriggerHealthSnapshot,
   type TriggerRunRecord,
   type TriggerSummary,
@@ -55,7 +53,6 @@ import {
 import { mapServerTasksToSessions } from "../coding";
 import { BrandingContext, DEFAULT_BRANDING } from "../config/branding";
 import {
-  type AppEmoteEventDetail,
   dispatchAppEmoteEvent,
   dispatchElizaCloudStatusUpdated,
 } from "../events";
@@ -73,7 +70,6 @@ import {
   resolveApiUrl,
   yieldMiladyHttpAfterNativeMessageBox,
 } from "../utils";
-import { isMiladyTtsDebugEnabled } from "../utils/milady-tts-debug";
 import {
   computeAgentDeadlineExtensions,
   getAgentReadyTimeoutMs,
@@ -248,89 +244,29 @@ import {
   usePrompt,
 } from "@miladyai/ui";
 
-// ELIZA_CLOUD_LOGIN_POLL_INTERVAL_MS, ELIZA_CLOUD_LOGIN_TIMEOUT_MS,
-// ELIZA_CLOUD_LOGIN_MAX_CONSECUTIVE_ERRORS are now in useCloudState.ts
 const DEFAULT_LANDING_TAB: Tab = COMPANION_ENABLED ? "companion" : "chat";
+
+function traceMiladyGreeting(
+  phase: string,
+  detail?: Record<string, unknown>,
+): void {
+  try {
+    if (
+      typeof localStorage !== "undefined" &&
+      localStorage.getItem("milady:debug:greeting") === "1"
+    ) {
+      console.info(`[milady][greeting] ${phase}`, detail ?? "");
+    }
+  } catch {
+    /* noop */
+  }
+}
 
 function getNavigationPathFromWindow(): string {
   if (typeof window === "undefined") return "/";
   return window.location.protocol === "file:"
     ? window.location.hash.replace(/^#/, "") || "/"
     : window.location.pathname;
-}
-
-function normalizeAppEmoteEvent(
-  data: Record<string, unknown>,
-): AppEmoteEventDetail | null {
-  const emoteId = typeof data.emoteId === "string" ? data.emoteId : null;
-  const path =
-    typeof data.path === "string"
-      ? data.path
-      : typeof data.glbPath === "string"
-        ? data.glbPath
-        : null;
-  if (!emoteId || !path) return null;
-  return {
-    emoteId,
-    path,
-    duration:
-      typeof data.duration === "number" && Number.isFinite(data.duration)
-        ? data.duration
-        : 3,
-    loop: data.loop === true,
-    showOverlay: data.showOverlay !== false,
-  };
-}
-
-function buildLocalizedCharacterPayload(
-  preset: StylePreset,
-  name?: string | null,
-): CharacterData {
-  const resolvedName = name?.trim() || preset.name;
-  return {
-    name: resolvedName,
-    bio: [...preset.bio],
-    system: preset.system,
-    adjectives: [...preset.adjectives],
-    topics: [...preset.topics],
-    style: {
-      all: [...preset.style.all],
-      chat: [...preset.style.chat],
-      post: [...preset.style.post],
-    },
-    messageExamples: preset.messageExamples.map((conversation) => ({
-      examples: conversation.map((message) => ({
-        name: message.user,
-        content: { text: message.content.text },
-      })),
-    })),
-    postExamples: [...preset.postExamples],
-  };
-}
-
-/** Enable with `MILADY_TTS_DEBUG=1` or `localStorage.setItem("milady:debug:greeting", "1")`. */
-function miladyGreetingDebugEnabled(): boolean {
-  if (isMiladyTtsDebugEnabled()) return true;
-  try {
-    return (
-      typeof localStorage !== "undefined" &&
-      localStorage.getItem("milady:debug:greeting") === "1"
-    );
-  } catch {
-    return false;
-  }
-}
-
-function traceMiladyGreeting(
-  phase: string,
-  detail?: Record<string, unknown>,
-): void {
-  if (!miladyGreetingDebugEnabled()) return;
-  if (detail && Object.keys(detail).length > 0) {
-    console.info(`[milady][greeting] ${phase}`, detail);
-  } else {
-    console.info(`[milady][greeting] ${phase}`);
-  }
 }
 
 // ── Provider ───────────────────────────────────────────────────────────
