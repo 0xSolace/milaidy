@@ -19,7 +19,7 @@ import {
   HEADER_BUTTON_STYLE,
   HEADER_ICON_BUTTON_CLASSNAME,
   ShellHeaderControls,
-} from "../companion/ShellHeaderControls";
+} from "./ShellHeaderControls";
 
 const NAV_LABEL_I18N_KEY: Record<string, string> = {
   Chat: "nav.chat",

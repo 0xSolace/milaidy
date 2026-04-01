@@ -17,7 +17,7 @@ import {
   SELECT_FLOATING_LAYER_NAME,
   SELECT_FLOATING_LAYER_Z_INDEX,
 } from "@miladyai/ui";
-import { ProviderSwitcher } from "../components/ProviderSwitcher";
+import { ProviderSwitcher } from "../components/settings/ProviderSwitcher";
 
 const mockGetConfig = vi.fn();
 const mockGetOnboardingOptions = vi.fn();
@@ -53,7 +53,7 @@ const configFieldSource = readFileSync(
 );
 
 const providerSwitcherSource = readFileSync(
-  path.resolve(import.meta.dirname, "..", "components", "ProviderSwitcher.tsx"),
+  path.resolve(import.meta.dirname, "..", "components", "settings", "ProviderSwitcher.tsx"),
   "utf-8",
 );
 

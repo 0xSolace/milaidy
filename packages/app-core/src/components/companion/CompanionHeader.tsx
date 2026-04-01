@@ -1,7 +1,7 @@
 import type { UiLanguage } from "@miladyai/app-core/i18n";
 import type { ShellView, UiTheme } from "@miladyai/app-core/state";
 import { memo, type ReactNode } from "react";
-import { ShellHeaderControls } from "./ShellHeaderControls";
+import { ShellHeaderControls } from "../shell/ShellHeaderControls";
 
 export interface CompanionHeaderProps {
   activeShellView: ShellView;

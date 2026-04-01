@@ -18,12 +18,12 @@ vi.mock("./DatabasePageView", () => ({
     React.createElement("div", null, contentHeader, "database-view"),
 }));
 
-vi.mock("./pages/LogsPageView", () => ({
+vi.mock("./LogsPageView", () => ({
   LogsPageView: ({ contentHeader }: { contentHeader?: React.ReactNode }) =>
     React.createElement("div", null, contentHeader, "logs-view"),
 }));
 
-vi.mock("./pages/PluginsPageView", () => ({
+vi.mock("./PluginsPageView", () => ({
   PluginsPageView: ({ contentHeader }: { contentHeader?: React.ReactNode }) =>
     React.createElement("div", null, contentHeader, "plugins-view"),
 }));
@@ -82,7 +82,7 @@ vi.mock("@miladyai/ui", () => ({
     ),
 }));
 
-vi.mock("./settings/DesktopWorkspaceSection", () => ({
+vi.mock("../settings/DesktopWorkspaceSection", () => ({
   DesktopWorkspaceSection: ({
     contentHeader,
   }: {
@@ -90,21 +90,21 @@ vi.mock("./settings/DesktopWorkspaceSection", () => ({
   }) => React.createElement("div", null, contentHeader, "desktop"),
 }));
 
-vi.mock("./settings/FineTuningView", () => ({
+vi.mock("../settings/FineTuningView", () => ({
   FineTuningView: ({ contentHeader }: { contentHeader?: React.ReactNode }) =>
     React.createElement("div", null, contentHeader, "fine-tuning"),
 }));
 
-vi.mock("./pages/TrajectoriesView", () => ({
+vi.mock("./TrajectoriesView", () => ({
   TrajectoriesView: ({ contentHeader }: { contentHeader?: React.ReactNode }) =>
     React.createElement("div", null, contentHeader, "trajectories"),
 }));
 
-vi.mock("./pages/TrajectoryDetailView", () => ({
+vi.mock("./TrajectoryDetailView", () => ({
   TrajectoryDetailView: () => React.createElement("div", null, "trajectory"),
 }));
 
-import { AdvancedPageView } from "./pages/AdvancedPageView";
+import { AdvancedPageView } from "./AdvancedPageView";
 
 describe("AdvancedPageView", () => {
   it("injects the shared advanced sub-nav into the standard content pane", async () => {
