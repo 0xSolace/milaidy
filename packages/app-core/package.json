@@ -80,7 +80,7 @@
     "@capacitor/keyboard": "8.0.0",
     "@capacitor/preferences": "^8.0.1",
     "@miladyai/agent": "workspace:*",
-    "@miladyai/plugin-wechat": "workspace:*",
+    "@miladyai/plugin-wechat": "github:milady-ai/plugin-wechat",
     "@lookingglass/webxr": "^0.6.0",
     "@miladyai/ui": "alpha",
     "@miladyai/vrm-utils": "workspace:*",

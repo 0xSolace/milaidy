@@ -35,8 +35,6 @@
     "apps/*/plugins/*",
     "apps/app/electrobun",
     "packages/app-core",
-    "packages/plugin-wechat",
-    "packages/plugin-roles",
     "packages/ui",
     "packages/vrm-utils",
     "packages/shared",
@@ -265,8 +263,6 @@
     "libsignal": "git+https://github.com/whiskeysockets/libsignal-node.git#1c30d7d7e76a3b0aa120b04dc6a26f5a12dccf67"
   },
   "patchedDependencies": {
-    "electrobun@1.15.1": "patches/electrobun@1.15.1.patch",
-    "@elizaos/plugin-coding-agent@0.1.0-next.1": "patches/@elizaos%2Fplugin-coding-agent@0.1.0-next.1.patch",
     "@elizaos/plugin-agent-skills@2.0.0-alpha.70": "patches/@elizaos%2Fplugin-agent-skills@2.0.0-alpha.70.patch",
     "@elizaos/plugin-sql@2.0.0-alpha.17": "patches/@elizaos%2Fplugin-sql@2.0.0-alpha.17.patch",
     "@noble/curves@2.0.1": "patches/@noble%2Fcurves@2.0.1.patch",
