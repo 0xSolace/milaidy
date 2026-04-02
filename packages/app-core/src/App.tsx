@@ -618,7 +618,7 @@ export function App() {
       className="flex flex-col flex-1 min-h-0 w-full font-body text-txt bg-bg"
     >
       <Header />
-      <div className="flex flex-1 min-h-0 min-w-0 overflow-hidden">
+      <div className="flex flex-1 min-h-0 min-w-0">
         <AdvancedPageView />
       </div>
     </div>

@@ -412,23 +412,17 @@ export function DatabaseView({
     );
 
     return (
-      <PageLayout
-        sidebar={dbSidebar}
-        contentHeader={contentHeader}
-        contentInnerClassName="w-full min-h-0"
-      >
-        <div className="flex flex-1 flex-col min-h-0 w-full">
+      <PageLayout sidebar={dbSidebar} contentHeader={contentHeader} contentInnerClassName="w-full min-h-0">
+        <div className="flex min-h-0 flex-1 flex-col w-full">
           {errorMessage ? (
-            <div className="m-5 rounded-xl border border-danger/35 bg-danger/10 px-4 py-3 text-sm text-danger">
+            <div className="mb-4 rounded-xl border border-danger/35 bg-danger/10 px-4 py-3 text-sm text-danger">
               {errorMessage}
             </div>
           ) : null}
 
           {dbStatus && !dbStatus.connected ? (
-            <div className="flex min-h-0 flex-1 flex-col overflow-auto p-6">
-              <PagePanel
-                variant="surface"
-                as="section"
+            <div className="w-full">
+              <PagePanel variant="surface" as="section"
                 className="px-5 py-5 sm:px-6"
               >
                 <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
@@ -439,24 +433,18 @@ export function DatabaseView({
                 </h1>
               </PagePanel>
 
-              <PagePanel
+              <PagePanel.Empty
                 variant="surface"
-                className="mt-4 flex min-h-[18rem] flex-1 items-center justify-center p-6"
-              >
-                <PagePanel.Empty
-                  className="w-full min-h-[14rem]"
-                  title={t("databaseview.DatabaseNotAvailab")}
-                  description={t("databaseview.TheDatabaseViewer")}
-                />
-              </PagePanel>
+                className="mt-4 min-h-[18rem] rounded-[1.6rem] px-5 py-10"
+                title={t("databaseview.DatabaseNotAvailab")}
+                description={t("databaseview.TheDatabaseViewer")}
+              />
             </div>
           ) : view === "tables" ? (
-            <div className="flex min-h-0 flex-1 w-full flex-col overflow-y-auto p-6">
+            <div className="w-full">
               {!selectedTable ? (
-                <div className="w-full">
-                  <PagePanel
-                    variant="surface"
-                    as="section"
+                <>
+                  <PagePanel variant="surface" as="section"
                     className="px-5 py-5 sm:px-6"
                   >
                     <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
@@ -473,7 +461,7 @@ export function DatabaseView({
                     title={t("databaseview.SelectATable")}
                     description={t("databaseview.ChooseATableFrom")}
                   />
-                </div>
+                </>
               ) : loading && !tableData ? (
                 <PagePanel
                   variant="surface"
@@ -547,7 +535,7 @@ export function DatabaseView({
               ) : null}
             </div>
           ) : (
-            <div className="flex min-h-0 flex-1 flex-col overflow-auto p-6">
+            <div className="w-full">
               <SqlEditorPanel {...sqlEditorProps} showHistory={false} />
             </div>
           )}
