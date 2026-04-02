@@ -80,7 +80,12 @@ describe("release support workflow drift", () => {
 
     expect(workflow).toContain("bump_patch()");
     expect(workflow).toContain('VERSION="$' + "{VERSION_OVERRIDE#v}" + '"');
-    expect(workflow).toContain("grep -v -- '-alpha\\.'");
+    expect(workflow).toContain(
+      "grep '^v[0-9]\\+\\.[0-9]\\+\\.[0-9]\\+-alpha\\.[0-9]\\+$'",
+    );
+    expect(workflow).toContain(
+      "grep '^v[0-9]\\+\\.[0-9]\\+\\.[0-9]\\+$'",
+    );
     expect(workflow).toContain("git ls-remote --exit-code --tags origin");
     expect(workflow).toContain(
       "Tag $TAG already exists on origin; reusing existing tag",
